@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -45,8 +47,21 @@ jobs:
           test -n "$VITE_FIREBASE_PROJECT_ID" || (echo "Missing config: VITE_FIREBASE_PROJECT_ID (set in Secrets or Variables)" && exit 1)
           test -n "$VITE_FIREBASE_APP_ID" || (echo "Missing config: VITE_FIREBASE_APP_ID (set in Secrets or Variables)" && exit 1)
 
+      - name: Auto bump patch version
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🔖 Version bump: $CURRENT → $NEW_VERSION"
+          # Update package.json with new version
+          node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW_VERSION'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+
       - name: Build
         env:
+          VITE_APP_VERSION: ${{ steps.version.outputs.version }}
           VITE_DATA_PROVIDER: firebase
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN }}
@@ -65,3 +80,11 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git diff --cached --quiet || git commit -m "chore: bump version to v${{ steps.version.outputs.version }} [skip ci]"
+          git push
