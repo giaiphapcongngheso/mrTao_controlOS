@@ -28,7 +28,7 @@ interface ChecklistCreateDialogProps {
   onUpdateTask: (index: number, fields: Partial<DialogTask>) => void;
 }
 
-export default function ChecklistCreateDialog({
+const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
   isOpen,
   dialogError,
   dialogRoleCode,
@@ -77,7 +77,7 @@ export default function ChecklistCreateDialog({
             </DialogClose>
           </div>
 
-          <form onSubmit={onSubmit} className="flex-1 overflow-y-auto pr-1 my-4 space-y-4 text-xs font-bold text-slate-700">
+          <form onSubmit={onSubmit} className="flex-1 overflow-y-auto pr-1 my-4 space-y-4 text-sm font-bold text-slate-700">
             {dialogError && (
               <div className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-rose-700 animate-in slide-in-from-top-2 duration-150">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -87,7 +87,7 @@ export default function ChecklistCreateDialog({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-wider">
+                <Label className="block text-sm font-black text-slate-400 mb-1.5 uppercase tracking-wider">
                   Chọn vai trò
                 </Label>
                 <CustomSelect
@@ -103,7 +103,7 @@ export default function ChecklistCreateDialog({
               </div>
 
               <div>
-                <Label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-wider">
+                <Label className="block text-sm font-black text-slate-400 mb-1.5 uppercase tracking-wider">
                   Chọn nhóm checklist
                 </Label>
                 <CustomSelect
@@ -120,7 +120,7 @@ export default function ChecklistCreateDialog({
             </div>
 
             <div>
-              <Label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-wider">
+              <Label className="block text-sm font-black text-slate-400 mb-1.5 uppercase tracking-wider">
                 Tên bộ checklist / quy trình
               </Label>
               <Input
@@ -136,14 +136,14 @@ export default function ChecklistCreateDialog({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-[12px] font-black text-slate-400 uppercase tracking-wider block">
+                <Label className="text-sm font-black text-slate-400 uppercase tracking-wider block">
                   Danh sách công việc con
                 </Label>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={onAddTaskRow}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-[10.5px] font-extrabold tracking-wide cursor-pointer transition-all active:scale-95"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-sm font-extrabold tracking-wide cursor-pointer transition-all active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                   <span>Thêm dòng mới</span>
@@ -153,7 +153,7 @@ export default function ChecklistCreateDialog({
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                 {dialogTasks.map((task, index) => (
                   <div key={index} className="w-full flex gap-2 items-center animate-in slide-in-from-bottom-2 duration-150">
-                    <span className="text-slate-400 text-xs shrink-0 font-mono">#{index + 1}</span>
+                    <span className="text-slate-400 text-sm shrink-0 font-mono">#{index + 1}</span>
                     <Textarea
                       rows={1}
                       value={task.title}
@@ -161,7 +161,7 @@ export default function ChecklistCreateDialog({
                       placeholder="Nhiệm vụ: VD: Dọn sạch quầy, Kiểm két..."
                       required
                       style={{ minHeight: 36 }}
-                      className="flex-1 min-w-0 py-2 resize-none overflow-hidden bg-slate-50 border border-slate-250 rounded-xl px-3.5 focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-medium text-xs leading-normal align-middle"
+                      className="flex-1 min-w-0 py-2 resize-none overflow-hidden bg-slate-50 border border-slate-250 rounded-xl px-3.5 focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-medium text-sm leading-normal align-middle"
                     />
                     <Input
                       type="time"
@@ -196,7 +196,7 @@ export default function ChecklistCreateDialog({
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="h-10 px-5 text-xs font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 border-slate-200 rounded-xl transition-all duration-200 cursor-pointer active:scale-95"
+                className="h-10 px-5 text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 border-slate-200 rounded-xl transition-all duration-200 cursor-pointer active:scale-95"
               >
                 Hủy bỏ
               </Button>
@@ -204,7 +204,7 @@ export default function ChecklistCreateDialog({
                 type="submit"
                 variant="default"
                 disabled={isSubmittingDialog}
-                className="h-10 px-6 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-md shadow-slate-900/10 hover:shadow-lg hover:shadow-slate-900/20 transition-all duration-200 cursor-pointer uppercase tracking-wider flex items-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-10 px-6 text-sm font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-md shadow-slate-900/10 hover:shadow-lg hover:shadow-slate-900/20 transition-all duration-200 cursor-pointer uppercase tracking-wider flex items-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmittingDialog ? (
                   <>
@@ -221,4 +221,6 @@ export default function ChecklistCreateDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default ChecklistCreateDialog;

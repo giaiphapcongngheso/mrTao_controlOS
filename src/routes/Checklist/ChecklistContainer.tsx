@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ChecklistView from './ChecklistView';
 import type { ChecklistCategory, ChecklistItem } from '../../types/checklist.types';
 import type { StaffRole } from '../../types/staff.types';
@@ -14,6 +14,7 @@ import {
   checklistProcessCategoryService,
 } from '../../services/checklist-service';
 import { systemLogService } from '../../services/system-log-service';
+import { getTodayKey } from './checklist.utils';
 
 interface ChecklistRoleOption {
   code: string;
@@ -29,10 +30,6 @@ interface ChecklistContainerProps {
 
 function normalizeAccessCode(value?: string | null): string {
   return (value || '').trim().toUpperCase();
-}
-
-function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function sortChecklistItems(items: ChecklistItem[], categories: ChecklistCategory[]): ChecklistItem[] {
@@ -74,7 +71,7 @@ export default function ChecklistContainer({
 
   const currentChecklistRoleCode = normalizeAccessCode(currentUser?.roleCode || currentUser?.role || 'SALES');
 
-  const recalculateChecklistProgress = (itemsList: ChecklistItem[], categoriesList: ChecklistCategory[]) => {
+  const recalculateChecklistProgress = useCallback((itemsList: ChecklistItem[], categoriesList: ChecklistCategory[]) => {
     let totalDoneAll = 0;
     let totalCountAll = 0;
 
@@ -103,9 +100,9 @@ export default function ChecklistContainer({
       items: itemsList,
       checklistCompletion: finalPercent,
     });
-  };
+  }, [onMetricsChange]);
 
-  const appendChecklistLog = async (
+  const appendChecklistLog = useCallback(async (
     actionType: SystemLogActionType,
     target: string,
     details: string,
@@ -126,7 +123,11 @@ export default function ChecklistContainer({
     } catch (error) {
       console.error('Khong the ghi log checklist:', error);
     }
-  };
+  }, [currentUser, activeStoreId, currentChecklistRoleCode]);
+
+  const handleDismissError = useCallback(() => {
+    setChecklistErrorMessage(null);
+  }, []);
 
   useEffect(() => {
     if (!checklistErrorMessage) {
@@ -336,7 +337,7 @@ export default function ChecklistContainer({
     };
   }, [currentUser?.id, activeStoreId, currentChecklistRoleCode]);
 
-  const handleToggleChecklistItem = async (itemId: string) => {
+  const handleToggleChecklistItem = useCallback(async (itemId: string) => {
     const nowIso = new Date().toISOString();
     const checkerName = currentUser?.fullName || currentUser?.username || 'He thong';
     const checkerUsername = currentUser?.username || 'system';
@@ -388,9 +389,9 @@ export default function ChecklistContainer({
       recalculateChecklistProgress(checklistItems, todayChecklistCategories);
       setChecklistErrorMessage('Cap nhat checklist that bai. Vui long thu lai.');
     }
-  };
+  }, [checklistItems, todayChecklistCategories, processChecklistCategories, currentUser, recalculateChecklistProgress, appendChecklistLog]);
 
-  const handleCreateRoleChecklist = async (
+  const handleCreateRoleChecklist = useCallback(async (
     roleCode: string,
     categoryId: string,
     checklistName: string,
@@ -460,9 +461,9 @@ export default function ChecklistContainer({
       console.error('Khong the tao checklist:', error);
       setChecklistErrorMessage('Khong the tao checklist moi. Vui long kiem tra quyen ghi du lieu.');
     }
-  };
+  }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
 
-  const handleCreateRoleChecklistBatch = async (
+  const handleCreateRoleChecklistBatch = useCallback(async (
     roleCode: string,
     categoryId: string,
     checklistName: string,
@@ -541,9 +542,9 @@ export default function ChecklistContainer({
       setChecklistErrorMessage('Khong the tao checklist moi. Vui long kiem tra quyen ghi du lieu.');
       throw error;
     }
-  };
+  }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
 
-  const handleCreateTodayChecklistBatch = async (
+  const handleCreateTodayChecklistBatch = useCallback(async (
     roleCode: string,
     categoryId: string,
     checklistName: string,
@@ -614,9 +615,9 @@ export default function ChecklistContainer({
       setChecklistErrorMessage('Khong the tao checklist hom nay. Vui long kiem tra quyen ghi du lieu.');
       throw error;
     }
-  };
+  }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
 
-  const handleDeleteChecklistItem = async (itemId: string) => {
+  const handleDeleteChecklistItem = useCallback(async (itemId: string) => {
     try {
       const itemToDelete = allChecklistItems.find((it) => it.id === itemId);
       if (!itemToDelete) {
@@ -658,9 +659,9 @@ export default function ChecklistContainer({
       setChecklistErrorMessage('Xoa cong viec that bai. Vui long thu lai.');
       throw error;
     }
-  };
+  }, [allChecklistItems, checklistItems, todayChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
 
-  const handleUpdateChecklistItem = async (itemId: string, updates: Partial<ChecklistItem>) => {
+  const handleUpdateChecklistItem = useCallback(async (itemId: string, updates: Partial<ChecklistItem>) => {
     try {
       const itemToUpdate = allChecklistItems.find((it) => it.id === itemId);
       if (!itemToUpdate) {
@@ -723,9 +724,9 @@ export default function ChecklistContainer({
       setChecklistErrorMessage('Cap nhat cong viec that bai. Vui long thu lai.');
       throw error;
     }
-  };
+  }, [allChecklistItems, appendChecklistLog]);
 
-  const handleCreateChecklistCategory = async (title: string, categoryType: 'today' | 'process') => {
+  const handleCreateChecklistCategory = useCallback(async (title: string, categoryType: 'today' | 'process') => {
     const safeTitle = title.trim();
     if (!safeTitle) {
       return;
@@ -755,9 +756,9 @@ export default function ChecklistContainer({
       console.error('Khong the tao nhom checklist:', error);
       setChecklistErrorMessage('Khong the tao nhom moi. Vui long kiem tra ket noi.');
     }
-  };
+  }, [activeStoreId, appendChecklistLog]);
 
-  const handleUpdateChecklistCategory = async (id: string, title: string, categoryType: 'today' | 'process') => {
+  const handleUpdateChecklistCategory = useCallback(async (id: string, title: string, categoryType: 'today' | 'process') => {
     const safeTitle = title.trim();
     if (!safeTitle) {
       return;
@@ -786,9 +787,9 @@ export default function ChecklistContainer({
       console.error('Khong the cap nhat nhom checklist:', error);
       setChecklistErrorMessage('Khong the doi ten nhom. Vui long thu lai.');
     }
-  };
+  }, [appendChecklistLog]);
 
-  const handleDeleteChecklistCategory = async (id: string, categoryType: 'today' | 'process') => {
+  const handleDeleteChecklistCategory = useCallback(async (id: string, categoryType: 'today' | 'process') => {
     try {
       const categoryService = categoryType === 'process'
         ? checklistProcessCategoryService
@@ -819,7 +820,7 @@ export default function ChecklistContainer({
       console.error('Khong the xoa nhom checklist:', error);
       setChecklistErrorMessage('Xoa nhom that bai. Vui long thu lai.');
     }
-  };
+  }, [allChecklistItems, appendChecklistLog]);
 
   return (
     <ChecklistView
@@ -840,7 +841,7 @@ export default function ChecklistContainer({
       onUpdateChecklistItem={handleUpdateChecklistItem}
       permissions={checklistPermissions}
       errorMessage={checklistErrorMessage}
-      onDismissError={() => setChecklistErrorMessage(null)}
+      onDismissError={handleDismissError}
     />
   );
 }

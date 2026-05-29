@@ -70,7 +70,7 @@ export default function AppFrameLayout({
                   <button
                     key={link.key}
                     onClick={() => handleSelectTab(link.key)}
-                    className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-left text-xs font-semibold transition-all group cursor-pointer ${isSelected
+                    className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-left text-sm font-semibold transition-all group cursor-pointer ${isSelected
                       ? 'bg-[#C21A1A] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-rose-50 hover:text-[#C21A1A] border border-transparent'
                       }`}
@@ -162,7 +162,7 @@ export default function AppFrameLayout({
                         onCloseMobileMenu();
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-xl text-left text-xs font-black transition-all cursor-pointer ${isSelected
+                      className={`flex items-center gap-3 p-3 rounded-xl text-left text-sm font-black transition-all cursor-pointer ${isSelected
                         ? 'bg-[#C21A1A] text-white shadow-xs'
                         : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-150/50'
                         }`}
@@ -194,7 +194,7 @@ export default function AppFrameLayout({
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-4 md:p-6 pb-20 md:pb-6 w-full max-w-[1536px] mx-auto space-y-4">
+          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5">
             {children}
           </div>
         </main>
