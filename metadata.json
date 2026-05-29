@@ -1,0 +1,6 @@
+{
+  "name": "MR. TÁO CONTROL OS",
+  "description": "Hệ thống quản lý và vận hành cửa hàng chuyên nghiệp hàng ngày cho Mr. Táo, tối ưu hóa checklist, SOP, KPI và giao việc hiệu quả.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,82 @@
+{
+  "Colors": {
+    "Teal": {
+      "25": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#f0fff8"
+      },
+      "50": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#e8f7f0"
+      },
+      "100": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#e6f5ee"
+      },
+      "200": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#b0dfca"
+      },
+      "300": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#8ad0b1"
+      },
+      "400": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#54bb8d"
+      },
+      "500": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#009955"
+      },
+      "600": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#008b4d"
+      },
+      "700": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#006d3c"
+      },
+      "800": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#00542f"
+      },
+      "900": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#004024"
+      },
+      "950": {
+        "$scopes": ["ALL_SCOPES"],
+        "$type": "color",
+        "$value": "#002a18"
+      }
+    }
+  },
+  "Brands": {
+    "DMS": {
+      "25": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#f0fff8" },
+      "50": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#e8f7f0" },
+      "100": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#e6f5ee" },
+      "200": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#b0dfca" },
+      "300": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#8ad0b1" },
+      "400": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#54bb8d" },
+      "500": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#009955" },
+      "600": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#008b4d" },
+      "700": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#006d3c" },
+      "800": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#00542f" },
+      "900": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#004024" },
+      "950": { "$scopes": ["ALL_SCOPES"], "$type": "color", "$value": "#002a18" }
+    }
+  }
+}
