@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/mr_tao_control_os/',
+    base: '/mrTao_controlOS/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
