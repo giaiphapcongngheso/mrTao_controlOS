@@ -1,12 +1,16 @@
 import React from 'react';
 import { Calendar, Layers, CheckCircle, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Button, Input } from '../../../../share/ui';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
 
 interface ChecklistTabBarProps {
   subTab: 'today' | 'process' | 'completed';
   setSubTab: (tab: 'today' | 'process' | 'completed') => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  selectedRoleCode: string;
+  setSelectedRoleCode: (role: string) => void;
+  roleOptions: Array<{ code: string; name: string }>;
 }
 
 /**
@@ -18,49 +22,67 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   setSubTab,
   searchTerm,
   setSearchTerm,
+  selectedRoleCode,
+  setSelectedRoleCode,
+  roleOptions,
 }: ChecklistTabBarProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
-      {/* Navigation Tabs */}
-      <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/90 overflow-x-auto scrollbar-none gap-0.5 shrink-0 w-full lg:w-auto text-left">
-        <Button
-          onClick={() => setSubTab('today')}
-          variant="ghost"
-          className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${
-            subTab === 'today'
-              ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Hôm nay</span>
-        </Button>
-        
-        <Button
-          onClick={() => setSubTab('process')}
-          variant="ghost"
-          className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${
-            subTab === 'process'
-              ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>Theo quy trình</span>
-        </Button>
+      {/* Navigation Tabs + Role Select */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto">
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/90 overflow-x-auto scrollbar-none gap-0.5 shrink-0 flex-1 sm:flex-initial text-left">
+          <Button
+            onClick={() => setSubTab('today')}
+            variant="ghost"
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'today'
+                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+              }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Hôm nay</span>
+          </Button>
 
-        <Button
-          onClick={() => setSubTab('completed')}
-          variant="ghost"
-          className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${
-            subTab === 'completed'
-              ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-          }`}
-        >
-          <CheckCircle className="w-3.5 h-3.5" />
-          <span>Đã hoàn thành</span>
-        </Button>
+          <Button
+            onClick={() => setSubTab('process')}
+            variant="ghost"
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'process'
+                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+              }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Theo quy trình</span>
+          </Button>
+
+          <Button
+            onClick={() => setSubTab('completed')}
+            variant="ghost"
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'completed'
+                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+              }`}
+          >
+            <CheckCircle className="w-3.5 h-3.5" />
+            <span>Đã hoàn thành</span>
+          </Button>
+        </div>
+
+        {/* Role Select */}
+        {(subTab === 'process' || subTab === 'today') && (
+          <div className="w-full sm:w-52 shrink-0">
+            <CustomSelect
+              value={selectedRoleCode}
+              onChangeValue={(value) => setSelectedRoleCode(String(value))}
+              options={roleOptions.map((role) => ({
+                label: role.name,
+                value: role.code,
+              }))}
+              clearable={false}
+              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer transition-colors shadow-2xs text-sm font-bold"
+            />
+          </div>
+        )}
       </div>
 
       {/* Search bar */}
@@ -81,7 +103,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
           />
           {searchTerm && (
             <Button
-              onClick={() => setSearchTerm('')} 
+              onClick={() => setSearchTerm('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650"
             >
               <X className="w-3.5 h-3.5" />

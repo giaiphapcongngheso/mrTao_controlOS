@@ -24,13 +24,33 @@ import {
   X,
 } from 'lucide-react';
 import { Button, Input, Textarea } from '../../../../share/ui';
-import type { ChecklistItem } from '../../../types/checklist.types';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '../../../../share/ui/dialog';
+import { DeleteConfirm } from '../../../../share/components/delete-confirm';
+import { Badge } from '../../../../share/ui/badge';
+import { DatePicker } from '../../../../share/components/custom/date-picker';
+import { toastError } from '../../../shared/lib/toast';
+import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import type {
   ChecklistPermissions,
   ChecklistSubTab,
   ChecklistViewCategory,
 } from './checklist-view.types';
 import { isItemLate, formatCheckedAt } from '../checklist.utils';
+
+const parseTimeToDate = (timeStr: string) => {
+  if (!timeStr) return undefined;
+  const [h, m] = timeStr.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d;
+};
+
+const formatDateToTime = (date: Date | undefined) => {
+  if (!date) return '08:00';
+  const h = date.getHours().toString().padStart(2, '0');
+  const m = date.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m}`;
+};
 
 const CATEGORY_ICON_COMPONENTS = [Calendar, Coins, Wrench, Warehouse, FileText, Layers] as const;
 
@@ -43,12 +63,8 @@ interface CategoryCardProps {
   activeCategoryType: 'today' | 'process';
   onToggleExpand: (categoryId: string) => void;
   onToggleItem: (itemId: string) => void;
-  onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
-  onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
-  editingCategoryId: string | null;
-  setEditingCategoryId: React.Dispatch<React.SetStateAction<string | null>>;
-  editingCategoryTitle: string;
-  setEditingCategoryTitle: React.Dispatch<React.SetStateAction<string>>;
+  onConfirmDeleteCategory: (id: string, title: string) => void;
+  onOpenEditCategoryDialog: (cat: ChecklistViewCategory) => void;
   editingItemId: string | null;
   setEditingItemId: React.Dispatch<React.SetStateAction<string | null>>;
   editItemTitle: string;
@@ -56,8 +72,8 @@ interface CategoryCardProps {
   editItemTimeLimit: string;
   setEditItemTimeLimit: React.Dispatch<React.SetStateAction<string>>;
   onInlineSave: (itemId: string) => Promise<void>;
-  onDeleteItem: (itemId: string, title: string) => Promise<void>;
-  onQuickAddProcessItem: (categoryId: string, categoryTitle: string) => void;
+  onConfirmDeleteItem: (itemId: string, title: string) => void;
+  onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
 }
 
 const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
@@ -68,12 +84,8 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   activeCategoryType,
   onToggleExpand,
   onToggleItem,
-  onDeleteCategory,
-  onUpdateCategory,
-  editingCategoryId,
-  setEditingCategoryId,
-  editingCategoryTitle,
-  setEditingCategoryTitle,
+  onConfirmDeleteCategory,
+  onOpenEditCategoryDialog,
   editingItemId,
   setEditingItemId,
   editItemTitle,
@@ -81,188 +93,194 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   editItemTimeLimit,
   setEditItemTimeLimit,
   onInlineSave,
-  onDeleteItem,
-  onQuickAddProcessItem,
+  onConfirmDeleteItem,
+  onAddInlineItem,
 }: CategoryCardProps) {
   const ratio = cat.countTotal > 0 ? (cat.countDone / cat.countTotal) : 0;
   const isFinishedList = cat.countTotal > 0 && cat.countDone === cat.countTotal;
   const CategoryIcon = CATEGORY_ICON_COMPONENTS[cat.iconIndex % CATEGORY_ICON_COMPONENTS.length];
+  const percentText = Math.round(ratio * 100);
+
+  // States for adding inline task
+  const [isAddingInline, setIsAddingInline] = React.useState(false);
+  const [newItemTitle, setNewItemTitle] = React.useState('');
+  const [newItemTimeLimit, setNewItemTimeLimit] = React.useState('08:00');
+  const [isSubmittingNewItem, setIsSubmittingNewItem] = React.useState(false);
+  const [uncheckTarget, setUncheckTarget] = React.useState<{ id: string; title: string; timeLimit: string } | null>(null);
+  const lastToggleCompletedRef = React.useRef<{ id: string; time: number } | null>(null);
+  const lastClickRef = React.useRef<{ id: string; time: number } | null>(null);
 
   return (
     <div
-      className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-2xs ${
-        isExpanded ? 'border-slate-350 shadow-xs ring-4 ring-slate-100/50' : 'border-slate-200/90'
-      }`}
+      className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${isExpanded
+        ? 'border-slate-200 shadow-sm'
+        : 'border-slate-200/80 shadow-none hover:shadow-sm'
+        }`}
     >
+      {/* ── Category Header ─────────────────────────────────── */}
       <div
         onClick={() => onToggleExpand(cat.id)}
-        className="p-3 flex items-center justify-between gap-3 cursor-pointer select-none relative"
+        className="px-4 py-3.5 flex items-center gap-4 cursor-pointer select-none group/header animate-in fade-in"
       >
-        <div
-          className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${cat.meta.barColor}`}
-        ></div>
+        {/* Icon */}
+        <span
+          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${cat.meta.iconBg} transition-transform duration-200 group-hover/header:scale-105`}
+        >
+          <CategoryIcon className={`w-5 h-5 ${cat.meta.iconColor}`} />
+        </span>
 
-        <div className="flex items-center gap-3.5 min-w-0 flex-1 text-left">
-          <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-extrabold ${cat.meta.iconBg}`}>
-            <CategoryIcon className={`w-5 h-5 ${cat.meta.iconColor}`} />
-          </span>
+        {/* Title + Progress */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-extrabold uppercase tracking-tight text-slate-800 truncate" style={{ color: cat.meta.accentHex }}>
+              {cat.meta.label}
+            </h3>
 
-          <div className="min-w-0 flex-1">
-            {editingCategoryId === cat.id ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (editingCategoryTitle.trim() && onUpdateCategory) {
-                    void onUpdateCategory(cat.id, editingCategoryTitle.trim(), activeCategoryType);
-                    setEditingCategoryId(null);
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 mt-0.5 animate-in zoom-in-95 duration-100"
-              >
-                <Input
-                  type="text"
-                  value={editingCategoryTitle}
-                  onChange={(e) => setEditingCategoryTitle(e.target.value)}
-                  autoFocus
-                  required
-                  onBlur={() => {
-                    if (editingCategoryTitle.trim() && onUpdateCategory && editingCategoryTitle.trim() !== cat.title) {
-                      void onUpdateCategory(cat.id, editingCategoryTitle.trim(), activeCategoryType);
-                    }
-                    setEditingCategoryId(null);
-                  }}
-                  className="bg-slate-50 border border-slate-350 focus:border-slate-800 focus:outline-none px-2.5 py-1 rounded-lg text-sm font-bold w-48 shadow-2xs"
-                />
-                <Button
-                  type="submit"
-                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-sm rounded-md font-black uppercase tracking-wider cursor-pointer transition-colors"
-                >
-                  Lưu
-                </Button>
-              </form>
-            ) : (
-              <div className="flex items-center gap-2 group/title">
-                <h3 className="font-black text-sm uppercase tracking-tight text-slate-800 flex items-center gap-1.5">
-                  <span style={{ color: cat.meta.accentHex }}>{cat.meta.label}</span>
-                  {subTab !== 'process' && isFinishedList && (
-                    <span className="text-sm text-emerald-600 font-black bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Hoàn tất</span>
-                  )}
-                </h3>
-
-                {(permissions.canUpdate || permissions.canDelete) && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover/title:opacity-100 transition-opacity pl-2">
-                    {permissions.canUpdate && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        title="Đổi tên nhóm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCategoryId(cat.id);
-                          setEditingCategoryTitle(cat.title);
-                        }}
-                        className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer active:scale-90"
-                      >
-                        <Edit2 className="w-3 h-3 stroke-[2.5]" />
-                      </Button>
-                    )}
-                    {permissions.canDelete && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        title={subTab === 'process' ? 'Xóa nhóm quy trình' : 'Xóa nhóm checklist'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Bạn có chắc chắn muốn xóa nhóm "${cat.title}"? Tất cả công việc bên trong cũng sẽ bị xóa vĩnh viễn.`)) {
-                            if (onDeleteCategory) {
-                              void onDeleteCategory(cat.id, activeCategoryType);
-                            }
-                          }
-                        }}
-                        className="p-1 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer active:scale-90"
-                      >
-                        <Trash2 className="w-3 h-3 stroke-[2.5]" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+            {subTab !== 'process' && isFinishedList && (
+              <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-px rounded uppercase tracking-wider shrink-0 animate-in zoom-in-75">
+                Xong
+              </span>
             )}
+          </div>
 
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap sm:flex-nowrap">
-              {subTab === 'process' ? (
-                <span className="text-sm font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 shrink-0">
-                  {cat.countTotal} đầu việc chuẩn
+          {/* Progress bar row */}
+          <div className="flex items-center gap-3 mt-1.5">
+            {subTab === 'process' ? (
+              <span className="text-xs font-bold text-slate-400">
+                {cat.countTotal} đầu việc chuẩn
+              </span>
+            ) : (
+              <>
+                <span className="text-xs font-bold text-slate-500 shrink-0">
+                  {cat.countDone}/{cat.countTotal} việc hoàn thành
                 </span>
-              ) : (
-                <>
-                  <span className={`text-sm font-extrabold px-2 py-0.5 rounded-md shrink-0 ${cat.meta.badgeBg}`}>
-                    {cat.countDone}/{cat.countTotal} việc đã xong
-                  </span>
-                  <div className="w-20 sm:w-28 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${cat.meta.barColor}`}
-                      style={{ width: `${ratio * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-mono font-black text-slate-400 shrink-0">
-                    {Math.round(ratio * 100)}%
-                  </span>
-                </>
-              )}
-            </div>
+                <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${cat.meta.barColor}`}
+                    style={{ width: `${percentText}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-400 shrink-0">
+                  {percentText}%
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        <span className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-800 transition-colors">
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </span>
+        {/* Actions & Toggle Expand */}
+        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+          {permissions.canUpdate && (
+            <button
+              type="button"
+              title="Chỉnh sửa nhóm"
+              onClick={() => {
+                onOpenEditCategoryDialog(cat);
+              }}
+              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-blue-500 hover:bg-blue-50 hover:border-blue-100 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {permissions.canDelete && (
+            <button
+              type="button"
+              title="Xóa nhóm"
+              onClick={() => {
+                onConfirmDeleteCategory(cat.id, cat.title);
+              }}
+              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 flex items-center justify-center transition-all select-none">
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        </div>
       </div>
 
-      {subTab !== 'process' && (
-        <div className="w-full bg-slate-100 h-[1px]">
-          <div
-            className={`h-full transition-all duration-500 ${cat.meta.barColor}`}
-            style={{ width: `${ratio * 100}%` }}
-          />
-        </div>
-      )}
-
+      {/* ── Expanded Task List ──────────────────────────────── */}
       {isExpanded && (
-        <div className="bg-slate-50/40 divide-y divide-slate-150/50 border-t border-slate-100">
+        <div className="border-t border-slate-100">
           {cat.tasks.length === 0 ? (
-            <p className="text-sm text-slate-400 italic p-6 text-center font-bold">Chưa có công việc nào trong danh mục này.</p>
+            <p className="text-sm text-slate-400 italic py-8 text-center font-medium">
+              Chưa có công việc nào trong danh mục này.
+            </p>
           ) : (
-            cat.tasks.map((item) => {
-              const isLate = isItemLate(item);
-              const isCurrentlyEditing = editingItemId === item.id;
+            <div className="divide-y divide-slate-100">
+              {cat.tasks.map((item) => {
+                const isLate = isItemLate(item);
+                const isCurrentlyEditing = editingItemId === item.id;
 
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    if (subTab !== 'process' && !isCurrentlyEditing) {
-                      onToggleItem(item.id);
-                    }
-                  }}
-                  className={`py-1.5 px-3 flex items-center justify-between gap-3 transition-all ${
-                    subTab === 'process'
-                      ? 'hover:bg-white/80'
-                      : 'hover:bg-white/80 cursor-pointer select-none'
-                  } ${isCurrentlyEditing ? 'bg-white p-2 border-l-2 border-slate-850' : ''}`}
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <span className="transition-transform group-hover:scale-105 duration-200 shrink-0">
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (subTab === 'process' || isCurrentlyEditing) return;
+
+                      const now = Date.now();
+                      const lastClick = lastClickRef.current;
+                      lastClickRef.current = { id: item.id, time: now };
+
+                      const isDoubleClick = Boolean(lastClick && lastClick.id === item.id && now - lastClick.time < 500);
+                      console.log('Checklist Click Debug:', {
+                        itemId: item.id,
+                        title: item.title,
+                        isCompleted: item.isCompleted,
+                        timeDiff: lastClick ? now - lastClick.time : 'N/A',
+                        isDoubleClick,
+                      });
+
+                      if (isDoubleClick) {
+                        // Double Click
+                        if (item.isCompleted) {
+                          const lastToggle = lastToggleCompletedRef.current;
+                          if (lastToggle && lastToggle.id === item.id && now - lastToggle.time < 500) {
+                            return;
+                          }
+
+                          const tempItem = { ...item, isCompleted: false, checkedAt: undefined };
+                          const isLateAfterUncheck = isItemLate(tempItem);
+
+                          if (isLateAfterUncheck) {
+                            setUncheckTarget({
+                              id: item.id,
+                              title: item.title,
+                              timeLimit: item.timeLimit || '',
+                            });
+                          } else {
+                            onToggleItem(item.id);
+                          }
+                        }
+                      } else {
+                        // Single Click
+                        if (!item.isCompleted) {
+                          onToggleItem(item.id);
+                          lastToggleCompletedRef.current = {
+                            id: item.id,
+                            time: Date.now(),
+                          };
+                        }
+                      }
+                    }}
+                    className={`group/row px-4 py-3 flex items-center gap-3.5 transition-colors duration-150 ${subTab === 'process'
+                      ? 'hover:bg-slate-50/80'
+                      : 'hover:bg-slate-50/80 cursor-pointer select-none'
+                      } ${isCurrentlyEditing ? 'bg-slate-50 ring-1 ring-inset ring-slate-200' : ''}`}
+                  >
+                    {/* Check / Status icon */}
+                    <span className="shrink-0 pointer-events-none">
                       {subTab === 'process' ? (
-                        <FileText className="w-4 h-4 text-slate-400" />
+                        <FileText className="w-[18px] h-[18px] text-slate-300" />
                       ) : item.isCompleted ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600 fill-emerald-50" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                       ) : (
-                        <Circle className={`w-5 h-5 ${isLate ? 'text-rose-500' : 'text-slate-350 hover:text-slate-500'}`} />
+                        <Circle className={`w-5 h-5 ${isLate ? 'text-rose-400' : 'text-slate-300 group-hover/row:text-slate-400'} transition-colors`} />
                       )}
                     </span>
 
+                    {/* Content */}
                     <div className="min-w-0 flex-1">
                       {isCurrentlyEditing ? (
                         <div
@@ -274,162 +292,273 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                             value={editItemTitle}
                             onChange={(e) => {
                               setEditItemTitle(e.target.value);
-                              e.target.style.height = '36px';
+                              e.target.style.height = '34px';
                               e.target.style.height = `${e.target.scrollHeight}px`;
                             }}
                             ref={(el) => {
                               if (el) {
-                                el.style.height = '36px';
+                                el.style.height = '34px';
                                 el.style.height = `${el.scrollHeight}px`;
                               }
                             }}
                             placeholder="Nhập tên đầu việc..."
-                            className="flex-1 min-w-0 h-9 min-h-[36px] py-1.5 resize-none overflow-hidden text-sm font-bold text-slate-700 bg-slate-50 border border-slate-250 rounded-lg px-2.5 focus:outline-none focus:border-slate-800 leading-normal"
+                            className="flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
                           />
-                          <Input
-                            type="time"
-                            value={editItemTimeLimit}
-                            onChange={(e) => setEditItemTimeLimit(e.target.value)}
-                            containerClassName="w-32"
-                            className="text-sm font-mono font-bold text-slate-650 bg-slate-50 border border-slate-250 rounded-lg px-2 py-1.5 focus:outline-none"
-                          />
-                          <div className="flex gap-1 shrink-0 items-center justify-end">
-                            <Button
+                          {subTab !== 'process' && (
+                            <div className="w-28 shrink-0">
+                              <DatePicker
+                                value={parseTimeToDate(editItemTimeLimit)}
+                                onChange={(date) => setEditItemTimeLimit(formatDateToTime(date))}
+                                timeOnly={true}
+                                clearable={false}
+                                size="sm"
+                              />
+                            </div>
+                          )}
+                          <div className="flex gap-1 shrink-0 items-center">
+                            <button
                               type="button"
-                              variant="ghost"
-                              onClick={() => {
-                                void onInlineSave(item.id);
-                              }}
-                              className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer transition-colors active:scale-90"
-                              title="Duyệt lưu"
+                              onClick={() => { void onInlineSave(item.id); }}
+                              className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg cursor-pointer transition-colors active:scale-95"
+                              title="Lưu"
                             >
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </Button>
-                            <Button
+                            </button>
+                            <button
                               type="button"
-                              variant="ghost"
                               onClick={() => setEditingItemId(null)}
-                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg cursor-pointer transition-colors active:scale-90"
+                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg cursor-pointer transition-colors active:scale-95"
                               title="Hủy"
                             >
                               <X className="w-3.5 h-3.5 stroke-[3]" />
-                            </Button>
+                            </button>
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <span className={`text-sm font-bold leading-normal block truncate ${
-                            subTab !== 'process' && item.isCompleted
-                              ? 'text-slate-400 line-through font-medium'
-                              : 'text-slate-700'
-                          }`}>
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <span className={`text-sm leading-relaxed ${subTab !== 'process' && item.isCompleted
+                            ? 'text-slate-400 line-through font-normal'
+                            : 'text-slate-600 font-medium'
+                            }`}>
                             {item.title}
                           </span>
 
-                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                            {subTab === 'process' && item.checklistName && (
-                              <span className="text-sm text-slate-400 font-bold bg-slate-100 px-1 py-0.5 rounded-sm">
-                                Bộ: {item.checklistName}
-                              </span>
-                            )}
-                            {item.roleCode && (
-                              <span className="text-sm text-blue-700 bg-blue-50 px-1 py-0.5 rounded-sm uppercase tracking-wider font-extrabold">
-                                Role: {item.roleCode}
-                              </span>
-                            )}
-                            {subTab !== 'process' && item.isCompleted && (item.checkedByName || item.checkedAt) && (
-                              <span className="text-sm text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-sm">
-                                Đã check bởi {item.checkedByName || 'N/A'}{item.checkedAt ? ` lúc ${formatCheckedAt(item.checkedAt)}` : ''}
-                              </span>
-                            )}
-                            {subTab !== 'process' && isLate && (
-                              <span className="text-sm text-rose-700 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-black flex items-center gap-1 animate-pulse">
-                                <AlertCircle className="w-3 h-3 shrink-0" />
-                                <span>Trễ hạn</span>
-                              </span>
-                            )}
-                            {subTab !== 'process' && item.isCompleted && !isLate && item.timeLimit && (
-                              <span className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-extrabold">
-                                Đúng hạn
-                              </span>
-                            )}
+                          {/* Meta tags / Badges */}
+                          {subTab === 'process' && item.checklistName && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-500 border-none shrink-0 animate-in fade-in duration-200">
+                              {item.checklistName}
+                            </Badge>
+                          )}
+                          {subTab !== 'process' && isLate && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 flex items-center gap-0.5 animate-in fade-in duration-200">
+                              <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                              <span>Trễ hạn</span>
+                            </Badge>
+                          )}
+                          {subTab !== 'process' && item.isCompleted && !isLate && item.timeLimit && (
+                            <Badge variant="success" className="text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 animate-in fade-in duration-200">
+                              Đúng hạn
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right-side actions */}
+                    {!isCurrentlyEditing && (
+                      <div className="flex items-center gap-1.5 shrink-0 animate-in fade-in" onClick={(e) => e.stopPropagation()}>
+                        {/* Delete */}
+                        {permissions.canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => { onConfirmDeleteItem(item.id, item.title); }}
+                            className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Time badge */}
+                        {subTab !== 'process' && item.timeLimit && (
+                          <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg flex items-center gap-1 select-none ${isLate
+                            ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                            : 'bg-slate-50 text-slate-500 border border-slate-150'
+                            }`}>
+                            <Clock className="w-3 h-3" />
+                            {item.timeLimit}
+                          </span>
+                        )}
+
+                        {/* Image evidence */}
+                        {subTab !== 'process' && (
+                          <button
+                            type="button"
+                            className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Bằng chứng hình ảnh"
+                          >
+                            <Image className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Checked Info Popover */}
+                        {subTab !== 'process' && item.isCompleted && (item.checkedByName || item.checkedAt) && (
+                          <div className="relative group/checked-info">
+                            <button
+                              type="button"
+                              className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
+                              title="Thông tin hoàn thành"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                            </button>
+                            {/* Popover */}
+                            <div className="absolute bottom-full right-0 mb-2 z-30 w-56 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-xl opacity-0 pointer-events-none group-hover/checked-info:opacity-100 group-hover/checked-info:pointer-events-auto transition-all duration-200 translate-y-1 group-hover/checked-info:translate-y-0 border border-slate-800">
+                              <div className="font-bold border-b border-slate-800 pb-1.5 mb-1.5 flex items-center gap-1.5 text-emerald-400">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Đã hoàn thành</span>
+                              </div>
+                              <div className="space-y-1 text-[11px]">
+                                <p className="text-slate-300">
+                                  Người thực hiện: <span className="font-semibold text-white">{item.checkedByName || 'N/A'}</span>
+                                </p>
+                                {item.checkedAt && (
+                                  <p className="text-slate-350">
+                                    Thời gian: <span className="font-semibold text-white">{formatCheckedAt(item.checkedAt)}</span>
+                                  </p>
+                                )}
+                              </div>
+                              {/* Arrow */}
+                              <div className="absolute top-full right-3 w-2 h-2 bg-slate-900 border-r border-b border-slate-800 rotate-45 -translate-y-[5px]"></div>
+                            </div>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {!isCurrentlyEditing && (
-                    <div className="flex items-center gap-2 shrink-0 pl-2" onClick={(e) => e.stopPropagation()}>
-                      {item.timeLimit && (
-                        <span className={`text-sm font-mono font-black px-2 py-0.5 rounded-md flex items-center gap-1 select-none ${
-                          subTab !== 'process' && isLate
-                            ? 'bg-rose-50 border border-rose-200 text-rose-700'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200'
-                        }`}>
-                          <Clock className="w-3 h-3 stroke-[2.2]" />
-                          <span>Trước {item.timeLimit}</span>
-                        </span>
-                      )}
-
-                      {subTab !== 'process' && (
-                        <span className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-650 hover:bg-slate-100 transition-colors" title="Bằng chứng hình ảnh ca trực">
-                          <Image className="w-3.5 h-3.5 stroke-[2]" />
-                        </span>
-                      )}
-
-                      {permissions.canUpdate && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingItemId(item.id);
-                            setEditItemTitle(item.title);
-                            setEditItemTimeLimit(item.timeLimit || '08:00');
-                          }}
-                          className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer active:scale-90"
-                          title="Chỉnh sửa công việc"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-
-                      {permissions.canDelete && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => {
-                            void onDeleteItem(item.id, item.title);
-                          }}
-                          className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-90"
-                          title="Xóa công việc"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-350" />
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
 
-          {subTab === 'process' && permissions.canCreate && (
-            <div className="py-3 px-4 text-left">
-              <Button
-                onClick={() => onQuickAddProcessItem(cat.id, cat.title)}
-                variant="ghost"
-                className="inline-flex items-center gap-1.5 text-sm font-black text-slate-800 hover:text-slate-950 hover:underline cursor-pointer active:scale-95"
+          {isAddingInline && (
+            <div
+              className="px-4 py-3 flex items-center gap-3.5 bg-slate-50/80 border-t border-slate-100 ring-1 ring-inset ring-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="shrink-0">
+                <Plus className="w-[18px] h-[18px] text-slate-400" />
+              </span>
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <Textarea
+                  rows={1}
+                  value={newItemTitle}
+                  onChange={(e) => {
+                    setNewItemTitle(e.target.value);
+                    e.target.style.height = '34px';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = '34px';
+                      el.style.height = `${el.scrollHeight}px`;
+                      el.focus();
+                    }
+                  }}
+                  placeholder="Nhập tên đầu việc mới..."
+                  className="flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
+                />
+                {subTab === 'today' && (
+                  <div className="w-28 shrink-0">
+                    <DatePicker
+                      value={parseTimeToDate(newItemTimeLimit)}
+                      onChange={(date) => setNewItemTimeLimit(formatDateToTime(date))}
+                      timeOnly={true}
+                      clearable={false}
+                      size="sm"
+                    />
+                  </div>
+                )}
+                <div className="flex gap-1 shrink-0 items-center">
+                  <button
+                    type="button"
+                    disabled={isSubmittingNewItem || !newItemTitle.trim()}
+                    onClick={async () => {
+                      const trimmed = newItemTitle.trim();
+                      if (!trimmed) return;
+                      setIsSubmittingNewItem(true);
+                      try {
+                        await onAddInlineItem(
+                          cat.id,
+                          cat.title,
+                          trimmed,
+                          subTab === 'today' ? newItemTimeLimit : undefined
+                        );
+                        setNewItemTitle('');
+                        setIsAddingInline(false);
+                      } catch (error) {
+                        console.error('Lỗi khi thêm inline item:', error);
+                        toastError('Không thể thêm công việc mới. Vui lòng thử lại.');
+                      } finally {
+                        setIsSubmittingNewItem(false);
+                      }
+                    }}
+                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white rounded-lg cursor-pointer transition-colors active:scale-95 flex items-center justify-center w-[30px] h-[30px]"
+                    title="Lưu"
+                  >
+                    {isSubmittingNewItem ? (
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmittingNewItem}
+                    onClick={() => {
+                      setIsAddingInline(false);
+                      setNewItemTitle('');
+                    }}
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-500 rounded-lg cursor-pointer transition-colors active:scale-95 w-[30px] h-[30px] flex items-center justify-center"
+                    title="Hủy"
+                  >
+                    <X className="w-3.5 h-3.5 stroke-[3]" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {subTab !== 'completed' && permissions.canCreate && !isAddingInline && (
+            <div className="px-4 py-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAddingInline(true)}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors active:scale-95"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Thêm công việc chuẩn vào nhóm này</span>
-              </Button>
+                <Plus className="w-4 h-4 stroke-[2]" />
+                <span>Thêm đầu việc mới vào nhóm này</span>
+              </button>
             </div>
           )}
         </div>
       )}
+
+      {/* Action Confirm Dialog for Unchecking late items */}
+      <ActionConfirmDialog
+        open={uncheckTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setUncheckTarget(null);
+        }}
+        title="Bỏ hoàn thành công việc trễ hạn"
+        description={`Bỏ hoàn thành công việc "${uncheckTarget?.title || ''}" lúc này sẽ làm nó bị TRỄ HẠN do thời gian hiện tại đã quá giờ quy định (${uncheckTarget?.timeLimit || ''}). Bạn có chắc chắn muốn bỏ hoàn thành?`}
+        onConfirm={() => {
+          if (uncheckTarget) {
+            onToggleItem(uncheckTarget.id);
+          }
+          setUncheckTarget(null);
+        }}
+        variant="confirm"
+      />
     </div>
   );
 });
@@ -445,10 +574,7 @@ interface ChecklistContentAreaProps {
   onToggleItem: (itemId: string) => void;
   onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
   onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
-  editingCategoryId: string | null;
-  setEditingCategoryId: React.Dispatch<React.SetStateAction<string | null>>;
-  editingCategoryTitle: string;
-  setEditingCategoryTitle: React.Dispatch<React.SetStateAction<string>>;
+  onOpenEditCategoryDialog: (cat: ChecklistViewCategory) => void;
   editingItemId: string | null;
   setEditingItemId: React.Dispatch<React.SetStateAction<string | null>>;
   editItemTitle: string;
@@ -456,8 +582,8 @@ interface ChecklistContentAreaProps {
   editItemTimeLimit: string;
   setEditItemTimeLimit: React.Dispatch<React.SetStateAction<string>>;
   onInlineSave: (itemId: string) => Promise<void>;
-  onDeleteItem: (itemId: string, title: string) => Promise<void>;
-  onQuickAddProcessItem: (categoryId: string, categoryTitle: string) => void;
+  onDeleteItem: (itemId: string) => Promise<void>;
+  onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
   onResetFilters: () => void;
   kpiStats: {
     total: number;
@@ -480,10 +606,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   onToggleItem,
   onDeleteCategory,
   onUpdateCategory,
-  editingCategoryId,
-  setEditingCategoryId,
-  editingCategoryTitle,
-  setEditingCategoryTitle,
+  onOpenEditCategoryDialog,
   editingItemId,
   setEditingItemId,
   editItemTitle,
@@ -492,27 +615,39 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   setEditItemTimeLimit,
   onInlineSave,
   onDeleteItem,
-  onQuickAddProcessItem,
+  onAddInlineItem,
   onResetFilters,
   kpiStats,
 }: ChecklistContentAreaProps) {
+  // States for delete confirmation
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string } | null>(null);
+
+  const handleConfirmDeleteCategory = React.useCallback((id: string, title: string) => {
+    setDeleteCategoryTarget({ id, title });
+  }, []);
+
+  const handleConfirmDeleteItem = React.useCallback((id: string, title: string) => {
+    setDeleteItemTarget({ id, title });
+  }, []);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-      <div className="lg:col-span-8 space-y-3.5">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      {/* ── Category Cards Column ────────────────────────── */}
+      <div className="lg:col-span-8 space-y-3">
         {filteredCategories.length === 0 ? (
-          <div className="bg-white p-16 text-center rounded-2xl border border-dashed border-slate-200 space-y-4 shadow-2xs">
-            <Smile className="w-12 h-12 text-slate-300 mx-auto" />
+          <div className="bg-white p-14 text-center rounded-2xl border border-dashed border-slate-200 space-y-3 animate-in fade-in">
+            <Smile className="w-10 h-10 text-slate-300 mx-auto" />
             <div>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Không có dữ liệu checklist phù hợp</p>
-              <p className="text-sm text-slate-400 mt-1">Không tìm thấy checklist hoặc các công việc đã hoàn thành trong nhóm này.</p>
+              <p className="text-sm font-semibold text-slate-500">Không có dữ liệu checklist phù hợp</p>
+              <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc vai trò để xem kết quả khác.</p>
             </div>
-            <Button
+            <button
               onClick={onResetFilters}
-              variant="outline"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-800 uppercase tracking-wider hover:bg-slate-100 hover:border-slate-350 transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-colors cursor-pointer active:scale-95"
             >
               Đặt lại bộ lọc
-            </Button>
+            </button>
           </div>
         ) : (
           filteredCategories.map((cat) => (
@@ -525,12 +660,8 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
               activeCategoryType={activeCategoryType}
               onToggleExpand={onToggleExpand}
               onToggleItem={onToggleItem}
-              onDeleteCategory={onDeleteCategory}
-              onUpdateCategory={onUpdateCategory}
-              editingCategoryId={editingCategoryId}
-              setEditingCategoryId={setEditingCategoryId}
-              editingCategoryTitle={editingCategoryTitle}
-              setEditingCategoryTitle={setEditingCategoryTitle}
+              onConfirmDeleteCategory={handleConfirmDeleteCategory}
+              onOpenEditCategoryDialog={onOpenEditCategoryDialog}
               editingItemId={editingItemId}
               setEditingItemId={setEditingItemId}
               editItemTitle={editItemTitle}
@@ -538,78 +669,121 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
               editItemTimeLimit={editItemTimeLimit}
               setEditItemTimeLimit={setEditItemTimeLimit}
               onInlineSave={onInlineSave}
-              onDeleteItem={onDeleteItem}
-              onQuickAddProcessItem={onQuickAddProcessItem}
+              onConfirmDeleteItem={handleConfirmDeleteItem}
+              onAddInlineItem={onAddInlineItem}
             />
           ))
         )}
       </div>
 
-      <div className="lg:col-span-4 space-y-4">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs text-left relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-slate-500 to-slate-800"></div>
+      {/* ── KPI Sidebar ──────────────────────────────────── */}
+      <div className="lg:col-span-4 space-y-3">
+        {/* Stats card */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 text-left overflow-hidden">
+          {/* Top accent bar */}
+          <div className="h-1 bg-gradient-to-r from-slate-400 via-slate-600 to-slate-800" />
 
-          <h3 className="font-extrabold text-slate-800 font-display text-sm uppercase tracking-wider mb-4 pb-2 border-b border-slate-150 flex items-center gap-2">
-            <Award className="w-4 h-4 text-slate-700" />
-            Thống kê tiến độ hôm nay
-          </h3>
+          <div className="p-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5 text-slate-400" />
+              Thống kê tiến độ hôm nay
+            </h3>
 
-          <div className="space-y-4 text-sm font-bold">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex flex-col justify-between h-20 text-left">
-                <span className="text-sm font-black uppercase text-emerald-700 tracking-wider">Đúng hạn</span>
-                <div className="flex items-baseline justify-between mt-2">
-                  <span className="text-2xl font-black text-emerald-700">{kpiStats.onTimeCount}</span>
-                  <span className="text-sm font-black text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-md">{kpiStats.onTimePercent}%</span>
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
+              <div className="p-3 bg-emerald-50/60 border border-emerald-100/80 rounded-xl">
+                <span className="text-[11px] font-bold uppercase text-emerald-600 tracking-wider block">Đúng hạn</span>
+                <div className="flex items-baseline justify-between mt-1.5">
+                  <span className="text-xl font-extrabold text-emerald-700 tabular-nums">{kpiStats.onTimeCount}</span>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded tabular-nums">{kpiStats.onTimePercent}%</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-rose-50/50 border border-rose-100 rounded-2xl flex flex-col justify-between h-20 text-left">
-                <span className="text-sm font-black uppercase text-rose-700 tracking-wider">Trễ hạn</span>
-                <div className="flex items-baseline justify-between mt-2">
-                  <span className="text-2xl font-black text-rose-700">{kpiStats.lateCount}</span>
-                  <span className="text-sm font-black text-rose-600 bg-rose-100/50 px-2 py-0.5 rounded-md">{kpiStats.latePercent}%</span>
+              <div className="p-3 bg-rose-50/60 border border-rose-100/80 rounded-xl">
+                <span className="text-[11px] font-bold uppercase text-rose-600 tracking-wider block">Trễ hạn</span>
+                <div className="flex items-baseline justify-between mt-1.5">
+                  <span className="text-xl font-extrabold text-rose-700 tabular-nums">{kpiStats.lateCount}</span>
+                  <span className="text-[11px] font-bold text-rose-600 bg-rose-100/60 px-1.5 py-0.5 rounded tabular-nums">{kpiStats.latePercent}%</span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between text-sm font-black text-slate-700 uppercase tracking-wide">
+            {/* Overall progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                 <span>Tổng hoàn thành</span>
-                <span>{kpiStats.completedCount}/{kpiStats.total} ({kpiStats.completionPercent}%)</span>
+                <span className="tabular-nums">{kpiStats.completedCount}/{kpiStats.total} ({kpiStats.completionPercent}%)</span>
               </div>
-              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex border border-slate-200">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
                 <div
-                  className="bg-emerald-500 h-full transition-all duration-500 shadow-inner"
+                  className="bg-emerald-500 h-full transition-all duration-500 ease-out"
                   style={{ width: `${kpiStats.total > 0 ? (kpiStats.onTimeCount / kpiStats.total) * 100 : 0}%` }}
                   title="Đúng hạn"
                 />
                 <div
-                  className="bg-rose-500 h-full transition-all duration-500"
+                  className="bg-rose-500 h-full transition-all duration-500 ease-out"
                   style={{ width: `${kpiStats.total > 0 ? (kpiStats.lateCount / kpiStats.total) * 100 : 0}%` }}
                   title="Trễ hạn"
                 />
               </div>
 
-              <div className="flex items-center justify-start gap-4 text-sm font-extrabold text-slate-400 pt-1">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Đúng hạn</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500"></span>Trễ hạn / Quá giờ</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-200"></span>Chưa hoàn thành</span>
+              <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-400 pt-0.5">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Đúng hạn</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />Trễ hạn</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-200" />Chưa xong</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/90 text-left space-y-2 relative overflow-hidden">
-          <div className="flex items-center gap-2 text-slate-700">
-            <Info className="w-4 h-4 shrink-0" />
-            <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Ghi chú showroom chuẩn</h4>
+        {/* Info note */}
+        <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 text-left space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Ghi chú</h4>
           </div>
-          <p className="text-sm text-slate-500 leading-relaxed font-semibold">
+          <p className="text-xs text-slate-400 leading-relaxed font-medium">
             Báo cáo đúng hạn checklist giúp tăng 15% điểm thưởng KPI chất lượng dịch vụ showroom. Các đầu việc tiền mặt và bàn giao két an toàn bắt buộc đính kèm minh chứng hình ảnh thực tế.
           </p>
         </div>
       </div>
+
+      {/* Delete Category Confirmation */}
+      <DeleteConfirm
+        open={deleteCategoryTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCategoryTarget(null);
+        }}
+        title="Xóa nhóm công việc"
+        description={`Bạn có chắc chắn muốn xóa nhóm "${deleteCategoryTarget?.title || ''}"? Tất cả công việc bên trong cũng sẽ bị xóa vĩnh viễn.`}
+        confirmText="Xóa nhóm"
+        cancelText="Hủy"
+        onConfirm={async () => {
+          if (deleteCategoryTarget && onDeleteCategory) {
+            await onDeleteCategory(deleteCategoryTarget.id, activeCategoryType);
+          }
+          setDeleteCategoryTarget(null);
+        }}
+      />
+
+      {/* Delete Item Confirmation */}
+      <DeleteConfirm
+        open={deleteItemTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteItemTarget(null);
+        }}
+        title="Xóa công việc"
+        description={`Bạn có chắc chắn muốn xóa công việc "${deleteItemTarget?.title || ''}"?`}
+        confirmText="Xóa công việc"
+        cancelText="Hủy"
+        onConfirm={async () => {
+          if (deleteItemTarget && onDeleteItem) {
+            await onDeleteItem(deleteItemTarget.id);
+          }
+          setDeleteItemTarget(null);
+        }}
+      />
+
     </div>
   );
 });

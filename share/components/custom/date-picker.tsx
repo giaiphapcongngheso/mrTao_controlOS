@@ -18,6 +18,7 @@ interface DateTimePickerProps {
   className?: string;
   disabledDate?: (date: Date) => boolean;
   showTime?: boolean;
+  timeOnly?: boolean;
   clearable?: boolean;
 }
 
@@ -25,7 +26,8 @@ export function DatePicker({
   value,
   onChange,
   showTime = false,
-  placeholder = showTime ? 'dd/mm/yyyy HH:mm' : 'dd/mm/yyyy',
+  timeOnly = false,
+  placeholder = timeOnly ? 'HH:mm' : (showTime ? 'dd/mm/yyyy HH:mm' : 'dd/mm/yyyy'),
   disabled = false,
   size,
   className,
@@ -36,25 +38,28 @@ export function DatePicker({
 
   const [tempDateTime, setTempDateTime] = useState<Date | null>(value ?? new Date());
 
+  const getFormatString = () => {
+    if (timeOnly) return 'HH:mm';
+    return showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
+  };
+
   const [inputValue, setInputValue] = useState<string>(
-    value ? format(value, showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', { locale: vi }) : '',
+    value ? format(value, getFormatString(), { locale: vi }) : '',
   );
 
   useEffect(() => {
     if (value) {
-      setInputValue(format(value, showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', { locale: vi }));
-
+      setInputValue(format(value, getFormatString(), { locale: vi }));
       setTempDateTime(value);
     } else {
       setInputValue('');
     }
-  }, [value, showTime]);
+  }, [value, showTime, timeOnly]);
 
   const validateDate = (formatted: string) => {
     try {
-      const parsed = parse(formatted, showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', new Date());
-
-      const compareFormat = showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
+      const parsed = parse(formatted, getFormatString(), new Date());
+      const compareFormat = getFormatString();
 
       if (!isNaN(parsed.getTime()) && format(parsed, compareFormat) === formatted) {
         setTempDateTime(parsed);
@@ -69,13 +74,28 @@ export function DatePicker({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
-
     let numbers = input.value.replace(/\D/g, '');
+
+    if (timeOnly) {
+      numbers = numbers.slice(0, 4);
+      let formatted = '';
+      if (numbers.length <= 2) {
+        formatted = numbers;
+      } else {
+        formatted = `${numbers.slice(0, 2)}:${numbers.slice(2)}`;
+      }
+      setInputValue(formatted);
+      if (formatted.length === 5) {
+        validateDate(formatted);
+      } else {
+        onChange?.(undefined);
+      }
+      return;
+    }
 
     // auto prepend 0 cho ngày
     if (numbers.length === 1) {
       const firstDay = Number(numbers[0]);
-
       if (firstDay > 3) {
         numbers = `0${firstDay}`;
       }
@@ -84,14 +104,12 @@ export function DatePicker({
     // auto prepend 0 cho tháng
     if (numbers.length === 3) {
       const monthFirst = Number(numbers[2]);
-
       if (monthFirst > 1) {
         numbers = numbers.slice(0, 2) + `0${monthFirst}`;
       }
     }
 
     numbers = showTime ? numbers.slice(0, 12) : numbers.slice(0, 8);
-
     let formatted = '';
 
     if (showTime) {
@@ -126,7 +144,6 @@ export function DatePicker({
 
     requestAnimationFrame(() => {
       const position = formatted.length;
-
       if (
         position === 2 ||
         position === 5 ||
@@ -146,10 +163,9 @@ export function DatePicker({
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
-
     const newDate = new Date(date);
 
-    if (tempDateTime && showTime) {
+    if (tempDateTime && (showTime || timeOnly)) {
       newDate.setHours(tempDateTime.getHours());
       newDate.setMinutes(tempDateTime.getMinutes());
     }
@@ -158,26 +174,19 @@ export function DatePicker({
   };
 
   const handleTimeChange = (type: 'hour' | 'minute' | 'meridiem', newValue: string) => {
-    if (!tempDateTime) return;
-
-    const newDate = new Date(tempDateTime);
+    let newDate = tempDateTime ? new Date(tempDateTime) : new Date();
 
     if (type === 'hour') {
       const hour = parseInt(newValue) || 0;
-
-      const meridiem = tempDateTime.getHours() >= 12 ? 'PM' : 'AM';
-
+      const meridiem = newDate.getHours() >= 12 ? 'PM' : 'AM';
       const adjustedHour =
         meridiem === 'PM' && hour !== 12 ? hour + 12 : meridiem === 'AM' && hour === 12 ? 0 : hour;
-
       newDate.setHours(adjustedHour);
     } else if (type === 'minute') {
       const minute = parseInt(newValue) || 0;
-
       newDate.setMinutes(minute);
     } else if (type === 'meridiem') {
       const currentHour = newDate.getHours();
-
       const newHour =
         newValue === 'PM'
           ? currentHour < 12
@@ -186,7 +195,6 @@ export function DatePicker({
           : currentHour >= 12
             ? currentHour - 12
             : currentHour;
-
       newDate.setHours(newHour);
     }
 
@@ -195,32 +203,26 @@ export function DatePicker({
 
   const handleSet = () => {
     if (tempDateTime) {
-      const formatted = format(tempDateTime, showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', {
+      const formatted = format(tempDateTime, getFormatString(), {
         locale: vi,
       });
 
       setInputValue(formatted);
-
       onChange?.(tempDateTime);
-
       setOpen(false);
     }
   };
 
   const handleCancel = () => {
     setTempDateTime(value ?? null);
-
     setInputValue(
-      value ? format(value, showTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', { locale: vi }) : '',
+      value ? format(value, getFormatString(), { locale: vi }) : '',
     );
-
     setOpen(false);
   };
 
   const displayHour = (tempDateTime?.getHours() ?? 0) % 12 || 12;
-
   const displayMeridiem = (tempDateTime?.getHours() ?? 0) >= 12 ? 'PM' : 'AM';
-
   const displayMinute = (tempDateTime?.getMinutes() ?? 0).toString().padStart(2, '0');
 
   return (
@@ -275,21 +277,22 @@ export function DatePicker({
 
             <PopoverContent className="p-4" align="end" side="right" sideOffset={10}>
               <div className="space-y-4">
-                <Calendar
-                  mode="single"
-                  className="w-full p-0"
-                  captionLayout="dropdown"
-                  selected={tempDateTime ?? undefined}
-                  onSelect={handleDateSelect}
-                  disabled={disabledDate}
-                />
+                {!timeOnly && (
+                  <Calendar
+                    mode="single"
+                    className="w-full p-0"
+                    captionLayout="dropdown"
+                    selected={tempDateTime ?? undefined}
+                    onSelect={handleDateSelect}
+                    disabled={disabledDate}
+                  />
+                )}
 
-                {showTime && (
-                  <div className="border-t border-border pt-4">
+                {(showTime || timeOnly) && (
+                  <div className={cn("pt-4", !timeOnly && "border-t border-border")}>
                     <div className="flex items-center justify-center gap-2">
                       <div className="flex flex-col items-start">
                         <label className="mb-1 text-xs text-muted-foreground">Hour</label>
-
                         <input
                           type="number"
                           min="1"
@@ -304,7 +307,6 @@ export function DatePicker({
 
                       <div className="flex flex-col items-start">
                         <label className="mb-1 text-xs text-muted-foreground">Minute</label>
-
                         <input
                           type="number"
                           min="0"
@@ -317,7 +319,6 @@ export function DatePicker({
 
                       <div className="flex flex-col items-start gap-1">
                         <label className="text-xs text-muted-foreground">Meridiem</label>
-
                         <select
                           value={displayMeridiem}
                           onChange={(e) => handleTimeChange('meridiem', e.target.value)}

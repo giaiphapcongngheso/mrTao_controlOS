@@ -74,11 +74,6 @@ export default function ChecklistView({
   const [selectedWeekDayKey, setSelectedWeekDayKey] = useState(getTodayKey());
   const weekDates = useMemo(() => getWeekDates(), []);
 
-  // States for inline category creator & editor
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [newCategoryTitle, setNewCategoryTitle] = useState('');
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingCategoryTitle, setEditingCategoryTitle] = useState('');
 
   const activeCategories = useMemo(
     () => subTab === 'process' ? processCategories : todayCategories,
@@ -99,8 +94,6 @@ export default function ChecklistView({
     setDialogRoleCode,
     dialogCategoryId,
     setDialogCategoryId,
-    dialogChecklistName,
-    setDialogChecklistName,
     dialogTasks,
     dialogError,
     isSubmittingDialog,
@@ -108,6 +101,8 @@ export default function ChecklistView({
     removeDialogTaskRow,
     updateDialogTask,
     openCreateDialog,
+    openEditDialog,
+    dialogEditCategoryId,
     handleDialogSubmit,
   } = useChecklistDialog({
     defaultRoleCode,
@@ -116,6 +111,9 @@ export default function ChecklistView({
     onCreateRoleChecklist,
     onCreateTodayChecklistBatch,
     onCreateRoleChecklistBatch,
+    onUpdateCategory,
+    onDeleteChecklistItem,
+    onUpdateChecklistItem,
   });
 
   // 2. Filtered Categories Hook
@@ -154,13 +152,31 @@ export default function ChecklistView({
     openCreateDialog();
   }, [openCreateDialog]);
 
-  const handleQuickAddProcessItem = useCallback((categoryId: string, categoryTitle: string) => {
-    openCreateDialog({
-      roleCode: dialogRoleCode || defaultRoleCode,
-      categoryId,
-      checklistName: categoryTitle,
-    });
-  }, [openCreateDialog, dialogRoleCode, defaultRoleCode]);
+  const handleOpenEditDialog = useCallback((cat: Parameters<typeof openEditDialog>[0]) => {
+    openEditDialog(cat);
+  }, [openEditDialog]);
+
+  const handleAddInlineItem = useCallback(async (
+    categoryId: string,
+    categoryTitle: string,
+    title: string,
+    timeLimit?: string
+  ) => {
+    const roleCode = dialogRoleCode || defaultRoleCode;
+    if (subTab === 'today') {
+      if (onCreateTodayChecklistBatch) {
+        await onCreateTodayChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
+      } else {
+        await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
+      }
+    } else {
+      if (onCreateRoleChecklistBatch) {
+        await onCreateRoleChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
+      } else {
+        await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
+      }
+    }
+  }, [dialogRoleCode, defaultRoleCode, subTab, onCreateTodayChecklistBatch, onCreateRoleChecklistBatch, onCreateRoleChecklist]);
 
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
@@ -179,11 +195,6 @@ export default function ChecklistView({
         subTab={subTab}
         canCreate={permissions.canCreate}
         onOpenCreateDialog={handleOpenCreateDialog}
-        isCreatingCategory={isCreatingCategory}
-        setIsCreatingCategory={setIsCreatingCategory}
-        newCategoryTitle={newCategoryTitle}
-        setNewCategoryTitle={setNewCategoryTitle}
-        onCreateCategory={onCreateCategory}
       />
 
       {/* 2. Error Message Banner */}
@@ -198,14 +209,14 @@ export default function ChecklistView({
         setSubTab={setSubTab}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
+        selectedRoleCode={dialogRoleCode}
+        setSelectedRoleCode={setDialogRoleCode}
+        roleOptions={roleOptions}
       />
 
       {/* 4. Sub-Configuration Bar / Completed view logs selector */}
       <ChecklistConfigBar
         subTab={subTab}
-        selectedRoleCode={dialogRoleCode}
-        setSelectedRoleCode={setDialogRoleCode}
-        roleOptions={roleOptions}
         completedViewMode={completedViewMode}
         setCompletedViewMode={setCompletedViewMode}
         selectedWeekDayKey={selectedWeekDayKey}
@@ -224,10 +235,7 @@ export default function ChecklistView({
         onToggleItem={onToggleItem}
         onDeleteCategory={onDeleteCategory}
         onUpdateCategory={onUpdateCategory}
-        editingCategoryId={editingCategoryId}
-        setEditingCategoryId={setEditingCategoryId}
-        editingCategoryTitle={editingCategoryTitle}
-        setEditingCategoryTitle={setEditingCategoryTitle}
+        onOpenEditCategoryDialog={handleOpenEditDialog}
         editingItemId={editingItemId}
         setEditingItemId={setEditingItemId}
         editItemTitle={editItemTitle}
@@ -236,7 +244,7 @@ export default function ChecklistView({
         setEditItemTimeLimit={setEditItemTimeLimit}
         onInlineSave={handleInlineSave}
         onDeleteItem={handleDeleteItem}
-        onQuickAddProcessItem={handleQuickAddProcessItem}
+        onAddInlineItem={handleAddInlineItem}
         onResetFilters={handleResetFilters}
         kpiStats={kpiStats}
       />
@@ -255,22 +263,21 @@ export default function ChecklistView({
       {/* 7. Modal Create Dialog */}
       <ChecklistCreateDialog
         isOpen={isAddingItem}
+        subTab={subTab}
         dialogError={dialogError}
         dialogRoleCode={dialogRoleCode}
         dialogCategoryId={dialogCategoryId}
-        dialogChecklistName={dialogChecklistName}
         dialogTasks={dialogTasks}
         roleOptions={roleOptions}
-        activeCategories={activeCategories}
         isSubmittingDialog={isSubmittingDialog}
         onClose={handleCloseDialog}
         onSubmit={handleDialogSubmit}
         onChangeRoleCode={setDialogRoleCode}
         onChangeCategoryId={setDialogCategoryId}
-        onChangeChecklistName={setDialogChecklistName}
         onAddTaskRow={addDialogTaskRow}
         onRemoveTaskRow={removeDialogTaskRow}
         onUpdateTask={updateDialogTask}
+        isEditMode={dialogEditCategoryId !== null}
       />
     </div>
   );

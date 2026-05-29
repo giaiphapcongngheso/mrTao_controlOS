@@ -23,7 +23,7 @@ export interface ChecklistItem {
   templateId?: string;
   createdAt?: string;
   updatedAt?: string;
-  checkedAt?: string;
-  checkedByName?: string;
-  checkedByUsername?: string;
+  checkedAt?: string | null;
+  checkedByName?: string | null;
+  checkedByUsername?: string | null;
 }

@@ -31,22 +31,20 @@ export function useInlineEdit({
       }
       setEditingItemId(null);
     } catch (err) {
-      console.error('Failed to update item:', err);
+      console.error('Lỗi khi cập nhật công việc:', err);
     }
   };
 
   /**
-   * Delete an individual checklist item with confirmation
+   * Delete an individual checklist item
    */
-  const handleDeleteItem = async (itemId: string, title: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa công việc "${title}"?`)) {
-      try {
-        if (onDeleteChecklistItem) {
-          await onDeleteChecklistItem(itemId);
-        }
-      } catch (err) {
-        console.error('Failed to delete item:', err);
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      if (onDeleteChecklistItem) {
+        await onDeleteChecklistItem(itemId);
       }
+    } catch (err) {
+      console.error('Lỗi khi xóa công việc:', err);
     }
   };
 

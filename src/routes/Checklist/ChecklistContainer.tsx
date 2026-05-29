@@ -15,6 +15,7 @@ import {
 } from '../../services/checklist-service';
 import { systemLogService } from '../../services/system-log-service';
 import { getTodayKey } from './checklist.utils';
+import { toastError } from '../../shared/lib/toast';
 
 interface ChecklistRoleOption {
   code: string;
@@ -62,7 +63,6 @@ export default function ChecklistContainer({
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [allChecklistItems, setAllChecklistItems] = useState<ChecklistItem[]>([]);
   const [checklistRoleOptions, setChecklistRoleOptions] = useState<ChecklistRoleOption[]>([]);
-  const [checklistErrorMessage, setChecklistErrorMessage] = useState<string | null>(null);
   const [checklistPermissions, setChecklistPermissions] = useState({
     canCreate: false,
     canUpdate: false,
@@ -107,7 +107,7 @@ export default function ChecklistContainer({
     target: string,
     details: string,
   ) => {
-    const actorName = currentUser?.fullName || currentUser?.username || 'He thong';
+    const actorName = currentUser?.fullName || currentUser?.username || 'Hệ thống';
     const actorRole = currentUser?.role || currentChecklistRoleCode;
 
     try {
@@ -121,25 +121,10 @@ export default function ChecklistContainer({
         details,
       });
     } catch (error) {
-      console.error('Khong the ghi log checklist:', error);
+      console.error('Không thể ghi log checklist:', error);
     }
   }, [currentUser, activeStoreId, currentChecklistRoleCode]);
 
-  const handleDismissError = useCallback(() => {
-    setChecklistErrorMessage(null);
-  }, []);
-
-  useEffect(() => {
-    if (!checklistErrorMessage) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setChecklistErrorMessage(null);
-    }, 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [checklistErrorMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,7 +155,7 @@ export default function ChecklistContainer({
         });
       } catch (error) {
         if (!cancelled) {
-          console.error('Failed to load checklist permissions:', error);
+          console.error('Không thể tải quyền checklist:', error);
           setChecklistPermissions({ canCreate: false, canUpdate: false, canDelete: false });
         }
       }
@@ -188,7 +173,7 @@ export default function ChecklistContainer({
 
     const fallbackRole: ChecklistRoleOption = {
       code: currentChecklistRoleCode || 'SALES',
-      name: currentUser.role || currentChecklistRoleCode || 'Nhan su',
+      name: currentUser.role || currentChecklistRoleCode || 'Nhân sự',
     };
 
     const loadRoleOptions = async () => {
@@ -215,9 +200,9 @@ export default function ChecklistContainer({
         setChecklistRoleOptions(Array.from(roleMap.values()));
       } catch (error) {
         if (!cancelled) {
-          console.error('Khong the tai danh sach vai tro checklist:', error);
+          console.error('Không thể tải danh sách vai trò checklist:', error);
           setChecklistRoleOptions([fallbackRole]);
-          setChecklistErrorMessage('Khong the tai vai tro checklist. Vui long kiem tra quyen truy cap.');
+          toastError('Không thể tải vai trò checklist. Vui lòng kiểm tra quyền truy cập.');
         }
       }
     };
@@ -307,8 +292,8 @@ export default function ChecklistContainer({
 
           void appendChecklistLog(
             'RESET',
-            'Checklist - Khoi tao ngay',
-            `Khoi tao checklist ngay ${todayKey} cho vai tro ${currentChecklistRoleCode}.`,
+            'Checklist - Khởi tạo ngày',
+            `Khởi tạo checklist ngày ${todayKey} cho vai trò ${currentChecklistRoleCode}.`,
           );
         }
 
@@ -319,13 +304,12 @@ export default function ChecklistContainer({
         const sortedDailyItems = sortChecklistItems(dailyItems, [...todayCategoriesFromDb, ...processCategoriesFromDb]);
         setChecklistItems(sortedDailyItems);
         recalculateChecklistProgress(sortedDailyItems, todayCategoriesFromDb);
-        setChecklistErrorMessage(null);
       } catch (error) {
         if (!cancelled) {
-          console.error('Khong the tai checklist theo vai tro:', error);
+          console.error('Không thể tải checklist theo vai trò:', error);
           setChecklistItems([]);
           recalculateChecklistProgress([], todayCategoriesFromDb.length > 0 ? todayCategoriesFromDb : []);
-          setChecklistErrorMessage('Khong the tai checklist. Vui long kiem tra quyen Firestore hoac ket noi mang.');
+          toastError('Không thể tải checklist. Vui lòng kiểm tra quyền truy cập hoặc kết nối mạng.');
         }
       }
     };
@@ -349,9 +333,9 @@ export default function ChecklistContainer({
         return {
           ...item,
           isCompleted: nextCompleted,
-          checkedAt: nextCompleted ? nowIso : undefined,
-          checkedByName: nextCompleted ? checkerName : undefined,
-          checkedByUsername: nextCompleted ? checkerUsername : undefined,
+          checkedAt: nextCompleted ? nowIso : null,
+          checkedByName: nextCompleted ? checkerName : null,
+          checkedByUsername: nextCompleted ? checkerUsername : null,
           updatedAt: nowIso,
         };
       }
@@ -362,6 +346,24 @@ export default function ChecklistContainer({
     setChecklistItems(sortedItems);
     recalculateChecklistProgress(sortedItems, todayChecklistCategories);
 
+    // Cập nhật allChecklistItems để đồng bộ trạng thái giữa các tab (Today và Completed)
+    setAllChecklistItems((prev) =>
+      prev.map((item) => {
+        if (item.id === itemId) {
+          const nextCompleted = !item.isCompleted;
+          return {
+            ...item,
+            isCompleted: nextCompleted,
+            checkedAt: nextCompleted ? nowIso : null,
+            checkedByName: nextCompleted ? checkerName : null,
+            checkedByUsername: nextCompleted ? checkerUsername : null,
+            updatedAt: nowIso,
+          };
+        }
+        return item;
+      })
+    );
+
     if (!targetItem) {
       return;
     }
@@ -371,25 +373,27 @@ export default function ChecklistContainer({
 
     void appendChecklistLog(
       'UPDATE',
-      'Checklist - Cap nhat trang thai',
-      `${isCompleted ? 'Hoan thanh' : 'Bo hoan thanh'} dau viec: ${targetItem.title}.`,
+      'Checklist - Cập nhật trạng thái',
+      `${isCompleted ? 'Hoàn thành' : 'Bỏ hoàn thành'} đầu việc: ${targetItem.title}.`,
     );
 
     try {
       await checklistItemService.update(itemId, {
         isCompleted,
-        checkedAt: isCompleted ? nowIso : undefined,
-        checkedByName: isCompleted ? checkerName : undefined,
-        checkedByUsername: isCompleted ? checkerUsername : undefined,
+        checkedAt: isCompleted ? nowIso : null,
+        checkedByName: isCompleted ? checkerName : null,
+        checkedByUsername: isCompleted ? checkerUsername : null,
         updatedAt: nowIso,
       });
     } catch (error) {
-      console.error('Khong the cap nhat trang thai checklist:', error);
+      console.error('Không thể cập nhật trạng thái checklist:', error);
+      // Rollback cả hai state về giá trị cũ
       setChecklistItems(checklistItems);
+      setAllChecklistItems(allChecklistItems);
       recalculateChecklistProgress(checklistItems, todayChecklistCategories);
-      setChecklistErrorMessage('Cap nhat checklist that bai. Vui long thu lai.');
+      toastError('Cập nhật trạng thái checklist thất bại. Vui lòng thử lại.');
     }
-  }, [checklistItems, todayChecklistCategories, processChecklistCategories, currentUser, recalculateChecklistProgress, appendChecklistLog]);
+  }, [checklistItems, allChecklistItems, todayChecklistCategories, processChecklistCategories, currentUser, recalculateChecklistProgress, appendChecklistLog]);
 
   const handleCreateRoleChecklist = useCallback(async (
     roleCode: string,
@@ -423,8 +427,8 @@ export default function ChecklistContainer({
       const roleName = checklistRoleOptions.find((role) => role.code === normalizedRoleCode)?.name || normalizedRoleCode;
       void appendChecklistLog(
         'CREATE',
-        'Checklist - Tao checklist',
-        `Tao checklist "${safeChecklistName}" cho vai tro ${roleName} (nhom ${normalizedCategoryId}): ${safeTaskTitle}.`,
+        'Checklist - Tạo checklist',
+        `Tạo checklist "${safeChecklistName}" cho vai trò ${roleName} (nhóm ${normalizedCategoryId}): ${safeTaskTitle}.`,
       );
 
       setAllChecklistItems((prev) => [...prev, createdTemplate]);
@@ -456,10 +460,9 @@ export default function ChecklistContainer({
       );
       setChecklistItems(updatedItems);
       recalculateChecklistProgress(updatedItems, todayChecklistCategories);
-      setChecklistErrorMessage(null);
     } catch (error) {
-      console.error('Khong the tao checklist:', error);
-      setChecklistErrorMessage('Khong the tao checklist moi. Vui long kiem tra quyen ghi du lieu.');
+      console.error('Không thể tạo checklist:', error);
+      toastError('Không thể tạo checklist mới. Vui lòng kiểm tra quyền ghi dữ liệu.');
     }
   }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
 
@@ -500,8 +503,8 @@ export default function ChecklistContainer({
       const roleName = checklistRoleOptions.find((role) => role.code === normalizedRoleCode)?.name || normalizedRoleCode;
       void appendChecklistLog(
         'CREATE',
-        'Checklist - Tao checklist',
-        `Tao ${tasksList.length} cong viec checklist "${safeChecklistName}" cho vai tro ${roleName}.`,
+        'Checklist - Tạo checklist',
+        `Tạo ${tasksList.length} công việc checklist "${safeChecklistName}" cho vai trò ${roleName}.`,
       );
 
       setAllChecklistItems((prev) => [...prev, ...createdTemplates]);
@@ -536,10 +539,9 @@ export default function ChecklistContainer({
         recalculateChecklistProgress(updatedItems, todayChecklistCategories);
       }
 
-      setChecklistErrorMessage(null);
     } catch (error) {
-      console.error('Khong the tao checklist hang loat:', error);
-      setChecklistErrorMessage('Khong the tao checklist moi. Vui long kiem tra quyen ghi du lieu.');
+      console.error('Không thể tạo checklist hàng loạt:', error);
+      toastError('Không thể tạo checklist hàng loạt. Vui lòng kiểm tra quyền ghi dữ liệu.');
       throw error;
     }
   }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
@@ -594,8 +596,8 @@ export default function ChecklistContainer({
       const roleName = checklistRoleOptions.find((role) => role.code === normalizedRoleCode)?.name || normalizedRoleCode;
       void appendChecklistLog(
         'CREATE',
-        'Checklist - Tao checklist hom nay',
-        `Tao ${createdDailyItems.length} cong viec checklist hom nay "${safeChecklistName}" cho vai tro ${roleName}.`,
+        'Checklist - Tạo checklist hôm nay',
+        `Tạo ${createdDailyItems.length} công việc checklist hôm nay "${safeChecklistName}" cho vai trò ${roleName}.`,
       );
 
       setAllChecklistItems((prev) => [...prev, ...createdDailyItems]);
@@ -609,10 +611,9 @@ export default function ChecklistContainer({
         recalculateChecklistProgress(updatedItems, todayChecklistCategories);
       }
 
-      setChecklistErrorMessage(null);
     } catch (error) {
-      console.error('Khong the tao checklist hom nay:', error);
-      setChecklistErrorMessage('Khong the tao checklist hom nay. Vui long kiem tra quyen ghi du lieu.');
+      console.error('Không thể tạo checklist hôm nay:', error);
+      toastError('Không thể tạo checklist hôm nay. Vui lòng kiểm tra quyền ghi dữ liệu.');
       throw error;
     }
   }, [activeStoreId, checklistItems, checklistRoleOptions, currentChecklistRoleCode, todayChecklistCategories, processChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
@@ -648,15 +649,15 @@ export default function ChecklistContainer({
         setChecklistItems((prev) => prev.filter((it) => it.id !== itemId));
       }
 
-      void appendChecklistLog('DELETE', 'Checklist - Xoa cong viec', `Xoa cong viec checklist: "${itemToDelete.title}".`);
+      void appendChecklistLog('DELETE', 'Checklist - Xóa công việc', `Xóa công việc checklist: "${itemToDelete.title}".`);
 
       recalculateChecklistProgress(
         checklistItems.filter((it) => it.id !== itemId),
         todayChecklistCategories,
       );
     } catch (error) {
-      console.error('Khong the xoa checklist item:', error);
-      setChecklistErrorMessage('Xoa cong viec that bai. Vui long thu lai.');
+      console.error('Không thể xóa checklist item:', error);
+      toastError('Xóa công việc thất bại. Vui lòng thử lại.');
       throw error;
     }
   }, [allChecklistItems, checklistItems, todayChecklistCategories, recalculateChecklistProgress, appendChecklistLog]);
@@ -718,10 +719,10 @@ export default function ChecklistContainer({
         }),
       );
 
-      void appendChecklistLog('UPDATE', 'Checklist - Cap nhat cong viec', `Cap nhat cong viec checklist "${itemToUpdate.title}".`);
+      void appendChecklistLog('UPDATE', 'Checklist - Cập nhật công việc', `Cập nhật công việc checklist "${itemToUpdate.title}".`);
     } catch (error) {
-      console.error('Khong the cap nhat checklist item:', error);
-      setChecklistErrorMessage('Cap nhat cong viec that bai. Vui long thu lai.');
+      console.error('Không thể cập nhật checklist item:', error);
+      toastError('Cập nhật công việc thất bại. Vui lòng thử lại.');
       throw error;
     }
   }, [allChecklistItems, appendChecklistLog]);
@@ -751,10 +752,10 @@ export default function ChecklistContainer({
         setTodayChecklistCategories((prev) => [...prev, { ...newCat, categoryType }]);
       }
 
-      void appendChecklistLog('CREATE', 'Checklist - Tao nhom', `Tao nhom checklist dong moi: "${safeTitle}".`);
+      void appendChecklistLog('CREATE', 'Checklist - Tạo nhóm', `Tạo nhóm checklist dòng mới: "${safeTitle}".`);
     } catch (error) {
-      console.error('Khong the tao nhom checklist:', error);
-      setChecklistErrorMessage('Khong the tao nhom moi. Vui long kiem tra ket noi.');
+      console.error('Không thể tạo nhóm checklist:', error);
+      toastError('Không thể tạo nhóm mới. Vui lòng kiểm tra kết nối.');
     }
   }, [activeStoreId, appendChecklistLog]);
 
@@ -782,10 +783,10 @@ export default function ChecklistContainer({
         );
       }
 
-      void appendChecklistLog('UPDATE', 'Checklist - Cap nhat nhom', `Cap nhat ten nhom checklist thanh: "${safeTitle}".`);
+      void appendChecklistLog('UPDATE', 'Checklist - Cập nhật nhóm', `Cập nhật tên nhóm checklist thành: "${safeTitle}".`);
     } catch (error) {
-      console.error('Khong the cap nhat nhom checklist:', error);
-      setChecklistErrorMessage('Khong the doi ten nhom. Vui long thu lai.');
+      console.error('Không thể cập nhật nhóm checklist:', error);
+      toastError('Không thể đổi tên nhóm. Vui lòng thử lại.');
     }
   }, [appendChecklistLog]);
 
@@ -815,10 +816,10 @@ export default function ChecklistContainer({
         setAllChecklistItems((prev) => prev.filter((item) => item.categoryId !== id));
       }
 
-      void appendChecklistLog('DELETE', 'Checklist - Xoa nhom', 'Xoa nhom quy trinh checklist va toan bo cong viec lien quan.');
+      void appendChecklistLog('DELETE', 'Checklist - Xóa nhóm', 'Xóa nhóm quy trình checklist và toàn bộ công việc liên quan.');
     } catch (error) {
-      console.error('Khong the xoa nhom checklist:', error);
-      setChecklistErrorMessage('Xoa nhom that bai. Vui long thu lai.');
+      console.error('Không thể xóa nhóm checklist:', error);
+      toastError('Xóa nhóm thất bại. Vui lòng thử lại.');
     }
   }, [allChecklistItems, appendChecklistLog]);
 
@@ -840,8 +841,6 @@ export default function ChecklistContainer({
       onDeleteChecklistItem={handleDeleteChecklistItem}
       onUpdateChecklistItem={handleUpdateChecklistItem}
       permissions={checklistPermissions}
-      errorMessage={checklistErrorMessage}
-      onDismissError={handleDismissError}
     />
   );
 }

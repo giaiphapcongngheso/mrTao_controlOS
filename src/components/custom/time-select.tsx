@@ -19,7 +19,7 @@ export function TimeSelect({
 }: TimeSelectProps) {
   const { t } = useTranslation(['common']);
   const options = useMemo(() => {
-    const opts = [];
+    const opts: { label: string; value: string }[] = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let min = 0; min < 60; min += step) {
         const h = hour.toString().padStart(2, '0');
