@@ -10,3 +10,4 @@ coverage/
 .agent
 .planning
 src/scripts/seed-admin.ts
+*.md
