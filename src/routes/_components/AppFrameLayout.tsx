@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Bell, ChevronRight, Layers, Menu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TabType } from '../../types/app.types';
@@ -88,7 +88,7 @@ export default function AppFrameLayout({
 
           <div className="pt-3 pb-1 border-t border-slate-100 flex flex-col items-center justify-center select-none text-center shrink-0">
             <span className="text-[10.5px] font-bold text-slate-500 tracking-wide">Powered by NguyenTD</span>
-            <span className="text-[9.5px] text-slate-400 font-mono font-semibold mt-0.5">v1.2.0</span>
+            <span className="text-[9.5px] text-slate-400 font-mono font-semibold mt-0.5">v{__APP_VERSION__}</span>
           </div>
         </aside>
 

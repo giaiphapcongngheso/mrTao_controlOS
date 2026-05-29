@@ -31,6 +31,7 @@
 }
 
 @theme inline {
+  --color-surface-bg: #f8f9fb;
   --color-cg-1: #3174d5;
   --color-cg-2: #76c9de;
   --color-cg-3: #c82b56;
