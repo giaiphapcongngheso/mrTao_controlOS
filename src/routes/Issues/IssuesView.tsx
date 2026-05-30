@@ -6,8 +6,17 @@ import MetricBentoCards from './components/metric-bento-cards';
 import SearchFilterSection from './components/search-filter-section';
 import IssueCard from './components/issue-card';
 import IssueModal from './components/issue-modal';
-import { ScrollArea } from '@shared/ui';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  ScrollArea,
+} from '@shared/ui';
 import { useAppStore } from '../../stores/app-store';
+
+const ISSUES_PER_PAGE = 20;
 
 interface IssuesViewProps {
   issues: SOPIssue[];
@@ -25,9 +34,6 @@ interface IssuesViewProps {
   successMessage?: string | null;
   onDismissError?: () => void;
   onDismissSuccess?: () => void;
-  fetchNextPage: () => void;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
 }
 
 export default function IssuesView({
@@ -42,9 +48,6 @@ export default function IssuesView({
   successMessage,
   onDismissError,
   onDismissSuccess,
-  fetchNextPage,
-  hasNextPage,
-  isFetchingNextPage,
 }: IssuesViewProps) {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
     'all' | 'sop_error' | 'exception' | 'risk' | 'improvement'
@@ -54,6 +57,7 @@ export default function IssuesView({
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [dropdownId, setDropdownId] = useState<string | null>(null);
   const [highlightedIssueId, setHighlightedIssueId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const notificationFocus = useAppStore((state) => state.notificationFocus);
@@ -161,6 +165,32 @@ export default function IssuesView({
     });
   }, [issues, selectedCategoryFilter, deferredSearchTerm]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredIssues.length / ISSUES_PER_PAGE));
+
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+    return Array.from(pages)
+      .filter((page) => page >= 1 && page <= totalPages)
+      .sort((a, b) => a - b);
+  }, [currentPage, totalPages]);
+
+  const paginatedIssues = useMemo(() => {
+    const start = (currentPage - 1) * ISSUES_PER_PAGE;
+    return filteredIssues.slice(start, start + ISSUES_PER_PAGE);
+  }, [currentPage, filteredIssues]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategoryFilter, deferredSearchTerm]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   // Find initial data for modal edit mode
   const editingIssue = useMemo(() => {
     if (!editingIssueId) {
@@ -213,9 +243,94 @@ export default function IssuesView({
     setSearchTerm(value);
   }, []);
 
+  const handleGoToPage = useCallback(
+    (page: number) => {
+      const nextPage = Math.min(Math.max(page, 1), totalPages);
+      setCurrentPage(nextPage);
+
+      if (scrollContainerRef.current) {
+        const viewport = scrollContainerRef.current.querySelector(
+          '[data-slot="scroll-area-viewport"]'
+        );
+        if (viewport) {
+          viewport.scrollTop = 0;
+        }
+      }
+    },
+    [totalPages]
+  );
+
   const handleToggleDropdown = useCallback((id: string | null) => {
     setDropdownId(id);
   }, []);
+
+  const paginationControls =
+    filteredIssues.length > ISSUES_PER_PAGE ? (
+      <div className="flex items-center gap-3 rounded-xl border border-slate-200/85 bg-white px-2 py-1 shadow-2xs">
+        <span className="hidden lg:inline text-[11px] font-bold text-slate-400 whitespace-nowrap px-1">
+          Bản ghi {(currentPage - 1) * ISSUES_PER_PAGE + 1}-
+          {Math.min(filteredIssues.length, currentPage * ISSUES_PER_PAGE)}/{filteredIssues.length}
+        </span>
+        <Pagination className="w-auto">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                size="default"
+                aria-disabled={currentPage === 1}
+                className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleGoToPage(currentPage - 1);
+                }}
+              >
+                Trước
+              </PaginationLink>
+            </PaginationItem>
+
+            {pageNumbers.map((pageNumber, index) => {
+              const previousPage = pageNumbers[index - 1];
+              return (
+                <React.Fragment key={pageNumber}>
+                  {previousPage && pageNumber - previousPage > 1 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#"
+                      isActive={pageNumber === currentPage}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleGoToPage(pageNumber);
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                </React.Fragment>
+              );
+            })}
+
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                size="default"
+                aria-disabled={currentPage === totalPages}
+                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleGoToPage(currentPage + 1);
+                }}
+              >
+                Sau
+              </PaginationLink>
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    ) : null;
 
   return (
     <div className="space-y-6 text-left">
@@ -274,6 +389,7 @@ export default function IssuesView({
         exceptionCount={exceptionCount}
         riskCount={riskCount}
         improvementCount={improvementCount}
+        paginationControls={paginationControls}
       />
 
       <div ref={scrollContainerRef}>
@@ -291,7 +407,7 @@ export default function IssuesView({
                 </p>
               </div>
             ) : (
-              filteredIssues.map((issue) => (
+              paginatedIssues.map((issue) => (
                 <IssueCard
                   key={issue.id}
                   issue={issue}
@@ -308,26 +424,6 @@ export default function IssuesView({
               ))
             )}
 
-            {/* Load More Button for Firestore Cursor Pagination */}
-            {hasNextPage && (
-              <div className="col-span-full flex justify-center pt-4">
-                <button
-                  type="button"
-                  disabled={isFetchingNextPage}
-                  onClick={() => fetchNextPage()}
-                  className="px-6 py-2.5 rounded-xl border border-slate-200/85 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-800 text-xs font-bold transition-all shadow-2xs hover:shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
-                >
-                  {isFetchingNextPage ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                      Đang tải thêm...
-                    </>
-                  ) : (
-                    'Tải thêm lỗi SOP'
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         </ScrollArea>
       </div>

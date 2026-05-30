@@ -11,6 +11,7 @@ interface SearchFilterSectionProps {
   exceptionCount: number;
   riskCount: number;
   improvementCount: number;
+  paginationControls?: React.ReactNode;
 }
 
 const SearchFilterSection = React.memo(function SearchFilterSection({
@@ -23,6 +24,7 @@ const SearchFilterSection = React.memo(function SearchFilterSection({
   exceptionCount,
   riskCount,
   improvementCount,
+  paginationControls,
 }: SearchFilterSectionProps) {
   const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange(e.target.value);
@@ -92,8 +94,15 @@ const SearchFilterSection = React.memo(function SearchFilterSection({
         </button>
       </div>
 
-      {/* Search bar input - aligned inline */}
-      <div className="flex gap-2 flex-1 md:max-w-md w-full">
+      <div className="flex flex-col sm:flex-row gap-2 flex-1 md:justify-end w-full">
+        {paginationControls && (
+          <div className="flex shrink-0 justify-start sm:justify-center">
+            {paginationControls}
+          </div>
+        )}
+
+        {/* Search bar input - aligned inline */}
+        <div className="flex gap-2 flex-1 md:max-w-md w-full">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -111,6 +120,7 @@ const SearchFilterSection = React.memo(function SearchFilterSection({
               Xóa
             </button>
           )}
+        </div>
         </div>
       </div>
     </div>

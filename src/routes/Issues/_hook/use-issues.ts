@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useFirestoreInfiniteQuery } from '../../../shared/hooks/use-firestore-paged';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { issuesService } from '../../../services/issues-service';
 import { notificationsService } from '../../../services/notifications-service';
 import { MODULE_CODE } from '../../../constants/staff-permissions.constants';
@@ -25,19 +24,44 @@ export const issuesQueryKeys = {
 // ─── Infinite Query Hook ─────────────────────────────────────────────────────
 
 /**
- * Hook to fetch paginated issues using the generic useFirestoreInfiniteQuery.
- * Just 1 call — all Firestore cursor logic is handled by the shared hook.
+ * Hook to fetch and page issues through the configured data provider.
  */
+function getIssueSortTime(issue: SOPIssue): number {
+  const rawDate = issue.updatedAt || issue.createdAt || issue.date;
+  const timestamp = rawDate ? new Date(rawDate).getTime() : Number.NaN;
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 export function useIssuesInfiniteQuery(storeId: string) {
-  return useFirestoreInfiniteQuery<SOPIssue>({
+  const queryResult = useQuery({
     queryKey: issuesQueryKeys.list(storeId),
-    collectionName: 'issues',
-    filters: [{ field: 'storeId', op: '==', value: storeId }],
-    orderByField: 'updatedAt',
-    orderDirection: 'desc',
-    pageSize: 20,
+    queryFn: issuesService.getAll,
     enabled: !!storeId,
   });
+
+  const items = useMemo(() => {
+    return (queryResult.data ?? [])
+      .filter((issue) => issue.storeId === storeId)
+      .sort((a, b) => {
+        const timeDiff = getIssueSortTime(b) - getIssueSortTime(a);
+        if (timeDiff !== 0) {
+          return timeDiff;
+        }
+        return b.id.localeCompare(a.id);
+      });
+  }, [queryResult.data, storeId]);
+
+  return {
+    items,
+    fetchNextPage: queryResult.refetch,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isLoading: queryResult.isLoading,
+    isFetching: queryResult.isFetching,
+    error: queryResult.error,
+    isError: queryResult.isError,
+    refetch: queryResult.refetch,
+  };
 }
 
 // ─── Permissions Hook ────────────────────────────────────────────────────────

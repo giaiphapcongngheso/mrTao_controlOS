@@ -281,7 +281,10 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           status: roleData.status,
         };
       } else {
-        role = editingRole;
+        role = {
+          ...editingRole,
+          name: roleName,
+        };
       }
 
       try {
@@ -318,6 +321,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         // 3. Update local state
         if (isCreating) {
           setRoles((prev) => toSortedRoles([...prev, role]));
+        } else {
+          setRoles((prev) => prev.map((r) => (r.id === role.id ? role : r)));
         }
 
         setPermissionRows((prev) => {

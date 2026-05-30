@@ -55,10 +55,12 @@ export default function IssuesContainer({
   // Load issues with pagination
   const {
     items: issues,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    error: issuesQueryError,
   } = useIssuesInfiniteQuery(activeStoreId);
+
+  const issuesQueryErrorMessage = issuesQueryError
+    ? 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch lá»—i SOP. Vui lÃ²ng thá»­ láº¡i.'
+    : null;
 
   // Notify parent component when issues change
   useEffect(() => {
@@ -186,13 +188,10 @@ export default function IssuesContainer({
       onUpdateIssue={handleUpdateIssue}
       onDeleteIssue={handleDeleteIssue}
       onConfirmIssueRead={handleConfirmIssueRead}
-      errorMessage={errorMessage}
+      errorMessage={errorMessage || issuesQueryErrorMessage}
       successMessage={successMessage}
       onDismissError={handleDismissError}
       onDismissSuccess={handleDismissSuccess}
-      fetchNextPage={fetchNextPage}
-      hasNextPage={hasNextPage}
-      isFetchingNextPage={isFetchingNextPage}
     />
   );
 }

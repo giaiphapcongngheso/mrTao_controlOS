@@ -328,11 +328,9 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
               </span>
               <input
                 {...register('name')}
-                disabled={isEditMode}
                 placeholder="Quản lý chi nhánh"
-                className={`h-11 w-full rounded-2xl border px-4 text-sm font-semibold text-slate-700 outline-none transition
-                  ${errors.name ? 'border-rose-400 ring-2 ring-rose-100' : 'border-slate-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100'}
-                  ${isEditMode ? 'bg-slate-50 cursor-not-allowed opacity-70' : 'bg-white'}`}
+                className={`h-11 w-full rounded-2xl border px-4 text-sm font-semibold text-slate-700 outline-none transition bg-white
+                  ${errors.name ? 'border-rose-400 ring-2 ring-rose-100' : 'border-slate-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100'}`}
               />
               {errors.name && (
                 <p className="text-xs font-semibold text-rose-500">{errors.name.message}</p>
