@@ -250,13 +250,6 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                       lastClickRef.current = { id: item.id, time: now };
 
                       const isDoubleClick = Boolean(lastClick && lastClick.id === item.id && now - lastClick.time < 500);
-                      console.log('Checklist Click Debug:', {
-                        itemId: item.id,
-                        title: item.title,
-                        isCompleted: item.isCompleted,
-                        timeDiff: lastClick ? now - lastClick.time : 'N/A',
-                        isDoubleClick,
-                      });
 
                       if (isDoubleClick) {
                         // Double Click
@@ -572,6 +565,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
 interface ChecklistContentAreaProps {
   filteredCategories: ChecklistViewCategory[];
   subTab: ChecklistSubTab;
+  isLoading?: boolean;
   expandedCategoryId: string | null;
   onToggleExpand: (categoryId: string) => void;
   permissions: ChecklistPermissions;
@@ -604,6 +598,7 @@ interface ChecklistContentAreaProps {
 const ChecklistContentArea = React.memo(function ChecklistContentArea({
   filteredCategories,
   subTab,
+  isLoading = false,
   expandedCategoryId,
   onToggleExpand,
   permissions,
@@ -640,7 +635,12 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
       {/* ── Category Cards Column ────────────────────────── */}
       <div className="lg:col-span-8 space-y-3">
-        {filteredCategories.length === 0 ? (
+        {isLoading ? (
+          <div className="bg-white p-10 text-center rounded-2xl border border-slate-200 space-y-3 animate-in fade-in">
+            <span className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin mx-auto block" />
+            <p className="text-sm font-semibold text-slate-500">Dang tai checklist...</p>
+          </div>
+        ) : filteredCategories.length === 0 ? (
           <div className="bg-white p-14 text-center rounded-2xl border border-dashed border-slate-200 space-y-3 animate-in fade-in">
             <Smile className="w-10 h-10 text-slate-300 mx-auto" />
             <div>

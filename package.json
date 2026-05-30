@@ -4,12 +4,16 @@
   "version": "1.2.7",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "dev": "npm run rules:ensure && vite --port=3000 --host=0.0.0.0",
+    "build": "npm run rules:ensure && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "seed:admin": "tsx src/scripts/seed-admin.ts"
+    "lint": "npm run rules:ensure && tsc --noEmit",
+    "seed:admin": "tsx src/scripts/seed-admin.ts",
+    "rules:digest": "node scripts/rules/build-rule-digest.mjs",
+    "rules:digest:check": "node scripts/rules/build-rule-digest.mjs --check",
+    "rules:digest:force": "node scripts/rules/build-rule-digest.mjs --force",
+    "rules:ensure": "npm run rules:digest:check || npm run rules:digest"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -111,7 +111,12 @@ export const firebaseClient: HttpClient = {
     // If payload contains a business ID → use it as Document ID (setDoc)
     const entityId = payload.id as string | undefined;
     if (entityId) {
-      await setDoc(doc(db, collectionName, entityId), payload);
+      const targetRef = doc(db, collectionName, entityId);
+      const existingSnap = await getDoc(targetRef);
+      if (existingSnap.exists()) {
+        throw new Error(`Document ID "${entityId}" đã tồn tại trong collection "${collectionName}". Vui lòng thử lại.`);
+      }
+      await setDoc(targetRef, payload);
       return withEntityId(entityId, payload as T);
     }
 

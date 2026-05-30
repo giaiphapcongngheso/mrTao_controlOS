@@ -6,4 +6,5 @@ import { dataClient } from './data-client';
 export const handbookCategoryService = createBaseService<HandbookCategory, Partial<HandbookCategory>>({
   client: dataClient,
   resource: RESOURCE_PATH.HANDBOOK_CATEGORIES,
+  cacheTtlMs: 5 * 60 * 1000, // 5 min - categories are structural, rarely change
 });

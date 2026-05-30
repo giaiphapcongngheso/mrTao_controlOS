@@ -4,6 +4,7 @@ import {
   type FirestoreFilter,
   type FirestorePaginatedResult,
 } from './firestore-pagination';
+import { createMemoryCache, type MemoryCache } from '../lib/memory-cache';
 
 // ─── HttpClient Interface ────────────────────────────────────────────────────
 
@@ -19,6 +20,16 @@ export interface HttpClient {
 export interface BaseServiceConfig {
   client: HttpClient;
   resource: string;
+  /**
+   * Optional TTL for in-memory cache on getAll() results (in milliseconds).
+   * When set, getAll() serves cached data if within the TTL window.
+   * Cache is automatically invalidated on create/update/delete mutations.
+   * Cache is cleared on hard page reload (Ctrl+F5) since it lives in memory.
+   *
+   * Recommended: 5 * 60 * 1000 (5 minutes) for slow-changing data like roles, templates.
+   * Do NOT use for frequently-changing data like checklist snapshots.
+   */
+  cacheTtlMs?: number;
 }
 
 // ─── Pagination Options ──────────────────────────────────────────────────────
@@ -50,6 +61,12 @@ export interface BaseService<TEntity, TRequest = Partial<TEntity>> {
    * Collection name is auto-resolved from the service's resource path.
    */
   getPaged: (options?: BasePagedOptions) => Promise<FirestorePaginatedResult<TEntity>>;
+  /**
+   * Force-clear the getAll() cache. Use when external factors
+   * may have changed the data (e.g., another user edited remotely).
+   * No-op if cacheTtlMs is not configured.
+   */
+  invalidateCache: () => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,17 +87,57 @@ function resourceToCollectionName(resourcePath: string): string {
 export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
   client,
   resource,
+  cacheTtlMs,
 }: BaseServiceConfig): BaseService<TEntity, TRequest> {
   const collectionName = resourceToCollectionName(resource);
 
+  // Optional in-memory cache for getAll()
+  const cache: MemoryCache<TEntity[]> | null = cacheTtlMs
+    ? createMemoryCache<TEntity[]>(cacheTtlMs)
+    : null;
+
   return {
-    getAll: () => client.get<TEntity[]>(resource),
+    getAll: async () => {
+      // Serve from cache if fresh
+      if (cache) {
+        const cached = cache.get();
+        if (cached !== null) {
+          return cached;
+        }
+      }
+
+      const data = await client.get<TEntity[]>(resource);
+
+      // Store in cache for future calls
+      if (cache) {
+        cache.set(data);
+      }
+
+      return data;
+    },
+
     getById: (id) => client.get<TEntity>(`${resource}/${id}`),
-    create: (payload) => client.post<TEntity>(resource, payload),
-    update: (id, payload) => client.put<TEntity>(`${resource}/${id}`, payload),
+
+    create: async (payload) => {
+      const result = await client.post<TEntity>(resource, payload);
+      // Invalidate cache on mutation
+      cache?.invalidate();
+      return result;
+    },
+
+    update: async (id, payload) => {
+      const result = await client.put<TEntity>(`${resource}/${id}`, payload);
+      // Invalidate cache on mutation
+      cache?.invalidate();
+      return result;
+    },
+
     delete: async (id) => {
       await client.delete<void>(`${resource}/${id}`);
+      // Invalidate cache on mutation
+      cache?.invalidate();
     },
+
     getPaged: (options?: BasePagedOptions) =>
       getFirestorePaged<TEntity>({
         collectionName,
@@ -90,5 +147,9 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
         filters: options?.filters,
         lastDoc: options?.lastDoc,
       }),
+
+    invalidateCache: () => {
+      cache?.invalidate();
+    },
   };
 }

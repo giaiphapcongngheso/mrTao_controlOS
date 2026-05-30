@@ -1,8 +1,8 @@
 import { BaseEntity } from './base.types';
 
 /**
- * A single task within a checklist category.
- * Tasks are embedded directly inside a ChecklistDocument.
+ * Snapshot task in daily checklist documents.
+ * Includes completion state and auditing fields.
  */
 export interface ChecklistTask extends BaseEntity {
   title: string;
@@ -15,17 +15,47 @@ export interface ChecklistTask extends BaseEntity {
 }
 
 /**
- * A Firestore document representing a checklist category
- * with its tasks embedded directly inside.
- *
- * Collection: "checklists"
+ * Template/process task without completion state.
+ */
+export interface ChecklistTemplateTask {
+  id: string;
+  title: string;
+  timeLimit?: string;
+}
+
+/**
+ * Checklist template source.
+ * Collection: checklist_templates
+ */
+export interface ChecklistTemplateDocument extends BaseEntity {
+  storeId: string;
+  roleCode: string;
+  title: string;
+  tasks: ChecklistTemplateTask[];
+}
+
+/**
+ * Daily checklist snapshot.
+ * Collection: checklists
  */
 export interface ChecklistDocument extends BaseEntity {
   storeId: string;
-  title: string;
-  categoryType: 'today' | 'process';
   roleCode: string;
+  title: string;
+  dateKey: string;
+  templateId: string | null;
   tasks: ChecklistTask[];
+}
+
+/**
+ * Independent process collection (not checklist snapshot).
+ * Collection: processes
+ */
+export interface ProcessDocument extends BaseEntity {
+  storeId: string;
+  roleCode: string;
+  title: string;
+  tasks: ChecklistTemplateTask[];
 }
 
 /**
@@ -39,7 +69,6 @@ export interface ChecklistCategory {
   countDone: number;
   countTotal: number;
   isCompleted: boolean;
-  categoryType?: 'today' | 'process';
 }
 
 /**

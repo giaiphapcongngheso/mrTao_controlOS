@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../share/ui';
+import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import { ChecklistCategory, ChecklistItem } from '../../types/checklist.types';
 import ChecklistContentArea from './components/ChecklistContentArea';
 import ChecklistCreateDialog from './components/ChecklistCreateDialog';
@@ -27,16 +28,38 @@ interface ChecklistViewProps {
   onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
   onCreateTodayChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
   onCreateRoleChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onCreateCategory?: (title: string, categoryType: 'today' | 'process') => Promise<string | null>;
+  onSaveCategoryBatch?: (params: {
+    categoryType: 'today' | 'process';
+    id: string | null;
+    title: string;
+    roleCode: string;
+    tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
+  }) => Promise<void>;
+  onRequestEditCategory?: (
+    categoryId: string,
+    categoryType: 'today' | 'process',
+  ) => Promise<{
+    id: string;
+    title: string;
+    roleCode: string;
+    tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
+  } | null>;
   onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteChecklistItem?: (itemId: string) => Promise<void>;
   onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  pendingTemplateSync?: {
+    templateTitle: string;
+    snapshotTitle: string;
+  } | null;
+  onConfirmTemplateSync?: () => Promise<void>;
+  onCancelTemplateSync?: () => void;
   permissions: {
     canCreate: boolean;
     canUpdate: boolean;
     canDelete: boolean;
   };
+  isLoading?: boolean;
   errorMessage?: string | null;
   onDismissError?: () => void;
 }
@@ -56,12 +79,17 @@ export default function ChecklistView({
   onCreateRoleChecklist,
   onCreateTodayChecklistBatch,
   onCreateRoleChecklistBatch,
-  onCreateCategory,
+  onSaveCategoryBatch,
+  onRequestEditCategory,
   onUpdateCategory,
   onDeleteCategory,
   onDeleteChecklistItem,
   onUpdateChecklistItem,
+  pendingTemplateSync,
+  onConfirmTemplateSync,
+  onCancelTemplateSync,
   permissions,
+  isLoading = false,
   errorMessage,
   onDismissError,
 }: ChecklistViewProps) {
@@ -74,11 +102,6 @@ export default function ChecklistView({
   const [selectedWeekDayKey, setSelectedWeekDayKey] = useState(getTodayKey());
   const weekDates = useMemo(() => getWeekDates(), []);
 
-
-  const activeCategories = useMemo(
-    () => subTab === 'process' ? processCategories : todayCategories,
-    [subTab, processCategories, todayCategories]
-  );
   const activeCategoryType: 'today' | 'process' = subTab === 'process' ? 'process' : 'today';
 
   // Toggle category accordion expansion
@@ -106,15 +129,9 @@ export default function ChecklistView({
     handleDialogSubmit,
   } = useChecklistDialog({
     defaultRoleCode,
-    activeCategories,
     subTab,
-    onCreateRoleChecklist,
-    onCreateTodayChecklistBatch,
-    onCreateRoleChecklistBatch,
-    onUpdateCategory,
-    onDeleteChecklistItem,
-    onUpdateChecklistItem,
-    onCreateCategory,
+    onSaveCategoryBatch,
+    onRequestEditCategory,
   });
 
   // 2. Filtered Categories Hook
@@ -153,9 +170,10 @@ export default function ChecklistView({
     openCreateDialog();
   }, [openCreateDialog]);
 
-  const handleOpenEditDialog = useCallback((cat: Parameters<typeof openEditDialog>[0]) => {
-    openEditDialog(cat);
-  }, [openEditDialog]);
+  const handleOpenEditDialog = useCallback((cat: { id: string }) => {
+    const categoryType: 'today' | 'process' = subTab === 'process' ? 'process' : 'today';
+    void openEditDialog(cat.id, categoryType);
+  }, [openEditDialog, subTab]);
 
   const handleAddInlineItem = useCallback(async (
     categoryId: string,
@@ -248,6 +266,7 @@ export default function ChecklistView({
         onAddInlineItem={handleAddInlineItem}
         onResetFilters={handleResetFilters}
         kpiStats={kpiStats}
+        isLoading={isLoading}
       />
 
       {/* 6. Floating Action Button (FAB) */}
@@ -279,6 +298,25 @@ export default function ChecklistView({
         onRemoveTaskRow={removeDialogTaskRow}
         onUpdateTask={updateDialogTask}
         isEditMode={dialogEditCategoryId !== null}
+      />
+
+      <ActionConfirmDialog
+        open={Boolean(pendingTemplateSync)}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCancelTemplateSync?.();
+          }
+        }}
+        title="Đồng bộ thay đổi template xuống checklist hôm nay"
+        description={
+          pendingTemplateSync
+            ? `Template "${pendingTemplateSync.templateTitle}" đã thay đổi. Bạn có muốn đồng bộ xuống checklist hôm nay "${pendingTemplateSync.snapshotTitle}" không?`
+            : ''
+        }
+        onConfirm={() => {
+          void onConfirmTemplateSync?.();
+        }}
+        variant="confirm"
       />
     </div>
   );

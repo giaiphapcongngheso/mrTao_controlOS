@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChecklistCategory, ChecklistDocument, ChecklistItem } from '../../../types/checklist.types';
-import { checklistCategoryService, checklistService } from '../../../services/checklist-service';
+import { checklistCategoryService, checklistService, processService } from '../../../services/checklist-service';
 
 export const checklistQueryKeys = {
   categories: ['checklist', 'categories'] as const,
@@ -25,9 +25,7 @@ export function useChecklistDocumentsQuery() {
 export function useChecklistProcessCategoriesQuery() {
   return useQuery({
     queryKey: ['checklist', 'documents', 'process'] as const,
-    queryFn: checklistService.getAll,
-    select: (docs: ChecklistDocument[]) =>
-      (docs || []).filter((doc) => doc.categoryType === 'process'),
+    queryFn: processService.getAll,
   });
 }
 

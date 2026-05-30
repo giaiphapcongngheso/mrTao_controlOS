@@ -64,15 +64,22 @@ export async function getNextSequence(prefix: string, dateKey?: string): Promise
  */
 export async function generateBusinessId(prefix: string): Promise<string> {
   const dateKey = getDateKey6();
+  const MAX_RETRIES = 3;
 
-  try {
-    const seq = await getNextSequence(prefix, dateKey);
-    return `${prefix}${dateKey}${String(seq).padStart(3, '0')}`;
-  } catch (error) {
-    // Fallback: client counter + 2-char random to avoid blocking on network errors
-    console.warn(`Counter transaction failed for ${prefix}, using fallback:`, error);
-    const fallbackSeq = Date.now().toString(36).slice(-4);
-    const rand = Math.random().toString(36).slice(2, 4);
-    return `${prefix}${dateKey}${fallbackSeq}${rand}`;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      const seq = await getNextSequence(prefix, dateKey);
+      return `${prefix}${dateKey}${String(seq).padStart(3, '0')}`;
+    } catch (error) {
+      console.warn(`Counter transaction attempt ${attempt}/${MAX_RETRIES} failed for ${prefix}:`, error);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
   }
+
+  // Numeric fallback: keep business-ID shape without base36/random letters.
+  const ms = String(Date.now() % 100000).padStart(5, '0');
+  const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return `${prefix}${dateKey}${ms}${rand}`;
 }

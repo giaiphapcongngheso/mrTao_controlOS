@@ -1,234 +1,166 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ChecklistCategory, ChecklistItem } from '../../../types/checklist.types';
+import React, { useCallback, useEffect, useState } from 'react';
+
+type ChecklistDialogSubTab = 'today' | 'process' | 'completed';
+type ChecklistCategoryType = 'today' | 'process';
+
+export type ChecklistDialogTaskInput = {
+  id?: string;
+  title: string;
+  timeLimit?: string;
+};
+
+type EditableChecklistCategory = {
+  id: string;
+  title: string;
+  roleCode: string;
+  tasks: ChecklistDialogTaskInput[];
+};
 
 interface UseChecklistDialogProps {
   defaultRoleCode: string;
-  activeCategories: ChecklistCategory[];
-  subTab: 'today' | 'process' | 'completed';
-  onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
-  onCreateTodayChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onCreateRoleChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
-  onDeleteChecklistItem?: (itemId: string) => Promise<void>;
-  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
-  onCreateCategory?: (title: string, categoryType: 'today' | 'process') => Promise<string | null>;
+  subTab: ChecklistDialogSubTab;
+  onSaveCategoryBatch?: (params: {
+    categoryType: ChecklistCategoryType;
+    id: string | null;
+    title: string;
+    roleCode: string;
+    tasks: ChecklistDialogTaskInput[];
+  }) => Promise<void>;
+  onRequestEditCategory?: (
+    categoryId: string,
+    categoryType: ChecklistCategoryType,
+  ) => Promise<EditableChecklistCategory | null> | EditableChecklistCategory | null;
 }
 
 type DialogTask = { id?: string; title: string; timeLimit: string };
 
+const DEFAULT_TIME = '08:00';
+
 export function useChecklistDialog({
   defaultRoleCode,
-  activeCategories,
   subTab,
-  onCreateRoleChecklist,
-  onCreateTodayChecklistBatch,
-  onCreateRoleChecklistBatch,
-  onUpdateCategory,
-  onDeleteChecklistItem,
-  onUpdateChecklistItem,
-  onCreateCategory,
+  onSaveCategoryBatch,
+  onRequestEditCategory,
 }: UseChecklistDialogProps) {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [dialogRoleCode, setDialogRoleCode] = useState(defaultRoleCode);
   const [dialogCategoryId, setDialogCategoryId] = useState('');
   const [dialogChecklistName, setDialogChecklistName] = useState('');
   const [dialogEditCategoryId, setDialogEditCategoryId] = useState<string | null>(null);
-  const [dialogTasks, setDialogTasks] = useState<DialogTask[]>([
-    { title: '', timeLimit: '08:00' }
-  ]);
-  const [originalTasks, setOriginalTasks] = useState<DialogTask[]>([]);
+  const [dialogTasks, setDialogTasks] = useState<DialogTask[]>([{ title: '', timeLimit: DEFAULT_TIME }]);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
 
-  // Sync role code with prop updates
   useEffect(() => {
     setDialogRoleCode(defaultRoleCode);
   }, [defaultRoleCode]);
 
-  // Set default category when categories list loads or tab changes
-  useEffect(() => {
-    if (activeCategories.length > 0 && !dialogEditCategoryId) {
-      setDialogCategoryId(activeCategories[0].id);
-    }
-  }, [subTab, activeCategories, dialogEditCategoryId]);
-
   const addDialogTaskRow = useCallback(() => {
-    setDialogTasks(prev => [...prev, { title: '', timeLimit: '08:00' }]);
+    setDialogTasks((prev) => [...prev, { title: '', timeLimit: DEFAULT_TIME }]);
   }, []);
 
   const removeDialogTaskRow = useCallback((index: number) => {
-    setDialogTasks(prev => {
+    setDialogTasks((prev) => {
       if (prev.length <= 1) return prev;
       return prev.filter((_, i) => i !== index);
     });
   }, []);
 
   const updateDialogTask = useCallback((index: number, fields: Partial<{ title: string; timeLimit: string }>) => {
-    setDialogTasks(prev =>
-      prev.map((task, i) => (i === index ? { ...task, ...fields } : task))
-    );
+    setDialogTasks((prev) => prev.map((task, i) => (i === index ? { ...task, ...fields } : task)));
   }, []);
 
   const openCreateDialog = useCallback((options?: {
     roleCode?: string;
-    categoryId?: string;
-    checklistName?: string;
+    categoryTitle?: string;
   }) => {
     setDialogEditCategoryId(null);
     setDialogRoleCode(options?.roleCode ?? defaultRoleCode);
-    setDialogCategoryId(options?.categoryId ?? '');
-    setDialogChecklistName(options?.checklistName ?? '');
-    setDialogTasks([{ title: '', timeLimit: '08:00' }]);
-    setOriginalTasks([]);
+    setDialogCategoryId(options?.categoryTitle ?? '');
+    setDialogChecklistName(options?.categoryTitle ?? '');
+    setDialogTasks([{ title: '', timeLimit: DEFAULT_TIME }]);
     setDialogError(null);
     setIsAddingItem(true);
   }, [defaultRoleCode]);
 
-  const openEditDialog = useCallback((cat: {
-    id: string;
-    title: string;
-    tasks: Array<{ id: string; title: string; timeLimit?: string; roleCode?: string }>;
-  }) => {
-    setDialogEditCategoryId(cat.id);
-    // Find the roleCode from first task or use default
-    const firstTaskRole = cat.tasks[0]?.roleCode;
-    setDialogRoleCode(firstTaskRole ?? defaultRoleCode);
-    setDialogCategoryId(cat.title);
-    setDialogChecklistName(cat.title);
-    
-    const tasksData: DialogTask[] = cat.tasks.map(t => ({
-      id: t.id,
-      title: t.title,
-      timeLimit: t.timeLimit || '08:00'
-    }));
-    
-    // If no tasks, put a blank row
-    if (tasksData.length === 0) {
-      tasksData.push({ title: '', timeLimit: '08:00' });
+  const openEditDialog = useCallback(async (categoryId: string, categoryType: ChecklistCategoryType) => {
+    if (!onRequestEditCategory) {
+      return;
     }
-    
-    setDialogTasks(tasksData);
-    setOriginalTasks(JSON.parse(JSON.stringify(tasksData)));
+
+    const data = await onRequestEditCategory(categoryId, categoryType);
+    if (!data) {
+      setDialogError('Không thể tải dữ liệu nhóm để chỉnh sửa.');
+      return;
+    }
+
+    setDialogEditCategoryId(data.id);
+    setDialogRoleCode(data.roleCode || defaultRoleCode);
+    setDialogCategoryId(data.title);
+    setDialogChecklistName(data.title);
+    setDialogTasks(
+      data.tasks.length > 0
+        ? data.tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            timeLimit: task.timeLimit || DEFAULT_TIME,
+          }))
+        : [{ title: '', timeLimit: DEFAULT_TIME }],
+    );
     setDialogError(null);
     setIsAddingItem(true);
-  }, [defaultRoleCode]);
+  }, [defaultRoleCode, onRequestEditCategory]);
 
   const handleDialogSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setDialogError(null);
-    setIsSubmittingDialog(true);
 
-    const checklistName = dialogCategoryId.trim();
-    if (!checklistName) {
-      setDialogError('Vui lòng điền tên nhóm công việc.');
-      setIsSubmittingDialog(false);
+    if (!onSaveCategoryBatch) {
+      setDialogError('Không thể lưu checklist do thiếu cấu hình callback.');
       return;
     }
 
-    const validTasks = dialogTasks.filter((t) => t.title.trim() !== '');
+    const categoryTitle = dialogCategoryId.trim();
+    if (!categoryTitle) {
+      setDialogError('Vui lòng điền tên nhóm công việc.');
+      return;
+    }
+
+    const validTasks = dialogTasks
+      .map((task) => ({
+        id: task.id,
+        title: task.title.trim(),
+        timeLimit: task.timeLimit?.trim() || undefined,
+      }))
+      .filter((task) => task.title.length > 0);
+
     if (validTasks.length === 0) {
       setDialogError('Vui lòng thêm ít nhất 1 nội dung công việc.');
-      setIsSubmittingDialog(false);
       return;
     }
 
+    setIsSubmittingDialog(true);
     try {
-      const activeCategoryType: 'today' | 'process' = subTab === 'process' ? 'process' : 'today';
-
-      // ─── EDIT MODE ───
-      if (dialogEditCategoryId) {
-        // 1. Update Category name if changed
-        const originalCat = activeCategories.find(c => c.id === dialogEditCategoryId);
-        if (originalCat && originalCat.title !== checklistName && onUpdateCategory) {
-          await onUpdateCategory(dialogEditCategoryId, checklistName, activeCategoryType);
-        }
-
-        // 2. Identify deleted, updated, and new tasks
-        const originalTaskIds = originalTasks.map(t => t.id).filter(Boolean) as string[];
-        const currentTaskIds = validTasks.map(t => t.id).filter(Boolean) as string[];
-        
-        // 2.1 Delete removed tasks
-        const deletedTaskIds = originalTaskIds.filter(id => !currentTaskIds.includes(id));
-        if (onDeleteChecklistItem) {
-          for (const id of deletedTaskIds) {
-            await onDeleteChecklistItem(id);
-          }
-        }
-
-        // 2.2 Update changed tasks and Create new ones
-        for (const task of validTasks) {
-          if (task.id) {
-            // Existing task
-            const orig = originalTasks.find(o => o.id === task.id);
-            if (orig && (orig.title !== task.title || orig.timeLimit !== task.timeLimit)) {
-              if (onUpdateChecklistItem) {
-                await onUpdateChecklistItem(task.id, {
-                  title: task.title,
-                  timeLimit: subTab === 'today' ? task.timeLimit : undefined
-                });
-              }
-            }
-          } else {
-            // New task inside edited category — use batch create with the category's Firestore ID
-            if (subTab === 'today' && onCreateTodayChecklistBatch) {
-              await onCreateTodayChecklistBatch(dialogRoleCode, dialogEditCategoryId, checklistName, [{
-                title: task.title,
-                timeLimit: task.timeLimit
-              }]);
-            } else if (onCreateRoleChecklistBatch) {
-              await onCreateRoleChecklistBatch(dialogRoleCode, dialogEditCategoryId, checklistName, [{
-                title: task.title,
-                timeLimit: task.timeLimit
-              }]);
-            } else {
-              await onCreateRoleChecklist(dialogRoleCode, dialogEditCategoryId, checklistName, task.title);
-            }
-          }
-        }
-      } 
-      // ─── CREATE MODE ───
-      else {
-        // With the new single-collection structure, the create handlers
-        // will create a new document (category) with embedded tasks.
-        // No need to resolve categoryId — the checklistName IS the category title.
-        if (subTab === 'today' && onCreateTodayChecklistBatch) {
-          await onCreateTodayChecklistBatch(dialogRoleCode, '', checklistName, validTasks);
-        } else if (onCreateRoleChecklistBatch) {
-          await onCreateRoleChecklistBatch(dialogRoleCode, '', checklistName, validTasks);
-        } else {
-          for (const t of validTasks) {
-            await onCreateRoleChecklist(dialogRoleCode, '', checklistName, t.title);
-          }
-        }
-      }
+      const categoryType: ChecklistCategoryType = subTab === 'process' ? 'process' : 'today';
+      await onSaveCategoryBatch({
+        categoryType,
+        id: dialogEditCategoryId,
+        title: categoryTitle,
+        roleCode: dialogRoleCode,
+        tasks: validTasks,
+      });
 
       setIsAddingItem(false);
       setDialogEditCategoryId(null);
       setDialogCategoryId('');
       setDialogChecklistName('');
-      setDialogTasks([{ title: '', timeLimit: '08:00' }]);
-      setOriginalTasks([]);
+      setDialogTasks([{ title: '', timeLimit: DEFAULT_TIME }]);
     } catch (err: any) {
       setDialogError(err?.message || 'Không thể lưu checklist. Vui lòng kiểm tra dữ liệu và thử lại.');
     } finally {
       setIsSubmittingDialog(false);
     }
-  }, [
-    dialogCategoryId,
-    dialogTasks,
-    dialogRoleCode,
-    subTab,
-    dialogEditCategoryId,
-    activeCategories,
-    originalTasks,
-    onCreateTodayChecklistBatch,
-    onCreateRoleChecklistBatch,
-    onCreateRoleChecklist,
-    onUpdateCategory,
-    onDeleteChecklistItem,
-    onUpdateChecklistItem,
-    onCreateCategory,
-  ]);
+  }, [dialogCategoryId, dialogEditCategoryId, dialogRoleCode, dialogTasks, onSaveCategoryBatch, subTab]);
 
   return {
     isAddingItem,

@@ -9,6 +9,8 @@
 export const ENTITY_PREFIX = {
   // ─── Core Business ──────────────────────────────────────────────────
   CHECKLIST: 'CL',
+  CHECKLIST_TEMPLATE: 'CLT',
+  PROCESS: 'PRC',
   CHECKLIST_CATEGORY: 'CLC',
   ISSUE: 'ISS',
   TASK: 'TSK',

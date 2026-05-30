@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ChecklistCategory, ChecklistItem } from '../../../types/checklist.types';
 import type { ChecklistViewCategory } from '../components/checklist-view.types';
+import type { CategoryMeta } from '../components/checklist-view.types';
 import { getCategoryMeta, getTodayKey } from '../checklist.utils';
 
 interface UseFilteredCategoriesProps {
@@ -16,7 +17,9 @@ interface UseFilteredCategoriesProps {
 }
 
 /**
- * Hook to filter categories and their checklist items based on the active tab and search criteria
+ * Hook to filter categories and their checklist items based on the active tab and search criteria.
+ * Uses a stable meta cache to avoid creating new CategoryMeta objects on every render,
+ * allowing React.memo on child components to work correctly.
  */
 export function useFilteredCategories({
   todayCategories,
@@ -29,8 +32,26 @@ export function useFilteredCategories({
   completedViewMode,
   selectedWeekDayKey,
 }: UseFilteredCategoriesProps) {
+  // Stable meta cache: avoids creating new CategoryMeta objects when title+index haven't changed
+  const metaCacheRef = useRef(new Map<string, CategoryMeta>());
+
   return useMemo<ChecklistViewCategory[]>(() => {
     const normalizedSelectedRole = selectedRoleCode.trim().toUpperCase();
+    const metaCache = metaCacheRef.current;
+
+    // Stable getCategoryMeta - returns same reference for same title+index
+    const getStableMeta = (title: string, index: number): CategoryMeta => {
+      const key = `${title}__${index}`;
+      const cached = metaCache.get(key);
+      if (cached) return cached;
+      const meta = getCategoryMeta(title, index);
+      metaCache.set(key, meta);
+      return meta;
+    };
+
+    // Pre-compute lowercase search once
+    const searchLower = searchTerm.toLowerCase();
+    const hasSearch = searchTerm.trim() !== '';
 
     // 1. Process templates (subTab === 'process')
     if (subTab === 'process') {
@@ -40,11 +61,11 @@ export function useFilteredCategories({
 
       return processCategories
         .map((cat, index) => {
-          const meta = getCategoryMeta(cat.title, index);
+          const meta = getStableMeta(cat.title, index);
 
           const catTasks = templates.filter((it) => it.categoryId === cat.id);
           const filteredTasks = catTasks.filter((it) =>
-            it.title.toLowerCase().includes(searchTerm.toLowerCase())
+            it.title.toLowerCase().includes(searchLower)
           );
 
           return {
@@ -57,7 +78,7 @@ export function useFilteredCategories({
             tasks: filteredTasks,
           };
         })
-        .filter((cat) => (searchTerm.trim() !== '' ? cat.tasks.length > 0 : true));
+        .filter((cat) => (hasSearch ? cat.tasks.length > 0 : true));
     }
 
     // 2. Completed items (subTab === 'completed')
@@ -69,11 +90,11 @@ export function useFilteredCategories({
 
       return todayCategories
         .map((cat, index) => {
-          const meta = getCategoryMeta(cat.title, index);
+          const meta = getStableMeta(cat.title, index);
 
           const catTasks = completedItems.filter((it) => it.categoryId === cat.id);
           const filteredTasks = catTasks.filter((it) =>
-            it.title.toLowerCase().includes(searchTerm.toLowerCase())
+            it.title.toLowerCase().includes(searchLower)
           );
 
           return {
@@ -92,11 +113,11 @@ export function useFilteredCategories({
     // 3. Today's checklists (subTab === 'today')
     return todayCategories
       .map((cat, index) => {
-        const meta = getCategoryMeta(cat.title, index);
+        const meta = getStableMeta(cat.title, index);
 
         const catTasks = items.filter((it) => it.categoryId === cat.id);
         const filteredTasks = catTasks.filter((it) =>
-          it.title.toLowerCase().includes(searchTerm.toLowerCase())
+          it.title.toLowerCase().includes(searchLower)
         );
         const doneCount = catTasks.filter((it) => it.isCompleted).length;
 
@@ -110,7 +131,7 @@ export function useFilteredCategories({
           tasks: filteredTasks,
         };
       })
-      .filter((cat) => (searchTerm.trim() !== '' ? cat.tasks.length > 0 : true));
+      .filter((cat) => (hasSearch ? cat.tasks.length > 0 : true));
   }, [
     todayCategories,
     processCategories,
