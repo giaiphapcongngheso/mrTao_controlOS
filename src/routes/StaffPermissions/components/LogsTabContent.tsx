@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertCircle, Clock3, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { Activity, AlertCircle, Clock3, Info, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,12 +9,12 @@ import {
   TableRow,
 } from '../../../shared/components/table';
 import { ScrollArea } from '../../../shared/components/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../../share/ui/popover';
 import type { SystemLog } from '../StaffPermissionsView.types';
 
 interface LogsTabContentProps {
   logs: SystemLog[];
   isOwner: boolean;
-  onClearLogs: () => void;
 }
 
 const actionOptions = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'SYNC', 'RESET', 'OTHER'] as const;
@@ -51,7 +51,7 @@ function getActionTone(actionType: SystemLog['actionType']) {
   }
 }
 
-export function LogsTabContent({ logs, isOwner, onClearLogs }: LogsTabContentProps) {
+export function LogsTabContent({ logs, isOwner }: LogsTabContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<(typeof actionOptions)[number]>('ALL');
   const [targetFilter, setTargetFilter] = useState('ALL');
@@ -84,24 +84,32 @@ export function LogsTabContent({ logs, isOwner, onClearLogs }: LogsTabContentPro
   return (
     <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_45px_-34px_rgba(15,23,42,0.55)]">
       <div className="border-b border-slate-200 bg-slate-50/80 p-4 md:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl text-left">
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-indigo-700">Local audit trail</p>
-            <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">Ghi log hệ thống</h2>
-            <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-              Nhật ký này bám theo đúng flow trong bản md: theo dõi thao tác nhân sự, phân quyền, đồng bộ và các thay
-              đổi quản trị ngay trên client hiện tại.
-            </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl text-left flex items-center gap-2">
+            <h2 className="text-xl font-black tracking-tight text-slate-900">Ghi log hệ thống</h2>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition"
+                  aria-label="Thông tin nhật ký"
+                >
+                  <Info className="h-4.5 w-4.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 rounded-2xl border border-slate-200 bg-white shadow-xl" align="start">
+                <div className="space-y-1.5 font-sans">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <Info className="h-4 w-4 text-indigo-600" />
+                    Thông tin nhật ký
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium whitespace-normal">
+                    Nhật ký này bám theo đúng flow trong bản md: theo dõi thao tác nhân sự, phân quyền, đồng bộ và các thay đổi quản trị ngay trên client hiện tại.
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-
-          <button
-            type="button"
-            onClick={onClearLogs}
-            disabled={!isOwner || logs.length === 0}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-xs font-black uppercase tracking-[0.2em] text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-          >
-            <Trash2 className="h-4 w-4" /> Xóa sạch nhật ký
-          </button>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">

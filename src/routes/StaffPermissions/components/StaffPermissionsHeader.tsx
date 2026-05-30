@@ -1,4 +1,4 @@
-﻿import { Activity, Plus, RefreshCw, Shield, Users } from 'lucide-react';
+import { Activity, Plus, RefreshCw, Shield, Trash2, Users } from 'lucide-react';
 import type { ActiveTab } from '../StaffPermissionsView.types';
 
 interface StaffPermissionsHeaderProps {
@@ -12,6 +12,8 @@ interface StaffPermissionsHeaderProps {
   onReload: () => void;
   onSetActiveTab: (tab: ActiveTab) => void;
   onOpenAddStaffDialog: () => void;
+  onOpenRoleDialog?: () => void;
+  onClearLogs?: () => void;
 }
 
 export function StaffPermissionsHeader({
@@ -25,6 +27,8 @@ export function StaffPermissionsHeader({
   onReload,
   onSetActiveTab,
   onOpenAddStaffDialog,
+  onOpenRoleDialog,
+  onClearLogs,
 }: StaffPermissionsHeaderProps) {
   return (
     <div className="space-y-3">
@@ -89,6 +93,31 @@ export function StaffPermissionsHeader({
               {showAddStaffForm ? 'Đang mở' : 'Thêm'}
             </button>
           )}
+
+          {activeTab === 'permissions' && (
+            <button
+              type="button"
+              onClick={onOpenRoleDialog}
+              disabled={!isOwner}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Tạo vai trò
+            </button>
+          )}
+
+          {activeTab === 'logs' && (
+            <button
+              type="button"
+              onClick={onClearLogs}
+              disabled={!isOwner || logCount === 0}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Xóa sạch
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onReload}

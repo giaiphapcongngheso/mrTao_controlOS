@@ -7,6 +7,7 @@ import SearchFilterSection from './components/search-filter-section';
 import IssueCard from './components/issue-card';
 import IssueModal from './components/issue-modal';
 import { ScrollArea } from '@shared/ui';
+import { useAppStore } from '../../stores/app-store';
 
 interface IssuesViewProps {
   issues: SOPIssue[];
@@ -52,8 +53,11 @@ export default function IssuesView({
   const [isAdding, setIsAdding] = useState(false);
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [dropdownId, setDropdownId] = useState<string | null>(null);
+  const [highlightedIssueId, setHighlightedIssueId] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const notificationFocus = useAppStore((state) => state.notificationFocus);
+  const setNotificationFocus = useAppStore((state) => state.setNotificationFocus);
 
   // Use React 19 deferred value for built-in performant debouncing
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -69,6 +73,45 @@ export default function IssuesView({
       }
     }
   }, [selectedCategoryFilter, deferredSearchTerm]);
+
+  useEffect(() => {
+    if (notificationFocus?.sourceModule !== 'SOP' || !notificationFocus.sourceId) {
+      return;
+    }
+
+    const sourceId = notificationFocus.sourceId;
+    const targetIssue = issues.find((issue) => issue.id === sourceId);
+    if (!targetIssue) {
+      return;
+    }
+
+    const applyFocus = () => {
+      const targetEl = document.getElementById(`issue-card-${sourceId}`);
+      if (!targetEl) {
+        return false;
+      }
+
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedIssueId(sourceId);
+      window.setTimeout(() => {
+        setHighlightedIssueId((prev) => (prev === sourceId ? null : prev));
+      }, 2500);
+      setNotificationFocus(null);
+      return true;
+    };
+
+    if (applyFocus()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      applyFocus();
+    }, 280);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [issues, notificationFocus, setNotificationFocus]);
 
   // Compute category counts dynamically for Top Dashboard Stats (based on currently loaded issues)
   const { sopCount, exceptionCount, riskCount, improvementCount } = useMemo(() => {
@@ -260,6 +303,7 @@ export default function IssuesView({
                   onConfirmRead={onConfirmIssueRead}
                   isDropdownOpen={dropdownId === issue.id}
                   onToggleDropdown={handleToggleDropdown}
+                  isHighlighted={highlightedIssueId === issue.id}
                 />
               ))
             )}

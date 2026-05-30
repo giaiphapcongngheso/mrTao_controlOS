@@ -22,6 +22,7 @@ export const RESOURCE_PATH = {
   NOTIFICATIONS: '/notifications',
   TASKS: '/tasks',
   HANDBOOK_DOCUMENTS: '/handbook/documents',
+  HANDBOOK_CATEGORIES: '/handbook/categories',
 } as const;
 
 export type ResourcePath = (typeof RESOURCE_PATH)[keyof typeof RESOURCE_PATH];

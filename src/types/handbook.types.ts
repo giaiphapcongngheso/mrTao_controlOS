@@ -19,3 +19,11 @@ export interface HandbookDoc {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface HandbookCategory {
+  id: string;
+  name: string;
+  normalizedName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

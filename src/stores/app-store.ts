@@ -142,7 +142,17 @@ function readPersistedSession(): UserSession | null {
 interface AppStoreState {
   activeTab: TabType;
   currentUser: UserSession | null;
+  notificationFocus: {
+    notificationId: string;
+    sourceModule?: 'SOP' | 'REPORTS' | 'CHECKLIST' | 'TASKS';
+    sourceId?: string;
+  } | null;
   setActiveTab: (tab: TabType) => void;
+  setNotificationFocus: (focus: {
+    notificationId: string;
+    sourceModule?: 'SOP' | 'REPORTS' | 'CHECKLIST' | 'TASKS';
+    sourceId?: string;
+  } | null) => void;
   login: (sessionData: Partial<UserSession>) => void;
   logout: () => void;
 }
@@ -150,7 +160,9 @@ interface AppStoreState {
 export const useAppStore = create<AppStoreState>((set) => ({
   activeTab: 'Today',
   currentUser: readPersistedSession(),
+  notificationFocus: null,
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setNotificationFocus: (focus) => set({ notificationFocus: focus }),
   login: (sessionData) => {
     const enriched = enrichSessionWithDefaultFields({
       ...sessionData,
@@ -160,7 +172,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(enriched));
   },
   logout: () => {
-    set({ currentUser: null });
+    set({ currentUser: null, notificationFocus: null });
     localStorage.removeItem(SESSION_STORAGE_KEY);
   },
 }));

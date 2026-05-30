@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Skeleton } from '../../shared/components/skeleton';
 import { roleService, staffPermissionService, staffService } from '../../services/admin';
 import {
@@ -17,13 +17,11 @@ import {
   StaffTabContent,
 } from './components';
 import {
-  DEFAULT_ROLE_FORM,
   DEFAULT_STAFF_FORM,
 } from './StaffPermissionsView.constants';
 import type {
   ActiveTab,
   PermissionField,
-  RoleFormState,
   StaffFormState,
   StaffPermissionsViewProps,
   SystemLog,
@@ -38,6 +36,7 @@ import {
   toSortedRoles,
   toSortedStaff,
 } from './StaffPermissionsView.utils';
+import type { PermissionRowFormValues } from './role-permission-form-schema';
 
 export default function StaffPermissionsView({ currentUser }: StaffPermissionsViewProps) {
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -58,8 +57,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
   const [showAddStaffForm, setShowAddStaffForm] = useState(false);
   const [staffForm, setStaffForm] = useState<StaffFormState>(DEFAULT_STAFF_FORM);
 
-  const [showAddRoleForm, setShowAddRoleForm] = useState(false);
-  const [roleForm, setRoleForm] = useState<RoleFormState>(DEFAULT_ROLE_FORM);
+  // Dialog state for role creation (triggered from header button)
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
 
   const isOwner = Boolean(
     currentUser?.user === 'admin' ||
@@ -243,48 +242,107 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     });
   }, [staffList, staffSearch, staffRoleFilter]);
 
-  const handleCreateRole = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!isOwner) {
-      setErrorMessage('Bạn không có quyền tạo vai trò.');
-      return;
-    }
+  const defaultStoreId = useMemo(
+    () => roles[0]?.storeId ?? staffList[0]?.storeId ?? DEFAULT_STORE_ID,
+    [roles, staffList],
+  );
 
-    const roleName = roleForm.name.trim();
-    const roleCode = toRoleCode(roleForm.code.trim() || roleName);
+  // ---- Save Role + Permissions (unified handler) ----
+  const handleSaveRoleWithPermissions = useCallback(
+    async (
+      roleData: { name: string; code: string; status: 'active' | 'inactive' },
+      permissions: PermissionRowFormValues[],
+      editingRole: StaffRole | null,
+    ) => {
+      if (!isOwner) {
+        setErrorMessage('Bạn không có quyền thao tác.');
+        return;
+      }
 
-    if (!roleName || !roleCode) {
-      setErrorMessage('Vui lòng nhập tên vai trò.');
-      return;
-    }
+      const roleCode = toRoleCode(roleData.code.trim() || roleData.name);
+      const roleName = roleData.name.trim();
 
-    if (roles.some((role) => toRoleCode(role.code) === roleCode)) {
-      setErrorMessage('Mã vai trò đã tồn tại.');
-      return;
-    }
+      // Determine the role record
+      let role: StaffRole;
+      const isCreating = !editingRole;
 
-    const storeId = roles[0]?.storeId ?? staffList[0]?.storeId ?? DEFAULT_STORE_ID;
-    const newRole: StaffRole = {
-      id: toRoleId(roleCode),
-      storeId,
-      code: roleCode,
-      name: roleName,
-      status: roleForm.status,
-    };
+      if (isCreating) {
+        // Validate uniqueness
+        if (roles.some((r) => toRoleCode(r.code) === roleCode)) {
+          setErrorMessage('Mã vai trò đã tồn tại.');
+          return;
+        }
 
-    try {
-      await roleService.update(newRole.id, newRole);
-      setRoles((prev) => toSortedRoles([...prev, newRole]));
-      setRoleForm(DEFAULT_ROLE_FORM);
-      setShowAddRoleForm(false);
-      showSuccessToast('Đã tạo vai trò mới.');
-      void addLog('CREATE', 'Vai trò', `Đã tạo vai trò ${newRole.name} (${newRole.code}).`);
-      setErrorMessage('');
-    } catch (error) {
-      console.error('Failed to create role:', error);
-      setErrorMessage('Không thể tạo vai trò. Vui lòng kiểm tra quyền ghi Firestore.');
-    }
-  };
+        role = {
+          id: toRoleId(roleCode),
+          storeId: defaultStoreId,
+          code: roleCode,
+          name: roleName,
+          status: roleData.status,
+        };
+      } else {
+        role = editingRole;
+      }
+
+      try {
+        // 1. Save role (create or update)
+        await roleService.update(role.id, role);
+
+        // 2. Batch save permissions
+        const permissionTasks = permissions.map((perm) => {
+          // Find existing row for this role + module
+          const existing = permissionRows.find(
+            (row) =>
+              row.module === perm.module &&
+              (row.roleId === role.id || (!row.roleId && row.roleCode === role.code)),
+          );
+
+          const permRow: RolePermissionRow = {
+            id: existing?.id ?? `PQ-${Date.now()}-${perm.module}`,
+            storeId: existing?.storeId ?? role.storeId,
+            roleId: role.id,
+            roleCode: role.code,
+            module: perm.module,
+            canView: perm.canView,
+            canCreate: perm.canCreate,
+            canUpdate: perm.canUpdate,
+            canDelete: perm.canDelete,
+            canApprove: perm.canApprove,
+          };
+
+          return staffPermissionService.update(permRow.id, permRow).then(() => permRow);
+        });
+
+        const savedPermissions = await Promise.all(permissionTasks);
+
+        // 3. Update local state
+        if (isCreating) {
+          setRoles((prev) => toSortedRoles([...prev, role]));
+        }
+
+        setPermissionRows((prev) => {
+          // Replace existing or add new
+          const existingIds = new Set(savedPermissions.map((p) => p.id));
+          const remaining = prev.filter((row) => !existingIds.has(row.id));
+          return toSortedPermissions([...remaining, ...savedPermissions]);
+        });
+
+        showSuccessToast(isCreating ? 'Đã tạo vai trò và phân quyền.' : 'Đã cập nhật phân quyền.');
+        void addLog(
+          isCreating ? 'CREATE' : 'UPDATE',
+          'Vai trò & Phân quyền',
+          isCreating
+            ? `Đã tạo vai trò ${role.name} (${role.code}) với ${savedPermissions.length} module.`
+            : `Đã cập nhật phân quyền vai trò ${role.name} (${role.code}).`,
+        );
+        setErrorMessage('');
+      } catch (error) {
+        console.error('Failed to save role with permissions:', error);
+        setErrorMessage('Không thể lưu vai trò và phân quyền. Vui lòng kiểm tra quyền ghi Firestore.');
+      }
+    },
+    [isOwner, roles, permissionRows, defaultStoreId],
+  );
 
   const handleCreateStaff = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -485,31 +543,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     }
   };
 
-  const handleDeletePermission = async (row: RolePermissionRow) => {
-    if (!isOwner) {
-      setErrorMessage('Bạn không có quyền xóa phân quyền.');
-      return;
-    }
-
-    const confirmed = window.confirm(`Xóa quyền ${row.roleCode} - ${row.module}?`);
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await staffPermissionService.delete(row.id);
-      setPermissionRows((prev: RolePermissionRow[]) =>
-        prev.filter((item: RolePermissionRow) => item.id !== row.id),
-      );
-      showSuccessToast('Đã xóa cấu hình phân quyền.');
-      void addLog('DELETE', 'Phân quyền', `Đã xóa quyền của vai trò ${row.roleCode} trên module ${row.module}.`);
-      setErrorMessage('');
-    } catch (error) {
-      console.error('Failed to delete permission row:', error);
-      setErrorMessage('Không thể xóa cấu hình phân quyền.');
-    }
-  };
-
   const handleClearLogs = async () => {
     if (!isOwner) {
       setErrorMessage('Bạn không có quyền xóa nhật ký hệ thống.');
@@ -536,10 +569,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     }
   };
 
-  const handleOpenAddStaffDialog = () => {
+  const handleOpenAddStaffDialog = useCallback(() => {
     setStaffForm(DEFAULT_STAFF_FORM);
     setShowAddStaffForm(true);
-  };
+  }, []);
+
+  const handleOpenRoleDialog = useCallback(() => {
+    setShowRoleDialog(true);
+  }, []);
 
   return (
     <div className="space-y-4 bg-[radial-gradient(circle_at_top_right,_rgba(16,124,65,0.08),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(2,132,199,0.08),_transparent_28%)] pb-6 text-left">
@@ -554,6 +591,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         onReload={() => void loadAuthorityData(true)}
         onSetActiveTab={setActiveTab}
         onOpenAddStaffDialog={handleOpenAddStaffDialog}
+        onOpenRoleDialog={handleOpenRoleDialog}
+        onClearLogs={() => void handleClearLogs()}
       />
 
       <StaffPermissionsMessage errorMessage={errorMessage} />
@@ -586,19 +625,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         <PermissionsTabContent
           roles={roles}
           permissionRows={permissionRows}
-          showAddRoleForm={showAddRoleForm}
-          roleForm={roleForm}
           isOwner={isOwner}
-          onToggleAddRoleForm={() => setShowAddRoleForm((prev: boolean) => !prev)}
-          onSubmitCreateRole={handleCreateRole}
-          onCancelAddRoleForm={() => setShowAddRoleForm(false)}
-          onToggleModulePermission={(role, moduleCode, field) =>
-            void handleToggleModulePermission(role, moduleCode, field)
-          }
-          setRoleForm={setRoleForm}
+          storeId={defaultStoreId}
+          onSaveRoleWithPermissions={handleSaveRoleWithPermissions}
+          externalCreateOpen={showRoleDialog}
+          onExternalCreateOpenChange={setShowRoleDialog}
         />
       ) : (
-        <LogsTabContent logs={logs} isOwner={isOwner} onClearLogs={() => void handleClearLogs()} />
+        <LogsTabContent logs={logs} isOwner={isOwner} />
       )}
 
       {successToast && (

@@ -24,6 +24,7 @@ interface IssueCardProps {
   onConfirmRead: (id: string) => void;
   isDropdownOpen: boolean;
   onToggleDropdown: (id: string | null) => void;
+  isHighlighted?: boolean;
 }
 
 const formatReadConfirmedAt = (value?: string) => {
@@ -138,6 +139,7 @@ const IssueCard = React.memo(function IssueCard({
   onConfirmRead,
   isDropdownOpen,
   onToggleDropdown,
+  isHighlighted = false,
 }: IssueCardProps) {
   const { badgeLayoutColor, badgeEmblemText, actionBtnStyle, assigneeLabel } = React.useMemo(() => {
     return getBadgeStyles(issue.category);
@@ -187,7 +189,12 @@ const IssueCard = React.memo(function IssueCard({
   }, [onConfirmRead, issue.id, onToggleDropdown]);
 
   return (
-    <div className="group bg-white rounded-2xl border border-slate-200/80 p-5 shadow-[0_4px_20px_-4px_rgba(148,163,184,0.12)] hover:shadow-[0_12px_30px_-6px_rgba(148,163,184,0.22)] hover:border-slate-350 hover:-translate-y-1 transition-all duration-300 ease-out relative flex flex-col justify-between text-left">
+    <div
+      id={`issue-card-${issue.id}`}
+      className={`group bg-white rounded-2xl border p-5 shadow-[0_4px_20px_-4px_rgba(148,163,184,0.12)] hover:shadow-[0_12px_30px_-6px_rgba(148,163,184,0.22)] hover:border-slate-350 hover:-translate-y-1 transition-all duration-300 ease-out relative flex flex-col justify-between text-left ${
+        isHighlighted ? 'border-[#C21A1A] ring-2 ring-[#C21A1A]/25' : 'border-slate-200/80'
+      }`}
+    >
       <div>
         <div className="flex items-center justify-between gap-2.5 mb-3.5">
           <div className="flex items-center gap-2">

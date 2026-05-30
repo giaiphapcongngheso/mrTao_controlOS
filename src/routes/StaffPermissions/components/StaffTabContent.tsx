@@ -1,4 +1,4 @@
-﻿import type { Dispatch, FormEvent, SetStateAction } from 'react';
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { CalendarDays, Lock, Mail, Phone, Search, Trash2, UserCheck, UserX, Users, X } from 'lucide-react';
 import {
   Table,
@@ -56,7 +56,7 @@ export function StaffTabContent({
   return (
     <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_45px_-34px_rgba(15,23,42,0.55)]">
       <div className="border-b border-slate-200 bg-slate-50/80 p-4 md:p-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr),220px]">
+        <div className="grid grid-cols-[1.6fr_1fr] gap-3">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input

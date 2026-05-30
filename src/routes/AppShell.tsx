@@ -9,7 +9,6 @@ import {
   BookMarked,
   HelpCircle,
   LogOut,
-  Bell,
   Users,
 } from 'lucide-react';
 
@@ -41,7 +40,7 @@ import ReportsView from './Reports/ReportsView';
 import HandbookView from './Handbook/HandbookView';
 import LoginView from './Login/LoginView';
 import StaffPermissionsView from './StaffPermissions/StaffPermissionsView';
-import NotificationsView from './Notifications/NotificationsView';
+import NotificationsView, { NotificationsBellPopover } from './Notifications/NotificationsView';
 import { useAppStore } from '../stores/app-store';
 import { signOutInternalStaff } from '../services/admin/internal-auth-service';
 import { staffPermissionService } from '../services/admin';
@@ -592,22 +591,7 @@ export default function App() {
               </button>
             )}
             {canViewTab('Notifications') && (
-              <button
-                onClick={() => {
-                  setActiveTab('Notifications');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`p-2 rounded-xl border transition-all cursor-pointer relative ${activeTab === 'Notifications'
-                  ? 'bg-rose-50 border-rose-300 text-[#C21A1A] ring-2 ring-rose-250/20'
-                  : 'bg-slate-50 border-slate-200 hover:bg-[#C21A1A]/5 hover:border-rose-150 hover:text-[#C21A1A] text-slate-500'
-                  }`}
-                title="Danh sach phe duyet ngoai le"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#C21A1A] text-[8px] font-black text-white border border-white">
-                  4
-                </span>
-              </button>
+              <NotificationsBellPopover activeTab={activeTab} onSelectTab={setActiveTab} />
             )}
             <HeaderProfilePopover
               currentUser={currentUser}

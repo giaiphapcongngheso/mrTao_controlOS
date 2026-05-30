@@ -1,142 +1,266 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  Bell, 
-  Check, 
-  MessageSquare, 
-  Plus, 
-  Clock, 
-  AlertTriangle, 
-  Users, 
-  ChevronRight, 
-  CheckCircle2, 
-  FileText, 
-  Paperclip,
-  Activity,
-  AlertCircle,
-  HelpCircle,
-  RotateCcw
-} from 'lucide-react';
-import { notificationsService, subscribeNotificationsRealtime } from '../../services/notifications-service';
-import type { AppNotification } from '../../types/notification.types';
-import { staffPermissionService } from '../../services/admin';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bell, CircleAlert, Clock3, FileSearch, ListChecks, MessageSquare, Siren, X } from 'lucide-react';
+import { Alert, AlertDescription, Badge, Button, Popover, PopoverContent, PopoverTrigger, ScrollArea, Textarea } from '@shared/ui';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
+import { staffPermissionService } from '../../services/admin';
+import { notificationsService, subscribeNotificationsRealtime } from '../../services/notifications-service';
 import { useAppStore } from '../../stores/app-store';
+import type { TabType } from '../../types/app.types';
+import type { AppNotification } from '../../types/notification.types';
 
-interface NotificationItem {
-  id: string;
-  storeId?: string;
-  title: string;
-  type: 'khan' | 'can_duyet' | 'nhac_viec' | 'canh_bao';
-  typeLabel: string;
-  time?: string;
-  createdAt?: string;
-  requester: string;
-  role: string;
-  approver: string;
-  target?: string;
-  evidence?: boolean;
-  status: 'pending' | 'approved' | 'rejected' | 'commented' | 'task_created';
-  comments?: string;
+type NotificationDestination = Exclude<TabType, 'Notifications' | 'Today'> | 'Notifications';
+
+interface NotificationBellPopoverProps {
+  activeTab: TabType;
+  onSelectTab: (tab: TabType) => void;
 }
 
-interface NotificationPermissions {
+interface NotificationActionPermissions {
   canApprove: boolean;
   canComment: boolean;
   canCreateTask: boolean;
 }
 
-function formatRelativeTimeVi(iso?: string): string {
-  if (!iso) {
-    return 'Vừa xong';
-  }
+const notificationTypeMeta: Record<
+  AppNotification['type'],
+  { icon: React.ComponentType<{ className?: string }>; dotClass: string; badgeClass: string }
+> = {
+  khan: {
+    icon: Siren,
+    dotClass: 'bg-rose-500',
+    badgeClass: 'border-rose-200 bg-rose-50 text-rose-700',
+  },
+  can_duyet: {
+    icon: FileSearch,
+    dotClass: 'bg-amber-500',
+    badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+  },
+  nhac_viec: {
+    icon: ListChecks,
+    dotClass: 'bg-blue-500',
+    badgeClass: 'border-blue-200 bg-blue-50 text-blue-700',
+  },
+  canh_bao: {
+    icon: CircleAlert,
+    dotClass: 'bg-slate-400',
+    badgeClass: 'border-slate-200 bg-slate-50 text-slate-700',
+  },
+};
 
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
+function useIsMobile(query = '(max-width: 768px)') {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia(query).matches;
+  });
 
-  if (diffMin < 1) {
-    return 'Vừa xong';
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const media = window.matchMedia(query);
+    const listener = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches);
+    };
+    setIsMobile(media.matches);
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    }
+  }, [query]);
+
+  return isMobile;
+}
+
+function normalizeDateTime(value?: string): number {
+  if (!value) {
+    return 0;
   }
-  if (diffMin < 60) {
-    return `${diffMin} phút trước`;
-  }
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
-  }
-  return date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? 0 : ms;
 }
 
 function normalizeAccessCode(value?: string | null): string {
   return (value || '').trim().toUpperCase();
 }
 
-export default function NotificationsView() {
+function formatRelativeTimeVi(value?: string): string {
+  if (!value) {
+    return 'Vừa xong';
+  }
+
+  const nowMs = Date.now();
+  const targetMs = Date.parse(value);
+  if (Number.isNaN(targetMs)) {
+    return 'Vừa xong';
+  }
+
+  const diffMinutes = Math.max(0, Math.floor((nowMs - targetMs) / 60000));
+  if (diffMinutes < 1) {
+    return 'Vừa xong';
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes} phút trước`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} giờ trước`;
+  }
+
+  return new Date(targetMs).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function resolveNotificationDestination(notification: AppNotification): NotificationDestination {
+  if (notification.sourceModule === 'SOP') {
+    return 'SOP';
+  }
+  if (notification.sourceModule === 'CHECKLIST') {
+    return 'Checklist';
+  }
+  if (notification.sourceModule === 'TASKS') {
+    return 'Tasks';
+  }
+  if (notification.sourceModule === 'REPORTS') {
+    return 'Reports';
+  }
+
+  if (notification.type === 'khan' || notification.type === 'can_duyet') {
+    return 'SOP';
+  }
+  if (notification.type === 'nhac_viec') {
+    return 'Checklist';
+  }
+  if (notification.type === 'canh_bao') {
+    return 'Tasks';
+  }
+
+  return 'Notifications';
+}
+
+function useNotificationsData() {
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const sortNotifications = useCallback((rows: AppNotification[]) => {
+    return [...rows].sort(
+      (a, b) => normalizeDateTime(b.updatedAt || b.createdAt) - normalizeDateTime(a.updatedAt || a.createdAt),
+    );
+  }, []);
+
+  const loadFromApi = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const rows = await notificationsService.getAll();
+      setItems(sortNotifications(rows || []));
+    } catch (error) {
+      console.error('Không thể tải danh sách thông báo:', error);
+      setErrorMessage('Không thể tải thông báo. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sortNotifications]);
+
+  const patchNotificationLocal = useCallback((notificationId: string, patch: Partial<AppNotification>) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === notificationId ? { ...item, ...patch } : item)),
+    );
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeNotificationsRealtime(
+      (rows) => {
+        setItems(sortNotifications(rows || []));
+        setErrorMessage(null);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Không thể đồng bộ realtime Notifications:', error);
+        setErrorMessage('Không thể đồng bộ thông báo realtime.');
+        setIsLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [sortNotifications]);
+
+  const pendingCount = useMemo(
+    () => items.filter((notification) => notification.status === 'pending').length,
+    [items],
+  );
+
+  return {
+    items,
+    pendingCount,
+    isLoading,
+    errorMessage,
+    loadFromApi,
+    patchNotificationLocal,
+  };
+}
+
+function useNotificationPermissions() {
   const currentUser = useAppStore((state) => state.currentUser);
-
-  // Tabs: 'all' (Tất cả), 'pending' (Chờ duyệt), 'resolved' (Đã xử lý)
-  const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'resolved'>('pending');
-  // Secondary sub-filters to mimic the pill counts
-  const [subFilter, setSubFilter] = useState<'all' | 'new' | 'needs_approval' | 'urgent' | 'processed'>('all');
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [permissions, setPermissions] = useState<NotificationPermissions>({
+  const [permissions, setPermissions] = useState<NotificationActionPermissions>({
     canApprove: false,
     canComment: false,
     canCreateTask: false,
   });
 
-  // Toast message states
-  const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'danger' | 'info' }>({
-    show: false,
-    msg: '',
-    type: 'success'
-  });
-
-  const triggerToast = (msg: string, type: 'success' | 'danger' | 'info' = 'success') => {
-    setToast({ show: true, msg, type });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 3000);
-  };
-
-  // Feedback input state helper
-  const [commentingId, setCommentingId] = useState<string | null>(null);
-  const [tempCommentText, setTempCommentText] = useState('');
-
   useEffect(() => {
     let cancelled = false;
 
     const loadPermissions = async () => {
+      if (!currentUser) {
+        setPermissions({
+          canApprove: false,
+          canComment: false,
+          canCreateTask: false,
+        });
+        return;
+      }
+
       try {
-        const allPermissions = await staffPermissionService.getAll();
+        const rows = await staffPermissionService.getAll();
         if (cancelled) {
           return;
         }
 
-        const roleCode = normalizeAccessCode(currentUser?.roleCode || currentUser?.role);
-        const sopPermission = allPermissions.find(
-          (permission) =>
-            normalizeAccessCode(permission.module) === MODULE_CODE.LOI_SOP &&
-            normalizeAccessCode(permission.roleCode) === roleCode,
+        const roleCode = normalizeAccessCode(currentUser.roleCode || currentUser.role);
+        const sopPermission = rows.find(
+          (row) =>
+            normalizeAccessCode(row.module) === MODULE_CODE.LOI_SOP &&
+            normalizeAccessCode(row.roleCode) === roleCode,
         );
-        const taskPermission = allPermissions.find(
-          (permission) =>
-            normalizeAccessCode(permission.module) === MODULE_CODE.GIAO_VIEC &&
-            normalizeAccessCode(permission.roleCode) === roleCode,
+        const taskPermission = rows.find(
+          (row) =>
+            normalizeAccessCode(row.module) === MODULE_CODE.GIAO_VIEC &&
+            normalizeAccessCode(row.roleCode) === roleCode,
         );
 
-        const owner = normalizeAccessCode(currentUser?.roleCode) === 'CHU_CUA_HANG' || currentUser?.username === 'admin';
+        const isOwner =
+          currentUser.username === 'admin' || normalizeAccessCode(currentUser.roleCode) === 'CHU_CUA_HANG';
 
         setPermissions({
-          canApprove: owner || !!sopPermission?.canApprove || !!sopPermission?.canUpdate,
-          canComment: owner || !!sopPermission?.canUpdate,
-          canCreateTask: owner || !!taskPermission?.canCreate,
+          canApprove: isOwner || !!sopPermission?.canApprove || !!sopPermission?.canUpdate,
+          canComment: isOwner || !!sopPermission?.canUpdate,
+          canCreateTask: isOwner || !!taskPermission?.canCreate,
         });
       } catch (error) {
         if (!cancelled) {
-          console.error('Không thể tải quyền thông báo:', error);
+          console.error('Không thể tải quyền thao tác thông báo:', error);
         }
       }
     };
@@ -146,634 +270,581 @@ export default function NotificationsView() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.roleCode, currentUser?.role, currentUser?.username]);
+  }, [currentUser]);
 
-  useEffect(() => {
-    const unsubscribe = subscribeNotificationsRealtime(
-      (items) => {
-        const sorted = (items || [])
-          .map((item) => ({
-            ...item,
-            type: (item.type === 'khan' ? 'khan' : item.type) as NotificationItem['type'],
-            time: formatRelativeTimeVi(item.createdAt),
-          }))
-          .sort((a, b) => {
-            const timeA = a.updatedAt || a.createdAt || '';
-            const timeB = b.updatedAt || b.createdAt || '';
-            return timeA < timeB ? 1 : -1;
-          });
-        setNotifications(sorted);
-      },
-      (error) => {
-        console.error('Không thể đồng bộ realtime Notifications:', error);
-      },
-    );
+  return permissions;
+}
 
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+interface NotificationListItemProps {
+  item: AppNotification;
+  permissions: NotificationActionPermissions;
+  commentDraft: string;
+  isCommenting: boolean;
+  isSubmitting: boolean;
+  onOpenDetail: (notification: AppNotification) => void;
+  onApprove: (notification: AppNotification) => void;
+  onReject: (notification: AppNotification) => void;
+  onCreateTask: (notification: AppNotification) => void;
+  onStartComment: (notificationId: string) => void;
+  onCancelComment: (notificationId: string) => void;
+  onSubmitComment: (notification: AppNotification) => void;
+  onCommentDraftChange: (notificationId: string, value: string) => void;
+}
 
-  const updateNotification = async (id: string, patch: Partial<AppNotification>) => {
-    await notificationsService.update(id, {
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    });
-  };
+const NotificationListItem = React.memo(function NotificationListItem({
+  item,
+  permissions,
+  commentDraft,
+  isCommenting,
+  isSubmitting,
+  onOpenDetail,
+  onApprove,
+  onReject,
+  onCreateTask,
+  onStartComment,
+  onCancelComment,
+  onSubmitComment,
+  onCommentDraftChange,
+}: NotificationListItemProps) {
+  const meta = notificationTypeMeta[item.type];
+  const IconComp = meta.icon;
+  const isPending = item.status === 'pending';
 
-  // Handle Approve Action
-  const handleApprove = async (id: string) => {
-    if (!permissions.canApprove) {
-      triggerToast('Bạn không có quyền phê duyệt thông báo này.', 'danger');
-      return;
-    }
+  const handleOpenDetail = useCallback(() => {
+    onOpenDetail(item);
+  }, [item, onOpenDetail]);
 
-    const target = notifications.find((item) => item.id === id);
-    try {
-      await updateNotification(id, { status: 'approved' });
-      triggerToast(`Đã PHÊ DUYỆT thành công: "${target?.title || 'Yêu cầu'}"`, 'success');
-    } catch (error) {
-      console.error('Không thể phê duyệt thông báo:', error);
-      triggerToast('Không thể phê duyệt. Vui lòng thử lại.', 'danger');
-    }
-  };
+  const handleApprove = useCallback(() => {
+    onApprove(item);
+  }, [item, onApprove]);
 
-  // Handle Reject Action
-  const handleReject = async (id: string) => {
-    if (!permissions.canApprove) {
-      triggerToast('Bạn không có quyền từ chối thông báo này.', 'danger');
-      return;
-    }
+  const handleReject = useCallback(() => {
+    onReject(item);
+  }, [item, onReject]);
 
-    const target = notifications.find((item) => item.id === id);
-    try {
-      await updateNotification(id, { status: 'rejected' });
-      triggerToast(`Đã TỪ CHỐI yêu cầu: "${target?.title || 'Yêu cầu'}"`, 'danger');
-    } catch (error) {
-      console.error('Không thể từ chối thông báo:', error);
-      triggerToast('Không thể từ chối. Vui lòng thử lại.', 'danger');
-    }
-  };
+  const handleCreateTask = useCallback(() => {
+    onCreateTask(item);
+  }, [item, onCreateTask]);
 
-  // Handle Comment Action (Feedback)
-  const submitComment = async (id: string) => {
-    if (!permissions.canComment) {
-      triggerToast('Bạn không có quyền phản hồi thông báo này.', 'danger');
-      return;
-    }
-    if (!tempCommentText.trim()) return;
-    const target = notifications.find((item) => item.id === id);
-    try {
-      await updateNotification(id, {
-        status: 'commented',
-        comments: tempCommentText,
-      });
-      triggerToast(`Đã gửi góp ý phản hồi cho "${target?.requester || 'nhân sự gửi'}"`, 'info');
-    } catch (error) {
-      console.error('Không thể gửi góp ý:', error);
-      triggerToast('Không thể gửi góp ý. Vui lòng thử lại.', 'danger');
-      return;
-    }
-    setCommentingId(null);
-    setTempCommentText('');
-  };
+  const handleStartComment = useCallback(() => {
+    onStartComment(item.id);
+  }, [item.id, onStartComment]);
 
-  // Handle Quick Tasks Addition
-  const handleCreateTask = async (id: string) => {
-    if (!permissions.canCreateTask) {
-      triggerToast('Bạn không có quyền tạo việc từ cảnh báo.', 'danger');
-      return;
-    }
-    try {
-      await updateNotification(id, { status: 'task_created' });
-      triggerToast('Đã tạo nhiệm vụ thành công từ cảnh báo tồn kho!', 'success');
-    } catch (error) {
-      console.error('Không thể tạo nhiệm vụ từ thông báo:', error);
-      triggerToast('Không thể tạo nhiệm vụ. Vui lòng thử lại.', 'danger');
-    }
-  };
+  const handleCancelComment = useCallback(() => {
+    onCancelComment(item.id);
+  }, [item.id, onCancelComment]);
 
-  // Reload from API
-  const handleReset = async () => {
-    try {
-      const rows = await notificationsService.getAll();
-      setNotifications(
-        (rows || []).map((item) => ({
-          ...item,
-          type: (item.type === 'khan' ? 'khan' : item.type) as NotificationItem['type'],
-          time: formatRelativeTimeVi(item.createdAt),
-        })),
-      );
-      triggerToast('Đã làm mới danh sách thông báo realtime.', 'info');
-    } catch (error) {
-      console.error('Không thể làm mới Notifications:', error);
-      triggerToast('Không thể làm mới thông báo.', 'danger');
-    }
-  };
+  const handleSubmitComment = useCallback(() => {
+    onSubmitComment(item);
+  }, [item, onSubmitComment]);
 
-  // Real-time calculated counters
-  const totalPending = notifications.filter(n => n.status === 'pending').length;
-  const totalResolved = notifications.filter(n => n.status !== 'pending').length;
-  
-  // Custom styled live dashboard badge values based on mock initial state overrides
-  const newCount = totalPending;
-  const needsApprovalCount = notifications.filter(n => n.status === 'pending' && (n.type === 'can_duyet' || n.type === 'khan')).length;
-  const urgentCount = notifications.filter(n => n.status === 'pending' && n.type === 'khan').length;
-  const processedCount = notifications.filter(n => n.status !== 'pending').length;
-
-  // Filter list based on main tab & sub pill selection
-  const filteredNotifications = notifications.filter(notif => {
-    // 1. First layer: Main Tab (Thông báo / Chờ duyệt / Đã xử lý)
-    if (filterTab === 'pending' && notif.status !== 'pending') return false;
-    if (filterTab === 'resolved' && notif.status === 'pending') return false;
-
-    // 2. Second layer: Sub filters
-    if (subFilter === 'urgent' && notif.type !== 'khan') return false;
-    if (subFilter === 'needs_approval' && notif.type !== 'can_duyet' && notif.type !== 'khan') return false;
-    if (subFilter === 'new' && notif.status !== 'pending') return false;
-    if (subFilter === 'processed' && notif.status === 'pending') return false;
-
-    return true;
-  });
+  const handleCommentDraftChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onCommentDraftChange(item.id, event.target.value);
+    },
+    [item.id, onCommentDraftChange],
+  );
 
   return (
-    <div className="max-w-4xl mx-auto w-full space-y-3.5 text-left relative focus:outline-none font-sans">
-      
-      {/* Toast Notification */}
-      {toast.show && (
-        <div className={`fixed bottom-5 left-5 z-55 flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs font-bold font-sans max-w-sm transition-all animate-bounce ${
-          toast.type === 'danger'
-            ? 'bg-rose-50 border-rose-200 text-rose-800'
-            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-        }`}>
-          {toast.type === 'danger' ? (
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          ) : toast.type === 'info' ? (
-            <Bell className="w-4 h-4 text-emerald-600 shrink-0" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          )}
-          <p className="text-[11px] font-bold leading-relaxed">{toast.msg}</p>
-        </div>
-      )}
-
-      {/* HEADER SECTION WITH RESPONSIVE COMPOSITION - MORE COMPACT NOW */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs">
-        <div className="text-left space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black uppercase text-[#C21A1A] tracking-widest font-mono">Quản Trị Hệ Thống</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-            <span className="text-[10px] text-slate-400 font-bold font-mono">VẬN HÀNH RETAIL SOP</span>
-          </div>
-          <h1 className="text-lg font-black text-slate-800 tracking-tight font-sans">Duyệt Phiếu &amp; Ngoại Lệ Ca Trực</h1>
-        </div>
-
-        {/* Reset button to test flow again */}
-        <button 
-          onClick={handleReset}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-800 text-[10.5px] font-bold transition-all cursor-pointer bg-slate-50 hover:bg-slate-100"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Khôi phục mẫu</span>
-        </button>
-      </div>
-
-      {/* WEB APP MAIN INTERACTIVE PANEL */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3.5 space-y-3.5">
-        
-        {/* TAB LIST CONTAINER LIKE MOBILE WIREFRAME WITH COMPACT BORDER */}
-        <div className="flex items-center justify-between border-b border-slate-150 pb-1.5">
-          <div className="flex gap-4">
-            <button
-              onClick={() => { setFilterTab('all'); setSubFilter('all'); }}
-              className={`pb-1.5 text-xs font-extrabold transition-all relative cursor-pointer tracking-wider ${
-                filterTab === 'all'
-                  ? 'text-slate-800 font-black'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <span>Tất cả</span>
-              {filterTab === 'all' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C21A1A]" />
-              )}
-            </button>
-            <button
-              onClick={() => { setFilterTab('pending'); setSubFilter('all'); }}
-              className={`pb-1.5 text-xs font-extrabold transition-all relative cursor-pointer tracking-wider ${
-                filterTab === 'pending'
-                  ? 'text-[#C21A1A] font-black'
-                  : 'text-slate-400 hover:text-[#C21A1A]/80'
-              }`}
-            >
-              <span className="flex items-center gap-1">
-                Chờ duyệt
-                {totalPending > 0 && (
-                  <span className="h-4 px-1.5 rounded-full bg-[#C21A1A] text-[9px] font-black text-white flex items-center justify-center">
-                    {totalPending}
-                  </span>
-                )}
+    <li className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-[0_4px_14px_-10px_rgba(15,23,42,0.35)]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <span className="mt-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1.5 text-slate-600">
+            <IconComp className="h-3.5 w-3.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-black text-slate-800">{item.title}</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={`rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase ${meta.badgeClass}`}
+              >
+                {item.typeLabel}
+              </Badge>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                <Clock3 className="h-3 w-3" />
+                {formatRelativeTimeVi(item.createdAt)}
               </span>
-              {filterTab === 'pending' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C21A1A]" />
-              )}
-            </button>
-            <button
-              onClick={() => { setFilterTab('resolved'); setSubFilter('all'); }}
-              className={`pb-1.5 text-xs font-extrabold transition-all relative cursor-pointer tracking-wider ${
-                filterTab === 'resolved'
-                  ? 'text-slate-800'
-                  : 'text-slate-400 hover:text-slate-600'
+            </div>
+          </div>
+        </div>
+        {isPending ? <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${meta.dotClass}`} /> : null}
+      </div>
+
+      {item.comments ? (
+        <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-1.5 text-[10px] font-semibold text-amber-800">
+          Phản hồi: {item.comments}
+        </div>
+      ) : null}
+
+      <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleOpenDetail}
+          className="h-7 rounded-lg border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 hover:border-[#C21A1A]/25 hover:bg-[#C21A1A]/5 hover:text-[#C21A1A]"
+        >
+          Xem chi tiết phiếu
+        </Button>
+
+        {isPending && (item.type === 'khan' || item.type === 'can_duyet' || item.type === 'nhac_viec') ? (
+          <Button
+            size="sm"
+            disabled={!permissions.canApprove || isSubmitting}
+            onClick={handleApprove}
+            className="h-7 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-emerald-700"
+          >
+            Duyệt
+          </Button>
+        ) : null}
+
+        {isPending && item.type === 'khan' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!permissions.canApprove || isSubmitting}
+            onClick={handleReject}
+            className="h-7 rounded-lg border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-700 hover:bg-rose-100"
+          >
+            Từ chối
+          </Button>
+        ) : null}
+
+        {isPending && item.type === 'can_duyet' && !isCommenting ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!permissions.canComment || isSubmitting}
+            onClick={handleStartComment}
+            className="h-7 gap-1 rounded-lg border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-700 hover:bg-amber-100"
+          >
+            <MessageSquare className="h-3 w-3" />
+            Góp ý
+          </Button>
+        ) : null}
+
+        {isPending && item.type === 'canh_bao' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!permissions.canCreateTask || isSubmitting}
+            onClick={handleCreateTask}
+            className="h-7 rounded-lg border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 hover:bg-blue-100"
+          >
+            Tạo việc
+          </Button>
+        ) : null}
+      </div>
+
+      {isPending && item.type === 'can_duyet' && isCommenting ? (
+        <div className="mt-2 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
+          <Textarea
+            rows={2}
+            value={commentDraft}
+            onChange={handleCommentDraftChange}
+            placeholder="Nhập góp ý để phản hồi..."
+            className="min-h-[70px] rounded-lg border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-700"
+          />
+          <div className="flex justify-end gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelComment}
+              className="h-6 rounded-md px-2 py-1 text-[10px] font-bold text-slate-600"
+            >
+              Hủy
+            </Button>
+            <Button
+              size="sm"
+              disabled={!commentDraft.trim() || isSubmitting}
+              onClick={handleSubmitComment}
+              className="h-6 rounded-md bg-[#C21A1A] px-2.5 py-1 text-[10px] font-black text-white hover:bg-[#A31616]"
+            >
+              Gửi góp ý
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </li>
+  );
+});
+
+interface NotificationsListProps {
+  items: AppNotification[];
+  permissions: NotificationActionPermissions;
+  isLoading: boolean;
+  errorMessage: string | null;
+  submittingId: string | null;
+  activeCommentId: string | null;
+  commentDraftById: Record<string, string>;
+  onRetry: () => void;
+  onOpenDetail: (notification: AppNotification) => void;
+  onApprove: (notification: AppNotification) => void;
+  onReject: (notification: AppNotification) => void;
+  onCreateTask: (notification: AppNotification) => void;
+  onStartComment: (notificationId: string) => void;
+  onCancelComment: (notificationId: string) => void;
+  onSubmitComment: (notification: AppNotification) => void;
+  onCommentDraftChange: (notificationId: string, value: string) => void;
+}
+
+const NotificationsList = React.memo(function NotificationsList({
+  items,
+  permissions,
+  isLoading,
+  errorMessage,
+  submittingId,
+  activeCommentId,
+  commentDraftById,
+  onRetry,
+  onOpenDetail,
+  onApprove,
+  onReject,
+  onCreateTask,
+  onStartComment,
+  onCancelComment,
+  onSubmitComment,
+  onCommentDraftChange,
+}: NotificationsListProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2 p-3">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="h-20 animate-pulse rounded-xl border border-dashed border-slate-200 bg-slate-50"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="space-y-2 p-3 text-left">
+        <Alert className="border-rose-200 bg-rose-50 text-rose-700">
+          <AlertDescription className="text-[11px] font-semibold text-rose-700">{errorMessage}</AlertDescription>
+        </Alert>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          className="h-7 rounded-lg border-slate-200 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700"
+        >
+          Tải lại
+        </Button>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="p-5 text-center">
+        <Bell className="mx-auto h-5 w-5 text-slate-300" />
+        <p className="mt-1 text-[11px] font-semibold text-slate-500">Chưa có thông báo nào</p>
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-[min(60vh,33rem)] md:h-[32rem]" viewportClassName="px-3 py-3">
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <NotificationListItem
+            key={item.id}
+            item={item}
+            permissions={permissions}
+            commentDraft={commentDraftById[item.id] || ''}
+            isCommenting={activeCommentId === item.id}
+            isSubmitting={submittingId === item.id}
+            onOpenDetail={onOpenDetail}
+            onApprove={onApprove}
+            onReject={onReject}
+            onCreateTask={onCreateTask}
+            onStartComment={onStartComment}
+            onCancelComment={onCancelComment}
+            onSubmitComment={onSubmitComment}
+            onCommentDraftChange={onCommentDraftChange}
+          />
+        ))}
+      </ul>
+    </ScrollArea>
+  );
+});
+
+export const NotificationsBellPopover = React.memo(function NotificationsBellPopover({
+  activeTab,
+  onSelectTab,
+}: NotificationBellPopoverProps) {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState<boolean>(false);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [commentDraftById, setCommentDraftById] = useState<Record<string, string>>({});
+  const setNotificationFocus = useAppStore((state) => state.setNotificationFocus);
+  const permissions = useNotificationPermissions();
+  const { items, pendingCount, isLoading, errorMessage, loadFromApi, patchNotificationLocal } = useNotificationsData();
+
+  const handleRetry = useCallback(() => {
+    void loadFromApi();
+  }, [loadFromApi]);
+
+  const handleDismissActionMessage = useCallback(() => {
+    setActionMessage(null);
+  }, []);
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setActiveCommentId(null);
+      setActionMessage(null);
+    }
+  }, []);
+
+  const handleCommentDraftChange = useCallback((notificationId: string, value: string) => {
+    setCommentDraftById((prev) => ({ ...prev, [notificationId]: value }));
+  }, []);
+
+  const handleStartComment = useCallback((notificationId: string) => {
+    setActiveCommentId(notificationId);
+    setActionMessage(null);
+  }, []);
+
+  const handleCancelComment = useCallback((notificationId: string) => {
+    setActiveCommentId((prev) => (prev === notificationId ? null : prev));
+    setCommentDraftById((prev) => ({ ...prev, [notificationId]: '' }));
+  }, []);
+
+  const applyNotificationAction = useCallback(
+    async (notification: AppNotification, patch: Partial<AppNotification>, successMessage: string) => {
+      setSubmittingId(notification.id);
+      setActionMessage(null);
+      const updatedAt = new Date().toISOString();
+
+      patchNotificationLocal(notification.id, {
+        ...patch,
+        updatedAt,
+      });
+
+      try {
+        await notificationsService.update(notification.id, {
+          ...patch,
+          updatedAt,
+        });
+        setActionMessage({ type: 'success', message: successMessage });
+      } catch (error) {
+        console.error('Không thể cập nhật thông báo:', error);
+        setActionMessage({ type: 'error', message: 'Không thể cập nhật thông báo. Vui lòng thử lại.' });
+        void loadFromApi();
+      } finally {
+        setSubmittingId(null);
+      }
+    },
+    [loadFromApi, patchNotificationLocal],
+  );
+
+  const handleApprove = useCallback(
+    (notification: AppNotification) => {
+      if (!permissions.canApprove) {
+        setActionMessage({ type: 'error', message: 'Bạn không có quyền phê duyệt thông báo này.' });
+        return;
+      }
+      void applyNotificationAction(notification, { status: 'approved' }, 'Đã phê duyệt thông báo.');
+    },
+    [applyNotificationAction, permissions.canApprove],
+  );
+
+  const handleReject = useCallback(
+    (notification: AppNotification) => {
+      if (!permissions.canApprove) {
+        setActionMessage({ type: 'error', message: 'Bạn không có quyền từ chối thông báo này.' });
+        return;
+      }
+      void applyNotificationAction(notification, { status: 'rejected' }, 'Đã từ chối thông báo.');
+    },
+    [applyNotificationAction, permissions.canApprove],
+  );
+
+  const handleCreateTask = useCallback(
+    (notification: AppNotification) => {
+      if (!permissions.canCreateTask) {
+        setActionMessage({ type: 'error', message: 'Bạn không có quyền tạo việc từ cảnh báo này.' });
+        return;
+      }
+      void applyNotificationAction(notification, { status: 'task_created' }, 'Đã tạo việc từ thông báo.');
+    },
+    [applyNotificationAction, permissions.canCreateTask],
+  );
+
+  const handleSubmitComment = useCallback(
+    (notification: AppNotification) => {
+      if (!permissions.canComment) {
+        setActionMessage({ type: 'error', message: 'Bạn không có quyền góp ý thông báo này.' });
+        return;
+      }
+
+      const comment = (commentDraftById[notification.id] || '').trim();
+      if (!comment) {
+        setActionMessage({ type: 'error', message: 'Vui lòng nhập nội dung góp ý.' });
+        return;
+      }
+
+      void applyNotificationAction(
+        notification,
+        {
+          status: 'commented',
+          comments: comment,
+        },
+        'Đã gửi góp ý thành công.',
+      );
+
+      setActiveCommentId(null);
+      setCommentDraftById((prev) => ({ ...prev, [notification.id]: '' }));
+    },
+    [applyNotificationAction, commentDraftById, permissions.canComment],
+  );
+
+  const handleOpenDetail = useCallback(
+    (notification: AppNotification) => {
+      const destination = resolveNotificationDestination(notification);
+
+      setNotificationFocus({
+        notificationId: notification.id,
+        sourceModule: notification.sourceModule,
+        sourceId: notification.sourceId,
+      });
+
+      setOpen(false);
+
+      if (destination === 'Notifications') {
+        onSelectTab('Notifications');
+      } else {
+        onSelectTab(destination);
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [onSelectTab, setNotificationFocus],
+  );
+
+  const triggerClassName = useMemo(() => {
+    if (activeTab === 'Notifications') {
+      return 'bg-rose-50 border-rose-300 text-[#C21A1A] ring-2 ring-rose-200/60';
+    }
+    return 'bg-slate-50 border-slate-200 hover:bg-[#C21A1A]/5 hover:border-rose-150 hover:text-[#C21A1A] text-slate-500';
+  }, [activeTab]);
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className={`relative h-11 w-11 rounded-xl border transition-all md:h-9 md:w-9 ${triggerClassName}`}
+          title="Xem thông báo"
+        >
+          <Bell className="h-4 w-4" />
+          {pendingCount > 0 ? (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border border-white bg-[#C21A1A] px-1 text-[8px] font-black text-white">
+              {pendingCount > 99 ? '99+' : pendingCount}
+            </span>
+          ) : null}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align={isMobile ? 'center' : 'end'}
+        side="bottom"
+        sideOffset={isMobile ? 8 : 10}
+        className="w-[min(96vw,560px)] max-w-[96vw] p-0"
+      >
+        <div className="border-b border-slate-100 px-3 py-2.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-wider text-slate-800">Thông báo duyệt phiếu</p>
+              <p className="text-[10px] font-semibold text-slate-500">
+                {pendingCount > 0 ? `${pendingCount} phiếu đang chờ xử lý` : 'Tất cả thông báo đã xử lý'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              className="h-7 rounded-md px-2 py-1 text-[9.5px] font-black uppercase tracking-wider text-slate-600"
+            >
+              Làm mới
+            </Button>
+          </div>
+
+          {actionMessage ? (
+            <Alert
+              className={`mt-2 flex items-start justify-between rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold ${
+                actionMessage.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-rose-200 bg-rose-50 text-rose-700'
               }`}
             >
-              <span>Đã xử lý</span>
-              {filterTab === 'resolved' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C21A1A]" />
-              )}
-            </button>
-          </div>
-
-          <div className="text-[9.5px] text-slate-400 font-mono font-bold tracking-wider">
-            HIỂN THỊ {filteredNotifications.length} / {notifications.length} PHIẾU
-          </div>
-        </div>
-
-        {/* METADATA SUMMARY BADGES (PHÂN LOẠI NHANH CHỈ SỐ) - COPIED RATIOS FROM PHONE SCREEN */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          
-          {/* Pill 1: Mới */}
-          <button
-            onClick={() => setSubFilter(subFilter === 'new' ? 'all' : 'new')}
-            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-              subFilter === 'new'
-                ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/10'
-                : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/50'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">Mới</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            </div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-lg font-black font-mono text-slate-800">{newCount}</span>
-              <span className="text-[9px] font-semibold text-slate-400">phiếu</span>
-            </div>
-          </button>
-
-          {/* Pill 2: Cần duyệt */}
-          <button
-            onClick={() => setSubFilter(subFilter === 'needs_approval' ? 'all' : 'needs_approval')}
-            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-              subFilter === 'needs_approval'
-                ? 'bg-orange-50/70 border-orange-300 ring-2 ring-orange-400/10'
-                : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/50'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">Cần duyệt</span>
-              <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">!</span>
-            </div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-lg font-black font-mono text-slate-800">{needsApprovalCount}</span>
-              <span className="text-[9px] font-semibold text-slate-400">cần duyệt</span>
-            </div>
-          </button>
-
-          {/* Pill 3: Khập / Khẩn */}
-          <button
-            onClick={() => setSubFilter(subFilter === 'urgent' ? 'all' : 'urgent')}
-            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-              subFilter === 'urgent'
-                ? 'bg-[#C21A1A]/5 border-red-300 ring-2 ring-red-400/10'
-                : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/50'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[9.5px] font-bold text-[#C21A1A] uppercase tracking-wider">Khẩn</span>
-              <span className="w-4 h-4 rounded-full bg-rose-100 text-[#C21A1A] flex items-center justify-center text-[10px] font-black">▲</span>
-            </div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-lg font-black font-mono text-[#C21A1A]">{urgentCount}</span>
-              <span className="text-[9px] font-semibold text-rose-400">khẩn cấp</span>
-            </div>
-          </button>
-
-          {/* Pill 4: Đã xử lý */}
-          <button
-            onClick={() => setSubFilter(subFilter === 'processed' ? 'all' : 'processed')}
-            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-              subFilter === 'processed'
-                ? 'bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-400/10'
-                : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/50'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[9.5px] font-bold text-emerald-700 uppercase tracking-wider">Đã xử lý</span>
-              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px]">✔</span>
-            </div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-lg font-black font-mono text-emerald-800">{processedCount}</span>
-              <span className="text-[9px] font-semibold text-emerald-400">xong</span>
-            </div>
-          </button>
-
-        </div>
-
-        {/* NOTIFICATION INTERACTIVE FEED LIST (PHIẾU PHÊ DUYỆT ĐỦ NGỮ CẢNH) - GAP-2 COMPACT */}
-        <div className="space-y-2">
-          
-          {filteredNotifications.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 space-y-1.5">
-              <Bell className="w-7 h-7 text-slate-300 mx-auto" />
-              <h3 className="text-[11px] font-black text-slate-600 uppercase tracking-wider">Không tìm thấy thông báo nào</h3>
-              <p className="text-[10px] text-slate-400">Chọn bộ lọc khác hoặc nhấn "Khôi phục mẫu" để cập nhật.</p>
-            </div>
-          ) : (
-            filteredNotifications.map((it) => {
-              
-              // Styling helper based on urgency type and level
-              const typeStyle = () => {
-                switch (it.type) {
-                  case 'khan':
-                    return {
-                      border: 'border-l-3 border-l-rose-500 border-slate-200',
-                      badge: 'bg-rose-50 text-rose-700 border-rose-250 text-[#C21A1A]',
-                      iconBg: 'bg-rose-50 text-[#C21A1A]',
-                      icon: AlertTriangle
-                    };
-                  case 'can_duyet':
-                    return {
-                      border: 'border-l-3 border-l-amber-500 border-slate-200',
-                      badge: 'bg-amber-50 text-amber-700 border-amber-250',
-                      iconBg: 'bg-amber-50 text-amber-600',
-                      icon: FileText
-                    };
-                  case 'nhac_viec':
-                    return {
-                      border: 'border-l-3 border-l-blue-500 border-slate-200',
-                      badge: 'bg-blue-50 text-blue-700 border-blue-250',
-                      iconBg: 'bg-blue-50 text-blue-600',
-                      icon: Clock
-                    };
-                  case 'canh_bao':
-                  default:
-                    return {
-                      border: 'border-l-3 border-l-slate-400 border-slate-200',
-                      badge: 'bg-slate-50 text-slate-705 border-slate-250',
-                      iconBg: 'bg-slate-50 text-slate-500',
-                      icon: Bell
-                    };
-                }
-              };
-
-              const style = typeStyle();
-              const IconComponent = style.icon;
-
-              return (
-                <div 
-                  key={it.id}
-                  className={`bg-white border rounded-xl p-3 shadow-xs transition-all hover:bg-slate-50/40 relative flex flex-col justify-between ${style.border}`}
+              <AlertDescription className="flex w-full items-start justify-between gap-2 text-[10px] font-semibold">
+                <span>{actionMessage.message}</span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  type="button"
+                  onClick={handleDismissActionMessage}
+                  className="h-4 w-4 shrink-0 rounded p-0.5 hover:bg-white/60"
+                  aria-label="Đóng thông báo trạng thái"
                 >
-                  
-                  {/* Card Main line and description */}
-                  <div className="flex items-start justify-between gap-3 text-left">
-                    <div className="flex items-start gap-2.5">
-                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${style.iconBg}`}>
-                        <IconComponent className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <h4 className="text-[12.5px] font-black text-slate-800 tracking-tight leading-snug">{it.title}</h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[9.5px] text-slate-400 font-bold">{it.time}</span>
-                          <span className="text-slate-310 text-[9px] text-slate-300">•</span>
-                          <span className={`text-[8.5px] font-extrabold uppercase tracking-widest px-1 rounded border ${style.badge}`}>
-                            {it.typeLabel}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Compact Chevron feedback target indicator */}
-                    <ChevronRight className="w-4 h-4 text-slate-300 shrink-0 self-center hidden sm:block" />
-                  </div>
-
-                  {/* Context Values Grid: 2 columns, extremely concise to respect gap-2 constraints */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-1.5 gap-x-3 my-2.5 text-left text-[11px] leading-tight font-medium bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-                    
-                    {/* Requester */}
-                    <div>
-                      <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider block">Yêu cầu bởi</span>
-                      <div className="flex items-center gap-1 mt-0.5 font-bold text-slate-700">
-                        <Users className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{it.requester}</span>
-                        <span className="text-[8.5px] text-slate-400 truncate">({it.role})</span>
-                      </div>
-                    </div>
-
-                    {/* Approver role */}
-                    <div>
-                      <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider block">Nhiệm vụ kiểm duyệt</span>
-                      <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-500">
-                        <span className="h-1 w-1 rounded-full bg-slate-450 bg-slate-400 shrink-0" />
-                        <span>{it.approver}</span>
-                      </div>
-                    </div>
-
-                    {/* Evidence if any */}
-                    {it.evidence ? (
-                      <div className="col-span-2 md:col-span-1">
-                        <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider block">Hồ sơ đính kèm</span>
-                        <div className="flex items-center gap-1 mt-0.5 font-bold text-emerald-600">
-                          <Paperclip className="w-3 h-3 shrink-0" />
-                          <span>Hồ sơ mở cửa đầy đủ</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="col-span-2 md:col-span-1">
-                        <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider block">Trạng thái phê chuẩn</span>
-                        <div className="mt-0.5 font-bold">
-                          {it.status === 'pending' ? (
-                            <span className="text-amber-652 text-amber-600 text-[9.5px]">Đang chờ...</span>
-                          ) : it.status === 'approved' ? (
-                            <span className="text-emerald-600 bg-emerald-50 px-1 py-0.2 text-[9px] border border-emerald-100 rounded font-black">✓ ĐÃ PHÊ DUYỆT</span>
-                          ) : it.status === 'rejected' ? (
-                            <span className="text-rose-600 bg-rose-50 px-1 py-0.2 text-[9px] border border-rose-100 rounded font-black">✗ TỪ CHỐI</span>
-                          ) : (
-                            <span className="text-slate-500">{it.status.slice(0,10)}</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Comment rendering */}
-                  {it.comments && (
-                    <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-2 mb-2 text-left text-[11px] text-amber-800">
-                      <p className="font-semibold italic"><strong>Phản hồi:</strong> "{it.comments}"</p>
-                    </div>
-                  )}
-
-                  {/* BOTTOM CTAS ROW - STYLED MINIMALISTICALLY COMPACT */}
-                  {it.status === 'pending' && (
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
-                      
-                      {/* Exception: Red/Green style buttons */}
-                      {it.type === 'khan' && (
-                        <>
-                          <button 
-                            onClick={() => handleReject(it.id)}
-                            disabled={!permissions.canApprove}
-                            className="bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all active:scale-95"
-                          >
-                            Từ chối
-                          </button>
-                          <button 
-                            onClick={() => handleApprove(it.id)}
-                            disabled={!permissions.canApprove}
-                            className="bg-[#107c41] hover:bg-[#0e6b37] text-white rounded-lg px-3.5 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all flex items-center gap-1 shadow-xs active:scale-95"
-                          >
-                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                            <span>Duyệt</span>
-                          </button>
-                        </>
-                      )}
-
-                      {/* Needs review: Orange/Green buttons */}
-                      {it.type === 'can_duyet' && (
-                        <>
-                          {commentingId === it.id ? (
-                            <div className="w-full space-y-1.5 mt-1">
-                              <textarea
-                                placeholder="Ghi ý kiến chỉnh sửa hoặc phản hồi lại..."
-                                rows={2}
-                                value={tempCommentText}
-                                onChange={(e) => setTempCommentText(e.target.value)}
-                                className="w-full text-[11px] font-semibold p-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C21A1A]"
-                              />
-                              <div className="flex justify-end gap-1.5">
-                                <button 
-                                  onClick={() => setCommentingId(null)}
-                                  className="px-2 py-1 border border-slate-200 hover:bg-slate-50 rounded text-slate-500 text-[10px] font-bold"
-                                >
-                                  Hủy
-                                </button>
-                                <button 
-                                  onClick={() => submitComment(it.id)}
-                                  className="px-2.5 py-1 bg-[#C21A1A] hover:bg-[#A31616] text-white rounded text-[10px] font-bold"
-                                >
-                                  Gửi lưu
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <button 
-                                onClick={() => { setCommentingId(it.id); setTempCommentText(''); }}
-                                disabled={!permissions.canComment}
-                                className="bg-white hover:bg-amber-50 text-amber-600 hover:text-amber-705 border border-amber-200 rounded-lg px-3 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all flex items-center gap-1 active:scale-95"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>Góp ý</span>
-                              </button>
-                              <button 
-                                onClick={() => handleApprove(it.id)}
-                                disabled={!permissions.canApprove}
-                                className="bg-[#107c41] hover:bg-[#0e6b37] text-white rounded-lg px-3.5 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all flex items-center gap-1 shadow-xs active:scale-95"
-                              >
-                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>Duyệt</span>
-                              </button>
-                            </>
-                          )}
-                        </>
-                      )}
-
-                      {/* Reminder checklist: Details, then Green check */}
-                      {it.type === 'nhac_viec' && (
-                        <>
-                          <button 
-                            onClick={() => triggerToast('Chi tiết checklist được hoàn thành có đủ bằng chứng đính kèm ảnh chụp.', 'info')}
-                            className="bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 rounded-lg px-3 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all active:scale-95"
-                          >
-                            Chi tiết
-                          </button>
-                          <button 
-                            onClick={() => handleApprove(it.id)}
-                            disabled={!permissions.canApprove}
-                            className="bg-[#107c41] hover:bg-[#0e6b37] text-white rounded-lg px-3.5 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all flex items-center gap-1 shadow-xs active:scale-95"
-                          >
-                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                            <span>Duyệt</span>
-                          </button>
-                        </>
-                      )}
-
-                      {/* Alarm: Task creation simple button */}
-                      {it.type === 'canh_bao' && (
-                        <>
-                          <button 
-                            onClick={() => handleCreateTask(it.id)}
-                            disabled={!permissions.canCreateTask}
-                            className="bg-white hover:bg-emerald-50 text-emerald-600 hover:text-emerald-705 border border-emerald-250 rounded-lg px-3 py-1.5 font-black uppercase text-[10px] tracking-wider cursor-pointer transition-all flex items-center gap-1 active:scale-95"
-                          >
-                            <Plus className="w-3.5 h-3.5 animate-pulse" />
-                            <span>Tạo việc</span>
-                          </button>
-                        </>
-                      )}
-
-                    </div>
-                  )}
-
-                </div>
-              );
-            })
-          )}
-
+                  <X className="h-3 w-3" />
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
         </div>
 
+        <div className="pb-1">
+          <NotificationsList
+            items={items}
+            permissions={permissions}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
+            submittingId={submittingId}
+            activeCommentId={activeCommentId}
+            commentDraftById={commentDraftById}
+            onRetry={handleRetry}
+            onOpenDetail={handleOpenDetail}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onCreateTask={handleCreateTask}
+            onStartComment={handleStartComment}
+            onCancelComment={handleCancelComment}
+            onSubmitComment={handleSubmitComment}
+            onCommentDraftChange={handleCommentDraftChange}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+});
+
+export default function NotificationsView() {
+  const activeTab = useAppStore((state) => state.activeTab);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
+
+  return (
+    <div className="mx-auto w-full max-w-2xl space-y-3">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left">
+        <h1 className="text-base font-black tracking-tight text-slate-800">Thông báo đã chuyển lên Header</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Có thể duyệt, góp ý hoặc tạo việc trực tiếp trong popover, đồng thời vẫn mở chi tiết phiếu khi cần.
+        </p>
       </div>
 
-      {/* FOOTER GENERAL PRINCIPLES OF NOTIFICATIONS & APPROVAL SPEC - COMPACT */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pb-6">
-        
-        {/* Card 1: Nguyên Tắc Thiết Kế */}
-        <div className="bg-white border border-slate-200/95 rounded-xl p-3 shadow-xs text-left space-y-2">
-          <div className="flex items-center gap-1.5 pb-1.5 border-b border-rose-100 text-[#C21A1A]">
-            <Activity className="w-3.5 h-3.5 shrink-0" />
-            <h4 className="text-[10px] font-black uppercase tracking-wider">NGUYÊN TẮC THIẾT KẾ THÔNG BÁO COOP</h4>
-          </div>
-          <ul className="text-[10.5px] leading-relaxed text-slate-500 font-semibold space-y-1">
-            <li className="flex items-start gap-1.5">
-              <span className="h-1 w-1 rounded-full bg-red-500 shrink-0 mt-1.5" />
-              <span>Gom toàn bộ luồng nhắc việc, báo khẩn hay ngoại lệ về một nơi duy nhất.</span>
-            </li>
-            <li className="flex items-start gap-1.5">
-              <span className="h-1 w-1 rounded-full bg-red-500 shrink-0 mt-1.5" />
-              <span>Đầy đủ thông tin người gửi, lý do ngoại lệ, công cụ trực quan hóa.</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Card 2: Phân Loại Màu Cảnh Báo */}
-        <div className="bg-white border border-slate-200/95 rounded-xl p-3 shadow-xs text-left space-y-1">
-          <div className="flex items-center gap-1.5 pb-1.5 border-b border-rose-100 text-[#C21A1A]">
-            <HelpCircle className="w-3.5 h-3.5 shrink-0" />
-            <h4 className="text-[10px] font-black uppercase tracking-wider font-sans">Ý NGHĨA PHÂN CẤP CẢNH BÁO</h4>
-          </div>
-          <div className="text-[10px] leading-relaxed font-semibold divide-y divide-slate-100">
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-500">Đỏ (Ngoại lệ) / Vàng (Chờ duyệt)</span>
-              <span className="text-[9px] font-bold text-[#C21A1A]">Phê chuẩn nhanh</span>
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-500">Xanh Dương (Checklist ca trực)</span>
-              <span className="text-[9px] font-bold text-blue-500">Nhắc nhở tự động</span>
-            </div>
-          </div>
-        </div>
-
+      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+        <NotificationsBellPopover activeTab={activeTab} onSelectTab={setActiveTab} />
       </div>
-
     </div>
   );
 }

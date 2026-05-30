@@ -1,44 +1,44 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 
-  Shield, 
-  FileText, 
-  Network, 
-  Lock, 
-  User, 
-  Scale, 
-  Settings, 
-  GraduationCap, 
-  Search, 
-  ChevronRight, 
-  ArrowLeft, 
-  Bell, 
-  Check, 
-  ExternalLink,
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeft,
   BookOpen,
-  Info,
-  Sparkles,
-  HelpCircle,
-  FileCheck,
-  Plus,
+  Check,
+  ChevronRight,
   Edit2,
+  ExternalLink,
+  FileCheck,
+  FileText,
+  GraduationCap,
+  Info,
+  Lock,
+  Network,
+  Plus,
+  Scale,
+  Search,
+  Settings,
+  Shield,
   Trash2,
-  X
+  User,
 } from 'lucide-react';
 import { MODULE_CODE } from '../../constants';
-import { useAppStore } from '../../stores/app-store';
 import { handbookService } from '../../services/handbook-service';
+import { handbookCategoryService } from '../../services/handbook-category-service';
 import { staffPermissionService } from '../../services/admin';
-import type { HandbookDoc } from '../../types/handbook.types';
 import { ScrollArea } from '../../shared/components/scroll-area';
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@shared/ui';
+import { useAppStore } from '../../stores/app-store';
+import type { HandbookCategory, HandbookDoc } from '../../types/handbook.types';
+import HandbookEditorDialog from './components/handbook-editor-dialog';
+import type { HandbookFormState, HandbookPermissions } from './handbook-view.types';
+import { handbookFormSchema, type HandbookFormFieldErrors } from './handbook-form-schema';
 
 interface UICardMetadata {
   id: string;
   iconBg: string;
   iconColor: string;
   icon: React.ComponentType<{ className?: string }>;
-  badgeText?: string;
-  hasSeen?: boolean;
-  isUpdated?: boolean;
+  badgeText: string;
+  isUpdated: boolean;
   driveLink?: string;
   categoryKey: string;
 }
@@ -47,21 +47,34 @@ interface HandbookDocWithMeta extends HandbookDoc {
   meta: UICardMetadata;
 }
 
-interface HandbookFormState {
-  title: string;
-  category: string;
-  summary: string;
-  content: string;
-  requiredRead: boolean;
-  isUpdated: boolean;
-  driveLink: string;
-  categoryKey: string;
-}
+type HandbookFilter = 'all' | 'required' | 'updated';
 
 const OWNER_ROLE_CODES = new Set(['CHU_CUA_HANG', 'QUAN_TRI_VIEN']);
 
+const DEFAULT_PERMISSIONS: HandbookPermissions = {
+  canCreate: false,
+  canUpdate: false,
+  canDelete: false,
+  canApprove: false,
+};
+
+const EMPTY_FORM_STATE: HandbookFormState = {
+  title: '',
+  category: '',
+  summary: '',
+  content: '',
+  requiredRead: false,
+  isUpdated: false,
+  driveLink: '',
+  categoryKey: '',
+};
+
 function normalizeAccessCode(value?: string | null): string {
   return (value || '').trim().toUpperCase();
+}
+
+function normalizeText(value?: string | null): string {
+  return (value || '').trim().toLowerCase();
 }
 
 function formatDateTime(value?: string): string {
@@ -84,40 +97,118 @@ function formatDateTime(value?: string): string {
   });
 }
 
+function resolveCardMetadata(doc: HandbookDoc): UICardMetadata {
+  const normalized = normalizeText(`${doc.category || ''} ${doc.title || ''} ${doc.categoryKey || ''}`);
+  const base: UICardMetadata = {
+    id: doc.id,
+    iconBg: 'bg-slate-100 text-slate-700',
+    iconColor: 'text-slate-500',
+    icon: FileText,
+    badgeText: doc.requiredRead ? 'Bắt buộc đọc' : doc.isUpdated ? 'Xác nhận đã đọc' : 'Xem tóm tắt',
+    isUpdated: Boolean(doc.isUpdated),
+    driveLink: doc.driveLink,
+    categoryKey: doc.categoryKey || 'khác',
+  };
+
+  if (normalized.includes('văn hóa')) {
+    return { ...base, iconBg: 'bg-rose-50 text-red-700 hover:bg-rose-100', iconColor: 'text-red-600', icon: Shield, categoryKey: 'văn hóa' };
+  }
+  if (normalized.includes('nội quy')) {
+    return { ...base, iconBg: 'bg-orange-50 text-orange-700 hover:bg-orange-100', iconColor: 'text-orange-500', icon: FileText, categoryKey: 'nội quy' };
+  }
+  if (normalized.includes('sơ đồ')) {
+    return { ...base, iconBg: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100', iconColor: 'text-emerald-500', icon: Network, categoryKey: 'sơ đồ' };
+  }
+  if (normalized.includes('phân quyền')) {
+    return { ...base, iconBg: 'bg-blue-50 text-blue-700 hover:bg-blue-100', iconColor: 'text-blue-500', icon: Lock, categoryKey: 'phân quyền' };
+  }
+  if (normalized.includes('mô tả công việc')) {
+    return { ...base, iconBg: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100', iconColor: 'text-indigo-500', icon: User, categoryKey: 'mô tả' };
+  }
+  if (normalized.includes('quy chế')) {
+    return { ...base, iconBg: 'bg-pink-50 text-pink-700 hover:bg-pink-100', iconColor: 'text-pink-600', icon: Scale, categoryKey: 'quy chế' };
+  }
+  if (normalized.includes('sop')) {
+    return { ...base, iconBg: 'bg-sky-50 text-sky-700 hover:bg-sky-100', iconColor: 'text-sky-600', icon: Settings, categoryKey: 'sop gốc' };
+  }
+  if (normalized.includes('đào tạo')) {
+    return { ...base, iconBg: 'bg-amber-50 text-amber-700 hover:bg-amber-100', iconColor: 'text-amber-500', icon: GraduationCap, categoryKey: 'đào tạo' };
+  }
+
+  return base;
+}
+
+function renderFormattedContent(content: string): React.ReactNode[] {
+  return content.split('\n').map((line, index) => {
+    if (line.startsWith('### ')) {
+      return (
+        <h3 key={`h3-${index}`} className="mt-5 border-b border-slate-100 pb-1 text-sm font-black uppercase tracking-wide text-slate-800">
+          {line.replace('### ', '')}
+        </h3>
+      );
+    }
+    if (line.startsWith('#### ')) {
+      return (
+        <h4 key={`h4-${index}`} className="mt-3 text-xs font-black uppercase tracking-wide text-[#C21A1A]">
+          {line.replace('#### ', '')}
+        </h4>
+      );
+    }
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      return (
+        <div key={`li-${index}`} className="flex items-start gap-2 py-1 pl-1">
+          <span className="mt-1.5 shrink-0 text-xs font-bold text-[#C21A1A]">▪</span>
+          <span className="text-xs font-medium leading-relaxed text-slate-700">{line.slice(2)}</span>
+        </div>
+      );
+    }
+    if (!line.trim()) {
+      return <div key={`empty-${index}`} className="h-2" />;
+    }
+
+    const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
+    if (linkMatch) {
+      return (
+        <p key={`link-${index}`} className="py-1.5 text-xs">
+          <a href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-[#C21A1A] hover:underline">
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>{linkMatch[1]}</span>
+          </a>
+        </p>
+      );
+    }
+
+    return (
+      <p key={`p-${index}`} className="py-1.5 text-xs leading-relaxed text-slate-600">
+        {line}
+      </p>
+    );
+  });
+}
+
 export default function HandbookView() {
   const currentUser = useAppStore((state) => state.currentUser);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'required' | 'updated'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<HandbookFilter>('all');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [handbookDocs, setHandbookDocs] = useState<HandbookDoc[]>([]);
+  const [handbookCategories, setHandbookCategories] = useState<HandbookCategory[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
-  const [permissions, setPermissions] = useState({
-    canCreate: false,
-    canUpdate: false,
-    canDelete: false,
-    canApprove: false,
-  });
+  const [permissions, setPermissions] = useState<HandbookPermissions>(DEFAULT_PERMISSIONS);
+
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [formState, setFormState] = useState<HandbookFormState>({
-    title: '',
-    category: '',
-    summary: '',
-    content: '',
-    requiredRead: false,
-    isUpdated: false,
-    driveLink: '',
-    categoryKey: '',
-  });
+  const [formState, setFormState] = useState<HandbookFormState>(EMPTY_FORM_STATE);
+  const [formErrors, setFormErrors] = useState<HandbookFormFieldErrors>({});
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     if (toastTimeoutRef.current) {
       window.clearTimeout(toastTimeoutRef.current);
     }
@@ -126,7 +217,7 @@ export default function HandbookView() {
       setToastMessage(null);
       toastTimeoutRef.current = null;
     }, 3000);
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -136,16 +227,17 @@ export default function HandbookView() {
     };
   }, []);
 
-  const isOwner =
-    currentUser?.username === 'admin' ||
-    OWNER_ROLE_CODES.has(normalizeAccessCode(currentUser?.roleCode));
+  const isOwner = useMemo(
+    () => currentUser?.username === 'admin' || OWNER_ROLE_CODES.has(normalizeAccessCode(currentUser?.roleCode)),
+    [currentUser?.roleCode, currentUser?.username],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     const loadPermissions = async () => {
       if (!currentUser) {
-        setPermissions({ canCreate: false, canUpdate: false, canDelete: false, canApprove: false });
+        setPermissions(DEFAULT_PERMISSIONS);
         return;
       }
 
@@ -161,42 +253,45 @@ export default function HandbookView() {
         }
 
         const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const handbookPermRow = allPermissions.find(
+        const handbookPermission = allPermissions.find(
           (permission) =>
             normalizeAccessCode(permission.roleCode) === roleCode &&
             normalizeAccessCode(permission.module) === MODULE_CODE.SO_TAY,
         );
 
         setPermissions({
-          canCreate: !!handbookPermRow?.canCreate,
-          canUpdate: !!handbookPermRow?.canUpdate,
-          canDelete: !!handbookPermRow?.canDelete,
-          canApprove: !!handbookPermRow?.canApprove,
+          canCreate: Boolean(handbookPermission?.canCreate),
+          canUpdate: Boolean(handbookPermission?.canUpdate),
+          canDelete: Boolean(handbookPermission?.canDelete),
+          canApprove: Boolean(handbookPermission?.canApprove),
         });
       } catch (error) {
         if (!cancelled) {
           console.error('Không thể tải quyền sổ tay:', error);
-          setPermissions({ canCreate: false, canUpdate: false, canDelete: false, canApprove: false });
+          setPermissions(DEFAULT_PERMISSIONS);
         }
       }
     };
 
     void loadPermissions();
-
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id, currentUser?.roleCode, currentUser?.username, isOwner]);
+  }, [currentUser, isOwner]);
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadHandbookDocs = async () => {
+    const loadDocsAndCategories = async () => {
       setIsLoadingDocs(true);
       setLoadErrorMessage(null);
 
       try {
-        const docs = await handbookService.getAll();
+        const [docs, categories] = await Promise.all([
+          handbookService.getAll(),
+          handbookCategoryService.getAll(),
+        ]);
+
         if (cancelled) {
           return;
         }
@@ -210,10 +305,15 @@ export default function HandbookView() {
           return (a.title || '').localeCompare(b.title || '', 'vi');
         });
 
+        const sortedCategories = [...categories].sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '', 'vi'),
+        );
+
         setHandbookDocs(sortedDocs);
+        setHandbookCategories(sortedCategories);
       } catch (error) {
         if (!cancelled) {
-          console.error('Không thể tải tài liệu sổ tay:', error);
+          console.error('Không thể tải dữ liệu handbook:', error);
           setLoadErrorMessage('Không thể tải dữ liệu sổ tay. Vui lòng kiểm tra kết nối hoặc quyền truy cập.');
         }
       } finally {
@@ -223,63 +323,68 @@ export default function HandbookView() {
       }
     };
 
-    void loadHandbookDocs();
-
+    void loadDocsAndCategories();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const resolveCardMetadata = (doc: HandbookDoc): UICardMetadata => {
-    const normalized = `${doc.category || ''} ${doc.title || ''} ${doc.categoryKey || ''}`.toLowerCase();
-    const base: UICardMetadata = {
-      id: doc.id,
-      iconBg: 'bg-slate-100 text-slate-650',
-      iconColor: 'text-slate-500',
-      icon: FileText,
-      badgeText: doc.requiredRead ? 'Bắt buộc đọc' : doc.isUpdated ? 'Xác nhận đã đọc' : 'Xem tóm tắt',
-      isUpdated: !!doc.isUpdated,
-      driveLink: doc.driveLink,
-      categoryKey: doc.categoryKey || 'khác',
+  const processedDocs = useMemo<HandbookDocWithMeta[]>(
+    () => handbookDocs.map((doc) => ({ ...doc, meta: resolveCardMetadata(doc) })),
+    [handbookDocs],
+  );
+
+  const categoryOptions = useMemo(() => {
+    const unique = new Set<string>();
+
+    for (const category of handbookCategories) {
+      if (category.name?.trim()) {
+        unique.add(category.name.trim());
+      }
+    }
+
+    for (const doc of handbookDocs) {
+      if (doc.category?.trim()) {
+        unique.add(doc.category.trim());
+      }
+    }
+
+    return [...unique].sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [handbookCategories, handbookDocs]);
+
+  const MAX_VISIBLE = 5;
+
+  const { visibleCategories, hiddenCategories } = useMemo(() => {
+    if (categoryOptions.length <= MAX_VISIBLE) {
+      return {
+        visibleCategories: categoryOptions,
+        hiddenCategories: [],
+      };
+    }
+
+    const isSelectedHidden =
+      selectedCategory !== null &&
+      !categoryOptions.slice(0, MAX_VISIBLE).includes(selectedCategory);
+
+    if (isSelectedHidden) {
+      const visible = [
+        selectedCategory,
+        ...categoryOptions.filter((c) => c !== selectedCategory).slice(0, MAX_VISIBLE - 1),
+      ];
+      const hidden = categoryOptions.filter((c) => !visible.includes(c));
+      return {
+        visibleCategories: visible,
+        hiddenCategories: hidden,
+      };
+    }
+
+    return {
+      visibleCategories: categoryOptions.slice(0, MAX_VISIBLE),
+      hiddenCategories: categoryOptions.slice(MAX_VISIBLE),
     };
-
-    if (normalized.includes('văn hóa')) {
-      return { ...base, iconBg: 'bg-rose-50 text-red-650 hover:bg-rose-100', iconColor: 'text-red-600', icon: Shield, categoryKey: 'văn hóa' };
-    }
-    if (normalized.includes('nội quy')) {
-      return { ...base, iconBg: 'bg-orange-50 text-orange-650 hover:bg-orange-100', iconColor: 'text-orange-500', icon: FileText, categoryKey: 'nội quy' };
-    }
-    if (normalized.includes('sơ đồ')) {
-      return { ...base, iconBg: 'bg-emerald-50 text-emerald-650 hover:bg-emerald-100', iconColor: 'text-emerald-500', icon: Network, categoryKey: 'sơ đồ' };
-    }
-    if (normalized.includes('phân quyền')) {
-      return { ...base, iconBg: 'bg-blue-50 text-blue-650 hover:bg-blue-100', iconColor: 'text-blue-500', icon: Lock, categoryKey: 'phân quyền' };
-    }
-    if (normalized.includes('mô tả công việc')) {
-      return { ...base, iconBg: 'bg-indigo-50 text-indigo-650 hover:bg-indigo-100', iconColor: 'text-indigo-500', icon: User, categoryKey: 'mô tả' };
-    }
-    if (normalized.includes('quy chế')) {
-      return { ...base, iconBg: 'bg-pink-50 text-pink-650 hover:bg-pink-100', iconColor: 'text-pink-600', icon: Scale, categoryKey: 'quy chế' };
-    }
-    if (normalized.includes('sop')) {
-      return { ...base, iconBg: 'bg-sky-50 text-sky-650 hover:bg-sky-100', iconColor: 'text-sky-600', icon: Settings, categoryKey: 'sop gốc' };
-    }
-    if (normalized.includes('đào tạo')) {
-      return { ...base, iconBg: 'bg-amber-50 text-amber-650 hover:bg-amber-100', iconColor: 'text-amber-500', icon: GraduationCap, categoryKey: 'đào tạo' };
-    }
-
-    return base;
-  };
-
-  const processedDocs = useMemo<HandbookDocWithMeta[]>(() => {
-    return handbookDocs.map((doc) => ({
-      ...doc,
-      meta: resolveCardMetadata(doc),
-    }));
-  }, [handbookDocs]);
+  }, [categoryOptions, selectedCategory]);
 
   const currentReadKey = currentUser?.id || currentUser?.username || '';
-
   const readDocs = useMemo(() => {
     const map: Record<string, boolean> = {};
     if (!currentReadKey) {
@@ -287,63 +392,65 @@ export default function HandbookView() {
     }
 
     for (const doc of processedDocs) {
-      map[doc.id] = !!doc.readAudits?.[currentReadKey];
+      map[doc.id] = Boolean(doc.readAudits?.[currentReadKey]);
     }
+
     return map;
-  }, [processedDocs, currentReadKey]);
+  }, [currentReadKey, processedDocs]);
 
   const canConfirmRead = permissions.canUpdate || permissions.canApprove;
+  const canManageCategories = permissions.canCreate || permissions.canUpdate;
 
-  // Filter handbook topics based on Search Term, Pills Selected Filter, and Category selection shorthand
-  const filteredDocs = processedDocs.filter(doc => {
-    // 1. Category check
-    if (selectedCategory) {
-      const docCat = doc.category.toLowerCase();
-      const targetCat = selectedCategory.toLowerCase();
-      // Match partials like "Văn hóa" -> "Văn hóa - Triết lý vận hành"
-      if (!docCat.includes(targetCat) && !doc.title.toLowerCase().includes(targetCat)) {
-        return false;
+  const filteredDocs = useMemo(() => {
+    const normalizedSearch = normalizeText(searchTerm);
+    const normalizedCategory = normalizeText(selectedCategory);
+
+    return processedDocs.filter((doc) => {
+      if (normalizedCategory) {
+        const categoryTarget = normalizeText(`${doc.category} ${doc.categoryKey} ${doc.meta.categoryKey} ${doc.title}`);
+        if (!categoryTarget.includes(normalizedCategory)) {
+          return false;
+        }
       }
-    }
 
-    // 2. Search term
-    const matchesSearch = 
-      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.category.toLowerCase().includes(searchTerm.toLowerCase());
+      if (normalizedSearch) {
+        const target = normalizeText(`${doc.title} ${doc.summary} ${doc.category}`);
+        if (!target.includes(normalizedSearch)) {
+          return false;
+        }
+      }
 
-    if (!matchesSearch) return false;
+      if (selectedFilter === 'required') {
+        return Boolean(doc.requiredRead);
+      }
+      if (selectedFilter === 'updated') {
+        return Boolean(doc.isUpdated);
+      }
 
-    // 3. Pills filter
-    if (selectedFilter === 'required') {
-      return !!doc.requiredRead;
-    }
-    if (selectedFilter === 'updated') {
-      return !!doc.isUpdated;
-    }
-
-    return true;
-  });
-
-  const activeDoc = processedDocs.find(doc => doc.id === activeDocId);
-  const activeReadAudit = activeDoc && currentReadKey ? activeDoc.readAudits?.[currentReadKey] : undefined;
-
-  const openCreateEditor = () => {
-    setEditingDocId(null);
-    setFormState({
-      title: '',
-      category: '',
-      summary: '',
-      content: '',
-      requiredRead: false,
-      isUpdated: false,
-      driveLink: '',
-      categoryKey: '',
+      return true;
     });
-    setIsEditorOpen(true);
-  };
+  }, [processedDocs, searchTerm, selectedCategory, selectedFilter]);
 
-  const openEditEditor = (doc: HandbookDocWithMeta, event?: React.MouseEvent) => {
+  const activeDoc = useMemo(
+    () => processedDocs.find((doc) => doc.id === activeDocId) || null,
+    [activeDocId, processedDocs],
+  );
+  const activeReadAudit = useMemo(
+    () => (activeDoc && currentReadKey ? activeDoc.readAudits?.[currentReadKey] : undefined),
+    [activeDoc, currentReadKey],
+  );
+  const renderedActiveContent = useMemo(
+    () => (activeDoc ? renderFormattedContent(activeDoc.content || '') : null),
+    [activeDoc],
+  );
+  const openCreateEditor = useCallback(() => {
+    setEditingDocId(null);
+    setFormState({ ...EMPTY_FORM_STATE });
+    setFormErrors({});
+    setIsEditorOpen(true);
+  }, []);
+
+  const openEditEditor = useCallback((doc: HandbookDocWithMeta, event?: React.MouseEvent) => {
     event?.stopPropagation();
     setEditingDocId(doc.id);
     setFormState({
@@ -351,56 +458,127 @@ export default function HandbookView() {
       category: doc.category || '',
       summary: doc.summary || '',
       content: doc.content || '',
-      requiredRead: !!doc.requiredRead,
-      isUpdated: !!doc.isUpdated,
+      requiredRead: Boolean(doc.requiredRead),
+      isUpdated: Boolean(doc.isUpdated),
       driveLink: doc.driveLink || '',
       categoryKey: doc.categoryKey || doc.meta.categoryKey || '',
     });
+    setFormErrors({});
     setIsEditorOpen(true);
-  };
+  }, []);
 
-  const handleDeleteDoc = async (doc: HandbookDocWithMeta, event?: React.MouseEvent) => {
-    event?.stopPropagation();
-    if (!permissions.canDelete) {
-      showToast('Bạn không có quyền xóa tài liệu.');
-      return;
-    }
-
-    const isConfirmed = window.confirm(`Bạn có chắc muốn xóa tài liệu "${doc.title}"?`);
-    if (!isConfirmed) {
-      return;
-    }
-
-    try {
-      await handbookService.delete(doc.id);
-      setHandbookDocs((prev) => prev.filter((item) => item.id !== doc.id));
-      if (activeDocId === doc.id) {
-        setActiveDocId(null);
+  const handleDeleteDoc = useCallback(
+    async (doc: HandbookDocWithMeta, event?: React.MouseEvent) => {
+      event?.stopPropagation();
+      if (!permissions.canDelete) {
+        showToast('Bạn không có quyền xóa tài liệu.');
+        return;
       }
-      showToast(`Đã xóa tài liệu: "${doc.title}"`);
-    } catch (error) {
-      console.error('Không thể xóa tài liệu:', error);
-      showToast('Xóa tài liệu thất bại. Vui lòng thử lại.');
-    }
-  };
 
-  const handleSaveDoc = async () => {
-    if (!formState.title.trim() || !formState.category.trim() || !formState.summary.trim() || !formState.content.trim()) {
-      showToast('Vui lòng nhập đầy đủ tiêu đề, danh mục, tóm tắt và nội dung.');
+      const isConfirmed = window.confirm(`Bạn có chắc muốn xóa tài liệu "${doc.title}"?`);
+      if (!isConfirmed) {
+        return;
+      }
+
+      try {
+        await handbookService.delete(doc.id);
+        setHandbookDocs((prev) => prev.filter((item) => item.id !== doc.id));
+        setActiveDocId((prev) => (prev === doc.id ? null : prev));
+        showToast(`Đã xóa tài liệu: "${doc.title}"`);
+      } catch (error) {
+        console.error('Không thể xóa tài liệu:', error);
+        showToast('Xóa tài liệu thất bại. Vui lòng thử lại.');
+      }
+    },
+    [permissions.canDelete, showToast],
+  );
+
+  const handleCreateCategory = useCallback(
+    async (name: string, options?: { silentSuccessToast?: boolean }) => {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return;
+      }
+      if (!canManageCategories) {
+        showToast('Bạn không có quyền thêm danh mục.');
+        throw new Error('PERMISSION_DENIED');
+      }
+
+      const normalizedName = normalizeText(trimmedName);
+      const existed = handbookCategories.find(
+        (item) => normalizeText(item.name) === normalizedName,
+      );
+      if (existed) {
+        return;
+      }
+
+      try {
+        const nowIso = new Date().toISOString();
+        const created = await handbookCategoryService.create({
+          name: trimmedName,
+          normalizedName,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        });
+
+        setHandbookCategories((prev) =>
+          [...prev, created].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi')),
+        );
+        if (!options?.silentSuccessToast) {
+          showToast(`Đã thêm danh mục mới: "${trimmedName}"`);
+        }
+      } catch (error) {
+        console.error('Không thể thêm danh mục handbook:', error);
+        showToast('Thêm danh mục thất bại. Vui lòng thử lại.');
+        throw error;
+      }
+    },
+    [canManageCategories, handbookCategories, showToast],
+  );
+
+  const handleSaveDoc = useCallback(async () => {
+    const validated = handbookFormSchema.safeParse(formState);
+    if (!validated.success) {
+      const nextErrors: HandbookFormFieldErrors = {};
+      for (const issue of validated.error.issues) {
+        const key = issue.path[0];
+        if (typeof key === 'string' && !nextErrors[key as keyof HandbookFormFieldErrors]) {
+          nextErrors[key as keyof HandbookFormFieldErrors] = issue.message;
+        }
+      }
+      setFormErrors(nextErrors);
+      showToast('Vui lòng kiểm tra lại thông tin form.');
       return;
+    }
+
+    setFormErrors({});
+
+    const title = validated.data.title.trim();
+    const category = validated.data.category.trim();
+    const summary = validated.data.summary.trim();
+    const content = validated.data.content.trim();
+
+    const normalizedCategory = normalizeText(category);
+    const hasCategory = handbookCategories.some(
+      (item) => normalizeText(item.name) === normalizedCategory,
+    );
+    if (!hasCategory) {
+      await handleCreateCategory(category, { silentSuccessToast: true });
     }
 
     const nowIso = new Date().toISOString();
+    const driveLink = validated.data.driveLink.trim();
+    const categoryKey = validated.data.categoryKey.trim();
     const payload: Partial<HandbookDoc> = {
-      title: formState.title.trim(),
-      category: formState.category.trim(),
-      summary: formState.summary.trim(),
-      content: formState.content.trim(),
-      requiredRead: formState.requiredRead,
-      isUpdated: formState.isUpdated,
-      driveLink: formState.driveLink.trim() || undefined,
-      categoryKey: formState.categoryKey.trim() || undefined,
+      title,
+      category,
+      summary,
+      content,
+      requiredRead: validated.data.requiredRead,
+      isUpdated: validated.data.isUpdated,
       updatedAt: nowIso,
+      ...(driveLink ? { driveLink } : {}),
+      ...(categoryKey ? { categoryKey } : {}),
     };
 
     setIsSavingDoc(true);
@@ -437,899 +615,595 @@ export default function HandbookView() {
     } finally {
       setIsSavingDoc(false);
     }
-  };
+  }, [
+    editingDocId,
+    formState,
+    handbookCategories,
+    handbookDocs.length,
+    handleCreateCategory,
+    permissions.canCreate,
+    permissions.canUpdate,
+    showToast,
+  ]);
 
-  const handleConfirmRead = async (doc: HandbookDocWithMeta, event?: React.MouseEvent): Promise<boolean> => {
-    event?.stopPropagation();
+  const handleConfirmRead = useCallback(
+    async (doc: HandbookDocWithMeta, event?: React.MouseEvent): Promise<boolean> => {
+      event?.stopPropagation();
 
-    if (!canConfirmRead) {
-      showToast('Bạn không có quyền xác nhận đã đọc.');
-      return false;
+      if (!canConfirmRead) {
+        showToast('Bạn không có quyền xác nhận đã đọc.');
+        return false;
+      }
+      if (!currentReadKey || !currentUser) {
+        showToast('Không xác định được người dùng hiện tại.');
+        return false;
+      }
+
+      const nowIso = new Date().toISOString();
+      const nextReadAudits = {
+        ...(doc.readAudits || {}),
+        [currentReadKey]: {
+          username: currentUser.username,
+          fullName: currentUser.fullName,
+          readAt: nowIso,
+        },
+      };
+
+      try {
+        const updatedDoc = await handbookService.update(doc.id, {
+          readAudits: nextReadAudits,
+          updatedAt: nowIso,
+        });
+        setHandbookDocs((prev) =>
+          prev.map((item) => (item.id === doc.id ? { ...item, ...updatedDoc, readAudits: nextReadAudits } : item)),
+        );
+        showToast(`Xác nhận đã đọc thành công: "${doc.title}"`);
+        return true;
+      } catch (error) {
+        console.error('Không thể xác nhận đã đọc:', error);
+        showToast('Xác nhận đã đọc thất bại. Vui lòng thử lại.');
+        return false;
+      }
+    },
+    [canConfirmRead, currentReadKey, currentUser, showToast],
+  );
+
+  const handleConfirmReadAndBack = useCallback(async () => {
+    if (!activeDoc) {
+      return;
     }
-
-    if (!currentReadKey || !currentUser) {
-      showToast('Không xác định được người dùng hiện tại.');
-      return false;
+    const ok = await handleConfirmRead(activeDoc);
+    if (ok) {
+      setActiveDocId(null);
     }
+  }, [activeDoc, handleConfirmRead]);
 
-    const nowIso = new Date().toISOString();
-    const nextReadAudits = {
-      ...(doc.readAudits || {}),
-      [currentReadKey]: {
-        username: currentUser.username,
-        fullName: currentUser.fullName,
-        readAt: nowIso,
-      },
-    };
+  const handleOpenDoc = useCallback(
+    (doc: HandbookDocWithMeta) => {
+      if (doc.meta.driveLink) {
+        window.open(doc.meta.driveLink, '_blank');
+        showToast('Đang mở liên kết tài liệu đầy đủ trên Google Drive.');
+        return;
+      }
 
-    try {
-      const updatedDoc = await handbookService.update(doc.id, {
-        readAudits: nextReadAudits,
-        updatedAt: nowIso,
+      setActiveDocId(doc.id);
+    },
+    [showToast],
+  );
+
+  const handleSetFilter = useCallback((nextFilter: HandbookFilter) => setSelectedFilter(nextFilter), []);
+  const handleToggleCategory = useCallback((categoryName: string | null) => {
+    setSelectedCategory((prev) => (prev === categoryName ? null : categoryName));
+  }, []);
+  const handleResetFilters = useCallback(() => {
+    setSearchTerm('');
+    setSelectedCategory(null);
+    setSelectedFilter('all');
+  }, []);
+  const handleBackToList = useCallback(() => setActiveDocId(null), []);
+  const handleFormPatch = useCallback((patch: Partial<HandbookFormState>) => {
+    const patchKeys = Object.keys(patch) as Array<keyof HandbookFormState>;
+    if (patchKeys.length > 0) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        for (const key of patchKeys) {
+          if (next[key]) {
+            delete next[key];
+          }
+        }
+        return next;
       });
-      setHandbookDocs((prev) => prev.map((item) => (item.id === doc.id ? { ...item, ...updatedDoc, readAudits: nextReadAudits } : item)));
-      showToast(`Xác nhận đã đọc thành công: "${doc.title}"`);
-      return true;
-    } catch (error) {
-      console.error('Không thể xác nhận đã đọc:', error);
-      showToast('Xác nhận đã đọc thất bại. Vui lòng thử lại.');
-      return false;
     }
-  };
+    setFormState((prev) => ({ ...prev, ...patch }));
+  }, []);
+  const handleDialogClose = useCallback(() => {
+    setFormErrors({});
+    setIsEditorOpen(false);
+  }, []);
 
-  // Formatter for rendering doc markup
-  const renderFormattedContent = (content: string) => {
-    return content.split('\n').map((line, idx) => {
-      if (line.startsWith('### ')) {
-        return (
-          <h3 key={idx} className="text-sm font-black text-slate-800 mt-6 mb-3 font-display uppercase tracking-wider border-b border-slate-100 pb-1">
-            {line.replace('### ', '')}
-          </h3>
-        );
-      }
-      if (line.startsWith('#### ')) {
-        return (
-          <h4 key={idx} className="text-xs font-black text-[#C21A1A] mt-4 mb-2 uppercase tracking-wide">
-            {line.replace('#### ', '')}
-          </h4>
-        );
-      }
-      if (line.startsWith('- ') || line.startsWith('* ')) {
-        return (
-          <div key={idx} className="flex gap-2 items-start pl-1 py-1">
-            <span className="text-[#C21A1A] mt-1.5 select-none shrink-0 text-xs font-bold">▪</span>
-            <span className="text-xs text-slate-700 font-medium leading-relaxed">{line.substring(2)}</span>
-          </div>
-        );
-      }
-      if (line.trim() === '') {
-        return <div key={idx} className="h-2"></div>;
-      }
-      
-      const matchLink = line.match(/\[(.*?)\]\((.*?)\)/);
-      if (matchLink) {
-        const textStr = matchLink[1];
-        const urlStr = matchLink[2];
-        return (
-          <p key={idx} className="text-xs py-1.5">
-            <a 
-              href={urlStr} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="inline-flex items-center gap-1 text-[#C21A1A] hover:underline font-bold"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>{textStr}</span>
-            </a>
-          </p>
-        );
-      }
-
-      return <p key={idx} className="text-xs text-slate-600 leading-relaxed py-1.5">{line}</p>;
-    });
-  };
-
-  const documentCategoriesList = [
-    { name: 'Văn hóa', icon: Shield, bg: 'bg-[#C21A1A]/10 text-[#C21A1A]', key: 'văn hóa' },
-    { name: 'Nội quy', icon: FileText, bg: 'bg-orange-500/10 text-orange-650', key: 'nội quy' },
-    { name: 'Sơ đồ', icon: Network, bg: 'bg-emerald-500/10 text-emerald-650', key: 'sơ đồ' },
-    { name: 'Phân quyền', icon: Lock, bg: 'bg-blue-500/10 text-blue-650', key: 'phân quyền' },
-    { name: 'Mô tả công việc', icon: User, bg: 'bg-indigo-500/10 text-indigo-650', key: 'mô tả' },
-    { name: 'Quy chế', icon: Scale, bg: 'bg-pink-500/10 text-pink-650', key: 'quy chế' },
-    { name: 'SOP gốc', icon: Settings, bg: 'bg-sky-500/10 text-sky-650', key: 'sop gốc' },
-    { name: 'Đào tạo', icon: GraduationCap, bg: 'bg-amber-500/10 text-amber-650', key: 'đào tạo' },
-  ];
+  const isFilterActive = selectedFilter !== 'all' || Boolean(searchTerm) || Boolean(selectedCategory);
 
   return (
-    <div className="w-full space-y-3.5">
-      
-      {/* Dynamic Toast Notification popup */}
+    <div className="h-[calc(100vh-128px)] w-full space-y-3 overflow-y-auto pb-24 pr-1 text-left font-sans antialiased scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
       {toastMessage && (
-        <div className="fixed bottom-5 left-5 z-55 flex items-center gap-2.5 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-xl text-xs font-bold font-sans max-w-sm transition-all animate-bounce">
-          <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
-          <span className="text-left font-sans">{toastMessage}</span>
+        <div className="fixed bottom-5 left-5 z-[80] flex max-w-sm items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl">
+          <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* 1. Header Block wrapped in card with border */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none text-left">
-        <div className="font-sans">
-          <h1 className="text-xl font-black font-display tracking-tight text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-[#C21A1A] shrink-0" />
-            <span>SỔ TAY ĐIỀU HÀNH &amp; HỆ THỐNG VẬN HÀNH</span>
-          </h1>
-          <p className="text-xs text-slate-400 font-medium mt-1">
-            Chuẩn vận hành cốt lõi giúp nhân sự dễ dàng học tập, làm đúng quy trình.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-extrabold text-[#C21A1A] uppercase tracking-wider">Hệ thống tóm tắt tối ưu (SOP Lite)</span>
-        </div>
-      </div>
-
-      {/* Main Content Panel Layout - Full Width optimized system space */}
-      <div className="w-full space-y-4">
-        
-        {/* Left Column Bento Grid: Contains visual guidance and info translated from mockup sides */}
-        <aside className="hidden">
-          
-          {/* Màn hình giới thiệu panel area */}
-          <div className="bg-[#C21A1A] text-white p-5 rounded-2xl shadow-sm text-left select-none relative overflow-hidden">
-            <div className="absolute right-[-10px] bottom-[-20px] opacity-10 pointer-events-none">
-              <BookOpen className="w-40 h-40" />
-            </div>
-            
-            <h3 className="text-xs font-black tracking-widest uppercase text-[#FFA8A8]">SỔ TAY MR.TÁO</h3>
-            <h2 className="text-lg font-extrabold leading-tight mt-1">Sổ Tay / Hệ Thống</h2>
-            <p className="text-[11px] text-[#FFC4C4] font-medium leading-relaxed mt-2.5">
-              Tập trung toàn bộ chuẩn vận hành cốt lõi, giúp nhân sự dễ dàng tra cứu nhanh, hiểu đúng và làm chuẩn ngay từ đầu.
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-900 break-words sm:text-lg">
+              <BookOpen className="h-4 w-4 shrink-0 text-[#C21A1A] sm:h-5 sm:w-5" />
+              <span>Sổ tay điều hành vận hành</span>
+            </h1>
+            <p className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
+              Tập trung chuẩn vận hành cốt lõi, giúp nhân sự tra cứu nhanh và thực thi đúng quy trình.
             </p>
-
-            <div className="mt-5 pt-4 border-t border-white/20 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center text-xs">🍎</div>
-                <div className="text-left">
-                  <p className="text-[9px] text-[#FFA8A8] font-black uppercase leading-none">Vận hành chuẩn</p>
-                  <p className="text-[10px] font-black leading-none mt-0.5">MR.TÁO STANDARD</p>
-                </div>
-              </div>
-              <span className="text-[9px] bg-white/15 px-2 py-0.5 rounded uppercase font-bold tracking-wider">v1.1</span>
-            </div>
           </div>
 
-          {/* NHÓM TÀI LIỆU Category Grid shortcut clickable buttons */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs text-left">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3.5 select-none">
-              Danh mục phễu lọc tài liệu
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {documentCategoriesList.map((cat) => {
-                const isSelected = selectedCategory === cat.key;
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedCategory(null); // Deselect
-                        showToast(`Bỏ lọc theo ${cat.name}`);
-                      } else {
-                        setSelectedCategory(cat.key);
-                        showToast(`Đang hiển thị tài liệu thuộc nhóm ${cat.name}`);
-                      }
-                    }}
-                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 group transition-all cursor-pointer ${
-                      isSelected 
-                        ? 'bg-[#C21A1A] border-[#C21A1A] text-white shadow-sm scale-98' 
-                        : 'bg-white border-slate-150 hover:border-[#C21A1A]/40 text-slate-700 hover:text-[#C21A1A]'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg transition-colors ${isSelected ? 'bg-white/20 text-white' : cat.bg}`}>
-                      <Icon className="w-4 h-4 shrink-0" />
-                    </div>
-                    <span className="text-[10px] font-bold tracking-tight line-clamp-1">{cat.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {selectedCategory && (
-              <button 
-                onClick={() => setSelectedCategory(null)}
-                className="w-full mt-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-[#C21A1A] text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-200 cursor-pointer transition-colors text-center"
+          <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>SOP Lite</span>
+            {permissions.canCreate && (
+              <button
+                type="button"
+                onClick={openCreateEditor}
+                className="ml-2 hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white transition-colors hover:bg-[#A81515] sm:inline-flex"
               >
-                Xóa lọc danh mục (Hiển thị tất cả)
+                <Plus className="h-3.5 w-3.5" />
+                <span>Thêm tài liệu</span>
               </button>
             )}
           </div>
+        </div>
+      </section>
 
-          {/* NGUYÊN TẮC THIẾT KẾ cards panel */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs text-left space-y-4">
-            <div className="flex items-center gap-2 text-slate-800">
-              <Sparkles className="w-4.5 h-4.5 text-[#C21A1A] shrink-0" />
-              <p className="text-[11px] font-black uppercase tracking-wider">Nguyên tắc thiết kế hệ thống</p>
-            </div>
-            
-            <div className="space-y-3.5 text-xs text-slate-600">
-              <div className="flex gap-2.5 items-start">
-                <span className="text-red-500 font-bold">🚨</span>
-                <div className="text-left">
-                  <h4 className="font-extrabold text-slate-800 text-[11px] leading-tight mb-0.5">Không tài liệu dài lê thê</h4>
-                  <p className="text-[10px] font-medium leading-relaxed text-slate-400">Không đưa tài liệu dày cộp làm ngộp nhân viên.</p>
-                </div>
+      {activeDocId === null ? (
+        <section className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex w-full gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handleSetFilter('all')}
+                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'all' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  <span className="hidden sm:inline">Tất cả tài liệu</span>
+                  <span className="sm:hidden">Tất cả</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetFilter('required')}
+                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'required' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  <span className="hidden sm:inline">Bắt buộc đọc</span>
+                  <span className="sm:hidden">Bắt buộc</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetFilter('updated')}
+                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'updated' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  <span className="hidden sm:inline">Cập nhật mới</span>
+                  <span className="sm:hidden">Cập nhật</span>
+                </button>
               </div>
 
-              <div className="flex gap-2.5 items-start">
-                <span className="text-emerald-500 font-bold">✨</span>
-                <div className="text-left">
-                  <h4 className="font-extrabold text-slate-800 text-[11px] leading-tight mb-0.5">Chỉ hiển thị tóm tắt cốt lõi</h4>
-                  <p className="text-[10px] font-medium leading-relaxed text-slate-400">SOP Lite trực quan, đọc hiểu nhanh trong 3 phút.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2.5 items-start">
-                <span className="text-sky-500 font-bold">📂</span>
-                <div className="text-left">
-                  <h4 className="font-extrabold text-slate-800 text-[11px] leading-tight mb-0.5">Tài liệu gốc đồng bộ trên Drive</h4>
-                  <p className="text-[10px] font-medium leading-relaxed text-slate-400">Có link trực tiếp tới Drive tổng công ty khi cần tra cứu chi tiết.</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2.5 items-start">
-                <span className="text-amber-500 font-bold">✍</span>
-                <div className="text-left">
-                  <h4 className="font-extrabold text-slate-800 text-[11px] leading-tight mb-0.5">Cam kết trách nhiệm văn bản</h4>
-                  <p className="text-[10px] font-medium leading-relaxed text-slate-400">Nút bấm Xác nhận đã đọc lưu vết hệ thống, đảm bảo tuân thủ.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* TRẠNG THÁI TÀI LIỆU legend panel area */}
-          <div className="bg-slate-50 rounded-2xl border border-slate-200/60 p-4.5 text-left select-none">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Trạng thái tài liệu chi tiết</p>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-red-50 border border-red-150 rounded text-red-600 text-[9px] font-black">🔖 Bắt buộc đọc</span>
-                <span className="text-[9px] text-slate-400 font-bold">Quy chế bắt buộc ký xác nhận</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-[#10B981] font-black text-[9px] uppercase"><Check className="w-3 h-3 stroke-[3]" /> Đã đọc</span>
-                <span className="text-[9px] text-slate-400 font-bold">Vết ghi nhận của bạn trên hệ thống</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-[#1E40AF] font-bold text-[9px] bg-blue-50 px-1 border border-blue-150 rounded"><span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF]"></span> Mới</span>
-                <span className="text-[9px] text-slate-400 font-bold">Mới ban hành hoặc có cập nhật</span>
-              </div>
-            </div>
-          </div>
-
-        </aside>
-
-        {/* Right Content Panel Layout (Master Dashboard List or Detail Reader Panel) */}
-        <div className="w-full space-y-4">
-          
-          {activeDocId === null ? (
-            /* 2A. MASTER DOCUMENT DIRECTORY VIEW - Outer card border removed to avoid duplicate outline clutter */
-            <div className="flex flex-col gap-4 min-h-[500px]">
-              
-              {/* 2. Tabs & Search Input Inline Container */}
-              <div className="flex flex-col md:flex-row gap-3.5 justify-between items-stretch md:items-center text-left">
-                {/* Tabs - Aligned on left */}
-                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none gap-0.5 shrink-0 self-start md:self-auto w-full md:w-auto">
-                  <button
-                    onClick={() => {
-                      setSelectedFilter('all');
-                      showToast('Đang hiển thị tất cả tài liệu');
-                    }}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-initial ${
-                      selectedFilter === 'all'
-                        ? 'bg-white text-[#C21A1A] border border-red-150 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    <span>Tất cả tài liệu</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedFilter('required');
-                      showToast('Đang lọc tài liệu bắt buộc đọc');
-                    }}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-initial ${
-                      selectedFilter === 'required'
-                        ? 'bg-white text-[#C21A1A] border border-red-150 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    <span>Bắt buộc đọc</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedFilter('updated');
-                      showToast('Đang lọc tài liệu mới cập nhật');
-                    }}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-initial ${
-                      selectedFilter === 'updated'
-                        ? 'bg-white text-[#C21A1A] border border-red-150 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedFilter === 'updated' ? 'bg-[#C21A1A]' : 'bg-[#1E40AF]'}`} />
-                    <span>Cập nhật mới</span>
-                  </button>
-                </div>
-
-                {/* Search bar widget - Inline aligned with Tabs */}
-                <div className="flex gap-2 flex-1 md:max-w-md w-full">
-                  <div className="relative flex-1">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm nhanh tài liệu, nội quy, quy định, SOP..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full text-xs font-medium pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/90 focus:outline-hidden focus:border-[#C21A1A] focus:ring-1 focus:ring-[#C21A1A] bg-white transition-all shadow-2xs"
-                    />
-                    {searchTerm && (
-                      <button 
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold font-sans cursor-pointer"
-                      >
-                        Xóa
-                      </button>
-                    )}
-                  </div>
-                  {permissions.canCreate && (
-                    <button
-                      type="button"
-                      onClick={openCreateEditor}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#C21A1A] hover:bg-[#A81515] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Thêm tài liệu</span>
+              <div className="flex w-full items-center gap-2 md:max-w-lg">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Tìm tài liệu..."
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-12 text-xs font-medium focus:border-[#C21A1A] focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
+                  />
+                  {searchTerm && (
+                    <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 hover:text-slate-700">
+                      Xóa
                     </button>
                   )}
                 </div>
-              </div>
 
-              {/* Sub category filter micro-badges underneath search/tab inline row */}
-              <div className="flex flex-col gap-2 pb-2">
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-left">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-1.5 select-none">Nhóm danh mục:</span>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      showToast('Hiển thị tất cả nhóm tài liệu');
-                    }}
-                    className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all cursor-pointer ${
-                      selectedCategory === null 
-                        ? 'bg-slate-800 text-white shadow-xs' 
-                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Nhóm danh mục:</span>
+              <Button
+                type="button"
+                onClick={() => handleToggleCategory(null)}
+                className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-black uppercase ${
+                  selectedCategory === null
+                    ? 'bg-slate-800 text-white shadow-xs hover:bg-slate-900 hover:text-white'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                }`}
+              >
+                Tất cả nhóm
+              </Button>
+              {visibleCategories.map((categoryName) => {
+                const isSelected = selectedCategory === categoryName;
+                return (
+                  <Button
+                    key={categoryName}
+                    type="button"
+                    onClick={() => handleToggleCategory(categoryName)}
+                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold ${
+                      isSelected
+                        ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                        : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
                     }`}
                   >
-                    Tất cả nhóm
-                  </button>
-                  {documentCategoriesList.map((cat) => {
-                    const isSelected = selectedCategory === cat.key;
-                    const CatIcon = cat.icon;
-                    return (
-                      <button
-                        key={cat.name}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedCategory(null);
-                            showToast(`Bỏ lọc nhóm ${cat.name}`);
-                          } else {
-                            setSelectedCategory(cat.key);
-                            showToast(`Đang lọc theo nhóm ${cat.name}`);
-                          }
-                        }}
-                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1 transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'bg-[#C21A1A] text-white shadow-xs' 
-                            : 'bg-slate-50 text-slate-600 border border-slate-250 hover:bg-slate-100'
-                        }`}
-                      >
-                        <CatIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span>{cat.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    {categoryName}
+                  </Button>
+                );
+              })}
+              {hiddenCategories.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      className="rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                    >
+                      +{hiddenCategories.length} nhóm
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+                    {hiddenCategories.map((categoryName) => {
+                      const isSelected = selectedCategory === categoryName;
+                      return (
+                        <DropdownMenuItem
+                          key={categoryName}
+                          onClick={() => handleToggleCategory(categoryName)}
+                          className={`text-xs font-semibold cursor-pointer ${
+                            isSelected ? 'text-[#C21A1A] font-extrabold bg-red-50' : 'text-slate-600'
+                          }`}
+                        >
+                          {categoryName}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
 
-              {/* Status active category notification line */}
-              {(selectedCategory || selectedFilter !== 'all' || searchTerm) && (
-                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-150 inline-flex text-xs font-bold text-slate-600 text-left">
-                  <span>
-                    Kết quả lọc: &nbsp;
-                    {selectedCategory && <span className="bg-white border text-[#C21A1A] px-2 py-0.5 rounded mr-1.5 uppercase font-extrabold text-[10px]">Danh mục: {selectedCategory}</span>}
-                    {selectedFilter !== 'all' && <span className="bg-white border text-[#1E40AF] px-2 py-0.5 rounded mr-1.5 uppercase font-extrabold text-[10px]">Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}</span>}
-                    {searchTerm && <span className="bg-white border text-emerald-600 px-2 py-0.5 rounded mr-1.5 font-mono">Từ khóa: "{searchTerm}"</span>}
+          {isFilterActive && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-slate-500">Kết quả lọc:</span>
+                {selectedCategory && (
+                  <span className="rounded border bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-[#C21A1A]">
+                    Danh mục: {selectedCategory}
                   </span>
-                  
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      setSelectedFilter('all');
-                      setSearchTerm('');
-                      showToast('Đọc đặt lại bộ lọc hiển thị tất cả');
-                    }}
-                    className="text-[#C21A1A] hover:underline cursor-pointer uppercase text-[10px] font-black ml-2"
-                  >
-                    Đặt lại tất cả
-                  </button>
-                </div>
-              )}
-
-              {loadErrorMessage && (
-                <div className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold">
-                  {loadErrorMessage}
-                </div>
-              )}
-
-              {isLoadingDocs && (
-                <div className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-xs font-bold">
-                  Đang tải dữ liệu sổ tay...
-                </div>
-              )}
-
-              {/* Grid of SOP/Guidelines Adapted beautifully to desktop three-column full width web view */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-3">
-                {filteredDocs.length === 0 ? (
-                  <div className="col-span-1 md:col-span-2 lg:col-span-3 py-16 text-center flex flex-col items-center justify-center">
-                    <BookOpen className="w-12 h-12 text-slate-200 mb-3" />
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Không tìm thấy bất kỳ tài liệu nào phù hợp</h4>
-                    <p className="text-[11px] text-slate-400 mt-1 max-w-sm font-medium">Bạn có thể thay đổi từ khóa lọc hoặc nhấp vào "Đặt lại tất cả" bên trên để xem toàn bộ chuẩn SOP.</p>
-                  </div>
-                ) : (
-                  filteredDocs.map((doc) => {
-                    const IconComponent = doc.meta.icon;
-                    const isDocRead = readDocs[doc.id] || false;
-
-                    return (
-                      <div 
-                        key={doc.id}
-                        onClick={() => {
-                          if (doc.meta.driveLink) {
-                            window.open(doc.meta.driveLink, '_blank');
-                            showToast(`Đang chuyển hướng mở liên kết tài liệu đầy đủ trên Google Drive`);
-                          } else {
-                            setActiveDocId(doc.id);
-                          }
-                        }}
-                        className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between hover:border-[#C21A1A] hover:shadow-md transition-all duration-200 cursor-pointer text-left relative group hover:-translate-y-0.5"
-                      >
-                        {/* Upper row */}
-                        <div className="space-y-2.5">
-                          <div className="flex items-start justify-between gap-2">
-                            {/* Icon block badge layout */}
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-lg ${doc.meta.iconBg} flex items-center justify-center shrink-0`}>
-                                <IconComponent className={`w-4.5 h-4.5`} />
-                              </div>
-                              <div>
-                                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 border px-1.5 py-0.5 rounded uppercase leading-none">
-                                  {doc.category}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              {permissions.canUpdate && (
-                                <button
-                                  type="button"
-                                  onClick={(event) => openEditEditor(doc, event)}
-                                  className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                  title="Sửa tài liệu"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              {permissions.canDelete && (
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    void handleDeleteDoc(doc, event);
-                                  }}
-                                  className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="Xóa tài liệu"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#C21A1A] group-hover:translate-x-1 transition-all shrink-0" />
-                            </div>
-                          </div>
-
-                          {/* Central descriptions text */}
-                          <div>
-                            <h3 className="font-extrabold text-[#111827] text-xs leading-snug tracking-tight group-hover:text-[#C21A1A] transition-colors">
-                              {doc.title}
-                            </h3>
-                            <p className="text-[11px] text-slate-400 font-medium leading-relaxed mt-1 line-clamp-2">
-                              {doc.summary}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Lower statuses layout rows footer */}
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5 text-[10px]">
-                          
-                          {/* Left dynamic markers indicators */}
-                          <div className="flex items-center gap-1.5">
-                            {isDocRead ? (
-                              <span className="flex items-center gap-1 text-[#10B981] font-black uppercase tracking-wider text-[9px]">
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                <span>Đã đọc</span>
-                              </span>
-                            ) : doc.meta.isUpdated ? (
-                              <span className="flex items-center gap-1 text-[#1E40AF] font-bold uppercase tracking-wider text-[8.5px] bg-blue-50 border border-blue-150 px-1.5 py-0.5 rounded select-none">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF]"></span>
-                                <span>Mới cập nhật</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 font-medium select-none">Chưa đọc</span>
-                            )}
-                          </div>
-
-                          {/* Right action control display elements */}
-                          <div className="flex items-center">
-                            {doc.meta.badgeText === 'Bắt buộc đọc' ? (
-                              <span className="px-2.5 py-1 bg-rose-50 border border-rose-150 rounded-lg text-[#C21A1A] text-[9.5px] font-black tracking-tight flex items-center gap-1 whitespace-nowrap select-none">
-                                <span className="text-red-600">🔖</span>
-                                <span>Bắt buộc đọc</span>
-                              </span>
-                            ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isDocRead && canConfirmRead ? (
-                              <button
-                                onClick={(e) => {
-                                  void handleConfirmRead(doc, e);
-                                }}
-                                className="px-2.5 py-1 bg-[#1E40AF] hover:bg-[#1E40AF]/90 text-white font-black text-[9px] tracking-wider rounded-lg uppercase whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-sm"
-                              >
-                                Xác nhận đã đọc
-                              </button>
-                            ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isDocRead && !canConfirmRead ? (
-                              <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 font-bold text-[9px]">
-                                Chưa có quyền xác nhận
-                              </span>
-                            ) : doc.meta.driveLink ? (
-                              <span className="px-2 py-1 bg-[#F1F5F9] border border-slate-250 hover:bg-slate-200 rounded-lg text-slate-600 font-bold text-[9px] tracking-tight inline-flex items-center gap-1 whitespace-nowrap transition-colors">
-                                Xem Drive gốc
-                                <ExternalLink className="w-3 h-3 text-slate-400" />
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-bold text-[9px]">
-                                {doc.meta.badgeText}
-                              </span>
-                            )}
-                          </div>
-
-                        </div>
-
-                      </div>
-                    );
-                  })
+                )}
+                {selectedFilter !== 'all' && (
+                  <span className="rounded border bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700">
+                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}
+                  </span>
+                )}
+                {searchTerm && (
+                  <span className="rounded border bg-white px-2 py-0.5 font-mono text-emerald-700">
+                    Từ khóa: "{searchTerm}"
+                  </span>
                 )}
               </div>
 
-              {/* Bottom Quick-View Helper Map Guide */}
-              <div className="mt-auto bg-slate-50 rounded-2xl border border-slate-150 p-4 flex flex-col md:flex-row items-center gap-4 text-left">
-                <div className="p-2 bg-white rounded-xl border border-slate-200">
-                  <span className="text-xl">💡</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-extrabold text-slate-800 text-xs">Mẹo tìm kiếm năng suất:</h4>
-                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed mt-0.5">
-                    Click vào tiêu mục các Danh mục shortcut bên trái để lọc ngay lập tức các chủ đề liên quan (ví dụ: click "Quy chế" để chỉ hiển thị tài liệu quy định về thưởng, phạt, nghỉ phép).
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          ) : (
-            /* 2B. IMMERSIVE INLINE WEB DOCUMENT READING PANEL & SPLIT PANE */
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col gap-4 animate-in fade-in duration-205">
-              
-              {/* Back navigation & details summary menu card */}
-              <div className="bg-slate-50 border border-slate-150 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-left">
-                
-                <button
-                  onClick={() => setActiveDocId(null)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 hover:border-slate-350 transition-all cursor-pointer shadow-xs"
-                >
-                  <ArrowLeft className="w-4 h-4 text-slate-650 stroke-[3]" />
-                  <span>Quay lại Danh sách</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs bg-white border border-slate-200 px-2.5 py-1 rounded-xl text-slate-500 font-extrabold uppercase tracking-wide">
-                    {activeDoc?.category}
-                  </span>
-                  {activeDoc && permissions.canUpdate && (
-                    <button
-                      type="button"
-                      onClick={() => openEditEditor(activeDoc)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-slate-600 text-[10px] font-black hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>Sửa</span>
-                    </button>
-                  )}
-                  {activeDoc && permissions.canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleDeleteDoc(activeDoc);
-                      }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-slate-600 text-[10px] font-black hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Xóa</span>
-                    </button>
-                  )}
-                  {activeDoc && readDocs[activeDoc.id] && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-150 rounded-xl text-emerald-600 text-xs font-black uppercase">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Bạn đã đọc</span>
-                    </span>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Reader Grid pane split: Col-1: Reading sheet, Col-2: Meta specs & rules */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-                
-                {/* 1. Large scrolling Document Sheet panel wrapper */}
-                <div className="md:col-span-8 bg-slate-50/40 rounded-2xl border border-slate-155 p-5 flex flex-col select-text leading-relaxed">
-                  
-                  {/* Brand tags header inside reading sheet */}
-                  <div className="flex items-center gap-2 select-none text-[#C21A1A] font-bold mb-3">
-                    <span className="h-2 w-2 rounded-full bg-[#C21A1A]" />
-                    <span className="text-[10px] font-black font-mono tracking-widest uppercase">mr. táo SOP standard - standard operating procedure</span>
-                  </div>
-
-                  <h2 className="text-base font-black tracking-tight text-slate-900 uppercase border-b border-slate-150 pb-4 mb-4 leading-snug font-display select-text text-left">
-                    {activeDoc?.title}
-                  </h2>
-
-                  {/* Scroll viewport */}
-                  <ScrollArea className="h-[450px] pr-3 select-text text-left">
-                    <div className="space-y-2 pb-12 font-sans font-medium text-slate-700">
-                      {activeDoc ? renderFormattedContent(activeDoc.content) : null}
-                    </div>
-                  </ScrollArea>
-
-                </div>
-
-                {/* 2. Side Panel layout inside Reader: Summary metadata check card */}
-                <div className="md:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between text-left shrink-0">
-                  
-                  <div className="space-y-4">
-                    <div className="p-3 bg-red-50/40 rounded-xl border border-red-100 flex items-center gap-2.5">
-                      <div className="p-1 rounded-full bg-[#C21A1A] text-white">
-                        <Info className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-[11px] font-black text-slate-800 uppercase tracking-wide">Trách nghiệm tuân thủ</span>
-                    </div>
-
-                    {/* Metadata items list */}
-                    <div className="space-y-3.5 text-xs text-slate-600">
-                      <div>
-                        <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider block">CHỦ ĐỀ LỚN</span>
-                        <span className="font-extrabold text-slate-800 text-[11px] mt-0.5 block">{activeDoc?.category}</span>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider block">PHIÊN BẢN CÔNG BỐ</span>
-                        <span className="font-mono font-bold text-slate-800 text-[11px] mt-0.5 block">SOP-LITE-PRO-2026</span>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider block">PHÂN LOẠI QUY CHUẨN</span>
-                        <span className="font-bold text-slate-800 text-[11px] mt-0.5 block">
-                          {activeDoc?.meta.badgeText || 'Tài liệu hướng dẫn'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider block">CAM KẾT LƯU VẾT</span>
-                        <p className="text-[11px] text-slate-400 leading-relaxed mt-1 font-medium">
-                          Bằng việc nhấn hoàn tất đọc, bạn tự nguyện xác nhận hiểu rõ quy trình tóm tắt và thực hành đúng tiêu chuẩn tại cửa hàng.
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-1 font-semibold">
-                          Lần xác nhận gần nhất của bạn: {formatDateTime(activeReadAudit?.readAt)}
-                        </p>
-                      </div>
-
-                      {activeDoc?.meta.driveLink && (
-                        <div className="pt-3 border-t">
-                          <a 
-                            href={activeDoc.meta.driveLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-extrabold text-[11px] flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Mở liên kết Drive Gốc</span>
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Complete & signature workflow button section */}
-                  <div className="pt-6 border-t mt-6 space-y-2 select-none">
-                    {activeDoc && (
-                      <button
-                        onClick={() => {
-                          void (async () => {
-                            const ok = await handleConfirmRead(activeDoc);
-                            if (ok) {
-                              setActiveDocId(null);
-                            }
-                          })();
-                        }}
-                        disabled={!canConfirmRead}
-                        className={`w-full py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-98 ${
-                          !canConfirmRead
-                            ? 'bg-slate-300 text-white cursor-not-allowed'
-                            : readDocs[activeDoc.id]
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-[#C21A1A] hover:bg-[#A81515] text-white'
-                        }`}
-                      >
-                        <FileCheck className="w-4 h-4 stroke-[2.5]" />
-                        <span>
-                          {readDocs[activeDoc.id] ? 'Ký lại xác nhận đã đọc' : 'Ký xác nhận đã đọc'}
-                        </span>
-                      </button>
-                    )}
-
-                    <p className="text-[10px] text-center text-slate-400 font-medium">
-                      Biên bản điện tử được ghi nhận lưu trữ tại ca trực của bạn.
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Reader bottom footer compliance panel */}
-              <div className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-150 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium text-slate-400 select-none text-center sm:text-left">
-                <span>MR.TÁO CONTROL SYSTEM • Hệ truyền đạt quy trình SOP Lite v1.1 • Độc quyền lưu hành nội bộ</span>
-                <span className="font-mono text-[10px] text-slate-350">ID: {activeDoc?.id?.toUpperCase()}</span>
-              </div>
-
+              <button type="button" onClick={handleResetFilters} className="text-[10px] font-black uppercase text-[#C21A1A] hover:underline">
+                Đặt lại
+              </button>
             </div>
           )}
 
-        </div>
-
-      </div>
-
-      {isEditorOpen && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 space-y-4 text-left">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">
-                {editingDocId ? 'Cập nhật tài liệu sổ tay' : 'Thêm tài liệu sổ tay'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEditorOpen(false)}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          {loadErrorMessage && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              {loadErrorMessage}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Tiêu đề</label>
-                <input
-                  type="text"
-                  value={formState.title}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, title: event.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-                />
+          {isLoadingDocs && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+              Đang tải dữ liệu sổ tay...
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 pb-3 md:grid-cols-2 lg:grid-cols-3">
+            {filteredDocs.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
+                <BookOpen className="mx-auto mb-3 h-12 w-12 text-slate-200" />
+                <h3 className="text-xs font-extrabold uppercase tracking-wide text-slate-700">Không tìm thấy tài liệu phù hợp</h3>
+                <p className="mx-auto mt-1 max-w-sm text-[11px] font-medium text-slate-400">
+                  Thử thay đổi từ khóa hoặc chọn lại bộ lọc để xem toàn bộ tài liệu.
+                </p>
               </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Danh mục</label>
-                <input
-                  type="text"
-                  value={formState.category}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, category: event.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-                />
-              </div>
-            </div>
+            ) : (
+              filteredDocs.map((doc) => {
+                const Icon = doc.meta.icon;
+                const isRead = readDocs[doc.id] || false;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Nhóm lọc</label>
-                <input
-                  type="text"
-                  value={formState.categoryKey}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, categoryKey: event.target.value }))}
-                  placeholder="Ví dụ: văn hóa, quy chế, đào tạo"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Link Drive (nếu có)</label>
-                <input
-                  type="text"
-                  value={formState.driveLink}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, driveLink: event.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-                />
-              </div>
-            </div>
+                return (
+                  <article
+                    key={doc.id}
+                    className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C21A1A] hover:shadow-md"
+                    onClick={() => handleOpenDoc(doc)}
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${doc.meta.iconBg}`}>
+                            <Icon className={`h-4.5 w-4.5 ${doc.meta.iconColor}`} />
+                          </div>
+                          <span className="rounded border bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">
+                            {doc.category}
+                          </span>
+                        </div>
 
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Tóm tắt</label>
-              <textarea
-                value={formState.summary}
-                onChange={(event) => setFormState((prev) => ({ ...prev, summary: event.target.value }))}
-                rows={3}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-              />
-            </div>
+                        <div className="flex items-center gap-1">
+                          {permissions.canUpdate && (
+                            <button
+                              type="button"
+                              onClick={(event) => openEditEditor(doc, event)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                              title="Sửa tài liệu"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
 
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Nội dung</label>
-              <textarea
-                value={formState.content}
-                onChange={(event) => setFormState((prev) => ({ ...prev, content: event.target.value }))}
-                rows={10}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-              />
-            </div>
+                          {permissions.canDelete && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                void handleDeleteDoc(doc, event);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                              title="Xóa tài liệu"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
 
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formState.requiredRead}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, requiredRead: event.target.checked }))}
-                />
-                Bắt buộc đọc
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formState.isUpdated}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, isUpdated: event.target.checked }))}
-                />
-                Đánh dấu mới cập nhật
-              </label>
-            </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-[#C21A1A]" />
+                        </div>
+                      </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsEditorOpen(false)}
-                className="px-3 py-2 text-xs font-black text-slate-500 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSaveDoc();
-                }}
-                disabled={isSavingDoc}
-                className="px-3 py-2 text-xs font-black text-white rounded-xl bg-[#C21A1A] hover:bg-[#A81515] disabled:opacity-60 cursor-pointer"
-              >
-                {isSavingDoc ? 'Đang lưu...' : 'Lưu tài liệu'}
-              </button>
+                      <div>
+                        <h3 className="text-xs font-extrabold leading-snug tracking-tight text-slate-900 transition-colors group-hover:text-[#C21A1A]">
+                          {doc.title}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-relaxed text-slate-500">
+                          {doc.summary}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        {isRead ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-600">
+                            <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            Đã đọc
+                          </span>
+                        ) : doc.meta.isUpdated ? (
+                          <span className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-700" />
+                            Mới cập nhật
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-slate-400">Chưa đọc</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center">
+                        {doc.meta.badgeText === 'Bắt buộc đọc' ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[9px] font-black text-[#C21A1A]">
+                            <span>🔖</span>
+                            <span>Bắt buộc đọc</span>
+                          </span>
+                        ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isRead && canConfirmRead ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              void handleConfirmRead(doc, event);
+                            }}
+                            className="rounded-lg bg-blue-800 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white transition-colors hover:bg-blue-900"
+                          >
+                            Xác nhận đã đọc
+                          </button>
+                        ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isRead && !canConfirmRead ? (
+                          <span className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">
+                            Chưa có quyền xác nhận
+                          </span>
+                        ) : doc.meta.driveLink ? (
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-600">
+                            Xem Drive gốc
+                            <ExternalLink className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">
+                            {doc.meta.badgeText}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <button
+              type="button"
+              onClick={handleBackToList}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-100"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Quay lại danh sách</span>
+            </button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+                {activeDoc?.category}
+              </span>
+
+              {activeDoc && permissions.canUpdate && (
+                <button
+                  type="button"
+                  onClick={() => openEditEditor(activeDoc)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  <span>Sửa</span>
+                </button>
+              )}
+
+              {activeDoc && permissions.canDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleDeleteDoc(activeDoc);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Xóa</span>
+                </button>
+              )}
+
+              {activeDoc && readDocs[activeDoc.id] && (
+                <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-600">
+                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                  <span>Đã đọc</span>
+                </span>
+              )}
             </div>
           </div>
-        </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-8">
+              <div className="mb-3 flex items-center gap-2 text-[#C21A1A]">
+                <span className="h-2 w-2 rounded-full bg-[#C21A1A]" />
+                <span className="text-[10px] font-black uppercase tracking-widest">mr.táo SOP standard</span>
+              </div>
+
+              <h2 className="mb-4 border-b border-slate-200 pb-3 text-sm font-black uppercase tracking-wide text-slate-900 sm:text-base">
+                {activeDoc?.title}
+              </h2>
+
+              <ScrollArea className="h-[calc(100vh-360px)] min-h-[360px] pr-3 md:h-[450px]">
+                <div className="space-y-2 pb-10 text-slate-700">{renderedActiveContent}</div>
+              </ScrollArea>
+            </div>
+
+            <aside className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3">
+                  <span className="rounded-full bg-[#C21A1A] p-1 text-white">
+                    <Info className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-800">
+                    Trách nhiệm tuân thủ
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-xs text-slate-600">
+                  <div>
+                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Chủ đề lớn</span>
+                    <span className="mt-0.5 block text-[11px] font-extrabold text-slate-800">{activeDoc?.category}</span>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Loại tài liệu</span>
+                    <span className="mt-0.5 block text-[11px] font-bold text-slate-800">
+                      {activeDoc?.meta.badgeText || 'Tài liệu hướng dẫn'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Lưu vết xác nhận</span>
+                    <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-500">
+                      Lần xác nhận gần nhất của bạn: {formatDateTime(activeReadAudit?.readAt)}
+                    </p>
+                  </div>
+
+                  {activeDoc?.meta.driveLink && (
+                    <a
+                      href={activeDoc.meta.driveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-2 text-[11px] font-extrabold text-slate-700 transition-colors hover:bg-slate-100"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Mở liên kết Drive gốc</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-2 border-t pt-5">
+                {activeDoc && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleConfirmReadAndBack();
+                    }}
+                    disabled={!canConfirmRead}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wide transition-all ${
+                      !canConfirmRead
+                        ? 'cursor-not-allowed bg-slate-300 text-white'
+                        : readDocs[activeDoc.id]
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-[#C21A1A] text-white hover:bg-[#A81515]'
+                    }`}
+                  >
+                    <FileCheck className="h-4 w-4" />
+                    <span>{readDocs[activeDoc.id] ? 'Ký lại xác nhận đã đọc' : 'Ký xác nhận đã đọc'}</span>
+                  </button>
+                )}
+
+                <p className="text-center text-[10px] font-medium text-slate-400">
+                  Biên bản điện tử được lưu theo ca trực hiện tại.
+                </p>
+              </div>
+            </aside>
+          </div>
+        </section>
       )}
 
+      {permissions.canCreate && !activeDocId && (
+        <button
+          type="button"
+          onClick={openCreateEditor}
+          className="fixed bottom-24 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl transition-all hover:scale-105 hover:bg-red-700 active:scale-95 sm:hidden"
+          title="Thêm tài liệu mới"
+        >
+          <Plus className="h-6 w-6 stroke-[3]" />
+        </button>
+      )}
+
+      <HandbookEditorDialog
+        isOpen={isEditorOpen}
+        isSaving={isSavingDoc}
+        editingDocId={editingDocId}
+        formState={formState}
+        canManageCategories={canManageCategories}
+        categoryOptions={categoryOptions}
+        errors={formErrors}
+        onClose={handleDialogClose}
+        onSave={() => {
+          void handleSaveDoc();
+        }}
+        onFormPatch={handleFormPatch}
+        onAddCategory={(name) => handleCreateCategory(name)}
+      />
     </div>
   );
 }
