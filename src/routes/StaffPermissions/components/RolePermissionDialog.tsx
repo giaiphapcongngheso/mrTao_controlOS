@@ -356,24 +356,22 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
           </div>
 
           {/* ---- Permissions Table ---- */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+          <div className="flex-1 min-h-0 flex flex-col max-h-[45vh]">
+            <p className="mb-2 shrink-0 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
               Ma trận phân quyền
             </p>
-            <div className="h-[calc(100%-24px)]">
-              <CustomTable<PermissionRowFormValues>
-                columns={columns}
-                data={permissions}
-                enablePagination={false}
-                enableSorting={false}
-                enableFiltering={false}
-                enableColumnResizing={false}
-                enableColumnVisibility={false}
-                showFilterRow={false}
-                emptyMessage="Không có module nào."
-                tableMinWidth={680}
-              />
-            </div>
+            <CustomTable<PermissionRowFormValues>
+              columns={columns}
+              data={permissions}
+              enablePagination={false}
+              enableSorting={false}
+              enableFiltering={false}
+              enableColumnResizing={false}
+              enableColumnVisibility={false}
+              showFilterRow={false}
+              emptyMessage="Không có module nào."
+              tableMinWidth={680}
+            />
           </div>
 
           {/* ---- Footer ---- */}

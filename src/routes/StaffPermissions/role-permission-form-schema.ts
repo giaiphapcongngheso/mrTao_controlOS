@@ -28,10 +28,8 @@ export const rolePermissionFormSchema = z.object({
   code: z
     .string()
     .trim()
-    .max(60, 'Mã vai trò tối đa 60 ký tự.')
-    .optional()
-    .default(''),
-  status: z.enum(['active', 'inactive']).default('active'),
+    .max(60, 'Mã vai trò tối đa 60 ký tự.'),
+  status: z.enum(['active', 'inactive']),
   permissions: z.array(permissionRowSchema),
 });
 

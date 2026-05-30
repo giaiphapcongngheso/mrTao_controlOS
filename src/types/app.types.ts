@@ -6,5 +6,7 @@ export type TabType =
   | 'SOP'
   | 'Reports'
   | 'Handbook'
+  | 'Marketing'
+  | 'Warehouse'
   | 'Staff'
   | 'Notifications';

@@ -36,6 +36,8 @@ export const MODULE_CODE = {
   LOI_SOP: 'LOI_SOP',
   BAO_CAO: 'BAO_CAO',
   SO_TAY: 'SO_TAY',
+  MARKETING: 'MARKETING',
+  KHO_HANG: 'KHO_HANG',
 } as const;
 
 export type ModuleCode = (typeof MODULE_CODE)[keyof typeof MODULE_CODE];
@@ -62,6 +64,8 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
   [MODULE_CODE.LOI_SOP]: { key: 'LOI_SOP', name: 'Báo lỗi SOP & Rủi ro', icon: '⚠️', desc: 'Ghi nhận lỗi quy trình, ngoại lệ, bất ngờ phát sinh hoặc kiểm tra ca trực.' },
   [MODULE_CODE.BAO_CAO]: { key: 'BAO_CAO', name: 'Báo cáo tổng quan', icon: '📊', desc: 'Xuất thống kê doanh số showroom, ước lượng lãi lỗ kinh doanh.' },
   [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay & Tài liệu (SOP)', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
+  [MODULE_CODE.MARKETING]: { key: 'MARKETING', name: 'Marketing & Truyền thông', icon: '📣', desc: 'Quản lý chiến dịch marketing, khuyến mãi, truyền thông thương hiệu.' },
+  [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Quản lý Kho hàng', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
 };
 
 /** Fallback metadata for custom/unknown modules. */

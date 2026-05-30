@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   BarChart4,
   BookMarked,
+  Megaphone,
+  Package,
   HelpCircle,
   LogOut,
   Users,
@@ -111,6 +113,8 @@ const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
   SOP: [MODULE_CODE.LOI_SOP],
   Reports: [MODULE_CODE.BAO_CAO],
   Handbook: [MODULE_CODE.SO_TAY],
+  Marketing: [MODULE_CODE.MARKETING],
+  Warehouse: [MODULE_CODE.KHO_HANG],
   Staff: ['STAFF', 'TAI_KHOAN', 'NHAN_SU', 'STAFF_PERMISSIONS'],
   Notifications: ['THONG_BAO', 'NOTIFICATIONS', 'PHE_DUYET'],
 };
@@ -433,6 +437,8 @@ export default function App() {
       case 'SOP': return renderIssues();
       case 'Reports': return renderReports();
       case 'Handbook': return renderHandbook();
+      case 'Marketing': return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center"><Megaphone className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-black text-slate-700">Marketing & Truyền thông</h2><p className="mt-2 text-sm text-slate-500">Tính năng đang được phát triển...</p></div>;
+      case 'Warehouse': return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center"><Package className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-black text-slate-700">Quản lý Kho hàng</h2><p className="mt-2 text-sm text-slate-500">Tính năng đang được phát triển...</p></div>;
       case 'Staff': return <StaffPermissionsView currentUser={currentUser ? { fullName: currentUser.fullName, role: currentUser.role, user: currentUser.username } : null} />;
       default: return renderToday();
     }
@@ -447,6 +453,8 @@ export default function App() {
     { key: 'SOP', label: 'Lỗi SOP / Ngoại lệ', icon: AlertTriangle },
     { key: 'Reports', label: 'Báo cáo', icon: BarChart4 },
     { key: 'Handbook', label: 'Sổ tay chuẩn', icon: BookMarked },
+    { key: 'Marketing', label: 'Marketing', icon: Megaphone },
+    { key: 'Warehouse', label: 'Kho', icon: Package },
     { key: 'Staff', label: 'Tài khoản', icon: Users },
   ];
 
@@ -508,7 +516,9 @@ export default function App() {
               activeTab === 'SOP' ? 'Ngoại lệ & Lỗi SOP' :
                 activeTab === 'Reports' ? 'Báo cáo tổng kết ca' :
                   activeTab === 'Handbook' ? 'Sổ tay Vận hành chuẩn (SOP)' :
-                    activeTab === 'Staff' ? 'Phân quyền cộng tác viên' : 'Hệ thống';
+                    activeTab === 'Marketing' ? 'Marketing & Truyền thông' :
+                      activeTab === 'Warehouse' ? 'Quản lý Kho hàng' :
+                        activeTab === 'Staff' ? 'Phân quyền cộng tác viên' : 'Hệ thống';
 
   return (
     <>
