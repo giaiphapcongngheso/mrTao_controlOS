@@ -190,7 +190,7 @@ export default function ChecklistView({
   }, [setIsAddingItem]);
 
   return (
-    <div className="space-y-2.5 text-left antialiased font-sans">
+    <div className="space-y-2.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
       {/* 1. Header Block */}
       <ChecklistHeader
         subTab={subTab}
@@ -254,7 +254,7 @@ export default function ChecklistView({
       {permissions.canCreate && (
         <Button
           onClick={handleOpenCreateDialog}
-          className="fixed bottom-24 right-5 lg:bottom-12 lg:right-12 w-14 h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-lg cursor-pointer z-40"
+          className="fixed bottom-24 right-5 sm:hidden w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-lg cursor-pointer z-40"
           title="Thêm checklist mới nhanh (1 tay)"
         >
           <Plus className="w-6 h-6 stroke-[3]" />

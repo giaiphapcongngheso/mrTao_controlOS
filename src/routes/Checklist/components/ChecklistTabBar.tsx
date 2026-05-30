@@ -34,40 +34,45 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
           <Button
             onClick={() => setSubTab('today')}
             variant="ghost"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'today'
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'today'
                 ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
               }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
+            <Calendar className="w-3.5 h-3.5 hidden sm:inline-block" />
             <span>Hôm nay</span>
           </Button>
 
           <Button
             onClick={() => setSubTab('process')}
             variant="ghost"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'process'
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'process'
                 ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
               }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Theo quy trình</span>
+            <Layers className="w-3.5 h-3.5 hidden sm:inline-block" />
+            <span>
+              <span className="hidden sm:inline">Theo quy trình</span>
+              <span className="sm:hidden inline">Quy trình</span>
+            </span>
           </Button>
 
           <Button
             onClick={() => setSubTab('completed')}
             variant="ghost"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 lg:flex-initial ${subTab === 'completed'
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'completed'
                 ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
               }`}
           >
-            <CheckCircle className="w-3.5 h-3.5" />
-            <span>Đã hoàn thành</span>
+            <CheckCircle className="w-3.5 h-3.5 hidden sm:inline-block" />
+            <span>
+              <span className="hidden sm:inline">Đã hoàn thành</span>
+              <span className="sm:hidden inline">Đã xong</span>
+            </span>
           </Button>
         </div>
-
         {/* Role Select */}
         {(subTab === 'process' || subTab === 'today') && (
           <div className="w-full sm:w-52 shrink-0">

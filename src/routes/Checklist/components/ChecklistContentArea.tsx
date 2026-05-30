@@ -152,9 +152,9 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
             ) : (
               <>
                 <span className="text-xs font-bold text-slate-500 shrink-0">
-                  {cat.countDone}/{cat.countTotal} việc hoàn thành
+                  {cat.countDone}/{cat.countTotal} <span className="hidden sm:inline">việc hoàn thành</span>
                 </span>
-                <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
+                <div className="hidden sm:block w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ease-out ${cat.meta.barColor}`}
                     style={{ width: `${percentText}%` }}
@@ -177,9 +177,9 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
               onClick={() => {
                 onOpenEditCategoryDialog(cat);
               }}
-              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-blue-500 hover:bg-blue-50 hover:border-blue-100 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-blue-500 hover:bg-blue-50 hover:border-blue-100 flex items-center justify-center transition-colors cursor-pointer"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
           )}
           {permissions.canDelete && (
@@ -189,13 +189,13 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
               onClick={() => {
                 onConfirmDeleteCategory(cat.id, cat.title);
               }}
-              className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
           )}
-          <span className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 flex items-center justify-center transition-all select-none">
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 flex items-center justify-center transition-all select-none">
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </span>
         </div>
       </div>
@@ -350,13 +350,13 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                             </Badge>
                           )}
                           {subTab !== 'process' && isLate && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 flex items-center gap-0.5 animate-in fade-in duration-200">
+                            <Badge variant="destructive" className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 items-center gap-0.5 animate-in fade-in duration-200">
                               <AlertCircle className="w-2.5 h-2.5 shrink-0" />
                               <span>Trễ hạn</span>
                             </Badge>
                           )}
                           {subTab !== 'process' && item.isCompleted && !isLate && item.timeLimit && (
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 animate-in fade-in duration-200">
+                            <Badge variant="success" className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0 animate-in fade-in duration-200">
                               Đúng hạn
                             </Badge>
                           )}
@@ -394,7 +394,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                         {subTab !== 'process' && (
                           <button
                             type="button"
-                            className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+                            className="hidden sm:flex w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 items-center justify-center transition-colors cursor-pointer"
                             title="Bằng chứng hình ảnh"
                           >
                             <Image className="w-3.5 h-3.5" />
