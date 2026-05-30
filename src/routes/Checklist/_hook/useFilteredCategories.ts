@@ -35,7 +35,7 @@ export function useFilteredCategories({
     // 1. Process templates (subTab === 'process')
     if (subTab === 'process') {
       const templates = allChecklistItems.filter(
-        (it) => it.isTemplate && it.roleCode?.trim().toUpperCase() === normalizedSelectedRole
+        (it) => !it.dateKey && it.roleCode?.trim().toUpperCase() === normalizedSelectedRole
       );
 
       return processCategories
@@ -64,7 +64,7 @@ export function useFilteredCategories({
     if (subTab === 'completed') {
       const targetDateKey = completedViewMode === 'day' ? getTodayKey() : selectedWeekDayKey;
       const completedItems = allChecklistItems.filter(
-        (it) => it.isCompleted && !it.isTemplate && it.dateKey === targetDateKey
+        (it) => it.isCompleted && it.dateKey === targetDateKey
       );
 
       return todayCategories

@@ -1,26 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChecklistCategory, ChecklistItem } from '../../../types/checklist.types';
-import { checklistCategoryService, checklistItemService } from '../../../services/checklist-service';
+import type { ChecklistCategory, ChecklistDocument, ChecklistItem } from '../../../types/checklist.types';
+import { checklistCategoryService, checklistService } from '../../../services/checklist-service';
 
 export const checklistQueryKeys = {
   categories: ['checklist', 'categories'] as const,
-  items: ['checklist', 'items'] as const,
-  itemsPage: (page: number, pageSize: number) => ['checklist', 'items', 'page', page, pageSize] as const,
+  documents: ['checklist', 'documents'] as const,
+  documentsPage: (page: number, pageSize: number) => ['checklist', 'documents', 'page', page, pageSize] as const,
 };
 
 export function useChecklistCategoriesQuery() {
   return useQuery({
     queryKey: checklistQueryKeys.categories,
     queryFn: checklistCategoryService.getAll,
-    enabled: false,
   });
 }
 
-export function useChecklistItemsQuery() {
+export function useChecklistDocumentsQuery() {
   return useQuery({
-    queryKey: checklistQueryKeys.items,
-    queryFn: checklistItemService.getAll,
-    enabled: false,
+    queryKey: checklistQueryKeys.documents,
+    queryFn: checklistService.getAll,
+  });
+}
+
+export function useChecklistProcessCategoriesQuery() {
+  return useQuery({
+    queryKey: ['checklist', 'documents', 'process'] as const,
+    queryFn: checklistService.getAll,
+    select: (docs: ChecklistDocument[]) =>
+      (docs || []).filter((doc) => doc.categoryType === 'process'),
   });
 }
 
@@ -49,12 +56,12 @@ function paginateArray<TItem>(allItems: TItem[], page: number, pageSize: number)
   };
 }
 
-export function useChecklistItemsPageQuery(page: number, pageSize: number) {
+export function useChecklistDocumentsPageQuery(page: number, pageSize: number) {
   return useQuery({
-    queryKey: checklistQueryKeys.itemsPage(page, pageSize),
-    queryFn: checklistItemService.getAll,
+    queryKey: checklistQueryKeys.documentsPage(page, pageSize),
+    queryFn: checklistService.getAll,
     enabled: false,
-    select: (allItems) => paginateArray(allItems, page, pageSize),
+    select: (allDocs: ChecklistDocument[]) => paginateArray(allDocs, page, pageSize),
   });
 }
 
@@ -64,7 +71,7 @@ function useInvalidateChecklistQueries() {
   return () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: checklistQueryKeys.categories }),
-      queryClient.invalidateQueries({ queryKey: checklistQueryKeys.items }),
+      queryClient.invalidateQueries({ queryKey: checklistQueryKeys.documents }),
     ]);
 }
 
@@ -93,27 +100,27 @@ export function useDeleteChecklistCategoryMutation() {
   });
 }
 
-export function useCreateChecklistItemMutation() {
+export function useCreateChecklistDocMutation() {
   const invalidate = useInvalidateChecklistQueries();
   return useMutation({
-    mutationFn: (payload: Partial<ChecklistItem>) => checklistItemService.create(payload),
+    mutationFn: (payload: Partial<ChecklistDocument>) => checklistService.create(payload),
     onSuccess: invalidate,
   });
 }
 
-export function useUpdateChecklistItemMutation() {
+export function useUpdateChecklistDocMutation() {
   const invalidate = useInvalidateChecklistQueries();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<ChecklistItem> }) =>
-      checklistItemService.update(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<ChecklistDocument> }) =>
+      checklistService.update(id, payload),
     onSuccess: invalidate,
   });
 }
 
-export function useDeleteChecklistItemMutation() {
+export function useDeleteChecklistDocMutation() {
   const invalidate = useInvalidateChecklistQueries();
   return useMutation({
-    mutationFn: (id: string) => checklistItemService.delete(id),
+    mutationFn: (id: string) => checklistService.delete(id),
     onSuccess: invalidate,
   });
 }

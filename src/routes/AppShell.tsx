@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Home,
   CheckSquare,
@@ -227,7 +227,7 @@ export default function App() {
   const [dailyReport, setDailyReport] = useState<DailyReport>(DAILY_REPORT_DATA);
   const activeStoreId = dailyReport.storeId || DEFAULT_STORE_ID;
 
-  const handleLogout = async ({ reason = 'manual' }: { reason?: 'manual' | 'expired' } = {}) => {
+  const handleLogout = useCallback(async ({ reason = 'manual' }: { reason?: 'manual' | 'expired' } = {}) => {
     if (reason === 'expired' && !sessionExpiryHandledRef.current) {
       sessionExpiryHandledRef.current = true;
       setSessionExpiredMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -238,9 +238,9 @@ export default function App() {
     } finally {
       clearSession();
     }
-  };
+  }, [clearSession]);
 
-  const handleChecklistMetricsChange = ({
+  const handleChecklistMetricsChange = useCallback(({
     items,
     checklistCompletion,
   }: {
@@ -257,16 +257,16 @@ export default function App() {
         checklistCompletion,
       };
     });
-  };
+  }, []);
 
   // Add Task handler
-  const handleAddTask = (taskParam: Omit<TaskItem, 'id' | 'storeId'>) => {
+  const handleAddTask = useCallback((taskParam: Omit<TaskItem, 'id' | 'storeId'>) => {
     const newTask: TaskItem = {
       ...taskParam,
       storeId: activeStoreId,
       id: `task-${Date.now()}`
     };
-    setTasks([newTask, ...tasks]);
+    setTasks((prevTasks) => [newTask, ...prevTasks]);
 
     // Update KPIStats counts
     setStats(prev => ({
@@ -275,39 +275,42 @@ export default function App() {
         ? prev.delayedTasksCount + 1
         : prev.delayedTasksCount
     }));
-  };
+  }, [activeStoreId]);
 
   // Update Task Status
-  const handleUpdateTaskStatus = (taskId: string, status: TaskItem['status']) => {
-    const previousTask = tasks.find(t => t.id === taskId);
-    const updatedTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        return { ...t, status };
-      }
-      return t;
-    });
-    setTasks(updatedTasks);
+  const handleUpdateTaskStatus = useCallback((taskId: string, status: TaskItem['status']) => {
+    setTasks((prevTasks) => {
+      const previousTask = prevTasks.find(t => t.id === taskId);
+      const updatedTasks = prevTasks.map(t => {
+        if (t.id === taskId) {
+          return { ...t, status };
+        }
+        return t;
+      });
 
-    // Re-calculate stats delayed count
-    let changeLate = 0;
-    if (previousTask) {
-      const isLateDeadline = previousTask.deadline.includes('08/05') || previousTask.deadline.includes('Trễ');
-      if (isLateDeadline) {
-        if (status === 'completed' && previousTask.status !== 'completed') {
-          changeLate = -1;
-        } else if (status !== 'completed' && previousTask.status === 'completed') {
-          changeLate = 1;
+      // Re-calculate stats delayed count
+      let changeLate = 0;
+      if (previousTask) {
+        const isLateDeadline = previousTask.deadline.includes('08/05') || previousTask.deadline.includes('Trễ');
+        if (isLateDeadline) {
+          if (status === 'completed' && previousTask.status !== 'completed') {
+            changeLate = -1;
+          } else if (status !== 'completed' && previousTask.status === 'completed') {
+            changeLate = 1;
+          }
         }
       }
-    }
 
-    setStats(prev => ({
-      ...prev,
-      delayedTasksCount: Math.max(0, prev.delayedTasksCount + changeLate)
-    }));
-  };
+      setStats(prev => ({
+        ...prev,
+        delayedTasksCount: Math.max(0, prev.delayedTasksCount + changeLate)
+      }));
 
-  const handleIssuesMetricsChange = ({
+      return updatedTasks;
+    });
+  }, []);
+
+  const handleIssuesMetricsChange = useCallback(({
     issues: nextIssues,
     sopErrorsCount,
   }: {
@@ -315,11 +318,16 @@ export default function App() {
     sopErrorsCount: number;
   }) => {
     setIssues(nextIssues);
-    setStats((prev) => ({
-      ...prev,
-      sopErrorsCount,
-    }));
-  };
+    setStats((prev) => {
+      if (prev.sopErrorsCount === sopErrorsCount) {
+        return prev;
+      }
+      return {
+        ...prev,
+        sopErrorsCount,
+      };
+    });
+  }, []);
 
   // --- COMPONENT MANDATED RENDER TRAGETS ---
   // The prompt explicitly requires writing these specific function names:

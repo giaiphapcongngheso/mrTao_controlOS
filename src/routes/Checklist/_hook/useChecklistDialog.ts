@@ -11,7 +11,10 @@ interface UseChecklistDialogProps {
   onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteChecklistItem?: (itemId: string) => Promise<void>;
   onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  onCreateCategory?: (title: string, categoryType: 'today' | 'process') => Promise<string | null>;
 }
+
+type DialogTask = { id?: string; title: string; timeLimit: string };
 
 export function useChecklistDialog({
   defaultRoleCode,
@@ -23,16 +26,17 @@ export function useChecklistDialog({
   onUpdateCategory,
   onDeleteChecklistItem,
   onUpdateChecklistItem,
+  onCreateCategory,
 }: UseChecklistDialogProps) {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [dialogRoleCode, setDialogRoleCode] = useState(defaultRoleCode);
   const [dialogCategoryId, setDialogCategoryId] = useState('');
   const [dialogChecklistName, setDialogChecklistName] = useState('');
   const [dialogEditCategoryId, setDialogEditCategoryId] = useState<string | null>(null);
-  const [dialogTasks, setDialogTasks] = useState<Array<{ id?: string; title: string; timeLimit: string }>>([
+  const [dialogTasks, setDialogTasks] = useState<DialogTask[]>([
     { title: '', timeLimit: '08:00' }
   ]);
-  const [originalTasks, setOriginalTasks] = useState<Array<{ id?: string; title: string; timeLimit: string }>>([]);
+  const [originalTasks, setOriginalTasks] = useState<DialogTask[]>([]);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
 
@@ -92,7 +96,7 @@ export function useChecklistDialog({
     setDialogCategoryId(cat.title);
     setDialogChecklistName(cat.title);
     
-    const tasksData: Array<{ id?: string; title: string; timeLimit: string }> = cat.tasks.map(t => ({
+    const tasksData: DialogTask[] = cat.tasks.map(t => ({
       id: t.id,
       title: t.title,
       timeLimit: t.timeLimit || '08:00'
@@ -165,7 +169,7 @@ export function useChecklistDialog({
               }
             }
           } else {
-            // New task inside edited category
+            // New task inside edited category — use batch create with the category's Firestore ID
             if (subTab === 'today' && onCreateTodayChecklistBatch) {
               await onCreateTodayChecklistBatch(dialogRoleCode, dialogEditCategoryId, checklistName, [{
                 title: task.title,
@@ -184,13 +188,16 @@ export function useChecklistDialog({
       } 
       // ─── CREATE MODE ───
       else {
+        // With the new single-collection structure, the create handlers
+        // will create a new document (category) with embedded tasks.
+        // No need to resolve categoryId — the checklistName IS the category title.
         if (subTab === 'today' && onCreateTodayChecklistBatch) {
-          await onCreateTodayChecklistBatch(dialogRoleCode, dialogCategoryId, checklistName, validTasks);
+          await onCreateTodayChecklistBatch(dialogRoleCode, '', checklistName, validTasks);
         } else if (onCreateRoleChecklistBatch) {
-          await onCreateRoleChecklistBatch(dialogRoleCode, dialogCategoryId, checklistName, validTasks);
+          await onCreateRoleChecklistBatch(dialogRoleCode, '', checklistName, validTasks);
         } else {
           for (const t of validTasks) {
-            await onCreateRoleChecklist(dialogRoleCode, dialogCategoryId, checklistName, t.title);
+            await onCreateRoleChecklist(dialogRoleCode, '', checklistName, t.title);
           }
         }
       }
@@ -219,7 +226,8 @@ export function useChecklistDialog({
     onCreateRoleChecklist,
     onUpdateCategory,
     onDeleteChecklistItem,
-    onUpdateChecklistItem
+    onUpdateChecklistItem,
+    onCreateCategory,
   ]);
 
   return {

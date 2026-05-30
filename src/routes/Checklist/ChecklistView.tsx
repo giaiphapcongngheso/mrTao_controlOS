@@ -27,7 +27,7 @@ interface ChecklistViewProps {
   onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
   onCreateTodayChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
   onCreateRoleChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onCreateCategory?: (title: string, categoryType: 'today' | 'process') => Promise<void>;
+  onCreateCategory?: (title: string, categoryType: 'today' | 'process') => Promise<string | null>;
   onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteChecklistItem?: (itemId: string) => Promise<void>;
@@ -114,6 +114,7 @@ export default function ChecklistView({
     onUpdateCategory,
     onDeleteChecklistItem,
     onUpdateChecklistItem,
+    onCreateCategory,
   });
 
   // 2. Filtered Categories Hook
