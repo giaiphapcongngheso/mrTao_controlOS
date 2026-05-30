@@ -640,15 +640,9 @@ export default function HandbookView() {
 
   const handleOpenDoc = useCallback(
     (doc: HandbookDocWithMeta) => {
-      if (doc.meta.driveLink) {
-        window.open(doc.meta.driveLink, '_blank');
-        showToast('Đang mở liên kết tài liệu đầy đủ trên Google Drive.');
-        return;
-      }
-
       setActiveDocId(doc.id);
     },
-    [showToast],
+    [],
   );
 
   const handleSetFilter = useCallback((nextFilter: HandbookFilter) => setSelectedFilter(nextFilter), []);
@@ -1095,15 +1089,19 @@ export default function HandbookView() {
                   </div>
 
                   {activeDoc?.meta.driveLink && (
-                    <a
-                      href={activeDoc.meta.driveLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-2 text-[11px] font-extrabold text-slate-700 transition-colors hover:bg-slate-100"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                      <span>Mở liên kết Drive gốc</span>
-                    </a>
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Liên kết tài liệu gốc</span>
+                      <a
+                        href={activeDoc.meta.driveLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-2 px-3 text-[11px] font-extrabold text-slate-700 transition-colors hover:bg-slate-100"
+                        title={activeDoc.meta.driveLink}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate flex-1 text-left font-semibold">{activeDoc.meta.driveLink}</span>
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { X } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
 import { CreatableCombobox } from '@shared/components/custom/creatable-combobox';
 import type { HandbookFormFieldErrors } from '../handbook-form-schema';
 import type { HandbookFormState } from '../handbook-view.types';
@@ -165,6 +165,21 @@ export default function HandbookEditorDialog({
               }`}
             />
             {errors.driveLink && <p className="mt-1 text-[10px] font-semibold text-rose-600">{errors.driveLink}</p>}
+            {formState.driveLink && /^https?:\/\/\S+$/i.test(formState.driveLink) && (
+              <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                <span className="font-semibold text-slate-400">Xem thử liên kết:</span>
+                <a
+                  href={formState.driveLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline max-w-[280px]"
+                  title={formState.driveLink}
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{formState.driveLink}</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
