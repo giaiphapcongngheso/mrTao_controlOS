@@ -89,14 +89,33 @@ async function main() {
   const sources = {};
   const contents = {};
 
+  let hasAllSources = true;
   for (const file of SOURCE_FILES) {
     const abs = path.join(ROOT, file);
+    if (!existsSync(abs)) {
+      hasAllSources = false;
+      continue;
+    }
     const text = await readFile(abs, "utf8");
     contents[file] = text;
     sources[file] = {
       path: file,
       hash: sha256(text),
     };
+  }
+
+  if (!hasAllSources) {
+    process.stdout.write(
+      "Warning: Rule source files (GEMINI.md/AI_RULE.md) are missing in this environment. Writing empty digest.\n"
+    );
+    await mkdir(OUTPUT_DIR, { recursive: true });
+    await writeFile(OUTPUT_FILE, "# Rule Digest\n\nRule source files are missing in this environment.", "utf8");
+    await writeFile(
+      META_FILE,
+      JSON.stringify({ sources: {}, updatedAt: new Date().toISOString() }, null, 2),
+      "utf8",
+    );
+    process.exit(0);
   }
 
   const previousMeta = await loadExistingMeta();
