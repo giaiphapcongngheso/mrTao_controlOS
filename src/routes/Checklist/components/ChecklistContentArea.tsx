@@ -110,6 +110,32 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   const lastToggleCompletedRef = React.useRef<{ id: string; time: number } | null>(null);
   const lastClickRef = React.useRef<{ id: string; time: number } | null>(null);
 
+  const handleSaveInlineItem = React.useCallback(async () => {
+    const trimmed = newItemTitle.trim();
+    if (!trimmed) return;
+    setIsSubmittingNewItem(true);
+    try {
+      await onAddInlineItem(
+        cat.id,
+        cat.title,
+        trimmed,
+        subTab === 'today' ? newItemTimeLimit : undefined
+      );
+      setNewItemTitle('');
+      setIsAddingInline(false);
+    } catch (error) {
+      console.error('Lỗi khi thêm inline item:', error);
+      toastError('Không thể thêm công việc mới. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingNewItem(false);
+    }
+  }, [cat.id, cat.title, newItemTitle, subTab, newItemTimeLimit, onAddInlineItem]);
+
+  const handleCancelInlineItem = React.useCallback(() => {
+    setIsAddingInline(false);
+    setNewItemTitle('');
+  }, []);
+
   return (
     <div
       className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${isExpanded
@@ -479,30 +505,11 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                   </div>
                 )}
                 <div className="flex gap-1 shrink-0 items-center">
-                  <button
+                  <Button
                     type="button"
                     disabled={isSubmittingNewItem || !newItemTitle.trim()}
-                    onClick={async () => {
-                      const trimmed = newItemTitle.trim();
-                      if (!trimmed) return;
-                      setIsSubmittingNewItem(true);
-                      try {
-                        await onAddInlineItem(
-                          cat.id,
-                          cat.title,
-                          trimmed,
-                          subTab === 'today' ? newItemTimeLimit : undefined
-                        );
-                        setNewItemTitle('');
-                        setIsAddingInline(false);
-                      } catch (error) {
-                        console.error('Lỗi khi thêm inline item:', error);
-                        toastError('Không thể thêm công việc mới. Vui lòng thử lại.');
-                      } finally {
-                        setIsSubmittingNewItem(false);
-                      }
-                    }}
-                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white rounded-lg cursor-pointer transition-colors active:scale-95 flex items-center justify-center w-[30px] h-[30px]"
+                    onClick={handleSaveInlineItem}
+                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white w-[30px] h-[30px]"
                     title="Lưu"
                   >
                     {isSubmittingNewItem ? (
@@ -510,19 +517,17 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                     ) : (
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     )}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     disabled={isSubmittingNewItem}
-                    onClick={() => {
-                      setIsAddingInline(false);
-                      setNewItemTitle('');
-                    }}
-                    className="p-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-500 rounded-lg cursor-pointer transition-colors active:scale-95 w-[30px] h-[30px] flex items-center justify-center"
+                    onClick={handleCancelInlineItem}
+                    variant="secondary"
+                    className="w-[30px] h-[30px]"
                     title="Hủy"
                   >
                     <X className="w-3.5 h-3.5 stroke-[3]" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

@@ -11,7 +11,8 @@ import { checklistService } from '../../services/checklist-service';
 import { systemLogService } from '../../services/system-log-service';
 import { getTodayKey } from './checklist.utils';
 import { toastError } from '../../shared/lib/toast';
-import { initBaseEntity, softDeleteEntity } from '../../types/base.types';
+import { initBaseEntity, initBusinessEntity, softDeleteEntity, guardAction } from '../../types/base.types';
+import { ENTITY_PREFIX } from '../../constants/entity-id.constants';
 import { useModulePermissions, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,7 +76,25 @@ function docToCategory(doc: ChecklistDocument, items: ChecklistItem[]): Checklis
   };
 }
 
+/**
+ * Finds a task by its unique ID across all checklist documents.
+ * Returns { doc, task } or null if not found.
+ */
+function findTaskById(
+  docs: ChecklistDocument[],
+  itemId: string,
+): { doc: ChecklistDocument; task: ChecklistTask } | null {
+  for (const doc of docs) {
+    const task = (doc.tasks || []).find((t) => t.id === itemId);
+    if (task) {
+      return { doc, task };
+    }
+  }
+  return null;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
+
 
 export default function ChecklistContainer({
   currentUser,
@@ -293,23 +312,19 @@ export default function ChecklistContainer({
   // ─── Toggle Item ──────────────────────────────────────────────────────────
 
   const handleToggleChecklistItem = useCallback(async (itemId: string) => {
+    const found = findTaskById(checklistDocs, itemId);
+    if (!found) {
+      toastError(`Không tìm thấy công việc với ID: ${itemId}`);
+      return;
+    }
+
+    const { doc: targetDoc, task: targetTask } = found;
+    const err = guardAction(checklistPermissions, 'canUpdate', targetTask, `công việc "${targetTask.title}"`);
+    if (err) { toastError(err); return; }
+
     const nowIso = new Date().toISOString();
     const checkerName = currentUser?.fullName || currentUser?.username || 'Hệ thống';
     const checkerUsername = currentUser?.username || 'system';
-
-    // Find which document contains this task
-    const targetDoc = checklistDocs.find((doc) =>
-      (doc.tasks || []).some((t) => t.id === itemId),
-    );
-    if (!targetDoc) {
-      return;
-    }
-
-    const targetTask = targetDoc.tasks.find((t) => t.id === itemId);
-    if (!targetTask) {
-      return;
-    }
-
     const nextCompleted = !targetTask.isCompleted;
 
     // Optimistic update
@@ -352,7 +367,7 @@ export default function ChecklistContainer({
       recalculateDerivedState(checklistDocs);
       toastError('Cập nhật trạng thái checklist thất bại. Vui lòng thử lại.');
     }
-  }, [checklistDocs, currentUser, recalculateDerivedState, appendChecklistLog]);
+  }, [checklistDocs, checklistPermissions, currentUser, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Save Checklist Helper ──────────────────────────────────────────────────
 
@@ -364,6 +379,10 @@ export default function ChecklistContainer({
     newTasks: ChecklistTask[],
     logDetails: string,
   ) => {
+    // Guard: check create permission
+    const err = guardAction(checklistPermissions, 'canCreate', null, 'công việc checklist');
+    if (err) { toastError(err); return; }
+
     const normalizedRoleCode = normalizeAccessCode(roleCode);
     const safeChecklistName = checklistName.trim();
     const nowIso = new Date().toISOString();
@@ -393,8 +412,9 @@ export default function ChecklistContainer({
         logDetails,
       );
     } else {
+      const baseEntity = await initBusinessEntity(ENTITY_PREFIX.CHECKLIST);
       const newDoc = await checklistService.create({
-        ...initBaseEntity('cat'),
+        ...baseEntity,
         storeId: activeStoreId,
         title: safeChecklistName,
         categoryType,
@@ -412,7 +432,7 @@ export default function ChecklistContainer({
         logDetails,
       );
     }
-  }, [activeStoreId, checklistDocs, recalculateDerivedState, appendChecklistLog]);
+  }, [activeStoreId, checklistPermissions, checklistDocs, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Create Checklist (category + tasks in 1 document) ────────────────────
 
@@ -544,17 +564,15 @@ export default function ChecklistContainer({
 
   const handleDeleteChecklistItem = useCallback(async (itemId: string) => {
     try {
-      const targetDoc = checklistDocs.find((doc) =>
-        (doc.tasks || []).some((t) => t.id === itemId),
-      );
-      if (!targetDoc) {
+      const found = findTaskById(checklistDocs, itemId);
+      if (!found) {
+        toastError(`Không tìm thấy công việc với ID: ${itemId}`);
         return;
       }
 
-      const taskToDelete = targetDoc.tasks.find((t) => t.id === itemId);
-      if (!taskToDelete) {
-        return;
-      }
+      const { doc: targetDoc, task: taskToDelete } = found;
+      const err = guardAction(checklistPermissions, 'canDelete', taskToDelete, `công việc "${taskToDelete.title}"`);
+      if (err) { toastError(err); return; }
 
       const nowIso = new Date().toISOString();
       const updatedTasks = targetDoc.tasks.map((t) => {
@@ -584,18 +602,21 @@ export default function ChecklistContainer({
       toastError('Xóa công việc thất bại. Vui lòng thử lại.');
       throw error;
     }
-  }, [checklistDocs, currentUser, recalculateDerivedState, appendChecklistLog]);
+  }, [checklistDocs, checklistPermissions, currentUser, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Update Item ──────────────────────────────────────────────────────────
 
   const handleUpdateChecklistItem = useCallback(async (itemId: string, updates: Partial<ChecklistItem>) => {
     try {
-      const targetDoc = checklistDocs.find((doc) =>
-        (doc.tasks || []).some((t) => t.id === itemId),
-      );
-      if (!targetDoc) {
+      const found = findTaskById(checklistDocs, itemId);
+      if (!found) {
+        toastError(`Không tìm thấy công việc với ID: ${itemId}. Dữ liệu có thể đã bị thay đổi.`);
         return;
       }
+
+      const { doc: targetDoc, task: existingTask } = found;
+      const err = guardAction(checklistPermissions, 'canUpdate', existingTask, `công việc "${existingTask.title}"`);
+      if (err) { toastError(err); return; }
 
       const nowIso = new Date().toISOString();
       const updatedTasks = targetDoc.tasks.map((t) => {
@@ -631,7 +652,7 @@ export default function ChecklistContainer({
       toastError('Cập nhật công việc thất bại. Vui lòng thử lại.');
       throw error;
     }
-  }, [checklistDocs, recalculateDerivedState, appendChecklistLog]);
+  }, [checklistDocs, checklistPermissions, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Create Category (document) ───────────────────────────────────────────
 
@@ -639,14 +660,18 @@ export default function ChecklistContainer({
     title: string,
     categoryType: 'today' | 'process',
   ): Promise<string | null> => {
+    const err = guardAction(checklistPermissions, 'canCreate', null, 'nhóm checklist');
+    if (err) { toastError(err); return null; }
+
     const safeTitle = title.trim();
     if (!safeTitle) {
       return null;
     }
 
     try {
+      const baseEntity = await initBusinessEntity(ENTITY_PREFIX.CHECKLIST);
       const newDoc = await checklistService.create({
-        ...initBaseEntity('cat'),
+        ...baseEntity,
         storeId: activeStoreId,
         title: safeTitle,
         categoryType,
@@ -665,7 +690,7 @@ export default function ChecklistContainer({
       toastError('Không thể tạo nhóm mới. Vui lòng kiểm tra kết nối.');
       return null;
     }
-  }, [activeStoreId, currentChecklistRoleCode, checklistDocs, recalculateDerivedState, appendChecklistLog]);
+  }, [activeStoreId, checklistPermissions, currentChecklistRoleCode, checklistDocs, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Update Category (document title) ─────────────────────────────────────
 
@@ -674,6 +699,10 @@ export default function ChecklistContainer({
     title: string,
     _categoryType: 'today' | 'process',
   ) => {
+    const targetDoc = checklistDocs.find((doc) => doc.id === id);
+    const err = guardAction(checklistPermissions, 'canUpdate', targetDoc, 'nhóm checklist');
+    if (err) { toastError(err); return; }
+
     const safeTitle = title.trim();
     if (!safeTitle) {
       return;
@@ -693,7 +722,7 @@ export default function ChecklistContainer({
       console.error('Không thể cập nhật nhóm checklist:', error);
       toastError('Cập nhật nhóm thất bại. Vui lòng thử lại.');
     }
-  }, [checklistDocs, recalculateDerivedState, appendChecklistLog]);
+  }, [checklistDocs, checklistPermissions, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Delete Category (entire document) ────────────────────────────────────
 
@@ -701,6 +730,10 @@ export default function ChecklistContainer({
     id: string,
     _categoryType: 'today' | 'process',
   ) => {
+    const targetDoc = checklistDocs.find((doc) => doc.id === id);
+    const err = guardAction(checklistPermissions, 'canDelete', targetDoc, 'nhóm checklist');
+    if (err) { toastError(err); return; }
+
     try {
       await checklistService.update(id, {
         ...softDeleteEntity(currentUser),
@@ -722,7 +755,7 @@ export default function ChecklistContainer({
       console.error('Không thể xóa nhóm checklist:', error);
       toastError('Xóa nhóm thất bại. Vui lòng thử lại.');
     }
-  }, [checklistDocs, currentUser, recalculateDerivedState, appendChecklistLog]);
+  }, [checklistDocs, checklistPermissions, currentUser, recalculateDerivedState, appendChecklistLog]);
 
   // ─── Flatten all items for the "allChecklistItems" prop ────────────────────
 

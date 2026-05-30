@@ -47,6 +47,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function cleanUndefined<T>(val: T): T {
+  if (Array.isArray(val)) {
+    return val.map((item) => cleanUndefined(item)) as unknown as T;
+  }
+  if (val !== null && typeof val === 'object' && !(val instanceof Date)) {
+    const res: Record<string, unknown> = {};
+    for (const key of Object.keys(val as Record<string, unknown>)) {
+      const v = (val as Record<string, unknown>)[key];
+      if (v !== undefined) {
+        res[key] = cleanUndefined(v);
+      }
+    }
+    return res as unknown as T;
+  }
+  return val;
+}
+
 function withEntityId<T>(id: string, data: T): T {
   if (!isRecord(data)) {
     return data;
@@ -82,13 +99,23 @@ export const firebaseClient: HttpClient = {
     const db = getFirestoreDb();
     const { resource, docId } = resolveResourceAndDocId(url);
     const collectionName = toCollectionName(resource);
-    const payload = isRecord(body) ? body : {};
+    const cleanedBody = cleanUndefined(body);
+    const payload = isRecord(cleanedBody) ? cleanedBody : {};
 
+    // If URL already contains a docId (e.g. /checklists/CL300526001)
     if (docId) {
       await setDoc(doc(db, collectionName, docId), payload, { merge: true });
       return withEntityId(docId, payload as T);
     }
 
+    // If payload contains a business ID → use it as Document ID (setDoc)
+    const entityId = payload.id as string | undefined;
+    if (entityId) {
+      await setDoc(doc(db, collectionName, entityId), payload);
+      return withEntityId(entityId, payload as T);
+    }
+
+    // Fallback: auto-generated Firestore ID (legacy compatibility)
     const created = await addDoc(collection(db, collectionName), payload);
     return withEntityId(created.id, payload as T);
   },
@@ -101,7 +128,8 @@ export const firebaseClient: HttpClient = {
     }
 
     const collectionName = toCollectionName(resource);
-    const payload = isRecord(body) ? body : {};
+    const cleanedBody = cleanUndefined(body);
+    const payload = isRecord(cleanedBody) ? cleanedBody : {};
 
     await setDoc(doc(db, collectionName, docId), payload, { merge: true });
     return withEntityId(docId, payload as T);
