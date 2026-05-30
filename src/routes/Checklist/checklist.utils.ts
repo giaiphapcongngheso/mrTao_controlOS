@@ -78,10 +78,20 @@ export function getCategoryMeta(categoryTitle: string, index: number): CategoryM
 }
 
 /**
- * Returns the current date in YYYY-MM-DD format
+ * Returns the current date in YYYY-MM-DD format (local timezone)
  */
 export function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateKey(new Date());
+}
+
+/**
+ * Converts a Date to YYYY-MM-DD string using local timezone
+ */
+export function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -118,7 +128,7 @@ export function isItemLate(item: ChecklistItem): boolean {
     checkTime = new Date(item.checkedAt);
   } else {
     const today = new Date();
-    if (item.dateKey && item.dateKey !== today.toISOString().slice(0, 10)) {
+    if (item.dateKey && item.dateKey !== toLocalDateKey(today)) {
       const itemDate = new Date(item.dateKey);
       if (itemDate < today) {
         return true; // Not completed and past day -> late
@@ -150,7 +160,7 @@ export function getWeekDates(): Array<{ dateStr: string; label: string; dateKey:
   for (let i = 0; i < 7; i++) {
     const day = new Date(monday);
     day.setDate(monday.getDate() + i);
-    const dateKey = day.toISOString().slice(0, 10);
+    const dateKey = toLocalDateKey(day);
     week.push({
       dateStr: day.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
       label: daysLabel[i],
