@@ -537,8 +537,8 @@ export default function HandbookView() {
       requiredRead: validated.data.requiredRead,
       isUpdated: validated.data.isUpdated,
       updatedAt: nowIso,
-      ...(driveLink ? { driveLink } : {}),
-      ...(categoryKey ? { categoryKey } : {}),
+      driveLink: driveLink || '',
+      categoryKey: categoryKey || '',
     };
 
     setIsSavingDoc(true);
