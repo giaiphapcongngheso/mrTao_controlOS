@@ -23,8 +23,8 @@ import {
 import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
 import { handbookCategoryService } from '../../services/handbook-category-service';
-import { staffPermissionService } from '../../services/admin';
 import { ScrollArea } from '../../shared/components/scroll-area';
+import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@shared/ui';
 import { useAppStore } from '../../stores/app-store';
 import type { HandbookCategory, HandbookDoc } from '../../types/handbook.types';
@@ -49,7 +49,8 @@ interface HandbookDocWithMeta extends HandbookDoc {
 
 type HandbookFilter = 'all' | 'required' | 'updated';
 
-const OWNER_ROLE_CODES = new Set(['CHU_CUA_HANG', 'QUAN_TRI_VIEN']);
+const OWNER_ROLE_CODES_HANDBOOK = new Set(['CHU_CUA_HANG', 'QUAN_TRI_VIEN']);
+
 
 const DEFAULT_PERMISSIONS: HandbookPermissions = {
   canCreate: false,
@@ -69,9 +70,8 @@ const EMPTY_FORM_STATE: HandbookFormState = {
   categoryKey: '',
 };
 
-function normalizeAccessCode(value?: string | null): string {
-  return (value || '').trim().toUpperCase();
-}
+// normalizeAccessCode is imported from shared hooks
+
 
 function normalizeText(value?: string | null): string {
   return (value || '').trim().toLowerCase();
@@ -197,7 +197,6 @@ export default function HandbookView() {
   const [handbookCategories, setHandbookCategories] = useState<HandbookCategory[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
-  const [permissions, setPermissions] = useState<HandbookPermissions>(DEFAULT_PERMISSIONS);
 
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
@@ -227,57 +226,18 @@ export default function HandbookView() {
     };
   }, []);
 
-  const isOwner = useMemo(
-    () => currentUser?.username === 'admin' || OWNER_ROLE_CODES.has(normalizeAccessCode(currentUser?.roleCode)),
-    [currentUser?.roleCode, currentUser?.username],
-  );
+  const isOwner = isOwnerUser(currentUser);
 
-  useEffect(() => {
-    let cancelled = false;
+  const { permissions: rawPermissions } = useModulePermissions(MODULE_CODE.SO_TAY, currentUser, isOwner);
+  const permissions: HandbookPermissions = {
+    canCreate: rawPermissions.canCreate,
+    canUpdate: rawPermissions.canUpdate,
+    canDelete: rawPermissions.canDelete,
+    canApprove: rawPermissions.canApprove,
+  };
 
-    const loadPermissions = async () => {
-      if (!currentUser) {
-        setPermissions(DEFAULT_PERMISSIONS);
-        return;
-      }
+  // ─── Permissions loaded via useModulePermissions hook ──────────────────────
 
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
-
-        if (isOwner) {
-          setPermissions({ canCreate: true, canUpdate: true, canDelete: true, canApprove: true });
-          return;
-        }
-
-        const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const handbookPermission = allPermissions.find(
-          (permission) =>
-            normalizeAccessCode(permission.roleCode) === roleCode &&
-            normalizeAccessCode(permission.module) === MODULE_CODE.SO_TAY,
-        );
-
-        setPermissions({
-          canCreate: Boolean(handbookPermission?.canCreate),
-          canUpdate: Boolean(handbookPermission?.canUpdate),
-          canDelete: Boolean(handbookPermission?.canDelete),
-          canApprove: Boolean(handbookPermission?.canApprove),
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Không thể tải quyền sổ tay:', error);
-          setPermissions(DEFAULT_PERMISSIONS);
-        }
-      }
-    };
-
-    void loadPermissions();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser, isOwner]);
 
   useEffect(() => {
     let cancelled = false;

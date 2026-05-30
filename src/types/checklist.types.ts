@@ -1,9 +1,10 @@
+import { BaseEntity } from './base.types';
+
 /**
  * A single task within a checklist category.
  * Tasks are embedded directly inside a ChecklistDocument.
  */
-export interface ChecklistTask {
-  id: string;
+export interface ChecklistTask extends BaseEntity {
   title: string;
   isCompleted: boolean;
   timeLimit?: string;
@@ -11,8 +12,6 @@ export interface ChecklistTask {
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 /**
@@ -21,15 +20,12 @@ export interface ChecklistTask {
  *
  * Collection: "checklists"
  */
-export interface ChecklistDocument {
-  id: string;
+export interface ChecklistDocument extends BaseEntity {
   storeId: string;
   title: string;
   categoryType: 'today' | 'process';
   roleCode: string;
   tasks: ChecklistTask[];
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 /**
@@ -50,8 +46,7 @@ export interface ChecklistCategory {
  * Flat item representation used by view-layer components.
  * Derived from ChecklistTask + parent document info.
  */
-export interface ChecklistItem {
-  id: string;
+export interface ChecklistItem extends BaseEntity {
   storeId: string;
   categoryId: string;
   title: string;
@@ -60,8 +55,6 @@ export interface ChecklistItem {
   roleCode?: string;
   dateKey?: string;
   checklistName?: string;
-  createdAt?: string;
-  updatedAt?: string;
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;

@@ -1,10 +1,10 @@
-import { useMemo, useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFirestoreInfiniteQuery } from '../../../shared/hooks/use-firestore-paged';
 import { issuesService } from '../../../services/issues-service';
-import { staffPermissionService } from '../../../services/admin';
 import { notificationsService } from '../../../services/notifications-service';
 import { MODULE_CODE } from '../../../constants/staff-permissions.constants';
+import { useModulePermissions } from '../../../shared/hooks/use-module-permissions';
 import type { SOPIssue } from '../../../types/issues.types';
 import type { UserSession } from '../../../stores/app-store';
 
@@ -20,9 +20,7 @@ export const issuesQueryKeys = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function normalizeAccessCode(value?: string | null): string {
-  return (value || '').trim().toUpperCase();
-}
+// normalizeAccessCode is now centralized in shared/hooks/use-module-permissions
 
 // ─── Infinite Query Hook ─────────────────────────────────────────────────────
 
@@ -46,49 +44,20 @@ export function useIssuesInfiniteQuery(storeId: string) {
 
 /**
  * Hook to fetch staff permissions for the SOP Issues module.
+ * Delegates to the shared useModulePermissions hook.
  */
 export function useIssuesPermissions(currentUser: UserSession | null, isOwner: boolean) {
-  const queryResult = useQuery({
-    queryKey: issuesQueryKeys.permissions(currentUser?.id, currentUser?.roleCode, isOwner),
-    queryFn: async () => {
-      if (isOwner) {
-        return { canCreate: true, canUpdate: true, canDelete: true };
-      }
+  const { permissions, isLoading } = useModulePermissions(MODULE_CODE.LOI_SOP, currentUser, isOwner);
 
-      if (!currentUser) {
-        return { canCreate: false, canUpdate: false, canDelete: false };
-      }
-
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const issuesPermRow = allPermissions.find(
-          (permission) =>
-            normalizeAccessCode(permission.roleCode) === roleCode &&
-            normalizeAccessCode(permission.module) === MODULE_CODE.LOI_SOP,
-        );
-
-        return {
-          canCreate: !!issuesPermRow?.canCreate,
-          canUpdate: !!issuesPermRow?.canUpdate,
-          canDelete: !!issuesPermRow?.canDelete,
-        };
-      } catch (error) {
-        console.error('Failed to load SOP issues permissions:', error);
-        return { canCreate: false, canUpdate: false, canDelete: false };
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    enabled: !!currentUser?.id || isOwner,
-  });
-
-  const permissions = useMemo(() => {
-    return queryResult.data ?? { canCreate: false, canUpdate: false, canDelete: false };
-  }, [queryResult.data]);
+  const issuesPermissions = useMemo(() => ({
+    canCreate: permissions.canCreate,
+    canUpdate: permissions.canUpdate,
+    canDelete: permissions.canDelete,
+  }), [permissions.canCreate, permissions.canUpdate, permissions.canDelete]);
 
   return {
-    ...queryResult,
-    permissions,
+    permissions: issuesPermissions,
+    isLoading,
   };
 }
 

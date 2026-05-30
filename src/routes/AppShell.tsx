@@ -43,8 +43,8 @@ import StaffPermissionsView from './StaffPermissions/StaffPermissionsView';
 import NotificationsView, { NotificationsBellPopover } from './Notifications/NotificationsView';
 import { useAppStore } from '../stores/app-store';
 import { signOutInternalStaff } from '../services/admin/internal-auth-service';
-import { staffPermissionService } from '../services/admin';
 import { MODULE_CODE } from '../constants/staff-permissions.constants';
+import { isOwnerUser, useAllowedModules } from '../shared/hooks/use-module-permissions';
 import AppFrameLayout, { type AppFrameLayoutLink } from './_components/AppFrameLayout';
 import HeaderProfilePopover from './_components/HeaderProfilePopover';
 
@@ -103,8 +103,6 @@ export function enrichSessionWithDefaultFields(user: any): UserSession {
   };
 }
 
-const OWNER_ROLE_CODES = new Set(['CHU_CUA_HANG', 'QUAN_TRI_VIEN']);
-
 const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
   Today: [MODULE_CODE.HOM_NAY],
   Checklist: [MODULE_CODE.CHECKLIST],
@@ -117,10 +115,6 @@ const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
   Notifications: ['THONG_BAO', 'NOTIFICATIONS', 'PHE_DUYET'],
 };
 
-function normalizeAccessCode(value?: string | null): string {
-  return (value || '').trim().toUpperCase();
-}
-
 export default function App() {
   const activeTab = useAppStore((state) => state.activeTab);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
@@ -130,12 +124,9 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tabTransitioning, setTabTransitioning] = useState(false);
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
-  const [allowedModules, setAllowedModules] = useState<string[]>([]);
   const sessionExpiryHandledRef = useRef(false);
-  const normalizedRoleCode = normalizeAccessCode(currentUser?.roleCode);
-  const isOwner =
-    currentUser?.username === 'admin' ||
-    OWNER_ROLE_CODES.has(normalizedRoleCode);
+  const isOwner = isOwnerUser(currentUser);
+  const { allowedModules } = useAllowedModules(currentUser, isOwner);
 
   useEffect(() => {
     setTabTransitioning(true);
@@ -176,46 +167,7 @@ export default function App() {
     return () => window.clearTimeout(toastTimer);
   }, [sessionExpiredMessage]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!currentUser) {
-      setAllowedModules([]);
-      return;
-    }
-
-    const loadAllowedModules = async () => {
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
-
-        const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const modules = allPermissions
-          .filter(
-            (permission) =>
-              permission?.canView &&
-              normalizeAccessCode(permission.roleCode) === roleCode,
-          )
-          .map((permission) => normalizeAccessCode(permission.module))
-          .filter(Boolean);
-
-        setAllowedModules(Array.from(new Set(modules)));
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load permission rows for sidebar:', error);
-          setAllowedModules([]);
-        }
-      }
-    };
-
-    void loadAllowedModules();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.id, currentUser?.roleCode, currentUser?.username]);
+  // ─── Allowed modules loaded via useAllowedModules hook ─────────────────────
 
   // Central React States
   const [stats, setStats] = useState<KPIStats>(INITIAL_KPI_STATS);
@@ -615,9 +567,3 @@ export default function App() {
     </>
   );
 }
-
-
-
-
-
-

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, CircleAlert, Clock3, FileSearch, ListChecks, MessageSquare, Siren, X } from 'lucide-react';
 import { Alert, AlertDescription, Badge, Button, Popover, PopoverContent, PopoverTrigger, ScrollArea, Textarea } from '@shared/ui';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
-import { staffPermissionService } from '../../services/admin';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import { notificationsService, subscribeNotificationsRealtime } from '../../services/notifications-service';
 import { useAppStore } from '../../stores/app-store';
 import type { TabType } from '../../types/app.types';
@@ -83,9 +83,7 @@ function normalizeDateTime(value?: string): number {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
-function normalizeAccessCode(value?: string | null): string {
-  return (value || '').trim().toUpperCase();
-}
+// normalizeAccessCode is imported from shared/hooks/use-module-permissions
 
 function formatRelativeTimeVi(value?: string): string {
   if (!value) {
@@ -213,66 +211,15 @@ function useNotificationsData() {
 
 function useNotificationPermissions() {
   const currentUser = useAppStore((state) => state.currentUser);
-  const [permissions, setPermissions] = useState<NotificationActionPermissions>({
-    canApprove: false,
-    canComment: false,
-    canCreateTask: false,
-  });
+  const isOwner = isOwnerUser(currentUser);
+  const { permissions: sopPermissions } = useModulePermissions(MODULE_CODE.LOI_SOP, currentUser, isOwner);
+  const { permissions: taskPermissions } = useModulePermissions(MODULE_CODE.GIAO_VIEC, currentUser, isOwner);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadPermissions = async () => {
-      if (!currentUser) {
-        setPermissions({
-          canApprove: false,
-          canComment: false,
-          canCreateTask: false,
-        });
-        return;
-      }
-
-      try {
-        const rows = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
-
-        const roleCode = normalizeAccessCode(currentUser.roleCode || currentUser.role);
-        const sopPermission = rows.find(
-          (row) =>
-            normalizeAccessCode(row.module) === MODULE_CODE.LOI_SOP &&
-            normalizeAccessCode(row.roleCode) === roleCode,
-        );
-        const taskPermission = rows.find(
-          (row) =>
-            normalizeAccessCode(row.module) === MODULE_CODE.GIAO_VIEC &&
-            normalizeAccessCode(row.roleCode) === roleCode,
-        );
-
-        const isOwner =
-          currentUser.username === 'admin' || normalizeAccessCode(currentUser.roleCode) === 'CHU_CUA_HANG';
-
-        setPermissions({
-          canApprove: isOwner || !!sopPermission?.canApprove || !!sopPermission?.canUpdate,
-          canComment: isOwner || !!sopPermission?.canUpdate,
-          canCreateTask: isOwner || !!taskPermission?.canCreate,
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Không thể tải quyền thao tác thông báo:', error);
-        }
-      }
-    };
-
-    void loadPermissions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser]);
-
-  return permissions;
+  return useMemo<NotificationActionPermissions>(() => ({
+    canApprove: sopPermissions.canApprove || sopPermissions.canUpdate,
+    canComment: sopPermissions.canUpdate,
+    canCreateTask: taskPermissions.canCreate,
+  }), [sopPermissions.canApprove, sopPermissions.canUpdate, taskPermissions.canCreate]);
 }
 
 interface NotificationListItemProps {

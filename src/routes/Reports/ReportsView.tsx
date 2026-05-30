@@ -18,8 +18,8 @@ import { TaskItem } from '../../types/tasks.types';
 import { KPIStats } from '../../types/today.types';
 import { reportsDailyService, type ReportSubmission } from '../../services/reports-service';
 import { notificationsService } from '../../services/notifications-service';
-import { staffPermissionService } from '../../services/admin';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import ReportForm, { type ReportFormState, type ReportPeriod, type ReportStatus } from './components/report-form';
 
 interface ReportsViewProps {
@@ -69,9 +69,7 @@ const DEFAULT_FORM_STATE: ReportFormState = {
 
 const ITEMS_PER_PAGE = 5;
 
-function normalizeAccessCode(value?: string | null): string {
-  return (value || '').trim().toUpperCase();
-}
+// normalizeAccessCode is imported from shared hooks
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
@@ -91,11 +89,8 @@ export default function ReportsView({
   const [searchTerm, setSearchTerm] = useState('');
   const [showToast, setShowToast] = useState<ToastState>({ show: false, msg: '', type: 'success' });
   const [submittedReports, setSubmittedReports] = useState<ReportSubmission[]>([]);
-  const [permissions, setPermissions] = useState<ReportsPermissions>({
-    canCreate: false,
-    canUpdate: false,
-    canDelete: false,
-  });
+  const isOwner = isOwnerUser(currentUser as any);
+  const { permissions } = useModulePermissions(MODULE_CODE.BAO_CAO, currentUser as any, isOwner);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isReportFormOpen, setIsReportFormOpen] = useState(false);
@@ -188,48 +183,8 @@ export default function ReportsView({
     }));
   }, [defaultNotes, defaultStatus, reportTab]);
 
-  useEffect(() => {
-    let cancelled = false;
+  // ─── Permissions loaded via useModulePermissions hook ──────────────────────
 
-    const loadPermissions = async () => {
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
-
-        const roleCode = normalizeAccessCode(currentUser?.roleCode || currentUser?.role);
-        const reportsPermission = allPermissions.find(
-          (permission) =>
-            normalizeAccessCode(permission.module) === MODULE_CODE.BAO_CAO &&
-            normalizeAccessCode(permission.roleCode) === roleCode,
-        );
-
-        if (
-          !reportsPermission &&
-          (currentUser?.role?.toLowerCase().includes('chủ') || currentUser?.username === 'admin')
-        ) {
-          setPermissions({ canCreate: true, canUpdate: true, canDelete: true });
-          return;
-        }
-
-        setPermissions({
-          canCreate: !!reportsPermission?.canCreate,
-          canUpdate: !!reportsPermission?.canUpdate,
-          canDelete: !!reportsPermission?.canDelete,
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Không thể tải quyền báo cáo:', error);
-        }
-      }
-    };
-
-    void loadPermissions();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.role, currentUser?.roleCode, currentUser?.username]);
 
   useEffect(() => {
     let cancelled = false;
