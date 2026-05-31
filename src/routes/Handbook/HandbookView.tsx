@@ -98,6 +98,63 @@ function formatDateTime(value?: string): string {
   });
 }
 
+interface IconConfig {
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+}
+
+const ICON_CONFIG_POOL: IconConfig[] = [
+  { icon: Shield, iconBg: 'bg-rose-50 text-red-700 hover:bg-rose-100', iconColor: 'text-red-600' },
+  { icon: FileText, iconBg: 'bg-orange-50 text-orange-700 hover:bg-orange-100', iconColor: 'text-orange-500' },
+  { icon: Network, iconBg: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100', iconColor: 'text-emerald-500' },
+  { icon: Lock, iconBg: 'bg-blue-50 text-blue-700 hover:bg-blue-100', iconColor: 'text-blue-500' },
+  { icon: User, iconBg: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100', iconColor: 'text-indigo-500' },
+  { icon: Scale, iconBg: 'bg-pink-50 text-pink-700 hover:bg-pink-100', iconColor: 'text-pink-600' },
+  { icon: Settings, iconBg: 'bg-sky-50 text-sky-700 hover:bg-sky-100', iconColor: 'text-sky-600' },
+  { icon: GraduationCap, iconBg: 'bg-amber-50 text-amber-700 hover:bg-amber-100', iconColor: 'text-amber-500' },
+  { icon: BookOpen, iconBg: 'bg-violet-50 text-violet-700 hover:bg-violet-100', iconColor: 'text-violet-600' },
+];
+
+function getDeterministicIconConfig(seed: string): IconConfig {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % ICON_CONFIG_POOL.length;
+  return ICON_CONFIG_POOL[index];
+}
+
+function getCategoryIconConfig(categoryName: string): IconConfig {
+  const normalized = normalizeText(categoryName);
+  if (normalized.includes('văn hóa')) {
+    return { icon: Shield, iconBg: 'bg-rose-50', iconColor: 'text-red-600' };
+  }
+  if (normalized.includes('nội quy') || normalized.includes('hành chính')) {
+    return { icon: FileText, iconBg: 'bg-orange-50', iconColor: 'text-orange-500' };
+  }
+  if (normalized.includes('sơ đồ')) {
+    return { icon: Network, iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500' };
+  }
+  if (normalized.includes('phân quyền')) {
+    return { icon: Lock, iconBg: 'bg-blue-50', iconColor: 'text-blue-500' };
+  }
+  if (normalized.includes('mô tả')) {
+    return { icon: User, iconBg: 'bg-indigo-50', iconColor: 'text-indigo-500' };
+  }
+  if (normalized.includes('quy chế')) {
+    return { icon: Scale, iconBg: 'bg-pink-50', iconColor: 'text-pink-600' };
+  }
+  if (normalized.includes('sop') || normalized.includes('quy trình')) {
+    return { icon: Settings, iconBg: 'bg-sky-50', iconColor: 'text-sky-600' };
+  }
+  if (normalized.includes('đào tạo') || normalized.includes('hướng dẫn')) {
+    return { icon: GraduationCap, iconBg: 'bg-amber-50', iconColor: 'text-amber-500' };
+  }
+
+  return getDeterministicIconConfig(categoryName);
+}
+
 function resolveCardMetadata(doc: HandbookDoc): UICardMetadata {
   const normalized = normalizeText(`${doc.category || ''} ${doc.title || ''} ${doc.categoryKey || ''}`);
   const base: UICardMetadata = {
@@ -136,7 +193,13 @@ function resolveCardMetadata(doc: HandbookDoc): UICardMetadata {
     return { ...base, iconBg: 'bg-amber-50 text-amber-700 hover:bg-amber-100', iconColor: 'text-amber-500', icon: GraduationCap, categoryKey: 'đào tạo' };
   }
 
-  return base;
+  const randomConfig = getDeterministicIconConfig(doc.id || doc.title || '');
+  return {
+    ...base,
+    icon: randomConfig.icon,
+    iconBg: randomConfig.iconBg,
+    iconColor: randomConfig.iconColor,
+  };
 }
 
 function renderFormattedContent(content: string): React.ReactNode[] {
@@ -829,18 +892,21 @@ export default function HandbookView() {
               </Button>
               {visibleCategories.map((categoryName) => {
                 const isSelected = selectedCategory === categoryName;
+                const config = getCategoryIconConfig(categoryName);
+                const CatIcon = config.icon;
                 return (
                   <Button
                     key={categoryName}
                     type="button"
                     onClick={() => handleToggleCategory(categoryName)}
-                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold ${
+                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
                         : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
                     }`}
                   >
-                    {categoryName}
+                    <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
+                    <span>{categoryName}</span>
                   </Button>
                 );
               })}
@@ -857,15 +923,18 @@ export default function HandbookView() {
                   <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
                     {hiddenCategories.map((categoryName) => {
                       const isSelected = selectedCategory === categoryName;
+                      const config = getCategoryIconConfig(categoryName);
+                      const CatIcon = config.icon;
                       return (
                         <DropdownMenuItem
                           key={categoryName}
                           onClick={() => handleToggleCategory(categoryName)}
-                          className={`text-xs font-semibold cursor-pointer ${
+                          className={`text-xs font-semibold cursor-pointer flex items-center gap-2 ${
                             isSelected ? 'text-[#C21A1A] font-extrabold bg-red-50' : 'text-slate-600'
                           }`}
                         >
-                          {categoryName}
+                          <CatIcon className={`h-3.5 w-3.5 ${config.iconColor}`} />
+                          <span>{categoryName}</span>
                         </DropdownMenuItem>
                       );
                     })}
