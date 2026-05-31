@@ -1140,7 +1140,7 @@ export function CustomTable<TData>({
   }, [table, columnSizing]);
 
   return (
-    <div className={cn('overflow-hidden flex flex-col min-h-0 ', className)}>
+    <div className={cn('overflow-hidden flex flex-col min-h-0 min-w-0', className)}>
       <TableTitleSection
         titleProps={titleProps}
         enableColumnVisibility={enableColumnVisibility}
@@ -1148,7 +1148,7 @@ export function CustomTable<TData>({
         globalFilterElement={globalFilterElement}
       />
 
-      <div className="flex-1 flex flex-col min-h-0 ">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0">
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto overflow-x-auto relative rounded-lg border shadow-sm bg-white"

@@ -86,9 +86,9 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     };
   }, [successToast]);
 
-  const showSuccessToast = (message: string) => {
+  const showSuccessToast = useCallback((message: string) => {
     setSuccessToast(message);
-  };
+  }, []);
 
   const addLog = async (actionType: SystemLogActionType, target: string, details: string) => {
     const newLog: SystemLog = {
@@ -548,7 +548,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     }
   };
 
-  const handleClearLogs = async () => {
+  const handleClearLogs = useCallback(async () => {
     if (!isOwner) {
       setErrorMessage('Bạn không có quyền xóa nhật ký hệ thống.');
       return;
@@ -572,7 +572,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       console.error('Failed to clear system logs:', error);
       setErrorMessage('Không thể xóa log hệ thống.');
     }
-  };
+  }, [isOwner, showSuccessToast]);
 
   const handleOpenAddStaffDialog = useCallback(() => {
     setStaffForm(DEFAULT_STAFF_FORM);
@@ -637,7 +637,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           onExternalCreateOpenChange={setShowRoleDialog}
         />
       ) : (
-        <LogsTabContent logs={logs} isOwner={isOwner} />
+        <LogsTabContent logs={logs} isOwner={isOwner} onClearLogs={handleClearLogs} />
       )}
 
       {successToast && (
