@@ -1,120 +1,143 @@
 import React from 'react';
-import { AlertTriangle, HelpCircle, Shield, Lightbulb } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Clock, CheckCircle } from 'lucide-react';
+import { cn } from '../../../../share/lib/utils';
+import type { SOPIssueStatus, SOPIssueStatusFilter } from '../../../types/issues.types';
 
-interface MetricBentoCardsProps {
-  selectedFilter: 'all' | 'sop_error' | 'exception' | 'risk' | 'improvement';
-  onSelectFilter: (filter: 'all' | 'sop_error' | 'exception' | 'risk' | 'improvement') => void;
-  sopCount: number;
-  exceptionCount: number;
-  riskCount: number;
-  improvementCount: number;
+export type IssueStatus = SOPIssueStatusFilter;
+
+interface MetricCardConfig {
+  status: SOPIssueStatus;
+  title: string;
+  subtitle: string;
+  count: number;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  activeStyles: string;
+  hoverStyles: string;
+  countColor: string;
 }
 
+interface MetricBentoCardsProps {
+  selectedStatus: IssueStatus;
+  onSelectStatus: (status: IssueStatus) => void;
+  immediateCount: number;
+  pendingCount: number;
+  inProgressCount: number;
+  resolvedCount: number;
+}
+
+interface MetricStatusCardProps {
+  card: MetricCardConfig;
+  isActive: boolean;
+  onSelectStatus: (status: IssueStatus) => void;
+}
+
+const MetricStatusCard = React.memo(function MetricStatusCard({
+  card,
+  isActive,
+  onSelectStatus,
+}: MetricStatusCardProps) {
+  const IconComponent = card.icon;
+
+  const handleClick = React.useCallback(() => {
+    onSelectStatus(isActive ? 'all' : card.status);
+  }, [card.status, isActive, onSelectStatus]);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      aria-label={`Lọc phiếu trạng thái ${card.title}: ${card.count}`}
+      onClick={handleClick}
+      className={cn(
+        "bg-white rounded-2xl p-3.5 sm:p-4 border transition-all cursor-pointer select-none text-left flex flex-row items-center justify-between gap-3 py-3.5 sm:py-4 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200",
+        isActive ? card.activeStyles : card.hoverStyles
+      )}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <span className={cn("p-2 rounded-xl group-hover:scale-105 transition-transform duration-200 shrink-0 flex items-center justify-center", card.iconBg)}>
+          <IconComponent className="w-5 h-5 stroke-[2.5]" />
+        </span>
+        <div className="space-y-0.5 min-w-0">
+          <h4 className="font-extrabold text-slate-800 text-[13px] leading-tight truncate">{card.title}</h4>
+          <span className="text-[10px] text-slate-450 font-bold block truncate">{card.subtitle}</span>
+        </div>
+      </div>
+      <span className={cn("text-2xl font-black tracking-tight tabular-nums shrink-0", card.countColor)}>{card.count}</span>
+    </button>
+  );
+});
+
 const MetricBentoCards = React.memo(function MetricBentoCards({
-  selectedFilter,
-  onSelectFilter,
-  sopCount,
-  exceptionCount,
-  riskCount,
-  improvementCount,
+  selectedStatus,
+  onSelectStatus,
+  immediateCount,
+  pendingCount,
+  inProgressCount,
+  resolvedCount,
 }: MetricBentoCardsProps) {
+  
+  const cardConfigs = React.useMemo<MetricCardConfig[]>(() => [
+    {
+      status: 'Xử lý ngay',
+      title: 'Xử lý ngay',
+      subtitle: 'Cần giải quyết gấp',
+      count: immediateCount,
+      icon: AlertTriangle,
+      iconBg: 'bg-rose-50 text-rose-600',
+      activeStyles: 'ring-2 ring-rose-600 border-rose-600 bg-rose-50/5 shadow-md shadow-rose-500/10',
+      hoverStyles: 'border-slate-200 shadow-2xs hover:border-rose-500/40 hover:shadow-xs',
+      countColor: 'text-[#C21A1A]',
+    },
+    {
+      status: 'Chờ duyệt',
+      title: 'Chờ duyệt',
+      subtitle: 'Chờ phê duyệt',
+      count: pendingCount,
+      icon: HelpCircle,
+      iconBg: 'bg-amber-50 text-amber-600',
+      activeStyles: 'ring-2 ring-amber-500 border-amber-500 bg-amber-50/5 shadow-md shadow-amber-500/10',
+      hoverStyles: 'border-slate-200 shadow-2xs hover:border-amber-500/40 hover:shadow-xs',
+      countColor: 'text-amber-500',
+    },
+    {
+      status: 'Đang triển khai',
+      title: 'Đang triển khai',
+      subtitle: 'Đang chạy thực tế',
+      count: inProgressCount,
+      icon: Clock,
+      iconBg: 'bg-emerald-50 text-emerald-600',
+      activeStyles: 'ring-2 ring-emerald-600 border-emerald-600 bg-emerald-50/5 shadow-md shadow-emerald-500/10',
+      hoverStyles: 'border-slate-200 shadow-2xs hover:border-emerald-500/40 hover:shadow-xs',
+      countColor: 'text-emerald-600',
+    },
+    {
+      status: 'Đã xử lý',
+      title: 'Đã xử lý',
+      subtitle: 'Đã lưu trữ hồ sơ',
+      count: resolvedCount,
+      icon: CheckCircle,
+      iconBg: 'bg-blue-50 text-blue-600',
+      activeStyles: 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/5 shadow-md shadow-blue-500/10',
+      hoverStyles: 'border-slate-200 shadow-2xs hover:border-blue-500/40 hover:shadow-xs',
+      countColor: 'text-blue-600',
+    },
+  ], [immediateCount, pendingCount, inProgressCount, resolvedCount]);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {/* 1. Lỗi SOP */}
-      <div 
-        onClick={() => onSelectFilter('sop_error')}
-        className={`bg-white rounded-2xl p-4.5 border transition-all cursor-pointer select-none text-left flex flex-col justify-between group ${
-          selectedFilter === 'sop_error' 
-            ? 'ring-2 ring-[#C21A1A] border-[#C21A1A] bg-red-50/10' 
-            : 'border-slate-200 hover:border-[#C21A1A]/50 hover:shadow-xs'
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Nhóm chất lượng</span>
-            <h4 className="font-extrabold text-slate-800 text-xs">Lỗi SOP</h4>
-          </div>
-          <span className="bg-red-50 p-2 rounded-xl text-[#C21A1A] group-hover:scale-110 transition-transform">
-            <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-end justify-between">
-          <span className="text-3xl font-black tracking-tight text-[#C21A1A]">{sopCount}</span>
-          <span className="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-md border border-slate-100">Cần xử lý gấp</span>
-        </div>
-      </div>
-
-      {/* 2. Ngoại lệ */}
-      <div 
-        onClick={() => onSelectFilter('exception')}
-        className={`bg-white rounded-2xl p-4.5 border transition-all cursor-pointer select-none text-left flex flex-col justify-between group ${
-          selectedFilter === 'exception' 
-            ? 'ring-2 ring-amber-500 border-amber-500 bg-amber-50/10' 
-            : 'border-slate-200 hover:border-amber-500/50 hover:shadow-xs'
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phê duyệt quy trình</span>
-            <h4 className="font-extrabold text-slate-800 text-xs text-left">Ngoại lệ chờ duyệt</h4>
-          </div>
-          <span className="bg-amber-50 p-2 rounded-xl text-amber-600 group-hover:scale-110 transition-transform">
-            <HelpCircle className="w-5 h-5 stroke-[2.5]" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-end justify-between">
-          <span className="text-3xl font-black tracking-tight text-amber-500">{exceptionCount}</span>
-          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded-md border border-amber-100">Chờ Quản lý duyệt</span>
-        </div>
-      </div>
-
-      {/* 3. Rủi ro */}
-      <div 
-        onClick={() => onSelectFilter('risk')}
-        className={`bg-white rounded-2xl p-4.5 border transition-all cursor-pointer select-none text-left flex flex-col justify-between group ${
-          selectedFilter === 'risk' 
-            ? 'ring-2 ring-purple-600 border-purple-600 bg-purple-50/10' 
-            : 'border-slate-200 hover:border-purple-500/50 hover:shadow-xs'
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">An ninh & Phòng chống</span>
-            <h4 className="font-extrabold text-slate-800 text-xs">Rủi ro cao</h4>
-          </div>
-          <span className="bg-purple-50 p-2 rounded-xl text-purple-600 group-hover:scale-110 transition-transform">
-            <Shield className="w-5 h-5 stroke-[2.5]" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-end justify-between">
-          <span className="text-3xl font-black tracking-tight text-purple-600">{riskCount}</span>
-          <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded-md border border-purple-100">Phải chặn ngay</span>
-        </div>
-      </div>
-
-      {/* 4. Cải tiến */}
-      <div 
-        onClick={() => onSelectFilter('improvement')}
-        className={`bg-white rounded-2xl p-4.5 border transition-all cursor-pointer select-none text-left flex flex-col justify-between group ${
-          selectedFilter === 'improvement' 
-            ? 'ring-2 ring-emerald-600 border-emerald-600 bg-emerald-50/10' 
-            : 'border-slate-200 hover:border-emerald-500/50 hover:shadow-xs'
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tối ưu hiệu quả</span>
-            <h4 className="font-extrabold text-slate-800 text-xs">Cải tiến đang chạy</h4>
-          </div>
-          <span className="bg-emerald-50 p-2 rounded-xl text-emerald-600 group-hover:scale-110 transition-transform">
-            <Lightbulb className="w-5 h-5 stroke-[2.5]" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-end justify-between">
-          <span className="text-3xl font-black tracking-tight text-emerald-600">{improvementCount}</span>
-          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">Đang triển khai</span>
-        </div>
-      </div>
+      {cardConfigs.map((card) => {
+        const isActive = selectedStatus === card.status;
+        
+        return (
+          <MetricStatusCard
+            key={card.status}
+            card={card}
+            isActive={isActive}
+            onSelectStatus={onSelectStatus}
+          />
+        );
+      })}
     </div>
   );
 });

@@ -37,7 +37,7 @@ import TodayView from './Today/TodayView';
 import ChecklistContainer from './Checklist/checklist-container';
 import TasksView from './Tasks/TasksView';
 import KpiView from './Kpi/KpiView';
-import IssuesContainer from './Issues/IssuesContainer';
+import IssuesContainer from './Issues/issues-container';
 import ReportsView from './Reports/ReportsView';
 import HandbookView from './Handbook/HandbookView';
 import LoginView from './Login/LoginView';

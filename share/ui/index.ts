@@ -36,3 +36,7 @@ export * from './table';
 export * from './tabs';
 export * from './textarea';
 export * from './tooltip';
+export * from './pagination-bar';
+export * from './search-input';
+
+

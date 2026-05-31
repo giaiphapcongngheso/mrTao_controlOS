@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '../../../share/ui';
 import { ChecklistItem } from '../../types/checklist.types';
-import { SOPIssue } from '../../types/issues.types';
+import { type SOPIssue, isOpenSopIssue } from '../../types/issues.types';
 import { DailyReport } from '../../types/reports.types';
 import { TaskItem } from '../../types/tasks.types';
 import { KPIStats } from '../../types/today.types';
@@ -111,7 +111,7 @@ export default function ReportsView({
   const liveMetrics = useMemo(
     () => ({
       delayedCount: tasks.filter((task) => task.status !== 'completed').length,
-      sopErrorsCount: issues.filter((issue) => issue.status === 'Chưa xử lý').length,
+      sopErrorsCount: issues.filter(isOpenSopIssue).length,
       complaintsCount: stats?.customerComplaintsCount ?? 0,
       staffIssuesCount: stats?.lateStaffCount ?? 0,
     }),

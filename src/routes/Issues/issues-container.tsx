@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import IssuesView from './IssuesView';
-import type { SOPIssue } from '../../types/issues.types';
+import IssuesView from './issues-view';
+import type { SOPIssue, SOPIssueStatus } from '../../types/issues.types';
+import { RESOLVED_SOP_ISSUE_STATUS, isOpenSopIssue } from '../../types/issues.types';
 import type { UserSession } from '../../stores/app-store';
 import {
   useIssuesInfiniteQuery,
@@ -59,14 +60,14 @@ export default function IssuesContainer({
   } = useIssuesInfiniteQuery(activeStoreId);
 
   const issuesQueryErrorMessage = issuesQueryError
-    ? 'KhÃ´ng thá»ƒ táº£i danh sÃ¡ch lá»—i SOP. Vui lÃ²ng thá»­ láº¡i.'
+    ? 'Không thể tải danh sách lỗi SOP. Vui lòng thử lại.'
     : null;
 
   // Notify parent component when issues change
   useEffect(() => {
     onMetricsChange?.({
       issues,
-      sopErrorsCount: issues.filter((item) => item.category === 'sop_error').length,
+      sopErrorsCount: issues.filter(isOpenSopIssue).length,
     });
   }, [issues, onMetricsChange]);
 
@@ -119,11 +120,11 @@ export default function IssuesContainer({
   );
 
   const handleUpdateIssueStatus = useCallback(
-    async (issueId: string, status: string) => {
+    async (issueId: string, status: SOPIssueStatus) => {
       const now = new Date().toISOString();
       const updates: Partial<SOPIssue> = {
         status,
-        ...(status === 'Đã xử lý'
+        ...(status === RESOLVED_SOP_ISSUE_STATUS
           ? {
               readConfirmedAt: now,
               readConfirmedBy: currentUser.fullName || currentUser.username,

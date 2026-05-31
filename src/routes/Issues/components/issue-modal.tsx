@@ -1,9 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Sparkles, Edit2, X } from 'lucide-react';
-import { SOPIssue } from '../../../types/issues.types';
-import { Button, Input, Textarea } from '../../../../share/ui';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  SOP_ISSUE_STATUSES,
+  type SOPIssue,
+  type SOPIssueCategory,
+} from '../../../types/issues.types';
+import {
+  Button,
+  Input,
+  Textarea,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../../../../share/ui';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../../../../share/ui/dialog';
-import { Label } from '../../../../share/ui/label';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { INITIAL_STAFF_MEMBERS } from '../../../data';
 import { useChecklistProcessCategoriesQuery } from '../../Checklist/_hook/use-checklist';
@@ -24,6 +39,93 @@ const CATEGORY_LABELS = {
   improvement: 'Cải tiến',
 } as const;
 
+const issueFormSchema = z.object({
+  title: z.string().min(1, 'Vui lòng nhập tên lỗi / tên đề xuất cải tiến'),
+  category: z.enum(['sop_error', 'exception', 'risk', 'improvement']),
+  severity: z.enum(['High', 'Medium', 'Low']),
+  status: z.enum(SOP_ISSUE_STATUSES),
+  actor: z.string(),
+  process: z.string(),
+  occurrence: z.number().min(1, 'Số lần xảy ra phải ít nhất là 1'),
+  assignee: z.string(),
+  description: z.string().min(1, 'Vui lòng nhập mô tả thực tế phòng ngừa / đề xuất chi tiết'),
+});
+
+type IssueFormValues = z.infer<typeof issueFormSchema>;
+
+interface IssueCategoryButtonProps {
+  category: SOPIssueCategory;
+  activeCategory: SOPIssueCategory;
+  onSelectCategory: (category: SOPIssueCategory) => void;
+}
+
+const IssueCategoryButton = React.memo(function IssueCategoryButton({
+  category,
+  activeCategory,
+  onSelectCategory,
+}: IssueCategoryButtonProps) {
+  const handleClick = React.useCallback(() => {
+    onSelectCategory(category);
+  }, [category, onSelectCategory]);
+
+  const buttonColor = React.useMemo(() => {
+    if (activeCategory !== category) {
+      return 'border-slate-200 text-slate-600 hover:bg-slate-50';
+    }
+    if (category === 'sop_error') {
+      return 'bg-[#C21A1A] border-[#C21A1A] text-white shadow-sm shadow-red-500/20';
+    }
+    if (category === 'exception') {
+      return 'bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-500/20';
+    }
+    if (category === 'risk') {
+      return 'bg-purple-600 border-purple-600 text-white shadow-sm shadow-purple-500/20';
+    }
+    return 'bg-emerald-600 border-emerald-600 text-white shadow-sm shadow-emerald-500/20';
+  }, [activeCategory, category]);
+
+  return (
+    <button
+      key={category}
+      type="button"
+      onClick={handleClick}
+      className={`py-2 px-1 text-[11px] font-extrabold uppercase tracking-tighter text-center rounded-xl border cursor-pointer duration-100 transition-all ${buttonColor}`}
+    >
+      {CATEGORY_LABELS[category]}
+    </button>
+  );
+});
+
+interface OccurrenceInputProps
+  extends Omit<React.ComponentProps<typeof Input>, 'onChange' | 'value'> {
+  value: number;
+  onValueChange: (value: number) => void;
+}
+
+const OccurrenceInput = React.memo(function OccurrenceInput({
+  value,
+  onValueChange,
+  ...props
+}: OccurrenceInputProps) {
+  const handleChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onValueChange(Number(event.target.value) || 1);
+    },
+    [onValueChange]
+  );
+
+  return (
+    <Input
+      type="number"
+      min={1}
+      value={value}
+      onChange={handleChange}
+      clearable={false}
+      {...props}
+    />
+  );
+});
+
 const IssueModal = React.memo(function IssueModal({
   isOpen,
   onClose,
@@ -32,15 +134,25 @@ const IssueModal = React.memo(function IssueModal({
   canCreate,
   canUpdate,
 }: IssueModalProps) {
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<'sop_error' | 'exception' | 'risk' | 'improvement'>('sop_error');
-  const [severity, setSeverity] = useState<'High' | 'Medium' | 'Low'>('Medium');
-  const [status, setStatus] = useState('Xử lý ngay');
-  const [actor, setActor] = useState('');
-  const [process, setProcess] = useState('');
-  const [occurrence, setOccurrence] = useState(1);
-  const [assignee, setAssignee] = useState('');
-  const [description, setDescription] = useState('');
+  const form = useForm<IssueFormValues>({
+    resolver: zodResolver(issueFormSchema),
+    defaultValues: {
+      title: '',
+      category: 'sop_error',
+      severity: 'Medium',
+      status: 'Xử lý ngay',
+      actor: '',
+      process: '',
+      occurrence: 1,
+      assignee: '',
+      description: '',
+    },
+  });
+
+  const actor = form.watch('actor');
+  const assignee = form.watch('assignee');
+  const process = form.watch('process');
+  const category = form.watch('category');
 
   // Fetch checklist categories (processes) using query hook
   const { data: categories = [] } = useChecklistProcessCategoriesQuery();
@@ -100,58 +212,68 @@ const IssueModal = React.memo(function IssueModal({
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        setTitle(initialData.title || '');
-        setCategory(initialData.category || 'sop_error');
-        setSeverity(initialData.severity || 'Medium');
-        setStatus(initialData.status || 'Xử lý ngay');
-        setActor(initialData.actor || '');
-        setProcess(initialData.process || '');
-        setOccurrence(initialData.occurrence || 1);
-        setAssignee(initialData.assignee || '');
-        setDescription(initialData.description || '');
+        form.reset({
+          title: initialData.title || '',
+          category: initialData.category || 'sop_error',
+          severity: initialData.severity || 'Medium',
+          status: initialData.status || 'Xử lý ngay',
+          actor: initialData.actor || '',
+          process: initialData.process || '',
+          occurrence: initialData.occurrence || 1,
+          assignee: initialData.assignee || '',
+          description: initialData.description || '',
+        });
       } else {
-        setTitle('');
-        setCategory('sop_error');
-        setSeverity('Medium');
-        setStatus('Xử lý ngay');
-        setActor('');
-        setProcess('');
-        setOccurrence(1);
-        setAssignee('');
-        setDescription('');
+        form.reset({
+          title: '',
+          category: 'sop_error',
+          severity: 'Medium',
+          status: 'Xử lý ngay',
+          actor: '',
+          process: '',
+          occurrence: 1,
+          assignee: '',
+          description: '',
+        });
       }
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, form]);
 
-  const handleCategoryChange = React.useCallback((cat: 'sop_error' | 'exception' | 'risk' | 'improvement') => {
-    setCategory(cat);
+  const handleCategoryChange = React.useCallback((cat: SOPIssueCategory) => {
+    form.setValue('category', cat);
     if (cat === 'sop_error') {
-      setStatus('Xử lý ngay');
+      form.setValue('status', 'Xử lý ngay');
     } else if (cat === 'exception') {
-      setStatus('Chờ duyệt');
+      form.setValue('status', 'Chờ duyệt');
     } else if (cat === 'risk') {
-      setStatus('Xử lý ngay');
+      form.setValue('status', 'Xử lý ngay');
     } else {
-      setStatus('Đang triển khai');
+      form.setValue('status', 'Đang triển khai');
     }
-  }, []);
+  }, [form]);
 
-  const handleSubmit = React.useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
+  const onSubmitHandler = React.useCallback((values: IssueFormValues) => {
     onSubmit({
-      title: title.trim(),
-      severity,
-      status,
-      category,
-      actor: actor.trim() || 'Hệ thống ca trực',
-      process: process.trim() || 'Vận hành chung',
-      occurrence: Number(occurrence) || 1,
-      assignee: assignee.trim() || 'Quản lý cửa hàng',
-      description: description.trim(),
+      title: values.title.trim(),
+      severity: values.severity,
+      status: values.status,
+      category: values.category,
+      actor: values.actor.trim() || 'Hệ thống ca trực',
+      process: values.process.trim() || 'Vận hành chung',
+      occurrence: Number(values.occurrence) || 1,
+      assignee: values.assignee.trim() || 'Quản lý cửa hàng',
+      description: values.description.trim(),
     });
-  }, [onSubmit, title, severity, status, category, actor, process, occurrence, assignee, description]);
+  }, [onSubmit]);
+
+  const handleDialogOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   if (!isOpen) return null;
 
@@ -161,9 +283,7 @@ const IssueModal = React.memo(function IssueModal({
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onOpenChange={handleDialogOpenChange}
     >
       <DialogContent
         showCloseButton={false}
@@ -191,174 +311,224 @@ const IssueModal = React.memo(function IssueModal({
             </DialogClose>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col">
-            <div className="px-5 py-4 space-y-4">
+          <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitHandler)} className="flex-1 overflow-y-auto flex flex-col">
+              <div className="px-5 py-4 space-y-4">
 
-              {/* Category picker matching mockup buttons */}
-              <div className="space-y-1.5">
-                <Label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Phân loại theo Nhóm
-                </Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['sop_error', 'exception', 'risk', 'improvement'] as const).map((cat) => {
-                    let btnColor = "border-slate-200 text-slate-600 hover:bg-slate-50";
-                    if (category === cat) {
-                      if (cat === 'sop_error') btnColor = "bg-[#C21A1A] border-[#C21A1A] text-white shadow-sm shadow-red-500/20";
-                      else if (cat === 'exception') btnColor = "bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-500/20";
-                      else if (cat === 'risk') btnColor = "bg-purple-600 border-purple-600 text-white shadow-sm shadow-purple-500/20";
-                      else if (cat === 'improvement') btnColor = "bg-emerald-600 border-emerald-600 text-white shadow-sm shadow-emerald-500/20";
-                    }
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => handleCategoryChange(cat)}
-                        className={`py-2 px-1 text-[11px] font-extrabold uppercase tracking-tighter text-center rounded-xl border cursor-pointer duration-100 transition-all ${btnColor}`}
-                      >
-                        {CATEGORY_LABELS[cat]}
-                      </button>
-                    );
-                  })}
+                {/* Category picker matching mockup buttons */}
+                <div className="space-y-1.5">
+                  <FormLabel className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Phân loại theo Nhóm
+                  </FormLabel>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['sop_error', 'exception', 'risk', 'improvement'] as const).map((cat) => {
+                      return (
+                        <IssueCategoryButton
+                          key={cat}
+                          category={cat}
+                          activeCategory={category}
+                          onSelectCategory={handleCategoryChange}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Title input */}
-              <div className="space-y-1">
-                <Label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Tên Lỗi / Tên Đề xuất cải tiến *
-                </Label>
-                <Input
-                  type="text"
-                  placeholder="Ví dụ: Sai quy trình bàn giao máy"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  clearable={true}
-                  className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                {/* Title input */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-0">
+                      <FormLabel isRequired className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                        Tên Lỗi / Tên Đề xuất cải tiến
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="Ví dụ: Sai quy trình bàn giao máy"
+                          {...field}
+                          clearable={true}
+                          className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {/* Grid with severity and occurrence */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    Mức độ ưu tiên
-                  </Label>
-                  <CustomSelect
-                    value={severity}
-                    onChangeValue={(val) => setSeverity(val as any)}
-                    clearable={false}
-                    options={[
-                      { label: 'Cao (Xử lý gấp)', value: 'High' },
-                      { label: 'Trung bình', value: 'Medium' },
-                      { label: 'Thấp', value: 'Low' },
-                    ]}
-                    className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-sm font-bold text-slate-700 transition-colors"
+                {/* Grid with severity and occurrence */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="severity"
+                    render={({ field }) => (
+                      <FormItem className="grid gap-0">
+                        <FormLabel className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                          Mức độ ưu tiên
+                        </FormLabel>
+                        <FormControl>
+                          <CustomSelect
+                            value={field.value}
+                            onChangeValue={field.onChange}
+                            clearable={false}
+                            options={[
+                              { label: 'Cao (Xử lý gấp)', value: 'High' },
+                              { label: 'Trung bình', value: 'Medium' },
+                              { label: 'Thấp', value: 'Low' },
+                            ]}
+                            className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-sm font-bold text-slate-700 transition-colors"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="occurrence"
+                    render={({ field: { value, onChange, ...rest } }) => (
+                      <FormItem className="grid gap-0">
+                        <FormLabel className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                          Số lần xảy ra
+                        </FormLabel>
+                        <FormControl>
+                          <OccurrenceInput
+                            value={value}
+                            onValueChange={onChange}
+                            {...rest}
+                            className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                    Số lần xảy ra
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={occurrence}
-                    onChange={(e) => setOccurrence(Number(e.target.value) || 1)}
-                    clearable={false}
-                    className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                  />
+                {/* Grid with related processes, actors and managers */}
+                <div className="space-y-3 bg-slate-50/65 p-4 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 tracking-wider uppercase border-b border-slate-100 pb-1.5 mb-3">
+                    Thông tin vận hành chi tiết
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="actor"
+                      render={({ field }) => (
+                        <FormItem className="grid gap-0">
+                          <FormLabel className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                            Người liên quan
+                          </FormLabel>
+                          <FormControl>
+                            <CustomSelect
+                              value={field.value}
+                              onChangeValue={field.onChange}
+                              placeholder="Chọn nhân sự..."
+                              clearable={true}
+                              options={staffOptions}
+                              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-755 transition-colors"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="process"
+                      render={({ field }) => (
+                        <FormItem className="grid gap-0">
+                          <FormLabel className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                            Quy trình vận hành
+                          </FormLabel>
+                          <FormControl>
+                            <CustomSelect
+                              value={field.value}
+                              onChangeValue={field.onChange}
+                              placeholder="Chọn quy trình..."
+                              clearable={true}
+                              options={processOptions}
+                              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-755 transition-colors"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="assignee"
+                      render={({ field }) => (
+                        <FormItem className="grid gap-0">
+                          <FormLabel className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                            Người xử lý
+                          </FormLabel>
+                          <FormControl>
+                            <CustomSelect
+                              value={field.value}
+                              onChangeValue={field.onChange}
+                              placeholder="Chọn người xử lý..."
+                              clearable={true}
+                              options={assigneeOptions}
+                              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-755 transition-colors"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Grid with related processes, actors and managers */}
-              <div className="space-y-3 bg-slate-50/65 p-4 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 tracking-wider uppercase border-b border-slate-100 pb-1.5 mb-3">
-                  Thông tin vận hành chi tiết
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
-                      Người liên quan
-                    </Label>
-                    <CustomSelect
-                      value={actor}
-                      onChangeValue={(val) => setActor(String(val))}
-                      placeholder="Chọn nhân sự..."
-                      clearable={true}
-                      options={staffOptions}
-                      className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-750 transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
-                      Quy trình vận hành
-                    </Label>
-                    <CustomSelect
-                      value={process}
-                      onChangeValue={(val) => setProcess(String(val))}
-                      placeholder="Chọn quy trình..."
-                      clearable={true}
-                      options={processOptions}
-                      className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-750 transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
-                      Người xử lý
-                    </Label>
-                    <CustomSelect
-                      value={assignee}
-                      onChangeValue={(val) => setAssignee(String(val))}
-                      placeholder="Chọn người xử lý..."
-                      clearable={true}
-                      options={assigneeOptions}
-                      className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg text-xs font-bold text-slate-750 transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Description field */}
-              <div className="space-y-1">
-                <Label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Mô tả thực tế phòng ngừa / Đề xuất chi tiết *
-                </Label>
-                <Textarea
-                  placeholder="Ví dụ: Khách hàng yêu cầu... Cần bổ sung quy trình hướng dẫn..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 p-3 text-xs font-medium rounded-lg leading-relaxed text-slate-700 transition-colors"
+                {/* Description field */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-0">
+                      <FormLabel isRequired className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                        Mô tả thực tế phòng ngừa / Đề xuất chi tiết
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Ví dụ: Khách hàng yêu cầu... Cần bổ sung quy trình hướng dẫn..."
+                          {...field}
+                          rows={3}
+                          className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 p-3 text-xs font-medium rounded-lg leading-relaxed text-slate-700 transition-colors"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-            </div>
 
-            {/* Footer actions */}
-            <div className="px-5 py-3.5 border-t border-slate-100 flex gap-2.5 justify-end shrink-0 bg-slate-50/40 mt-auto">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="h-9 px-4 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-slate-200 rounded-lg transition-all duration-200 cursor-pointer active:scale-95"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                type="submit"
-                variant="default"
-                disabled={!canSubmit}
-                className="h-9 px-5 text-sm font-bold text-white bg-[#C21A1A] hover:bg-[#971212] rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer uppercase tracking-wider flex items-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isEdit ? 'Lưu cập nhật' : 'Ghi nhận vào hệ thống'}
-              </Button>
-            </div>
-          </form>
+              {/* Footer actions */}
+              <div className="px-5 py-3.5 border-t border-slate-100 flex gap-2.5 justify-end shrink-0 bg-slate-50/40 mt-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  className="h-9 px-4 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-slate-200 rounded-lg transition-all duration-200 cursor-pointer active:scale-95"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  variant="default"
+                  disabled={!canSubmit}
+                  className="h-9 px-5 text-sm font-bold text-white bg-[#C21A1A] hover:bg-[#971212] rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer uppercase tracking-wider flex items-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isEdit ? 'Lưu cập nhật' : 'Ghi nhận vào hệ thống'}
+                </Button>
+              </div>
+            </form>
+          </FormProvider>
         </div>
       </DialogContent>
     </Dialog>
