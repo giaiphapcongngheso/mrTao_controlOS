@@ -53,6 +53,36 @@ const issueFormSchema = z.object({
 
 type IssueFormValues = z.infer<typeof issueFormSchema>;
 
+interface OccurrenceInputProps
+  extends Omit<React.ComponentProps<typeof Input>, 'onChange' | 'value'> {
+  value: number;
+  onValueChange: (value: number) => void;
+}
+
+const OccurrenceInput = React.memo(function OccurrenceInput({
+  value,
+  onValueChange,
+  ...props
+}: OccurrenceInputProps) {
+  const handleChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onValueChange(Number(event.target.value) || 1);
+    },
+    [onValueChange]
+  );
+
+  return (
+    <Input
+      type="number"
+      min={1}
+      value={value}
+      onChange={handleChange}
+      clearable={false}
+      {...props}
+    />
+  );
+});
+
 interface IssueCategoryButtonProps {
   category: SOPIssueCategory;
   activeCategory: SOPIssueCategory;
@@ -93,36 +123,6 @@ const IssueCategoryButton = React.memo(function IssueCategoryButton({
     >
       {CATEGORY_LABELS[category]}
     </button>
-  );
-});
-
-interface OccurrenceInputProps
-  extends Omit<React.ComponentProps<typeof Input>, 'onChange' | 'value'> {
-  value: number;
-  onValueChange: (value: number) => void;
-}
-
-const OccurrenceInput = React.memo(function OccurrenceInput({
-  value,
-  onValueChange,
-  ...props
-}: OccurrenceInputProps) {
-  const handleChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onValueChange(Number(event.target.value) || 1);
-    },
-    [onValueChange]
-  );
-
-  return (
-    <Input
-      type="number"
-      min={1}
-      value={value}
-      onChange={handleChange}
-      clearable={false}
-      {...props}
-    />
   );
 });
 
@@ -266,14 +266,9 @@ const IssueModal = React.memo(function IssueModal({
     });
   }, [onSubmit]);
 
-  const handleDialogOpenChange = React.useCallback(
-    (open: boolean) => {
-      if (!open) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
+  const handleOpenChange = React.useCallback((open: boolean) => {
+    if (!open) onClose();
+  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -283,7 +278,7 @@ const IssueModal = React.memo(function IssueModal({
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={handleDialogOpenChange}
+      onOpenChange={handleOpenChange}
     >
       <DialogContent
         showCloseButton={false}

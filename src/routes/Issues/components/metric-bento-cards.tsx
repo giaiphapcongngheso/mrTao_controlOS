@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, HelpCircle, Clock, CheckCircle } from 'lucide-react';
 import { cn } from '../../../../share/lib/utils';
+import { Button } from '../../../../share/ui';
 import type { SOPIssueStatus, SOPIssueStatusFilter } from '../../../types/issues.types';
 
 export type IssueStatus = SOPIssueStatusFilter;
@@ -44,13 +45,14 @@ const MetricStatusCard = React.memo(function MetricStatusCard({
   }, [card.status, isActive, onSelectStatus]);
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       aria-pressed={isActive}
       aria-label={`Lọc phiếu trạng thái ${card.title}: ${card.count}`}
       onClick={handleClick}
       className={cn(
-        "bg-white rounded-2xl p-3.5 sm:p-4 border transition-all cursor-pointer select-none text-left flex flex-row items-center justify-between gap-3 py-3.5 sm:py-4 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200",
+        "bg-white rounded-2xl p-3.5 sm:p-4 border transition-all cursor-pointer select-none text-left flex flex-row items-center justify-between gap-3 py-3.5 sm:py-4 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 shadow-none hover:bg-white h-auto",
         isActive ? card.activeStyles : card.hoverStyles
       )}
     >
@@ -64,7 +66,7 @@ const MetricStatusCard = React.memo(function MetricStatusCard({
         </div>
       </div>
       <span className={cn("text-2xl font-black tracking-tight tabular-nums shrink-0", card.countColor)}>{card.count}</span>
-    </button>
+    </Button>
   );
 });
 
