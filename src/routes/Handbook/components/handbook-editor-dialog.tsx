@@ -16,6 +16,7 @@ interface HandbookEditorDialogProps {
   onSave: () => void;
   onFormPatch: (patch: Partial<HandbookFormState>) => void;
   onAddCategory: (name: string) => Promise<void>;
+  onDeleteCategory?: (name: string) => Promise<void>;
 }
 
 export default function HandbookEditorDialog({
@@ -30,6 +31,7 @@ export default function HandbookEditorDialog({
   onSave,
   onFormPatch,
   onAddCategory,
+  onDeleteCategory,
 }: HandbookEditorDialogProps) {
   const handleTitleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +131,7 @@ export default function HandbookEditorDialog({
               onValueChange={handleCategoryChange}
               options={categoryOptions}
               onAddNew={canManageCategories ? onAddCategory : undefined}
+              onDeleteOption={canManageCategories ? onDeleteCategory : undefined}
               placeholder="Chọn hoặc nhập danh mục"
               emptyHint="Gõ để tìm hoặc thêm danh mục mới"
               addNewText="Thêm danh mục"

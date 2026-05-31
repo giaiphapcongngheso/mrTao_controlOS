@@ -10,6 +10,7 @@ import {
 } from '../ui';
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/utils';
 
 type DeleteConfirmProps = Readonly<{
   open: boolean;
@@ -22,6 +23,8 @@ type DeleteConfirmProps = Readonly<{
   warningMessage?: string;
   onConfirm: () => void;
   loading?: boolean;
+  className?: string;
+  overlayClassName?: string;
 }>;
 
 export function DeleteConfirm({
@@ -35,6 +38,8 @@ export function DeleteConfirm({
   cancelText,
   onConfirm,
   loading = false,
+  className,
+  overlayClassName,
 }: DeleteConfirmProps) {
   const { t } = useTranslation('action');
 
@@ -45,7 +50,7 @@ export function DeleteConfirm({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-[425px]">
+      <AlertDialogContent className={cn('sm:max-w-[425px]', className)} overlayClassName={overlayClassName}>
         <AlertDialogHeader>
           <AlertDialogTitle>{displayTitle}</AlertDialogTitle>
           <AlertDialogDescription className="text-base">

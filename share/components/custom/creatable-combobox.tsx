@@ -9,7 +9,7 @@ import {
   CommandGroup,
   CommandItem,
 } from '../../ui';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,7 @@ export type CreatableComboboxProps = {
   onValueChange: (value: string) => void;
   options: string[];
   onAddNew?: (value: string) => Promise<void> | void;
+  onDeleteOption?: (value: string) => Promise<void> | void;
   placeholder?: string;
   disabled?: boolean;
   emptyHint?: string;
@@ -31,6 +32,7 @@ export function CreatableCombobox({
   onValueChange,
   options,
   onAddNew,
+  onDeleteOption,
   placeholder,
   disabled = false,
   emptyHint,
@@ -146,11 +148,32 @@ export function CreatableCombobox({
           >
             <CommandGroup>
               {filteredSuggestions.map((s) => (
-                <CommandItem key={s} value={s} onSelect={() => handleSelect(s)}>
-                  <Check
-                    className={cn('mr-2 h-4 w-4', inputValue === s ? 'opacity-100' : 'opacity-0')}
-                  />
-                  {s}
+                <CommandItem
+                  key={s}
+                  value={s}
+                  onSelect={() => handleSelect(s)}
+                  className="flex items-center justify-between group/item w-full"
+                >
+                  <div className="flex items-center flex-1 min-w-0">
+                    <Check
+                      className={cn('mr-2 h-4 w-4 shrink-0', inputValue === s ? 'opacity-100' : 'opacity-0')}
+                    />
+                    <span className="truncate">{s}</span>
+                  </div>
+                  {onDeleteOption && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        void onDeleteOption(s);
+                      }}
+                      className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-rose-50 hover:text-rose-600 rounded transition-all text-slate-400 shrink-0"
+                      title={t('action:delete', 'Xóa')}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

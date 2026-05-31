@@ -31,6 +31,7 @@ import type { HandbookCategory, HandbookDoc } from '../../types/handbook.types';
 import HandbookEditorDialog from './components/handbook-editor-dialog';
 import type { HandbookFormState, HandbookPermissions } from './handbook-view.types';
 import { handbookFormSchema, type HandbookFormFieldErrors } from './handbook-form-schema';
+import { DeleteConfirm } from '@shared/components/delete-confirm';
 
 interface UICardMetadata {
   id: string;
@@ -203,6 +204,10 @@ export default function HandbookView() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [formState, setFormState] = useState<HandbookFormState>(EMPTY_FORM_STATE);
   const [formErrors, setFormErrors] = useState<HandbookFormFieldErrors>({});
+
+  const [deletingCategory, setDeletingCategory] = useState<HandbookCategory | null>(null);
+  const [isDeleteCategoryConfirmOpen, setIsDeleteCategoryConfirmOpen] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -495,6 +500,49 @@ export default function HandbookView() {
     },
     [canManageCategories, handbookCategories, showToast],
   );
+
+  const handleDeleteCategory = useCallback(
+    async (name: string) => {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return;
+      }
+      if (!canManageCategories) {
+        showToast('Bạn không có quyền xóa danh mục.');
+        return;
+      }
+
+      const normalizedName = normalizeText(trimmedName);
+      const targetCategory = handbookCategories.find(
+        (item) => normalizeText(item.name || '') === normalizedName,
+      );
+      if (!targetCategory) {
+        showToast('Không tìm thấy danh mục để xóa.');
+        return;
+      }
+
+      setDeletingCategory(targetCategory);
+      setIsDeleteCategoryConfirmOpen(true);
+    },
+    [canManageCategories, handbookCategories, showToast],
+  );
+
+  const handleConfirmDeleteCategory = useCallback(async () => {
+    if (!deletingCategory) return;
+    setIsDeletingCategory(true);
+    try {
+      await handbookCategoryService.delete(deletingCategory.id);
+      setHandbookCategories((prev) => prev.filter((item) => item.id !== deletingCategory.id));
+      showToast(`Đã xóa danh mục: "${deletingCategory.name}"`);
+      setIsDeleteCategoryConfirmOpen(false);
+    } catch (error) {
+      console.error('Không thể xóa danh mục handbook:', error);
+      showToast('Xóa danh mục thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsDeletingCategory(false);
+      setDeletingCategory(null);
+    }
+  }, [deletingCategory, showToast]);
 
   const handleSaveDoc = useCallback(async () => {
     const validated = handbookFormSchema.safeParse(formState);
@@ -1161,6 +1209,19 @@ export default function HandbookView() {
         }}
         onFormPatch={handleFormPatch}
         onAddCategory={(name) => handleCreateCategory(name)}
+        onDeleteCategory={handleDeleteCategory}
+      />
+
+      <DeleteConfirm
+        open={isDeleteCategoryConfirmOpen}
+        onOpenChange={setIsDeleteCategoryConfirmOpen}
+        title="Xóa danh mục"
+        description={`Bạn có chắc muốn xóa danh mục "${deletingCategory?.name || ''}"?`}
+        warningMessage="Các tài liệu thuộc danh mục này sẽ không bị xóa nhưng sẽ mất liên kết danh mục."
+        onConfirm={() => void handleConfirmDeleteCategory()}
+        loading={isDeletingCategory}
+        className="!z-[80]"
+        overlayClassName="!z-[80]"
       />
     </div>
   );
