@@ -5,7 +5,12 @@ import {
   useCreateTaskMutation,
   useTasksQuery,
   useUpdateTaskStatusMutation,
+  useRolesQuery,
 } from './_hook/use-tasks';
+import { useAppStore } from '../../stores/app-store';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
+import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
 
 interface TasksContainerProps {
   activeStoreId: string;
@@ -26,6 +31,15 @@ export default function TasksContainer({
   onMetricsChange,
 }: TasksContainerProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { currentUser } = useAppStore();
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions, isLoading: permissionsLoading } = useModulePermissions(
+    MODULE_CODE.GIAO_VIEC,
+    currentUser,
+    isOwner,
+  );
+
   const {
     items: tasks,
     isLoading,
@@ -33,6 +47,20 @@ export default function TasksContainer({
     error: queryError,
     refetch,
   } = useTasksQuery(activeStoreId);
+
+  const { data: rawStaff = [], isLoading: isStaffLoading } = useStaffQuery();
+  const staffMembers = useMemo(() => {
+    return rawStaff.filter(
+      (staff) => staff.storeId === activeStoreId && staff.status === 'active'
+    );
+  }, [rawStaff, activeStoreId]);
+
+  const { data: rawRoles = [], isLoading: isRolesLoading } = useRolesQuery();
+  const roles = useMemo(() => {
+    return rawRoles.filter(
+      (role) => role.storeId === activeStoreId && role.status === 'active'
+    );
+  }, [rawRoles, activeStoreId]);
 
   const createTaskMutation = useCreateTaskMutation(activeStoreId);
   const updateTaskStatusMutation = useUpdateTaskStatusMutation(activeStoreId);
@@ -96,12 +124,17 @@ export default function TasksContainer({
   return (
     <TasksView
       tasks={tasks}
-      isLoading={isLoading}
+      staffMembers={staffMembers}
+      roles={roles}
+      isLoading={isLoading || permissionsLoading || isStaffLoading || isRolesLoading}
       isSaving={createTaskMutation.isPending || updateTaskStatusMutation.isPending || isFetching}
       errorMessage={errorMessage || queryErrorMessage}
       onRefresh={() => void refetch()}
       onAddTask={handleAddTask}
       onUpdateTaskStatus={handleUpdateTaskStatus}
+      canCreate={permissions.canCreate}
+      canUpdate={permissions.canUpdate}
+      currentUser={currentUser}
     />
   );
 }

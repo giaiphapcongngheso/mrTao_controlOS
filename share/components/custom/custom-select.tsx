@@ -80,7 +80,7 @@ export function CustomSelect<T = unknown>({
         <SelectTrigger
           size={size}
           className={cn(
-            '[&>svg]:hidden font-normal flex-1 truncate pr-7 w-full',
+            '[&>svg]:hidden font-normal flex-1 truncate pr-7 !w-full min-w-0',
             {
               'text-foreground opacity-100 pointer-events-none': readOnly,
             },

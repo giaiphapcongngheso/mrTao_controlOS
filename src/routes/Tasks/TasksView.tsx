@@ -8,9 +8,33 @@ import {
   Check,
   Zap,
   Send,
+  Circle,
+  Play,
+  Clock,
+  ListTodo,
+  User,
+  ClipboardList,
+  AlignLeft,
+  Building,
 } from 'lucide-react';
 import { TaskItem, TaskRequestType, TaskStatus } from '../../types/tasks.types';
-import { Button, Tabs, TabsList, TabsTrigger, SearchInput } from '@shared/ui';
+import type { StaffMember, StaffRole } from '../../types/staff.types';
+import type { UserSession } from '../../stores/app-store';
+import {
+  Button,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  SearchInput,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  Card,
+  CardHeader,
+  CardContent,
+} from '@shared/ui';
 import { cn } from '@shared/lib/utils';
 import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
@@ -19,23 +43,118 @@ import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
 
 interface TasksViewProps {
   tasks: TaskItem[];
+  staffMembers?: StaffMember[];
+  roles?: StaffRole[];
   isLoading?: boolean;
   isSaving?: boolean;
   errorMessage?: string | null;
   onRefresh?: () => void;
   onAddTask: (task: TaskRequestType) => void | Promise<void>;
   onUpdateTaskStatus: (taskId: string, status: TaskStatus) => void | Promise<void>;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  currentUser?: UserSession | null;
 }
 
+const getStatusTheme = (status: TaskStatus) => {
+  switch (status) {
+    case 'not_started':
+      return {
+        border: 'border-t-4 border-t-slate-300',
+        badge: 'bg-slate-50 text-slate-500 border border-slate-200/60',
+        iconColor: 'text-slate-400',
+        iconBg: 'bg-slate-50 text-slate-400',
+        progressBg: 'bg-slate-100',
+        progressFill: 'bg-slate-300',
+        percent: 0,
+        text: 'Chưa bắt đầu',
+      };
+    case 'in_progress':
+      return {
+        border: 'border-t-4 border-t-blue-500',
+        badge: 'bg-blue-50/70 text-blue-600 border border-blue-100/80',
+        iconColor: 'text-blue-500',
+        iconBg: 'bg-blue-50 text-blue-500',
+        progressBg: 'bg-slate-100',
+        progressFill: 'bg-blue-500',
+        percent: 50,
+        text: 'Đang làm',
+      };
+    case 'waiting':
+      return {
+        border: 'border-t-4 border-t-amber-500',
+        badge: 'bg-amber-50/70 text-amber-600 border border-amber-100/80',
+        iconColor: 'text-amber-500',
+        iconBg: 'bg-amber-50 text-amber-500',
+        progressBg: 'bg-slate-100',
+        progressFill: 'bg-amber-500',
+        percent: 80,
+        text: 'Chờ duyệt',
+      };
+    case 'completed':
+      return {
+        border: 'border-t-4 border-t-emerald-500',
+        badge: 'bg-emerald-50/70 text-emerald-600 border border-emerald-100/80',
+        iconColor: 'text-emerald-500',
+        iconBg: 'bg-emerald-50 text-emerald-500',
+        progressBg: 'bg-slate-100',
+        progressFill: 'bg-emerald-500',
+        percent: 100,
+        text: 'Hoàn thành',
+      };
+    default:
+      return {
+        border: 'border-t-4 border-t-slate-300',
+        badge: 'bg-slate-50 text-slate-500 border border-slate-200/60',
+        iconColor: 'text-slate-400',
+        iconBg: 'bg-slate-50 text-slate-400',
+        progressBg: 'bg-slate-100',
+        progressFill: 'bg-slate-300',
+        percent: 0,
+        text: 'Chưa làm',
+      };
+  }
+};
+
+const generateTaskCode = (task: TaskItem) => {
+  const deptCode = task.department
+    ? task.department
+        .split(' ')
+        .map((w) => w.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 4)
+    : 'GEN';
+
+  let dateStr = '2026-05-29';
+  const targetDate = task.createdAt || task.deadline || '';
+  const dateMatch = targetDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (dateMatch) {
+    dateStr = `${dateMatch[3]}-${dateMatch[2]}${dateMatch[1]}`;
+  } else {
+    const dateMatch2 = targetDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch2) {
+      dateStr = `${dateMatch2[1]}-${dateMatch2[2]}${dateMatch2[3]}`;
+    }
+  }
+
+  const indexStr = task.id ? task.id.slice(-2).toUpperCase() : '01';
+  return `CV-${deptCode}-${dateStr}-${indexStr}`;
+};
 
 export default function TasksView({
   tasks,
+  staffMembers = [],
+  roles = [],
   isLoading = false,
   isSaving = false,
   errorMessage,
   onRefresh,
   onAddTask,
-  onUpdateTaskStatus
+  onUpdateTaskStatus,
+  canCreate = false,
+  canUpdate = false,
+  currentUser,
 }: TasksViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine' | 'late' | 'completed'>('all');
@@ -48,8 +167,7 @@ export default function TasksView({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 
-  // Active Menu ID
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
 
   // Auto disappear toast notifications
   useEffect(() => {
@@ -102,30 +220,13 @@ export default function TasksView({
       return task.status !== 'completed' && (task.deadline.toLowerCase().includes('trễ') || task.deadline.includes('08/05') || task.deadline.includes('Overdue'));
     }
     if (activeFilter === 'mine') {
-      return task.assignee === 'Nguyễn Trường Giang' || task.assignee === 'Quản lý cửa hàng';
+      return task.assignee === currentUser?.fullName;
     }
 
     return true;
   });
 
-  const getDeptCircle = (dept: string) => {
-    switch (dept?.toLowerCase()) {
-      case 'kho':
-      case 'kho hàng':
-        return { short: 'KHO', bg: 'bg-[#005FF9] text-white' };
-      case 'marketing':
-      case 'mkt':
-        return { short: 'MKT', bg: 'bg-[#7F00FF] text-white' };
-      case 'kỹ thuật':
-      case 'kt':
-        return { short: 'KT', bg: 'bg-[#00B050] text-white' };
-      case 'vận hành':
-      case 'vh':
-        return { short: 'VH', bg: 'bg-[#FF8000] text-white' };
-      default:
-        return { short: dept?.substring(0, 3).toUpperCase() || 'SYS', bg: 'bg-slate-600 text-white' };
-    }
-  };
+
 
   const priorityMeta = {
     high: { bg: 'bg-rose-50 text-rose-700 border-rose-100', text: 'Cao' },
@@ -134,10 +235,10 @@ export default function TasksView({
   };
 
   const statusMeta = {
-    not_started: { bg: 'bg-slate-100 text-slate-600 border-slate-200', text: 'Chưa làm' },
-    in_progress: { bg: 'bg-blue-50 text-blue-700 border-blue-150 animate-pulse', text: 'Đang làm' },
-    waiting: { bg: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Chờ duyệt' },
-    completed: { bg: 'bg-slate-900 text-white border-slate-950', text: 'Hoàn thành' }
+    not_started: { bg: 'bg-slate-100 text-slate-600 border-slate-200', text: 'Chưa làm', icon: Circle, iconColor: 'text-slate-400' },
+    in_progress: { bg: 'bg-blue-50 text-blue-700 border-blue-150 animate-pulse', text: 'Đang làm', icon: Play, iconColor: 'text-blue-500 fill-blue-500/20' },
+    waiting: { bg: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Chờ duyệt', icon: Clock, iconColor: 'text-amber-500' },
+    completed: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-150', text: 'Hoàn thành', icon: CheckCircle2, iconColor: 'text-emerald-600' }
   };
 
   const stats = useMemo(() => {
@@ -236,7 +337,7 @@ export default function TasksView({
   }, []);
 
   return (
-    <div className="space-y-3.5 text-left">
+    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-auto md:overflow-visible md:pb-0 md:pr-0">
 
       {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
       {toastMessage && (
@@ -247,22 +348,44 @@ export default function TasksView({
       )}
 
       <ModuleHeader
-        badgeText="🛫 PHÂN HỆ GIAO VIỆC & CHI CA"
         title="Điều phối công việc Chi nhánh"
         description="Quản trị tiến độ, ủy nhiệm siêu tốc và kiểm soát chỉ tiêu nhân sự trong ca trực showroom thời gian thực."
+        icon={<span className="text-lg sm:text-xl">🛫</span>}
       >
-        <div className="w-48">
-          <CustomSelect
-            options={actionOptions}
-            value=""
-            onChangeValue={handleActionChange}
-            placeholder={selectPlaceholder}
-            clearable={false}
-            className="!bg-[#C21A1A] hover:!bg-[#A81515] !text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl border-none shadow-sm flex items-center justify-between px-4 py-2.5 h-10 w-full"
-            containerClassName="w-full"
-            iconClassName="!text-white opacity-100 right-4"
-          />
-        </div>
+        {canCreate && (
+          <div className="w-full sm:w-48">
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              <Button
+                type="button"
+                onClick={() => setIsAddingTask(true)}
+                className="h-10 rounded-xl bg-[#C21A1A] px-3 text-[10px] font-black uppercase tracking-wide text-white shadow-sm hover:bg-[#A81515]"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5 stroke-[3]" />
+                Tạo việc
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setQuickDelegateOpen(true)}
+                className="h-10 rounded-xl bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#C21A1A] shadow-sm ring-1 ring-[#C21A1A]/20 hover:bg-rose-50"
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+                Giao nhanh
+              </Button>
+            </div>
+            <div className="hidden sm:block">
+              <CustomSelect
+                options={actionOptions}
+                value=""
+                onChangeValue={handleActionChange}
+                placeholder={selectPlaceholder}
+                clearable={false}
+                className="!bg-[#C21A1A] hover:!bg-[#A81515] !text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl border-none shadow-sm flex items-center justify-between px-4 py-2.5 h-10 w-full"
+                containerClassName="w-full"
+                iconClassName="!text-white opacity-100 right-4"
+              />
+            </div>
+          </div>
+        )}
       </ModuleHeader>
 
       {errorMessage && (
@@ -298,32 +421,32 @@ export default function TasksView({
       </div>
 
       {/* 4. FILTER CONTROLS & SEARCH BAR */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
 
         {/* Switch Filter Tab Segment */}
-        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-fit">
-          <TabsList className="bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none h-auto">
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full min-w-0 md:w-fit">
+          <TabsList className="!grid !h-auto !w-full grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 sm:!inline-flex sm:!w-auto sm:flex-row sm:flex-nowrap">
             <TabsTrigger
               value="all"
-              className="px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
               Tất cả ({tasks.length})
             </TabsTrigger>
             <TabsTrigger
               value="mine"
-              className="px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
-              Của tôi ({tasks.filter(t => t.assignee === 'Nguyễn Trường Giang' || t.assignee === 'Quản lý cửa hàng').length})
+              Của tôi ({tasks.filter(t => t.assignee === currentUser?.fullName).length})
             </TabsTrigger>
             <TabsTrigger
               value="late"
-              className="px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
             >
               Trễ hạn ({tasks.filter(t => t.status !== 'completed' && (t.deadline.toLowerCase().includes('trễ') || t.deadline.includes('08/05'))).length})
             </TabsTrigger>
             <TabsTrigger
               value="completed"
-              className="px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
               Đã hoàn thành ({tasks.filter(t => t.status === 'completed').length})
             </TabsTrigger>
@@ -333,7 +456,7 @@ export default function TasksView({
         {/* Dynamic Live Text Input */}
         <div className="md:w-80 w-full">
           <SearchInput
-            placeholder="Tìm kiếm theo công việc, phòng ban..."
+            placeholder="Tìm kiếm theo công việc, vai trò..."
             value={searchTerm}
             onChange={setSearchTerm}
             className="bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-semibold"
@@ -343,124 +466,195 @@ export default function TasksView({
       </div>
 
       {/* 5. PRISTINE CARD STREAM OF TASKS / RECOVERED FROM CUSTOMTABLE */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-slate-50/30 rounded-2xl border border-slate-200/50 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {isLoading && filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-slate-400 font-semibold">
+            <div className="col-span-full text-center py-12 text-slate-400 font-semibold text-xs">
               Đang tải danh sách công việc...
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-slate-400 font-semibold">
+            <div className="col-span-full text-center py-12 text-slate-400 font-semibold text-xs">
               Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên.
             </div>
           ) : (
             filteredTasks.map((task) => {
-              const deptMeta = getDeptCircle(task.department);
               const priorityInfo = priorityMeta[task.priority] || priorityMeta.medium;
               const statusInfo = statusMeta[task.status] || statusMeta.not_started;
-              const isLate = task.status !== 'completed' && (task.deadline.toLowerCase().includes('trễ') || task.deadline.includes('08/05') || task.deadline.includes('Overdue'));
+              const statusTheme = getStatusTheme(task.status);
+
+              const isDept = task.department.toLowerCase().includes('phòng') ||
+                             task.department.toLowerCase().includes('ceo') ||
+                             task.department.toLowerCase().includes('kinh doanh') ||
+                             task.department.toLowerCase().includes('kế toán') ||
+                             task.department.toLowerCase().includes('ban');
+              const branchOrDeptLabel = isDept ? 'Phòng ban' : 'Chi nhánh';
+              const branchOrDeptValue = isDept
+                ? (task.department.toUpperCase().includes('CEO') ? 'Phòng Điều hành' : task.department)
+                : (task.department.toUpperCase().includes('CỬA HÀNG') || task.department.toUpperCase().includes('CUA HANG')
+                    ? 'Showroom Chi nhánh Hà Nội'
+                    : (task.department.toLowerCase().includes('chi nhánh') ? task.department : `Showroom Chi nhánh ${task.department}`));
+
+              const renderDeadline = (deadline: string) => {
+                const parts = deadline.split(' ');
+                if (parts.length >= 2) {
+                  const datePart = parts[0];
+                  const timePart = parts.slice(1).join(' ');
+                  return (
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span className="text-slate-700">{datePart}</span>
+                      <span className="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        {timePart}
+                      </span>
+                    </div>
+                  );
+                }
+                return <span className="text-slate-700 font-bold">{deadline}</span>;
+              };
 
               return (
-                <div
+                <Card
                   key={task.id}
                   className={cn(
-                    "bg-white rounded-2xl border p-4 flex flex-col justify-between gap-4 transition-all relative",
-                    task.status === 'in_progress'
-                      ? 'border-rose-200 bg-rose-50/5 shadow-xs'
-                      : 'border-slate-100 shadow-xs hover:border-slate-200'
+                    "bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 flex flex-col justify-between gap-3.5 transition-all duration-300 relative hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:border-slate-200/80 hover:-translate-y-[2px] w-full max-w-[420px] mx-auto md:mx-0",
+                    statusTheme.border
                   )}
                 >
-                  {/* Card Header: Dept & Priority and More Button */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("px-2 py-0.5 text-[10px] font-black rounded tracking-wide shadow-2xs inline-block", deptMeta.bg)}>
-                        {deptMeta.short}
+                  {/* Card Header: Clipboard Icon & Badges */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap pr-2">
+                      {/* Icon clipboard với background nhạt */}
+                      <div className={cn("p-1 rounded-lg shrink-0", statusTheme.iconBg)}>
+                        <ClipboardList className="w-3.5 h-3.5" />
+                      </div>
+
+                      {/* Department / Role Badge */}
+                      <span className="px-1.5 py-0.5 text-[8.5px] font-black rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide shrink-0">
+                        {task.department}
                       </span>
-                      <span className={cn("inline-flex items-center gap-1 text-[9.5px] font-black uppercase px-2 py-0.5 rounded-full border", priorityInfo.bg)}>
-                        <span className="w-1.2 h-1.2 rounded-full bg-current"></span>
+
+                      {/* Priority Badge */}
+                      <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full border tracking-wide shrink-0", priorityInfo.bg)}>
+                        <span className="w-1 h-1 rounded-full bg-current"></span>
                         {priorityInfo.text}
+                      </span>
+
+                      {/* Status Badge */}
+                      <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full border tracking-normal shrink-0", statusInfo.bg)}>
+                        {statusInfo.icon && (
+                          <statusInfo.icon className={cn("w-2.5 h-2.5 shrink-0", statusInfo.iconColor)} />
+                        )}
+                        <span>{statusInfo.text}</span>
                       </span>
                     </div>
 
                     {/* 3-dots Menu for quick status change */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setActiveMenuId(activeMenuId === task.id ? null : task.id)}
-                        className="p-1 hover:bg-slate-50 rounded-full text-slate-400 hover:text-slate-700 transition-colors cursor-pointer w-7 h-7 flex items-center justify-center"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-
-                      {activeMenuId === task.id && (
-                        <div className="absolute right-0 mt-1 w-40 bg-slate-900 text-white rounded-xl shadow-xl z-50 py-1 text-[11px] font-bold border border-slate-800 animate-in fade-in duration-100">
-                          <p className="px-3 py-1 text-slate-400 text-[8.5px] uppercase font-black tracking-wider border-b border-slate-800 mb-1 text-left">Cập nhật nhanh</p>
-                          {(['not_started', 'in_progress', 'waiting', 'completed'] as const).map((st) => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  await onUpdateTaskStatus(task.id, st);
-                                setActiveMenuId(null);
-                                showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[st].text}"`);
-                                } catch {
-                                  showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.");
-                                }
-                              }}
-                              disabled={isSaving}
-                              className="w-full px-3 py-2 text-left hover:bg-slate-800 flex items-center justify-between font-bold text-slate-200 transition-colors rounded-none h-auto disabled:cursor-wait disabled:opacity-60"
-                            >
-                              <span>{statusMeta[st].text}</span>
-                              {task.status === st && <Check className="w-3.5 h-3.5 text-[#C21A1A] stroke-[3]" />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Body: Title & Notes */}
-                  <div className="space-y-1 text-left flex-1">
-                    <h4 className="font-extrabold text-slate-900 text-xs tracking-tight leading-snug">
-                      {task.title}
-                    </h4>
-                    {task.notes ? (
-                      <p className="text-[10px] text-slate-450 font-medium leading-relaxed whitespace-pre-line">
-                        {task.notes}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-slate-300 italic font-medium leading-relaxed">
-                        Không có ghi chú...
-                      </p>
+                    {canUpdate && task.status !== 'completed' && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer w-6 h-6 flex items-center justify-center focus-visible:outline-hidden shrink-0"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 bg-white border border-slate-200/80 rounded-xl shadow-lg p-1.5 z-50 text-slate-800">
+                          <DropdownMenuLabel className="px-3 py-1 text-slate-400 text-[8.5px] uppercase font-black tracking-wider border-b border-slate-100 mb-1">
+                            Cập nhật nhanh
+                          </DropdownMenuLabel>
+                          {(['not_started', 'in_progress', 'waiting', 'completed'] as const).map((st) => {
+                            const Icon = statusMeta[st].icon;
+                            return (
+                              <DropdownMenuItem
+                                key={st}
+                                onClick={async () => {
+                                  try {
+                                    await onUpdateTaskStatus(task.id, st);
+                                    showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[st].text}"`);
+                                  } catch {
+                                    showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+                                  }
+                                }}
+                                disabled={isSaving}
+                                className="px-3 py-2 rounded-lg focus:bg-slate-50 focus:text-slate-900 hover:bg-slate-50 hover:text-slate-900 flex items-center justify-between font-bold text-slate-700 transition-colors text-[11px] cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Icon className={cn("w-3.5 h-3.5 shrink-0", statusMeta[st].iconColor)} />
+                                  <span>{statusMeta[st].text}</span>
+                                </div>
+                                {task.status === st && <Check className="w-3.5 h-3.5 text-[#C21A1A] stroke-[3]" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
 
-                  {/* Card Footer: Deadline & Status + Assignee */}
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100/60 mt-auto">
-                    {/* Deadline */}
-                    <span className={cn("inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded",
-                      isLate ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-500'
-                    )}>
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{task.deadline}</span>
-                    </span>
-
-                    {/* Status & Assignee */}
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md border inline-block", statusInfo.bg)}>
-                        {statusInfo.text}
-                      </span>
-
-                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 pl-1.5 pr-2 py-0.5 rounded-lg shrink-0 max-w-[135px]">
-                        <div className="w-5 h-5 rounded-full bg-slate-200 shrink-0 text-[10px] flex items-center justify-center font-bold text-slate-600">
-                          {task.assignee?.charAt(0) || 'U'}
-                        </div>
-                        <span className="text-[10.5px] font-bold text-slate-500 truncate">{task.assignee}</span>
-                      </div>
+                  {/* Card Title & Code */}
+                  <div className="space-y-1 mt-1 text-left">
+                    <h4 className="font-extrabold text-slate-900 text-[14.5px] leading-snug tracking-tight hover:text-slate-950 transition-colors break-words">
+                      {task.title}
+                    </h4>
+                    <div className="text-[10px] text-slate-400 font-mono tracking-wider">
+                      {generateTaskCode(task)}
                     </div>
                   </div>
-                </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-slate-100/80 my-0.5" />
+
+                  {/* Card Details (Grid key-value list with icons) */}
+                  <div className="flex-1 flex flex-col gap-2.5 text-[11.5px] text-left">
+                    {/* Description */}
+                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-start py-0.5">
+                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                        <AlignLeft className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        Mô tả
+                      </span>
+                      <span className="text-slate-700 font-medium whitespace-pre-line leading-relaxed break-words">
+                        {task.notes || <span className="text-slate-350 italic">Không có ghi chú...</span>}
+                      </span>
+                    </div>
+
+                    {/* Assignee */}
+                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        Người phụ trách
+                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+                          {task.assignee?.charAt(0) || 'U'}
+                        </div>
+                        <span className="text-slate-700 font-bold truncate">{task.assignee || 'Chưa phân công'}</span>
+                      </div>
+                    </div>
+
+                    {/* Deadline */}
+                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        Hạn hoàn thành
+                      </span>
+                      <div className="min-w-0">
+                        {renderDeadline(task.deadline)}
+                      </div>
+                    </div>
+
+                    {/* Branch / Dept */}
+                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                        <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        {branchOrDeptLabel}
+                      </span>
+                      <span className="text-slate-700 font-bold truncate">
+                        {branchOrDeptValue}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
               );
             })
           )}
@@ -476,6 +670,8 @@ export default function TasksView({
         isOpen={isAddingTask}
         onClose={() => setIsAddingTask(false)}
         onSubmit={handleCreateTask}
+        staffMembers={staffMembers}
+        roles={roles}
       />
 
       {/* Quick Delegate Modal */}
@@ -483,6 +679,8 @@ export default function TasksView({
         isOpen={quickDelegateOpen}
         onClose={() => setQuickDelegateOpen(false)}
         onSubmit={handleQuickDelegate}
+        staffMembers={staffMembers}
+        tasks={tasks}
       />
 
 

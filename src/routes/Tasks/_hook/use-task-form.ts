@@ -1,12 +1,15 @@
 import { z } from 'zod';
+import { format } from 'date-fns';
 import type { TaskRequestType } from '../../../types/tasks.types';
 
 export const taskFormSchema = z.object({
   title: z.string().trim().min(1, 'Vui lòng nhập tên công việc'),
-  department: z.string().trim().min(1, 'Vui lòng chọn phòng ban'),
+  department: z.string().trim().min(1, 'Vui lòng chọn vai trò'),
   priority: z.enum(['high', 'medium', 'low']),
-  deadline: z.string().trim().min(1, 'Vui lòng nhập hạn chót'),
-  assignee: z.string().trim().min(1, 'Vui lòng nhập người phụ trách'),
+  deadline: z.date({
+    message: 'Vui lòng chọn hạn chót ca trực',
+  }),
+  assignee: z.string().trim().min(1, 'Vui lòng chọn người phụ trách'),
   notes: z.string().optional(),
 });
 
@@ -15,17 +18,17 @@ export type TaskFormValues = z.infer<typeof taskFormSchema>;
 export const taskQuickDelegateFormSchema = z.object({
   title: z.string().trim().min(1, 'Vui lòng nhập tên công việc'),
   assignee: z.string().trim().min(1, 'Vui lòng chọn người nhận'),
-  department: z.string().trim().min(1, 'Vui lòng chọn phòng ban'),
+  department: z.string().trim().min(1, 'Vui lòng chọn vai trò'),
 });
 
 export type TaskQuickDelegateFormValues = z.infer<typeof taskQuickDelegateFormSchema>;
 
 export const DEFAULT_TASK_FORM_VALUES: TaskFormValues = {
   title: '',
-  department: 'Kho',
+  department: '',
   priority: 'medium',
-  deadline: 'Today',
-  assignee: 'Lê Văn C',
+  deadline: new Date(),
+  assignee: '',
   notes: '',
 };
 
@@ -41,7 +44,7 @@ export function taskFormToRequest(values: TaskFormValues): TaskRequestType {
     department: values.department,
     priority: values.priority,
     status: 'not_started',
-    deadline: values.deadline.trim(),
+    deadline: format(values.deadline, 'dd/MM/yyyy'),
     assignee: values.assignee.trim(),
     notes: values.notes?.trim() ?? '',
   };

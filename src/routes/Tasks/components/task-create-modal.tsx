@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
+import { DatePicker } from '../../../../share/components/custom/date-picker';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -15,6 +16,7 @@ import {
   Textarea,
 } from '@shared/ui';
 import type { TaskRequestType } from '../../../types/tasks.types';
+import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import {
   DEFAULT_TASK_FORM_VALUES,
   taskFormSchema,
@@ -26,17 +28,35 @@ interface TaskCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: TaskRequestType) => void | Promise<void>;
+  staffMembers?: StaffMember[];
+  roles?: StaffRole[];
 }
 
 export const TaskCreateModal = React.memo(function TaskCreateModal({
   isOpen,
   onClose,
   onSubmit,
+  staffMembers = [],
+  roles = [],
 }: TaskCreateModalProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: DEFAULT_TASK_FORM_VALUES,
   });
+
+  const staffOptions = useMemo(() => {
+    return (staffMembers || []).map((staff) => ({
+      value: staff.fullName,
+      label: `${staff.fullName} (${staff.position || staff.role})`,
+    }));
+  }, [staffMembers]);
+
+  const roleOptions = useMemo(() => {
+    return (roles || []).map((role) => ({
+      value: role.name,
+      label: role.name,
+    }));
+  }, [roles]);
 
   useEffect(() => {
     if (isOpen) {
@@ -97,23 +117,19 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                 control={form.control}
                 name="department"
                 render={({ field }) => (
-                  <FormItem className="space-y-1">
+                  <FormItem className="space-y-1 min-w-0">
                     <FormLabel className="block text-[10px] font-black text-slate-400 uppercase">
-                      Phòng ban
+                      Vai trò
                     </FormLabel>
                     <FormControl>
                       <CustomSelect
-                        options={[
-                          { value: 'Kho', label: 'Kho hàng' },
-                          { value: 'Marketing', label: 'Marketing (MKT)' },
-                          { value: 'Kỹ thuật', label: 'Kỹ thuật (KT)' },
-                          { value: 'Vận hành', label: 'Vận hành (VH)' },
-                        ]}
+                        options={roleOptions}
                         value={field.value}
                         onChangeValue={field.onChange}
+                        placeholder="Chọn vai trò"
                         clearable={false}
-                        className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10"
-                        containerClassName="w-full"
+                        className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10 min-w-0"
+                        containerClassName="w-full min-w-0"
                       />
                     </FormControl>
                     <FormMessage className="text-[11px]" />
@@ -125,7 +141,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
-                  <FormItem className="space-y-1">
+                  <FormItem className="space-y-1 min-w-0">
                     <FormLabel className="block text-[10px] font-black text-slate-400 uppercase">
                       Mức ưu tiên
                     </FormLabel>
@@ -139,8 +155,8 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                         value={field.value}
                         onChangeValue={field.onChange}
                         clearable={false}
-                        className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10"
-                        containerClassName="w-full"
+                        className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10 min-w-0"
+                        containerClassName="w-full min-w-0"
                       />
                     </FormControl>
                     <FormMessage className="text-[11px]" />
@@ -154,16 +170,15 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                 control={form.control}
                 name="deadline"
                 render={({ field }) => (
-                  <FormItem className="space-y-1">
+                  <FormItem className="space-y-1 min-w-0">
                     <FormLabel isRequired className="block text-[10px] font-black text-slate-400 uppercase">
                       Hạn chót
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        clearable={false}
-                        placeholder="Today hoặc 08/04/2026"
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs font-semibold rounded-lg"
+                      <DatePicker
+                        value={field.value as any}
+                        onChange={field.onChange as any}
+                        className="w-full text-xs font-semibold h-10"
                       />
                     </FormControl>
                     <FormMessage className="text-[11px]" />
@@ -175,16 +190,19 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                 control={form.control}
                 name="assignee"
                 render={({ field }) => (
-                  <FormItem className="space-y-1">
+                  <FormItem className="space-y-1 min-w-0">
                     <FormLabel isRequired className="block text-[10px] font-black text-slate-400 uppercase">
                       Người phụ trách
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
+                      <CustomSelect
+                        options={staffOptions}
+                        value={field.value}
+                        onChangeValue={field.onChange}
+                        placeholder="Chọn nhân sự"
                         clearable={false}
-                        placeholder="Họ tên nhân sự"
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs font-semibold rounded-lg"
+                        className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10 min-w-0"
+                        containerClassName="w-full min-w-0"
                       />
                     </FormControl>
                     <FormMessage className="text-[11px]" />

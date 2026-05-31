@@ -1,7 +1,19 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksService } from '../../../services/tasks-service';
+import { roleService } from '../../../services/admin';
 import type { TaskItem, TaskRequestType, TaskStatus } from '../../../types/tasks.types';
+
+export const rolesQueryKeys = {
+  all: ['roles'] as const,
+};
+
+export function useRolesQuery() {
+  return useQuery({
+    queryKey: rolesQueryKeys.all,
+    queryFn: roleService.getAll,
+  });
+}
 
 export const tasksQueryKeys = {
   all: ['tasks'] as const,

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Send } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,9 @@ import {
   Input,
   Label,
 } from '@shared/ui';
-import type { TaskRequestType } from '../../../types/tasks.types';
+import type { TaskItem, TaskRequestType } from '../../../types/tasks.types';
+import type { StaffMember } from '../../../types/staff.types';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import {
   DEFAULT_QUICK_DELEGATE_FORM_VALUES,
   quickDelegateFormToRequest,
@@ -25,24 +27,34 @@ interface TaskQuickDelegateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: TaskRequestType) => void | Promise<void>;
+  staffMembers?: StaffMember[];
+  tasks?: TaskItem[];
 }
-
-const QUICK_DELEGATE_CANDIDATES = [
-  { name: 'Lê Văn C', role: 'Thủ kho ca trực', dept: 'Kho' },
-  { name: 'Nguyễn Trường Giang', role: 'Sales trưởng ca', dept: 'Marketing' },
-  { name: 'Trần Thanh Hoài', role: 'Kỹ thuật viên', dept: 'Kỹ thuật' },
-  { name: 'Đặng Hùng An', role: 'Kho phó', dept: 'Kho' },
-];
 
 export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal({
   isOpen,
   onClose,
   onSubmit,
+  staffMembers = [],
+  tasks = [],
 }: TaskQuickDelegateModalProps) {
   const form = useForm<TaskQuickDelegateFormValues>({
     resolver: zodResolver(taskQuickDelegateFormSchema),
     defaultValues: DEFAULT_QUICK_DELEGATE_FORM_VALUES,
   });
+
+  const taskOptions = useMemo(() => {
+    const titles = new Set<string>();
+    (tasks || []).forEach((task) => {
+      if (task.title) {
+        titles.add(task.title.trim());
+      }
+    });
+    return Array.from(titles).map((title) => ({
+      value: title,
+      label: title,
+    }));
+  }, [tasks]);
 
   const selectedAssignee = useWatch({
     control: form.control,
@@ -59,9 +71,9 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
     await onSubmit(quickDelegateFormToRequest(values));
   }, [onSubmit]);
 
-  const handleSelectCandidate = useCallback((candidate: (typeof QUICK_DELEGATE_CANDIDATES)[number]) => {
-    form.setValue('assignee', candidate.name, { shouldValidate: true, shouldDirty: true });
-    form.setValue('department', candidate.dept, { shouldValidate: true, shouldDirty: true });
+  const handleSelectCandidate = useCallback((staff: StaffMember) => {
+    form.setValue('assignee', staff.fullName, { shouldValidate: true, shouldDirty: true });
+    form.setValue('department', staff.department || 'Kho', { shouldValidate: true, shouldDirty: true });
   }, [form]);
 
   if (!isOpen) return null;
@@ -100,12 +112,14 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
                     Tên phần việc khẩn cấp
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
+                    <CustomSelect
+                      options={taskOptions}
+                      value={field.value}
+                      onChangeValue={field.onChange}
+                      placeholder="Chọn công việc cần giao nhanh"
                       clearable={false}
-                      placeholder="Ví dụ: Lau dọn quầy thu ngân trung tâm"
-                      autoFocus
-                      className="w-full bg-slate-50 border border-slate-200 focus:outline-[#C21A1A] px-3.5 py-2.5 text-xs font-semibold rounded-lg"
+                      className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg h-10"
+                      containerClassName="w-full"
                     />
                   </FormControl>
                   <FormMessage className="text-[11px]" />
@@ -117,23 +131,29 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
               <Label className="block text-[10px] font-black text-slate-400 uppercase">
                 Chọn người nhận nhanh
               </Label>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {QUICK_DELEGATE_CANDIDATES.map((candidate) => (
-                  <Button
-                    key={candidate.name}
-                    type="button"
-                    variant="ghost"
-                    onClick={() => handleSelectCandidate(candidate)}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between items-start h-auto font-normal hover:bg-transparent ${
-                      selectedAssignee === candidate.name
-                        ? 'border-[#C21A1A] bg-[#C21A1A]/5 shadow-2xs'
-                        : 'border-slate-200 hover:bg-slate-50 bg-white'
-                    }`}
-                  >
-                    <h4 className="font-extrabold text-slate-800 text-xs">{candidate.name}</h4>
-                    <p className="text-[9px] text-slate-400 mt-0.5">{candidate.role}</p>
-                  </Button>
-                ))}
+              <div className="grid grid-cols-2 gap-2 text-xs max-h-48 overflow-y-auto pr-1">
+                {staffMembers.length === 0 ? (
+                  <div className="col-span-2 text-center py-4 text-slate-400 text-xs font-semibold">
+                    Không có nhân sự nào trong ca trực
+                  </div>
+                ) : (
+                  staffMembers.map((staff) => (
+                    <Button
+                      key={staff.id}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => handleSelectCandidate(staff)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between items-start h-auto font-normal hover:bg-transparent ${
+                        selectedAssignee === staff.fullName
+                          ? 'border-[#C21A1A] bg-[#C21A1A]/5 shadow-2xs'
+                          : 'border-slate-200 hover:bg-slate-50 bg-white'
+                      }`}
+                    >
+                      <h4 className="font-extrabold text-slate-800 text-xs">{staff.fullName}</h4>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{staff.position || staff.role}</p>
+                    </Button>
+                  ))
+                )}
               </div>
             </div>
 
