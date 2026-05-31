@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, Layers, CheckCircle, Search, SlidersHorizontal, X } from 'lucide-react';
-import { Button, Input } from '../../../../share/ui';
+import { Button, Input, Tabs, TabsList, TabsTrigger } from '../../../../share/ui';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 
 interface ChecklistTabBarProps {
@@ -26,53 +26,47 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   setSelectedRoleCode,
   roleOptions,
 }: ChecklistTabBarProps) {
+  const handleTabChange = React.useCallback((value: string) => {
+    setSubTab(value as 'today' | 'process' | 'completed');
+  }, [setSubTab]);
+
   return (
     <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
       {/* Navigation Tabs + Role Select */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto">
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/90 overflow-x-auto scrollbar-none gap-0.5 shrink-0 flex-1 sm:flex-initial text-left">
-          <Button
-            onClick={() => setSubTab('today')}
-            variant="ghost"
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'today'
-                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-              }`}
-          >
-            <Calendar className="w-3.5 h-3.5 hidden sm:inline-block" />
-            <span>Hôm nay</span>
-          </Button>
+        <Tabs value={subTab} onValueChange={handleTabChange} className="flex-1 sm:flex-initial text-left">
+          <TabsList className="bg-slate-100 p-1 rounded-xl border border-slate-200/90 overflow-x-auto scrollbar-none gap-0.5 shrink-0 w-full sm:w-auto h-auto justify-start">
+            <TabsTrigger
+              value="today"
+              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent data-[state=active]:border-[#C21A1A] data-[state=active]:bg-white data-[state=active]:text-[#C21A1A] data-[state=active]:shadow-xs hover:data-[state=active]:bg-white"
+            >
+              <Calendar className="w-3.5 h-3.5 hidden sm:inline-block" />
+              <span>Hôm nay</span>
+            </TabsTrigger>
 
-          <Button
-            onClick={() => setSubTab('process')}
-            variant="ghost"
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'process'
-                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-              }`}
-          >
-            <Layers className="w-3.5 h-3.5 hidden sm:inline-block" />
-            <span>
-              <span className="hidden sm:inline">Theo quy trình</span>
-              <span className="sm:hidden inline">Quy trình</span>
-            </span>
-          </Button>
+            <TabsTrigger
+              value="process"
+              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent data-[state=active]:border-[#C21A1A] data-[state=active]:bg-white data-[state=active]:text-[#C21A1A] data-[state=active]:shadow-xs hover:data-[state=active]:bg-white"
+            >
+              <Layers className="w-3.5 h-3.5 hidden sm:inline-block" />
+              <span>
+                <span className="hidden sm:inline">Theo quy trình</span>
+                <span className="sm:hidden inline">Quy trình</span>
+              </span>
+            </TabsTrigger>
 
-          <Button
-            onClick={() => setSubTab('completed')}
-            variant="ghost"
-            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial ${subTab === 'completed'
-                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-red-800'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-              }`}
-          >
-            <CheckCircle className="w-3.5 h-3.5 hidden sm:inline-block" />
-            <span>
-              <span className="hidden sm:inline">Đã hoàn thành</span>
-              <span className="sm:hidden inline">Đã xong</span>
-            </span>
-          </Button>
-        </div>
+            <TabsTrigger
+              value="completed"
+              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent data-[state=active]:border-[#C21A1A] data-[state=active]:bg-white data-[state=active]:text-[#C21A1A] data-[state=active]:shadow-xs hover:data-[state=active]:bg-white"
+            >
+              <CheckCircle className="w-3.5 h-3.5 hidden sm:inline-block" />
+              <span>
+                <span className="hidden sm:inline">Đã hoàn thành</span>
+                <span className="sm:hidden inline">Đã xong</span>
+              </span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {/* Role Select */}
         {(subTab === 'process' || subTab === 'today') && (
           <div className="w-full sm:w-52 shrink-0">

@@ -1,4 +1,4 @@
-import ChecklistView from './ChecklistView';
+import ChecklistView from './checklist-view';
 import type { ChecklistItem } from '../../types/checklist.types';
 import type { UserSession } from '../../stores/app-store';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';

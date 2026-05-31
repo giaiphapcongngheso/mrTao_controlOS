@@ -18,7 +18,7 @@ import {
   type ChecklistDataState,
   type ChecklistRoleOption,
 } from '../checklist-domain';
-import { getTodayKey } from '../checklist.utils';
+import { getTodayKey } from '../checklist-utils';
 
 type UseChecklistDataParams = {
   currentUser: UserSession;

@@ -3,19 +3,19 @@ import { Plus } from 'lucide-react';
 import { Button } from '../../../share/ui';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import { ChecklistCategory, ChecklistItem } from '../../types/checklist.types';
-import ChecklistContentArea from './components/ChecklistContentArea';
-import ChecklistCreateDialog from './components/ChecklistCreateDialog';
-import ChecklistHeader from './components/ChecklistHeader';
-import ChecklistTabBar from './components/ChecklistTabBar';
-import ChecklistConfigBar from './components/ChecklistConfigBar';
-import ChecklistErrorBanner from './components/ChecklistErrorBanner';
+import ChecklistContentArea from './components/checklist-content-area';
+import ChecklistCreateDialog from './components/checklist-create-dialog';
+import ChecklistHeader from './components/checklist-header';
+import ChecklistTabBar from './components/checklist-tab-bar';
+import ChecklistConfigBar from './components/checklist-config-bar';
+import ChecklistErrorBanner from './components/checklist-error-banner';
 import {
   useFilteredCategories,
   useKpiStats,
   useInlineEdit,
   useChecklistDialog,
 } from './_hook';
-import { getTodayKey, getWeekDates } from './checklist.utils';
+import { getTodayKey, getWeekDates } from './checklist-utils';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
@@ -44,7 +44,6 @@ interface ChecklistViewProps {
     roleCode: string;
     tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
   } | null>;
-  onUpdateCategory?: (id: string, title: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
   onDeleteChecklistItem?: (itemId: string) => Promise<void>;
   onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
@@ -81,7 +80,6 @@ export default function ChecklistView({
   onCreateRoleChecklistBatch,
   onSaveCategoryBatch,
   onRequestEditCategory,
-  onUpdateCategory,
   onDeleteCategory,
   onDeleteChecklistItem,
   onUpdateChecklistItem,
@@ -115,14 +113,9 @@ export default function ChecklistView({
     setIsAddingItem,
     dialogRoleCode,
     setDialogRoleCode,
-    dialogCategoryId,
-    setDialogCategoryId,
-    dialogTasks,
+    dialogInitialValues,
     dialogError,
     isSubmittingDialog,
-    addDialogTaskRow,
-    removeDialogTaskRow,
-    updateDialogTask,
     openCreateDialog,
     openEditDialog,
     dialogEditCategoryId,
@@ -164,6 +157,24 @@ export default function ChecklistView({
     onUpdateChecklistItem,
     onDeleteChecklistItem,
   });
+
+  const editState = useMemo(() => ({
+    editingItemId,
+    setEditingItemId,
+    editItemTitle,
+    setEditItemTitle,
+    editItemTimeLimit,
+    setEditItemTimeLimit,
+    onInlineSave: handleInlineSave,
+  }), [
+    editingItemId,
+    setEditingItemId,
+    editItemTitle,
+    setEditItemTitle,
+    editItemTimeLimit,
+    setEditItemTimeLimit,
+    handleInlineSave,
+  ]);
 
   // Stable callback references for child components
   const handleOpenCreateDialog = useCallback(() => {
@@ -253,15 +264,8 @@ export default function ChecklistView({
         activeCategoryType={activeCategoryType}
         onToggleItem={onToggleItem}
         onDeleteCategory={onDeleteCategory}
-        onUpdateCategory={onUpdateCategory}
         onOpenEditCategoryDialog={handleOpenEditDialog}
-        editingItemId={editingItemId}
-        setEditingItemId={setEditingItemId}
-        editItemTitle={editItemTitle}
-        setEditItemTitle={setEditItemTitle}
-        editItemTimeLimit={editItemTimeLimit}
-        setEditItemTimeLimit={setEditItemTimeLimit}
-        onInlineSave={handleInlineSave}
+        editState={editState}
         onDeleteItem={handleDeleteItem}
         onAddInlineItem={handleAddInlineItem}
         onResetFilters={handleResetFilters}
@@ -284,19 +288,12 @@ export default function ChecklistView({
       <ChecklistCreateDialog
         isOpen={isAddingItem}
         subTab={subTab}
-        dialogError={dialogError}
-        dialogRoleCode={dialogRoleCode}
-        dialogCategoryId={dialogCategoryId}
-        dialogTasks={dialogTasks}
+        initialValues={dialogInitialValues}
         roleOptions={roleOptions}
         isSubmittingDialog={isSubmittingDialog}
+        dialogError={dialogError}
         onClose={handleCloseDialog}
         onSubmit={handleDialogSubmit}
-        onChangeRoleCode={setDialogRoleCode}
-        onChangeCategoryId={setDialogCategoryId}
-        onAddTaskRow={addDialogTaskRow}
-        onRemoveTaskRow={removeDialogTaskRow}
-        onUpdateTask={updateDialogTask}
         isEditMode={dialogEditCategoryId !== null}
       />
 

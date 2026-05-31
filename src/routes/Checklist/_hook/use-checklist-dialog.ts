@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { z } from 'zod';
 
-type ChecklistDialogSubTab = 'today' | 'process' | 'completed';
-type ChecklistCategoryType = 'today' | 'process';
+export type ChecklistDialogSubTab = 'today' | 'process' | 'completed';
+export type ChecklistCategoryType = 'today' | 'process';
 
 export type ChecklistDialogTaskInput = {
   id?: string;
@@ -9,12 +10,26 @@ export type ChecklistDialogTaskInput = {
   timeLimit?: string;
 };
 
-type EditableChecklistCategory = {
+export type EditableChecklistCategory = {
   id: string;
   title: string;
   roleCode: string;
   tasks: ChecklistDialogTaskInput[];
 };
+
+export const checklistFormSchema = z.object({
+  roleCode: z.string().min(1, 'Vui lòng chọn vai trò'),
+  categoryId: z.string().trim().min(1, 'Vui lòng điền tên nhóm công việc'),
+  tasks: z.array(
+    z.object({
+      id: z.string().optional(),
+      title: z.string().trim().min(1, 'Vui lòng điền nội dung công việc'),
+      timeLimit: z.string().min(1, 'Vui lòng chọn giờ quy định'),
+    })
+  ).min(1, 'Vui lòng thêm ít nhất 1 công việc'),
+});
+
+export type ChecklistFormValues = z.infer<typeof checklistFormSchema>;
 
 interface UseChecklistDialogProps {
   defaultRoleCode: string;
@@ -32,8 +47,6 @@ interface UseChecklistDialogProps {
   ) => Promise<EditableChecklistCategory | null> | EditableChecklistCategory | null;
 }
 
-type DialogTask = { id?: string; title: string; timeLimit: string };
-
 const DEFAULT_TIME = '08:00';
 
 export function useChecklistDialog({
@@ -44,10 +57,8 @@ export function useChecklistDialog({
 }: UseChecklistDialogProps) {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [dialogRoleCode, setDialogRoleCode] = useState(defaultRoleCode);
-  const [dialogCategoryId, setDialogCategoryId] = useState('');
-  const [dialogChecklistName, setDialogChecklistName] = useState('');
   const [dialogEditCategoryId, setDialogEditCategoryId] = useState<string | null>(null);
-  const [dialogTasks, setDialogTasks] = useState<DialogTask[]>([{ title: '', timeLimit: DEFAULT_TIME }]);
+  const [dialogInitialValues, setDialogInitialValues] = useState<ChecklistFormValues | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
 
@@ -55,64 +66,52 @@ export function useChecklistDialog({
     setDialogRoleCode(defaultRoleCode);
   }, [defaultRoleCode]);
 
-  const addDialogTaskRow = useCallback(() => {
-    setDialogTasks((prev) => [...prev, { title: '', timeLimit: DEFAULT_TIME }]);
-  }, []);
-
-  const removeDialogTaskRow = useCallback((index: number) => {
-    setDialogTasks((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((_, i) => i !== index);
-    });
-  }, []);
-
-  const updateDialogTask = useCallback((index: number, fields: Partial<{ title: string; timeLimit: string }>) => {
-    setDialogTasks((prev) => prev.map((task, i) => (i === index ? { ...task, ...fields } : task)));
-  }, []);
-
   const openCreateDialog = useCallback((options?: {
     roleCode?: string;
     categoryTitle?: string;
   }) => {
     setDialogEditCategoryId(null);
-    setDialogRoleCode(options?.roleCode ?? defaultRoleCode);
-    setDialogCategoryId(options?.categoryTitle ?? '');
-    setDialogChecklistName(options?.categoryTitle ?? '');
-    setDialogTasks([{ title: '', timeLimit: DEFAULT_TIME }]);
+    setDialogInitialValues({
+      roleCode: options?.roleCode ?? dialogRoleCode ?? defaultRoleCode,
+      categoryId: options?.categoryTitle ?? '',
+      tasks: [{ title: '', timeLimit: DEFAULT_TIME }],
+    });
     setDialogError(null);
     setIsAddingItem(true);
-  }, [defaultRoleCode]);
+  }, [defaultRoleCode, dialogRoleCode]);
 
   const openEditDialog = useCallback(async (categoryId: string, categoryType: ChecklistCategoryType) => {
     if (!onRequestEditCategory) {
       return;
     }
 
-    const data = await onRequestEditCategory(categoryId, categoryType);
-    if (!data) {
-      setDialogError('Không thể tải dữ liệu nhóm để chỉnh sửa.');
-      return;
-    }
+    try {
+      const data = await onRequestEditCategory(categoryId, categoryType);
+      if (!data) {
+        setDialogError('Không thể tải dữ liệu nhóm để chỉnh sửa.');
+        return;
+      }
 
-    setDialogEditCategoryId(data.id);
-    setDialogRoleCode(data.roleCode || defaultRoleCode);
-    setDialogCategoryId(data.title);
-    setDialogChecklistName(data.title);
-    setDialogTasks(
-      data.tasks.length > 0
-        ? data.tasks.map((task) => ({
-            id: task.id,
-            title: task.title,
-            timeLimit: task.timeLimit || DEFAULT_TIME,
-          }))
-        : [{ title: '', timeLimit: DEFAULT_TIME }],
-    );
-    setDialogError(null);
-    setIsAddingItem(true);
+      setDialogEditCategoryId(data.id);
+      setDialogInitialValues({
+        roleCode: data.roleCode || defaultRoleCode,
+        categoryId: data.title,
+        tasks: data.tasks.length > 0
+          ? data.tasks.map((task) => ({
+              id: task.id,
+              title: task.title,
+              timeLimit: task.timeLimit || DEFAULT_TIME,
+            }))
+          : [{ title: '', timeLimit: DEFAULT_TIME }],
+      });
+      setDialogError(null);
+      setIsAddingItem(true);
+    } catch (err: any) {
+      setDialogError('Đã xảy ra lỗi khi tải thông tin chỉnh sửa.');
+    }
   }, [defaultRoleCode, onRequestEditCategory]);
 
-  const handleDialogSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDialogSubmit = useCallback(async (values: ChecklistFormValues) => {
     setDialogError(null);
 
     if (!onSaveCategoryBatch) {
@@ -120,13 +119,8 @@ export function useChecklistDialog({
       return;
     }
 
-    const categoryTitle = dialogCategoryId.trim();
-    if (!categoryTitle) {
-      setDialogError('Vui lòng điền tên nhóm công việc.');
-      return;
-    }
-
-    const validTasks = dialogTasks
+    const categoryTitle = values.categoryId.trim();
+    const validTasks = values.tasks
       .map((task) => ({
         id: task.id,
         title: task.title.trim(),
@@ -146,40 +140,30 @@ export function useChecklistDialog({
         categoryType,
         id: dialogEditCategoryId,
         title: categoryTitle,
-        roleCode: dialogRoleCode,
+        roleCode: values.roleCode,
         tasks: validTasks,
       });
 
       setIsAddingItem(false);
       setDialogEditCategoryId(null);
-      setDialogCategoryId('');
-      setDialogChecklistName('');
-      setDialogTasks([{ title: '', timeLimit: DEFAULT_TIME }]);
+      setDialogInitialValues(null);
     } catch (err: any) {
       setDialogError(err?.message || 'Không thể lưu checklist. Vui lòng kiểm tra dữ liệu và thử lại.');
+      throw err;
     } finally {
       setIsSubmittingDialog(false);
     }
-  }, [dialogCategoryId, dialogEditCategoryId, dialogRoleCode, dialogTasks, onSaveCategoryBatch, subTab]);
+  }, [dialogEditCategoryId, onSaveCategoryBatch, subTab]);
 
   return {
     isAddingItem,
     setIsAddingItem,
     dialogRoleCode,
     setDialogRoleCode,
-    dialogCategoryId,
-    setDialogCategoryId,
-    dialogChecklistName,
-    setDialogChecklistName,
     dialogEditCategoryId,
-    dialogTasks,
-    setDialogTasks,
+    dialogInitialValues,
     dialogError,
-    setDialogError,
     isSubmittingDialog,
-    addDialogTaskRow,
-    removeDialogTaskRow,
-    updateDialogTask,
     openCreateDialog,
     openEditDialog,
     handleDialogSubmit,

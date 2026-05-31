@@ -9,7 +9,7 @@ import type {
 } from '../../types/checklist.types';
 import { ENTITY_PREFIX } from '../../constants/entity-id.constants';
 import { initBaseEntity, initBusinessEntity } from '../../types/base.types';
-import { getTodayKey } from './checklist.utils';
+import { getTodayKey } from './checklist-utils';
 
 export type ChecklistCategoryType = 'today' | 'process';
 

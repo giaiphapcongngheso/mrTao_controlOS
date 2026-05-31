@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { ChecklistCategory, ChecklistItem } from '../../../types/checklist.types';
 import type { ChecklistViewCategory } from '../components/checklist-view.types';
 import type { CategoryMeta } from '../components/checklist-view.types';
-import { getCategoryMeta, getTodayKey } from '../checklist.utils';
+import { getCategoryMeta, getTodayKey } from '../checklist-utils';
 
 interface UseFilteredCategoriesProps {
   todayCategories: ChecklistCategory[];

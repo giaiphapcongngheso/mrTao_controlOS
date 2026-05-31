@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChecklistCategory, ChecklistDocument, ChecklistItem } from '../../../types/checklist.types';
+import type { DocumentSnapshot } from 'firebase/firestore';
+import type { ChecklistCategory, ChecklistDocument } from '../../../types/checklist.types';
+import type { FirestoreFilter } from '../../../shared/services/firestore-pagination';
 import { checklistCategoryService, checklistService, processService } from '../../../services/checklist-service';
 
 export const checklistQueryKeys = {
   categories: ['checklist', 'categories'] as const,
   documents: ['checklist', 'documents'] as const,
-  documentsPage: (page: number, pageSize: number) => ['checklist', 'documents', 'page', page, pageSize] as const,
+  documentsPaged: (pageSize: number, storeId: string, roleCode?: string, cursor?: string) =>
+    ['checklist', 'documents', 'paged', { pageSize, storeId, roleCode, cursor }] as const,
 };
 
 export function useChecklistCategoriesQuery() {
@@ -29,37 +32,44 @@ export function useChecklistProcessCategoriesQuery() {
   });
 }
 
-export interface ChecklistPageResult<TItem> {
-  items: TItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
+/**
+ * Cursor-based paginated query for checklist documents.
+ * Uses Firestore startAfter + limit (server-side pagination)
+ * via BaseService.getPaged() utility.
+ */
+export function useChecklistDocumentsPagedQuery(
+  pageSize: number,
+  storeId: string,
+  options?: {
+    roleCode?: string;
+    lastDoc?: DocumentSnapshot | null;
+    enabled?: boolean;
+  },
+) {
+  const filters: FirestoreFilter[] = [
+    { field: 'storeId', op: '==', value: storeId },
+    { field: 'deletedAt', op: '==', value: null },
+  ];
 
-function paginateArray<TItem>(allItems: TItem[], page: number, pageSize: number): ChecklistPageResult<TItem> {
-  const safePage = Math.max(1, page);
-  const safePageSize = Math.max(1, pageSize);
-  const total = allItems.length;
-  const totalPages = Math.max(1, Math.ceil(total / safePageSize));
-  const start = (safePage - 1) * safePageSize;
-  const items = allItems.slice(start, start + safePageSize);
+  if (options?.roleCode) {
+    filters.push({ field: 'roleCode', op: '==', value: options.roleCode });
+  }
 
-  return {
-    items,
-    page: safePage,
-    pageSize: safePageSize,
-    total,
-    totalPages,
-  };
-}
-
-export function useChecklistDocumentsPageQuery(page: number, pageSize: number) {
   return useQuery({
-    queryKey: checklistQueryKeys.documentsPage(page, pageSize),
-    queryFn: checklistService.getAll,
-    enabled: false,
-    select: (allDocs: ChecklistDocument[]) => paginateArray(allDocs, page, pageSize),
+    queryKey: checklistQueryKeys.documentsPaged(
+      pageSize,
+      storeId,
+      options?.roleCode,
+      options?.lastDoc?.id,
+    ),
+    queryFn: () => checklistService.getPaged({
+      pageSize,
+      filters,
+      orderByField: 'updatedAt',
+      orderDirection: 'desc',
+      lastDoc: options?.lastDoc,
+    }),
+    enabled: options?.enabled ?? true,
   });
 }
 

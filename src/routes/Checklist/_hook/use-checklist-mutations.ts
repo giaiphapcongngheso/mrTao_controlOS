@@ -1,7 +1,12 @@
 import { useCallback, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { UserSession } from '../../../stores/app-store';
-import type { ChecklistItem, ChecklistDocument, ChecklistTemplateTask } from '../../../types/checklist.types';
+import type {
+  ChecklistItem,
+  ChecklistDocument,
+  ChecklistTemplateDocument,
+  ChecklistTemplateTask,
+} from '../../../types/checklist.types';
 import type { SystemLogActionType } from '../../../types/system-log.types';
 import { ENTITY_PREFIX } from '../../../constants/entity-id.constants';
 import {
@@ -15,7 +20,7 @@ import { systemLogService } from '../../../services/system-log-service';
 import { toastError, toastSuccess, toastWarning } from '../../../shared/lib/toast';
 import { normalizeAccessCode } from '../../../shared/hooks/use-module-permissions';
 import { guardAction, initBaseEntity, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
-import { getTodayKey } from '../checklist.utils';
+import { getTodayKey } from '../checklist-utils';
 import {
   buildTodaySnapshotFromTemplate,
   findProcessTaskById,
@@ -541,45 +546,43 @@ export function useChecklistMutations({
           processes: replaceById(state.processes, updatedProcess),
         }));
 
-        void (async () => {
-          try {
-            await processService.update(targetProcess.id, {
-              title: safeTitle,
-              roleCode: normalizedRoleCode,
-              tasks: templateTasks,
-              updatedAt: nowIso,
-            });
-            toastSuccess('Đã lưu quy trình.');
-          } catch (error) {
-            restoreLocalState(previousState);
-            console.error('Khong the luu quy trinh:', error);
-            toastError('Khong the luu quy trinh. Vui long thu lai.');
-          }
-        })();
+        try {
+          await processService.update(targetProcess.id, {
+            title: safeTitle,
+            roleCode: normalizedRoleCode,
+            tasks: templateTasks,
+            updatedAt: nowIso,
+          });
+          toastSuccess('Đã lưu quy trình.');
+        } catch (error) {
+          restoreLocalState(previousState);
+          console.error('Khong the luu quy trinh:', error);
+          toastError('Khong the luu quy trinh. Vui long thu lai.');
+          throw new Error('Khong the luu quy trinh. Vui long thu lai.');
+        }
         return;
       }
 
-      void (async () => {
-        try {
-          const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
-          const persistedProcess = {
-            ...baseEntity,
-            storeId: activeStoreId,
-            roleCode: normalizedRoleCode,
-            title: safeTitle,
-            tasks: templateTasks,
-          };
-          await processService.create(persistedProcess);
-          updateLocalState((state) => ({
-            ...state,
-            processes: [...state.processes, persistedProcess],
-          }));
-          toastSuccess('Đã tạo quy trình.');
-        } catch (error) {
-          console.error('Khong the luu quy trinh:', error);
-          toastError('Khong the luu quy trinh. Vui long thu lai.');
-        }
-      })();
+      try {
+        const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
+        const persistedProcess = {
+          ...baseEntity,
+          storeId: activeStoreId,
+          roleCode: normalizedRoleCode,
+          title: safeTitle,
+          tasks: templateTasks,
+        };
+        await processService.create(persistedProcess);
+        updateLocalState((state) => ({
+          ...state,
+          processes: [...state.processes, persistedProcess],
+        }));
+        toastSuccess('Đã tạo quy trình.');
+      } catch (error) {
+        console.error('Khong the luu quy trinh:', error);
+        toastError('Khong the luu quy trinh. Vui long thu lai.');
+        throw new Error('Khong the luu quy trinh. Vui long thu lai.');
+      }
       return;
     }
 
@@ -616,63 +619,64 @@ export function useChecklistMutations({
         });
       }
 
-      void (async () => {
-        try {
-          await checklistTemplateService.update(originalTemplate.id, {
-            title: safeTitle,
-            roleCode: normalizedRoleCode,
-            tasks: templateTasks,
-            updatedAt: nowIso,
-          });
-          toastSuccess('Đã lưu checklist.');
-        } catch (error) {
-          restoreLocalState(previousState);
-          setPendingTemplateSync(null);
-          console.error('Khong the luu template checklist:', error);
-          toastError('Khong the luu checklist. Vui long thu lai.');
-        }
-      })();
+      try {
+        await checklistTemplateService.update(originalTemplate.id, {
+          title: safeTitle,
+          roleCode: normalizedRoleCode,
+          tasks: templateTasks,
+          updatedAt: nowIso,
+        });
+        toastSuccess('Đã lưu checklist.');
+      } catch (error) {
+        restoreLocalState(previousState);
+        setPendingTemplateSync(null);
+        console.error('Khong the luu template checklist:', error);
+        toastError('Khong the luu checklist. Vui long thu lai.');
+        throw new Error('Khong the luu checklist. Vui long thu lai.');
+      }
       return;
     }
 
-    void (async () => {
-      let persistedTemplate: Awaited<ReturnType<typeof checklistTemplateService.create>> | null = null;
-      try {
-        const templateEntity = await initBusinessEntity(ENTITY_PREFIX.CHECKLIST_TEMPLATE);
-        const newTemplate = {
-          ...templateEntity,
-          storeId: activeStoreId,
-          roleCode: normalizedRoleCode,
-          title: safeTitle,
-          tasks: templateTasks,
-        };
-        persistedTemplate = await checklistTemplateService.create(newTemplate);
-        updateLocalState((state) => ({
-          ...state,
-          templates: [...state.templates, persistedTemplate!],
-        }));
-        toastSuccess(
-          'Đã tạo checklist.',
-          'Checklist hôm nay sẽ được đồng bộ trong nền.',
-        );
+    let newTemplate: ChecklistTemplateDocument | null = null;
+    try {
+      const templateEntity = await initBusinessEntity(ENTITY_PREFIX.CHECKLIST_TEMPLATE);
+      newTemplate = {
+        ...templateEntity,
+        storeId: activeStoreId,
+        roleCode: normalizedRoleCode,
+        title: safeTitle,
+        tasks: templateTasks,
+      };
+      const persistedTemplate = await checklistTemplateService.create(newTemplate);
+      updateLocalState((state) => ({
+        ...state,
+        templates: [...state.templates, persistedTemplate],
+      }));
+      toastSuccess(
+        'Đã tạo checklist.',
+        'Checklist hôm nay sẽ được đồng bộ trong nền.',
+      );
+    } catch (error) {
+      console.error('Khong the luu checklist:', error);
+      toastError('Khong the luu checklist. Vui long thu lai.');
+      throw new Error('Khong the luu checklist. Vui long thu lai.');
+    }
 
-        const newSnapshot = await buildTodaySnapshotFromTemplate(newTemplate, activeStoreId, todayKey);
-        const persistedSnapshot = await createChecklistSnapshotOnce(newSnapshot);
-        updateLocalState((state) => ({
-          ...state,
-          snapshots: [...state.snapshots, persistedSnapshot],
-        }));
-      } catch (error) {
-        if (persistedTemplate) {
-          console.error('Khong the tao snapshot checklist hom nay:', error);
-          toastWarning('Đã tạo checklist mẫu, nhưng chưa đồng bộ được checklist hôm nay.');
-          return;
-        }
+    if (!newTemplate) {
+      return;
+    }
 
-        console.error('Khong the luu checklist:', error);
-        toastError('Khong the luu checklist. Vui long thu lai.');
-      }
-    })();
+    try {
+      const newSnapshot = await buildTodaySnapshotFromTemplate(newTemplate, activeStoreId, todayKey);
+      const persistedSnapshot = await createChecklistSnapshotOnce(newSnapshot);
+      updateLocalState((state) => ({
+        ...state,
+        snapshots: [...state.snapshots, persistedSnapshot],
+      }));
+    } catch (error) {
+      console.error('Khong the tao snapshot checklist hom nay:', error);
+      toastWarning('Đã tạo checklist mẫu, nhưng chưa đồng bộ được checklist hôm nay.');
+    }
   }, [
     activeStoreId,
     dataStateRef,

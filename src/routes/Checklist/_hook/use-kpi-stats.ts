@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ChecklistItem } from '../../../types/checklist.types';
-import { isItemLate } from '../checklist.utils';
+import { isItemLate } from '../checklist-utils';
 
 /**
  * Hook to compute overall KPI metrics based on today's checklist items

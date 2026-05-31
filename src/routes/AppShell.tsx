@@ -34,7 +34,7 @@ import {
 
 // Components
 import TodayView from './Today/TodayView';
-import ChecklistContainer from './Checklist/ChecklistContainer';
+import ChecklistContainer from './Checklist/checklist-container';
 import TasksView from './Tasks/TasksView';
 import KpiView from './Kpi/KpiView';
 import IssuesContainer from './Issues/IssuesContainer';
