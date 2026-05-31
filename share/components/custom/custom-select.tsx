@@ -1,6 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { cn } from '../../lib/utils';
-import { ChevronsUpDownIcon, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -15,7 +15,7 @@ type CustomSelectProps<T = unknown> = {
   options: Option<T>[];
   value?: string | number;
   onChangeValue?: (value: string | number) => void;
-  placeholder?: string;
+  placeholder?: string | React.ReactNode;
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
@@ -24,6 +24,7 @@ type CustomSelectProps<T = unknown> = {
   containerClassName?: string;
   disableSorting?: boolean;
   size?: 'sm' | 'default';
+  iconClassName?: string;
 };
 
 export function CustomSelect<T = unknown>({
@@ -38,12 +39,14 @@ export function CustomSelect<T = unknown>({
   clearable = true,
   containerClassName,
   size,
+  iconClassName,
 }: CustomSelectProps<T>) {
   const { t } = useTranslation(['common']);
   const hasMounted = React.useRef(false);
+  const [open, setOpen] = React.useState(false);
 
   const handleChange = (val: string) => {
-    // Chặn onChange khi Select mount mà value bị "" (bug của Radix)
+    // Prevent onChange when Select mounts with empty value (Radix bug)
     if (!hasMounted.current) {
       hasMounted.current = true;
       if (val === '' || val == null) {
@@ -57,8 +60,8 @@ export function CustomSelect<T = unknown>({
   };
 
   const handleClear = (e: React.MouseEvent) => {
-    e.preventDefault(); // ✅ Chặn default behavior
-    e.stopPropagation(); // ✅ Chặn bubble
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Stop propagation
     onChangeValue?.('');
   };
 
@@ -71,6 +74,8 @@ export function CustomSelect<T = unknown>({
         value={value !== undefined && value !== null ? String(value) : ''}
         onValueChange={handleChange}
         disabled={disabled}
+        open={open}
+        onOpenChange={setOpen}
       >
         <SelectTrigger
           size={size}
@@ -111,7 +116,7 @@ export function CustomSelect<T = unknown>({
         </SelectContent>
       </Select>
 
-      {/* ✅ Clear button ngoài SelectTrigger */}
+      {/* Clear button outside SelectTrigger */}
       {showClearButton && (
         <div
           onClick={(e) => {
@@ -136,7 +141,13 @@ export function CustomSelect<T = unknown>({
           </div>
         </div>
       )}
-      <ChevronsUpDownIcon className="h-4 w-4 opacity-50 absolute right-2 top-1/2 -translate-y-1/2" />
+      <ChevronDown
+        className={cn(
+          'h-4 w-4 opacity-50 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-200',
+          open && 'rotate-180',
+          iconClassName
+        )}
+      />
     </div>
   );
 }

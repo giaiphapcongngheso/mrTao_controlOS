@@ -4,7 +4,6 @@ import type { StaffRank } from './types/kpi.types';
 import type { DailyReport } from './types/reports.types';
 import type { RolePermissionRow, StaffMember } from './types/staff.types';
 import type { Store } from './types/store.types';
-import type { TaskItem } from './types/tasks.types';
 import type { KPIStats, TimelineEvent } from './types/today.types';
 
 export const DEFAULT_STORE_ID = 'store-mr-tao-q1';
@@ -82,49 +81,6 @@ export const INITIAL_CHECKLIST_ITEMS: ChecklistItem[] = [
   { id: 'cs3', categoryId: 'closing', title: 'Kiểm tra khóa an toàn tủ cường lực bày hàng, kéo rèm an ninh showroom', isCompleted: false },
   { id: 'cs4', categoryId: 'closing', title: 'Ngắt tất cả thiết bị điện trừ camera giám sát và biển hiệu, dập Aptomat', isCompleted: false },
 ].map((item): ChecklistItem => ({ storeId: DEFAULT_STORE_ID, ...item }));
-
-export const INITIAL_TASKS: TaskItem[] = [
-  {
-    id: 'task-1',
-    title: 'Kiểm tra hàng iPhone 11 tồn kho',
-    department: 'Kho',
-    priority: 'high',
-    status: 'in_progress',
-    deadline: '08/05/2026',
-    assignee: 'Lê Văn C',
-    notes: 'Đối soát kỹ máy 64GB vs 128GB tránh sai lệch imei chênh giá.'
-  },
-  {
-    id: 'task-2',
-    title: 'Đăng bài khuyến mãi cuối tuần',
-    department: 'Marketing',
-    priority: 'medium',
-    status: 'not_started',
-    deadline: '24/05/2026',
-    assignee: 'Phạm Thị D',
-    notes: 'Thiết kế banner màu xanh lá chuẩn thương hiệu Mr. Táo, ưu đãi giảm giá sập sàn iPhone 11 & 12.'
-  },
-  {
-    id: 'task-3',
-    title: 'Đối soát chuyển khoản hôm nay',
-    department: 'Quỹ',
-    priority: 'high',
-    status: 'waiting',
-    deadline: 'Hôm nay',
-    assignee: 'Nguyễn Văn A',
-    notes: 'Xác thực 12 giao dịch chuyển khoản ngân hàng Techcombank bị lệch ghi nhận POS ca 1.'
-  },
-  {
-    id: 'task-4',
-    title: 'Báo cáo doanh thu cuối ngày',
-    department: 'Quản lý',
-    priority: 'high',
-    status: 'not_started',
-    deadline: 'Hôm nay',
-    assignee: 'Trần Thị B',
-    notes: 'Tổng hợp doanh thu mặt hàng iPad Active sẵn và gửi báo cáo lãi gộp ước tính cho Admin.'
-  }
-].map((task): TaskItem => ({ storeId: DEFAULT_STORE_ID, ...task } as TaskItem));
 
 export const INITIAL_STAFF_RANKS: StaffRank[] = [
   { name: 'Nguyễn Trường Giang', role: 'Sales', score: 92, classification: 'good', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100' },

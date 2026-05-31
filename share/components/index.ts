@@ -20,7 +20,6 @@ export {
   type ResizableWrapTableToolbarProps,
 } from './resizable-wrap-table';
 export { BulkSelectionBar } from './bulk-selection-bar';
-export { WorkItemStatusBadge } from './work-item-status-badge';
 export { EmployeePickerDialog, type EmployeePickerDialogProps } from './employee-picker-dialog';
 export {
   CustomTable,
@@ -34,18 +33,7 @@ export { ActionButton, actionConfig } from './action-button';
 export { ActionReasonDialog } from './action-reason-dialog';
 export { ActionCommentDialog } from './action-comment-dialog';
 export { ActionConfirmDialog } from './action-confirm-dialog';
-export {
-  WorkItemDetailLayout,
-  useWorkItemDetailContext,
-  type WorkItemDetailLayoutProps,
-  type WorkItemDetailTab,
-} from './work-item-detail-layout';
-export {
-  ProcessTimeline,
-  type ProcessTimelineProps,
-  type ProcessTimelineServices,
-  type INamedEntity,
-} from './process-timeline';
+
 export { ChooseApproverDialog, type ChooseApproverDialogProps } from './choose-approver-dialog';
 export {
   CopyRowValuesDialog,
@@ -60,15 +48,5 @@ export {
   type InlineDetailFormField,
 } from './inline-detail-form';
 export { BusinessLogicGuide } from './business-logic-guide';
-export {
-  RefDocumentInfo,
-  type RefDocumentInfoProps,
-  type RefDocumentConfig,
-} from './ref-document-info';
-export {
-  RefDocumentSelector,
-  type RefDocumentSelectorProps,
-  type RefTypeOption,
-  type CreatorPickerValue,
-} from './ref-document-selector';
-export { RefDocumentDialog, type RefDocumentDialogProps } from './ref-document-dialog';
+
+export { ModuleHeader, type ModuleHeaderProps } from './module-header';

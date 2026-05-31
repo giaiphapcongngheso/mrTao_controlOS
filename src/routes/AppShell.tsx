@@ -27,7 +27,6 @@ import { KPIStats } from '../types/today.types';
 import {
   DEFAULT_STORE_ID,
   INITIAL_KPI_STATS,
-  INITIAL_TASKS,
   INITIAL_STAFF_RANKS,
   DAILY_REPORT_DATA
 } from '../data';
@@ -35,7 +34,7 @@ import {
 // Components
 import TodayView from './Today/TodayView';
 import ChecklistContainer from './Checklist/checklist-container';
-import TasksView from './Tasks/TasksView';
+import TasksContainer from './Tasks/TasksContainer';
 import KpiView from './Kpi/KpiView';
 import IssuesContainer from './Issues/issues-container';
 import ReportsView from './Reports/ReportsView';
@@ -176,7 +175,7 @@ export default function App() {
   // Central React States
   const [stats, setStats] = useState<KPIStats>(INITIAL_KPI_STATS);
   const [todayChecklistItems, setTodayChecklistItems] = useState<ChecklistItem[]>([]);
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [staffRanks, setStaffRanks] = useState<StaffRank[]>(INITIAL_STAFF_RANKS);
   const [issues, setIssues] = useState<SOPIssue[]>([]);
   const [dailyReport, setDailyReport] = useState<DailyReport>(DAILY_REPORT_DATA);
@@ -214,54 +213,22 @@ export default function App() {
     });
   }, []);
 
-  // Add Task handler
-  const handleAddTask = useCallback((taskParam: Omit<TaskItem, 'id' | 'storeId'>) => {
-    const newTask: TaskItem = {
-      ...taskParam,
-      storeId: activeStoreId,
-      id: `task-${Date.now()}`
-    };
-    setTasks((prevTasks) => [newTask, ...prevTasks]);
-
-    // Update KPIStats counts
-    setStats(prev => ({
-      ...prev,
-      delayedTasksCount: taskParam.status !== 'completed' && taskParam.deadline.includes('08/05')
-        ? prev.delayedTasksCount + 1
-        : prev.delayedTasksCount
-    }));
-  }, [activeStoreId]);
-
-  // Update Task Status
-  const handleUpdateTaskStatus = useCallback((taskId: string, status: TaskItem['status']) => {
-    setTasks((prevTasks) => {
-      const previousTask = prevTasks.find(t => t.id === taskId);
-      const updatedTasks = prevTasks.map(t => {
-        if (t.id === taskId) {
-          return { ...t, status };
-        }
-        return t;
-      });
-
-      // Re-calculate stats delayed count
-      let changeLate = 0;
-      if (previousTask) {
-        const isLateDeadline = previousTask.deadline.includes('08/05') || previousTask.deadline.includes('Trễ');
-        if (isLateDeadline) {
-          if (status === 'completed' && previousTask.status !== 'completed') {
-            changeLate = -1;
-          } else if (status !== 'completed' && previousTask.status === 'completed') {
-            changeLate = 1;
-          }
-        }
+  const handleTasksMetricsChange = useCallback(({
+    tasks: nextTasks,
+    delayedTasksCount,
+  }: {
+    tasks: TaskItem[];
+    delayedTasksCount: number;
+  }) => {
+    setTasks(nextTasks);
+    setStats((prev) => {
+      if (prev.delayedTasksCount === delayedTasksCount) {
+        return prev;
       }
-
-      setStats(prev => ({
+      return {
         ...prev,
-        delayedTasksCount: Math.max(0, prev.delayedTasksCount + changeLate)
-      }));
-
-      return updatedTasks;
+        delayedTasksCount,
+      };
     });
   }, []);
 
@@ -324,10 +291,9 @@ export default function App() {
    */
   function renderTasks() {
     return (
-      <TasksView
-        tasks={tasks}
-        onAddTask={handleAddTask}
-        onUpdateTaskStatus={handleUpdateTaskStatus}
+      <TasksContainer
+        activeStoreId={activeStoreId}
+        onMetricsChange={handleTasksMetricsChange}
       />
     );
   }

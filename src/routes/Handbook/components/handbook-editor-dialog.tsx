@@ -1,8 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import { CreatableCombobox } from '@shared/components/custom/creatable-combobox';
+import type { HandbookCategoryRequestType } from '../../../types/handbook.types';
 import type { HandbookFormFieldErrors } from '../handbook-form-schema';
 import type { HandbookFormState } from '../handbook-view.types';
+import CategoryCreateMetaDialog from './category-create-meta-dialog';
 
 interface HandbookEditorDialogProps {
   isOpen: boolean;
@@ -15,7 +17,7 @@ interface HandbookEditorDialogProps {
   onClose: () => void;
   onSave: () => void;
   onFormPatch: (patch: Partial<HandbookFormState>) => void;
-  onAddCategory: (name: string) => Promise<void>;
+  onAddCategory: (payload: HandbookCategoryRequestType) => Promise<void>;
   onDeleteCategory?: (name: string) => Promise<void>;
 }
 
@@ -33,6 +35,13 @@ export default function HandbookEditorDialog({
   onAddCategory,
   onDeleteCategory,
 }: HandbookEditorDialogProps) {
+  const [isCategoryMetaOpen, setIsCategoryMetaOpen] = useState(false);
+  const [pendingCategoryName, setPendingCategoryName] = useState('');
+  const pendingCategoryResolver = useRef<{
+    resolve: () => void;
+    reject: (error?: unknown) => void;
+  } | null>(null);
+
   const handleTitleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onFormPatch({ title: event.target.value });
@@ -89,6 +98,35 @@ export default function HandbookEditorDialog({
     [onFormPatch],
   );
 
+  const handleAddCategoryRequest = useCallback((name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return Promise.reject(new Error('EMPTY_CATEGORY_NAME'));
+    }
+
+    setPendingCategoryName(trimmedName);
+    setIsCategoryMetaOpen(true);
+
+    return new Promise<void>((resolve, reject) => {
+      pendingCategoryResolver.current = { resolve, reject };
+    });
+  }, []);
+
+  const handleConfirmCategoryMeta = useCallback(async (payload: HandbookCategoryRequestType) => {
+    await onAddCategory(payload);
+    pendingCategoryResolver.current?.resolve();
+    pendingCategoryResolver.current = null;
+    setIsCategoryMetaOpen(false);
+    setPendingCategoryName('');
+  }, [onAddCategory]);
+
+  const handleCancelCategoryMeta = useCallback(() => {
+    pendingCategoryResolver.current?.reject(new Error('CATEGORY_CREATE_CANCELLED'));
+    pendingCategoryResolver.current = null;
+    setIsCategoryMetaOpen(false);
+    setPendingCategoryName('');
+  }, []);
+
   if (!isOpen) {
     return null;
   }
@@ -130,7 +168,7 @@ export default function HandbookEditorDialog({
               value={formState.category}
               onValueChange={handleCategoryChange}
               options={categoryOptions}
-              onAddNew={canManageCategories ? onAddCategory : undefined}
+              onAddNew={canManageCategories ? handleAddCategoryRequest : undefined}
               onDeleteOption={canManageCategories ? onDeleteCategory : undefined}
               placeholder="Chọn hoặc nhập danh mục"
               emptyHint="Gõ để tìm hoặc thêm danh mục mới"
@@ -243,6 +281,12 @@ export default function HandbookEditorDialog({
           </button>
         </div>
       </div>
+      <CategoryCreateMetaDialog
+        open={isCategoryMetaOpen}
+        name={pendingCategoryName}
+        onConfirm={handleConfirmCategoryMeta}
+        onCancel={handleCancelCategoryMeta}
+      />
     </div>
   );
 }

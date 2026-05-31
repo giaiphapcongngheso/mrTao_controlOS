@@ -35,3 +35,19 @@ export interface IGenerationCodeInfo {
   prefix?: string;
   suffix?: string;
 }
+
+export enum ActionCodeEn {
+  TRANSFER = 'TRANSFER',
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  RETURN = 'RETURN',
+  CANCEL = 'CANCEL',
+  ASSIGN = 'ASSIGN',
+  COMPLETE = 'COMPLETE',
+  CONFIRM = 'CONFIRM',
+  SUBMIT = 'SUBMIT',
+  CLOSE = 'CLOSE',
+  EDIT = 'EDIT',
+  PROCESSED = 'PROCESSED',
+}
+

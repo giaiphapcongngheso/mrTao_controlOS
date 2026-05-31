@@ -27,11 +27,16 @@ import { ScrollArea } from '../../shared/components/scroll-area';
 import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@shared/ui';
 import { useAppStore } from '../../stores/app-store';
-import type { HandbookCategory, HandbookDoc } from '../../types/handbook.types';
+import type { HandbookCategory, HandbookCategoryRequestType, HandbookDoc } from '../../types/handbook.types';
 import HandbookEditorDialog from './components/handbook-editor-dialog';
 import type { HandbookFormState, HandbookPermissions } from './handbook-view.types';
 import { handbookFormSchema, type HandbookFormFieldErrors } from './handbook-form-schema';
 import { DeleteConfirm } from '@shared/components/delete-confirm';
+import {
+  DEFAULT_HANDBOOK_CATEGORY_COLOR,
+  DEFAULT_HANDBOOK_CATEGORY_ICON,
+  getStoredCategoryIconConfig,
+} from './handbook-category-meta';
 
 interface UICardMetadata {
   id: string;
@@ -102,6 +107,8 @@ interface IconConfig {
   icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
+  filterActiveClass?: string;
+  filterIdleClass?: string;
 }
 
 const ICON_CONFIG_POOL: IconConfig[] = [
@@ -125,8 +132,14 @@ function getDeterministicIconConfig(seed: string): IconConfig {
   return ICON_CONFIG_POOL[index];
 }
 
-function getCategoryIconConfig(categoryName: string): IconConfig {
+function getCategoryIconConfig(categoryName: string, category?: HandbookCategory | null): IconConfig {
+  const storedConfig = getStoredCategoryIconConfig(category);
+  if (storedConfig) {
+    return storedConfig;
+  }
+
   const normalized = normalizeText(categoryName);
+
   if (normalized.includes('văn hóa')) {
     return { icon: Shield, iconBg: 'bg-rose-50', iconColor: 'text-red-600' };
   }
@@ -155,7 +168,7 @@ function getCategoryIconConfig(categoryName: string): IconConfig {
   return getDeterministicIconConfig(categoryName);
 }
 
-function resolveCardMetadata(doc: HandbookDoc): UICardMetadata {
+function resolveCardMetadata(doc: HandbookDoc, category?: HandbookCategory | null): UICardMetadata {
   const normalized = normalizeText(`${doc.category || ''} ${doc.title || ''} ${doc.categoryKey || ''}`);
   const base: UICardMetadata = {
     id: doc.id,
@@ -167,6 +180,17 @@ function resolveCardMetadata(doc: HandbookDoc): UICardMetadata {
     driveLink: doc.driveLink,
     categoryKey: doc.categoryKey || 'khác',
   };
+
+  const storedConfig = getStoredCategoryIconConfig(category);
+  if (storedConfig) {
+    return {
+      ...base,
+      icon: storedConfig.icon,
+      iconBg: storedConfig.iconBg,
+      iconColor: storedConfig.iconColor,
+      categoryKey: doc.categoryKey || category?.normalizedName || base.categoryKey,
+    };
+  }
 
   if (normalized.includes('văn hóa')) {
     return { ...base, iconBg: 'bg-rose-50 text-red-700 hover:bg-rose-100', iconColor: 'text-red-600', icon: Shield, categoryKey: 'văn hóa' };
@@ -357,9 +381,26 @@ export default function HandbookView() {
     };
   }, []);
 
+  const categoryByNormalizedName = useMemo(() => {
+    const map = new Map<string, HandbookCategory>();
+    for (const category of handbookCategories) {
+      const keys = [category.name, category.normalizedName].map((value) => normalizeText(value));
+      for (const key of keys) {
+        if (key) {
+          map.set(key, category);
+        }
+      }
+    }
+    return map;
+  }, [handbookCategories]);
+
   const processedDocs = useMemo<HandbookDocWithMeta[]>(
-    () => handbookDocs.map((doc) => ({ ...doc, meta: resolveCardMetadata(doc) })),
-    [handbookDocs],
+    () =>
+      handbookDocs.map((doc) => {
+        const categoryMeta = categoryByNormalizedName.get(normalizeText(doc.category));
+        return { ...doc, meta: resolveCardMetadata(doc, categoryMeta) };
+      }),
+    [categoryByNormalizedName, handbookDocs],
   );
 
   const categoryOptions = useMemo(() => {
@@ -522,8 +563,9 @@ export default function HandbookView() {
   );
 
   const handleCreateCategory = useCallback(
-    async (name: string, options?: { silentSuccessToast?: boolean }) => {
-      const trimmedName = name.trim();
+    async (input: string | HandbookCategoryRequestType, options?: { silentSuccessToast?: boolean }) => {
+      const categoryPayload = typeof input === 'string' ? { name: input } : input;
+      const trimmedName = categoryPayload.name?.trim() || '';
       if (!trimmedName) {
         return;
       }
@@ -544,7 +586,9 @@ export default function HandbookView() {
         const nowIso = new Date().toISOString();
         const created = await handbookCategoryService.create({
           name: trimmedName,
-          normalizedName,
+          normalizedName: categoryPayload.normalizedName || normalizedName,
+          iconName: categoryPayload.iconName || DEFAULT_HANDBOOK_CATEGORY_ICON,
+          colorKey: categoryPayload.colorKey || DEFAULT_HANDBOOK_CATEGORY_COLOR,
           createdAt: nowIso,
           updatedAt: nowIso,
         });
@@ -634,7 +678,14 @@ export default function HandbookView() {
       (item) => normalizeText(item.name) === normalizedCategory,
     );
     if (!hasCategory) {
-      await handleCreateCategory(category, { silentSuccessToast: true });
+      await handleCreateCategory(
+        {
+          name: category,
+          iconName: DEFAULT_HANDBOOK_CATEGORY_ICON,
+          colorKey: DEFAULT_HANDBOOK_CATEGORY_COLOR,
+        },
+        { silentSuccessToast: true },
+      );
     }
 
     const nowIso = new Date().toISOString();
@@ -892,18 +943,18 @@ export default function HandbookView() {
               </Button>
               {visibleCategories.map((categoryName) => {
                 const isSelected = selectedCategory === categoryName;
-                const config = getCategoryIconConfig(categoryName);
+                const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+                const config = getCategoryIconConfig(categoryName, categoryMeta);
                 const CatIcon = config.icon;
+                const buttonTheme = isSelected
+                  ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                  : config.filterIdleClass || 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800';
                 return (
                   <Button
                     key={categoryName}
                     type="button"
                     onClick={() => handleToggleCategory(categoryName)}
-                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                        : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-                    }`}
+                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold flex items-center gap-1.5 ${buttonTheme}`}
                   >
                     <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
                     <span>{categoryName}</span>
@@ -923,7 +974,8 @@ export default function HandbookView() {
                   <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
                     {hiddenCategories.map((categoryName) => {
                       const isSelected = selectedCategory === categoryName;
-                      const config = getCategoryIconConfig(categoryName);
+                      const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+                      const config = getCategoryIconConfig(categoryName, categoryMeta);
                       const CatIcon = config.icon;
                       return (
                         <DropdownMenuItem
@@ -1277,7 +1329,7 @@ export default function HandbookView() {
           void handleSaveDoc();
         }}
         onFormPatch={handleFormPatch}
-        onAddCategory={(name) => handleCreateCategory(name)}
+        onAddCategory={handleCreateCategory}
         onDeleteCategory={handleDeleteCategory}
       />
 
