@@ -155,9 +155,10 @@ interface AppStoreState {
   } | null) => void;
   login: (sessionData: Partial<UserSession>) => void;
   logout: () => void;
+  extendSession: () => void;
 }
 
-export const useAppStore = create<AppStoreState>((set) => ({
+export const useAppStore = create<AppStoreState>((set, get) => ({
   activeTab: 'Today',
   currentUser: readPersistedSession(),
   notificationFocus: null,
@@ -174,5 +175,26 @@ export const useAppStore = create<AppStoreState>((set) => ({
   logout: () => {
     set({ currentUser: null, notificationFocus: null });
     localStorage.removeItem(SESSION_STORAGE_KEY);
+  },
+  extendSession: () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
+    const now = Date.now();
+    const currentExpiry = currentUser.sessionExpiresAt ?? 0;
+    const newExpiry = now + SESSION_TTL_MS;
+
+    // Chỉ cập nhật nếu thời gian hết hạn mới kéo dài hơn thời gian cũ ít nhất 1 phút
+    // Điều này tránh việc gọi ghi localStorage liên tục khi di chuột/click liên tiếp
+    if (currentExpiry - now > SESSION_TTL_MS - 60000) {
+      return;
+    }
+
+    const enriched = {
+      ...currentUser,
+      sessionExpiresAt: newExpiry,
+    };
+    set({ currentUser: enriched });
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(enriched));
   },
 }));

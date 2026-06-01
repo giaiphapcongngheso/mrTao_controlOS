@@ -124,12 +124,33 @@ export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);
   const handleLogin = useAppStore((state) => state.login);
   const clearSession = useAppStore((state) => state.logout);
+  const extendSession = useAppStore((state) => state.extendSession);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tabTransitioning, setTabTransitioning] = useState(false);
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
   const sessionExpiryHandledRef = useRef(false);
   const isOwner = isOwnerUser(currentUser);
   const { allowedModules } = useAllowedModules(currentUser, isOwner);
+
+  // Lắng nghe tương tác của người dùng để gia hạn phiên đăng nhập
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const handleActivity = () => {
+      extendSession();
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [currentUser, extendSession]);
 
   useEffect(() => {
     setTabTransitioning(true);
