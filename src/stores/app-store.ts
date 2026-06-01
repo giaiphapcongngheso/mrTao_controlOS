@@ -34,7 +34,7 @@ function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, 
     return normalizedRole;
   }
 
-  return 'SALES';
+  throw new Error('Không thể xác định mã vai trò của tài khoản (Role Code).');
 }
 
 export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null): UserSession {
