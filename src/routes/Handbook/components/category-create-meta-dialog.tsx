@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { Button } from '@shared/ui';
+import { Button, Label } from '@shared/ui';
 import type { HandbookCategoryColorKey, HandbookCategoryRequestType } from '../../../types/handbook.types';
 import {
   DEFAULT_HANDBOOK_CATEGORY_COLOR,
@@ -74,14 +74,16 @@ export default function CategoryCreateMetaDialog({
               {name.trim()}
             </p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon-sm"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 focus:outline-hidden"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[120px_1fr]">
@@ -96,9 +98,9 @@ export default function CategoryCreateMetaDialog({
 
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <Label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">
                 Icon
-              </label>
+              </Label>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                 {HANDBOOK_CATEGORY_ICON_OPTIONS.map((option) => {
                   const Icon = resolveHandbookCategoryIcon(option.name);
@@ -110,11 +112,10 @@ export default function CategoryCreateMetaDialog({
                       variant="ghost"
                       onClick={() => setIconName(option.name)}
                       title={option.label}
-                      className={`h-10 rounded-xl border p-0 ${
-                        isSelected
+                      className={`h-10 rounded-xl border p-0 ${isSelected
                           ? 'border-[#C21A1A] bg-red-50 text-[#C21A1A]'
                           : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <Icon className="h-4 w-4" />
                     </Button>
@@ -124,9 +125,7 @@ export default function CategoryCreateMetaDialog({
             </div>
 
             <div>
-              <label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">
-                Màu
-              </label>
+              <Label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">Màu</Label>
               <div className="grid grid-cols-5 gap-2">
                 {(Object.keys(HANDBOOK_CATEGORY_COLOR_META) as HandbookCategoryColorKey[]).map((key) => {
                   const meta = HANDBOOK_CATEGORY_COLOR_META[key];
@@ -138,9 +137,8 @@ export default function CategoryCreateMetaDialog({
                       variant="ghost"
                       onClick={() => setColorKey(key)}
                       title={meta.label}
-                      className={`h-9 rounded-xl border p-0 ${
-                        isSelected ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200'
-                      } ${meta.filterIdleClass}`}
+                      className={`h-9 rounded-xl border p-0 ${isSelected ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200'
+                        } ${meta.filterIdleClass}`}
                     >
                       <span className="h-2.5 w-2.5 rounded-full bg-current" />
                     </Button>

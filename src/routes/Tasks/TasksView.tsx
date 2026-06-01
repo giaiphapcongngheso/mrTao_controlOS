@@ -119,11 +119,11 @@ const getStatusTheme = (status: TaskStatus) => {
 const generateTaskCode = (task: TaskItem) => {
   const deptCode = task.department
     ? task.department
-        .split(' ')
-        .map((w) => w.charAt(0))
-        .join('')
-        .toUpperCase()
-        .slice(0, 4)
+      .split(' ')
+      .map((w) => w.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 4)
     : 'GEN';
 
   let dateStr = '2026-05-29';
@@ -186,8 +186,8 @@ export default function TasksView({
   const handleCreateTask = useCallback(async (taskPayload: TaskRequestType) => {
     try {
       await onAddTask(taskPayload);
-    setIsAddingTask(false);
-    showToast("🎉 Đã lưu và giao việc mới thành công!");
+      setIsAddingTask(false);
+      showToast("🎉 Đã lưu và giao việc mới thành công!");
     } catch {
       showToast("Không thể lưu công việc. Vui lòng thử lại.");
     }
@@ -196,8 +196,8 @@ export default function TasksView({
   const handleQuickDelegate = useCallback(async (taskPayload: TaskRequestType) => {
     try {
       await onAddTask(taskPayload);
-    setQuickDelegateOpen(false);
-    showToast(`✈️ Đã kích hoạt Giao nhanh cho nhân viên ${taskPayload.assignee}!`);
+      setQuickDelegateOpen(false);
+      showToast(`✈️ Đã kích hoạt Giao nhanh cho nhân viên ${taskPayload.assignee}!`);
     } catch {
       showToast("Không thể giao nhanh công việc. Vui lòng thử lại.");
     }
@@ -360,16 +360,14 @@ export default function TasksView({
                 onClick={() => setIsAddingTask(true)}
                 className="h-10 rounded-xl bg-[#C21A1A] px-3 text-[10px] font-black uppercase tracking-wide text-white shadow-sm hover:bg-[#A81515]"
               >
-                <Plus className="mr-1.5 h-3.5 w-3.5 stroke-[3]" />
-                Tạo việc
+                <Plus className="mr-1.5 h-3.5 w-3.5 stroke-[3]" /> Tạo việc
               </Button>
               <Button
                 type="button"
                 onClick={() => setQuickDelegateOpen(true)}
                 className="h-10 rounded-xl bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#C21A1A] shadow-sm ring-1 ring-[#C21A1A]/20 hover:bg-rose-50"
               >
-                <Send className="mr-1.5 h-3.5 w-3.5" />
-                Giao nhanh
+                <Send className="mr-1.5 h-3.5 w-3.5" /> Giao nhanh
               </Button>
             </div>
             <div className="hidden sm:block">
@@ -482,17 +480,7 @@ export default function TasksView({
               const statusInfo = statusMeta[task.status] || statusMeta.not_started;
               const statusTheme = getStatusTheme(task.status);
 
-              const isDept = task.department.toLowerCase().includes('phòng') ||
-                             task.department.toLowerCase().includes('ceo') ||
-                             task.department.toLowerCase().includes('kinh doanh') ||
-                             task.department.toLowerCase().includes('kế toán') ||
-                             task.department.toLowerCase().includes('ban');
-              const branchOrDeptLabel = isDept ? 'Phòng ban' : 'Chi nhánh';
-              const branchOrDeptValue = isDept
-                ? (task.department.toUpperCase().includes('CEO') ? 'Phòng Điều hành' : task.department)
-                : (task.department.toUpperCase().includes('CỬA HÀNG') || task.department.toUpperCase().includes('CUA HANG')
-                    ? 'Showroom Chi nhánh Hà Nội'
-                    : (task.department.toLowerCase().includes('chi nhánh') ? task.department : `Showroom Chi nhánh ${task.department}`));
+
 
               const renderDeadline = (deadline: string) => {
                 const parts = deadline.split(' ');
@@ -527,11 +515,6 @@ export default function TasksView({
                       <div className={cn("p-1 rounded-lg shrink-0", statusTheme.iconBg)}>
                         <ClipboardList className="w-3.5 h-3.5" />
                       </div>
-
-                      {/* Department / Role Badge */}
-                      <span className="px-1.5 py-0.5 text-[8.5px] font-black rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide shrink-0">
-                        {task.department}
-                      </span>
 
                       {/* Priority Badge */}
                       <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full border tracking-wide shrink-0", priorityInfo.bg)}>
@@ -647,10 +630,10 @@ export default function TasksView({
                     <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
                         <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        {branchOrDeptLabel}
+                        Bộ phận
                       </span>
                       <span className="text-slate-700 font-bold truncate">
-                        {branchOrDeptValue}
+                        {task.department}
                       </span>
                     </div>
                   </div>
@@ -660,10 +643,6 @@ export default function TasksView({
           )}
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* ======================= INTERACTIVE MODAL FORMS ========================= */}
-      {/* ========================================================================= */}
 
       {/* Manual Add Task Form Modal */}
       <TaskCreateModal

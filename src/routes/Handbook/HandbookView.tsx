@@ -55,9 +55,6 @@ interface HandbookDocWithMeta extends HandbookDoc {
 
 type HandbookFilter = 'all' | 'required' | 'updated';
 
-const OWNER_ROLE_CODES_HANDBOOK = new Set(['CHU_CUA_HANG', 'QUAN_TRI_VIEN']);
-
-
 const DEFAULT_PERMISSIONS: HandbookPermissions = {
   canCreate: false,
   canUpdate: false,
@@ -933,11 +930,10 @@ export default function HandbookView() {
               <Button
                 type="button"
                 onClick={() => handleToggleCategory(null)}
-                className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-black uppercase ${
-                  selectedCategory === null
+                className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-black uppercase ${selectedCategory === null
                     ? 'bg-slate-800 text-white shadow-xs hover:bg-slate-900 hover:text-white'
                     : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-                }`}
+                  }`}
               >
                 Tất cả nhóm
               </Button>
@@ -981,9 +977,8 @@ export default function HandbookView() {
                         <DropdownMenuItem
                           key={categoryName}
                           onClick={() => handleToggleCategory(categoryName)}
-                          className={`text-xs font-semibold cursor-pointer flex items-center gap-2 ${
-                            isSelected ? 'text-[#C21A1A] font-extrabold bg-red-50' : 'text-slate-600'
-                          }`}
+                          className={`text-xs font-semibold cursor-pointer flex items-center gap-2 ${isSelected ? 'text-[#C21A1A] font-extrabold bg-red-50' : 'text-slate-600'
+                            }`}
                         >
                           <CatIcon className={`h-3.5 w-3.5 ${config.iconColor}`} />
                           <span>{categoryName}</span>
@@ -1283,13 +1278,12 @@ export default function HandbookView() {
                       void handleConfirmReadAndBack();
                     }}
                     disabled={!canConfirmRead}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wide transition-all ${
-                      !canConfirmRead
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wide transition-all ${!canConfirmRead
                         ? 'cursor-not-allowed bg-slate-300 text-white'
                         : readDocs[activeDoc.id]
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'bg-[#C21A1A] text-white hover:bg-[#A81515]'
-                    }`}
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'bg-[#C21A1A] text-white hover:bg-[#A81515]'
+                      }`}
                   >
                     <FileCheck className="h-4 w-4" />
                     <span>{readDocs[activeDoc.id] ? 'Ký lại xác nhận đã đọc' : 'Ký xác nhận đã đọc'}</span>
