@@ -20,23 +20,7 @@ export interface UserSession {
 export const SESSION_STORAGE_KEY = 'mrt_user_session';
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const SESSION_RENEW_BUFFER_MS = 60 * 1000;
-const KNOWN_ROLE_CODES = new Set([
-  'CHU_CUA_HANG',
-  'QUAN_LY',
-  'SALES',
-  'KHO',
-  'CSKH',
-  'QUAN_TRI_VIEN',
-]);
-const DEFAULT_ROLE_CODE_BY_USERNAME: Record<string, string> = {
-  admin: 'CHU_CUA_HANG',
-  manager: 'QUAN_LY',
-  sales: 'SALES',
-  tech: 'KHO',
-  cskh: 'CSKH',
-};
-
-function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, unknown>, username: string): string {
+function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, unknown>): string {
   const explicitRoleCode =
     (typeof user.roleCode === 'string' ? user.roleCode : undefined) ||
     (typeof legacyUser.roleCode === 'string' ? legacyUser.roleCode : undefined);
@@ -46,79 +30,40 @@ function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, 
   }
 
   const normalizedRole = user.role?.trim().toUpperCase();
-  if (normalizedRole && KNOWN_ROLE_CODES.has(normalizedRole)) {
+  if (normalizedRole) {
     return normalizedRole;
   }
 
-  return DEFAULT_ROLE_CODE_BY_USERNAME[username] ?? 'SALES';
+  return 'SALES';
 }
 
 export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null): UserSession {
   const legacyUser = (user ?? {}) as Record<string, unknown>;
 
-  if (!user) {
-    return {
-      username: 'sales',
-      fullName: 'Nguyen Van A',
-      role: 'Nhan vien ban le',
-      roleCode: 'SALES',
-      id: 'NV-002',
-      employeeCode: 'MNS-002',
-      phone: '0987654321',
-      email: 'sales@mrtaocoop.com',
-      department: 'Phong Kinh Doanh',
-      position: 'Quay Ban Le Hang Hoa',
-      statusLabel: 'Dang hoat dong',
-      sessionExpiresAt: Date.now() + SESSION_TTL_MS,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-    };
-  }
-
-  const username = user.username || 'admin';
-  const fullName =
-    user.fullName ||
-    (username === 'admin'
-      ? 'Nguyen Minh Duc'
-      : username === 'sales'
-        ? 'Nguyen Van A'
-        : username === 'tech'
-          ? 'Tran Thi B'
-          : 'Le Hoang C');
-  const role =
-    user.role ||
-    (username === 'admin'
-      ? 'Chu cua hang'
-      : username === 'sales'
-        ? 'Nhan vien ban le'
-        : username === 'tech'
-          ? 'Ky thuat vien'
-          : 'Quan ly cua hang');
-  const roleCode = resolveRoleCode(user, legacyUser, username);
+  const username = user?.username || '';
+  const fullName = user?.fullName || '';
+  const role = user?.role || '';
+  const roleCode = resolveRoleCode(user ?? {}, legacyUser);
 
   return {
+    ...user,
     username,
     fullName,
     role,
     roleCode,
-    avatar:
-      user.avatar ||
-      (username === 'admin'
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-        : username === 'sales'
-          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'),
-    id: user.id || (username === 'admin' ? 'NV-001' : username === 'sales' ? 'NV-002' : username === 'tech' ? 'NV-003' : 'NV-005'),
-    employeeCode: (user.employeeCode as string | undefined) || (legacyUser.maNhanSu as string | undefined) || (username === 'admin' ? 'MNS-001' : username === 'sales' ? 'MNS-002' : username === 'tech' ? 'MNS-003' : 'MNS-005'),
-    phone: user.phone || (username === 'admin' ? '0912345678' : username === 'sales' ? '0987654321' : username === 'tech' ? '0901238899' : '0944556677'),
-    email: user.email || (username === 'admin' ? 'duc.nm@mrtaocoop.com' : username === 'sales' ? 'sales@mrtaocoop.com' : username === 'tech' ? 'tech@mrtaocoop.com' : 'manager@mrtaocoop.com'),
-    department: (user.department as string | undefined) || (legacyUser.boPhan as string | undefined) || (username === 'admin' ? 'Ban Dieu Hanh' : username === 'sales' ? 'Phong Kinh Doanh' : username === 'tech' ? 'Ban Ky Thuat' : 'Ban Quan Ly'),
-    position: (user.position as string | undefined) || (legacyUser.viTri as string | undefined) || (username === 'admin' ? 'Quay Truong Showroom' : username === 'sales' ? 'Quay Ban Le Hang Hoa' : username === 'tech' ? 'Ban Sua Chua & Tham Dinh' : 'Phong Lam Viec'),
-    statusLabel: (user.statusLabel as string | undefined) || (legacyUser.trangThai as string | undefined) || 'Dang hoat dong',
+    avatar: user?.avatar ?? '',
+    id: user?.id ?? '',
+    employeeCode: user?.employeeCode || (legacyUser.maNhanSu as string | undefined) || '',
+    phone: user?.phone ?? '',
+    email: user?.email ?? '',
+    department: user?.department || (legacyUser.boPhan as string | undefined) || '',
+    position: user?.position || (legacyUser.viTri as string | undefined) || '',
+    statusLabel: user?.statusLabel || (legacyUser.trangThai as string | undefined) || '',
     sessionExpiresAt:
-      typeof user.sessionExpiresAt === 'number' && user.sessionExpiresAt > Date.now()
+      typeof user?.sessionExpiresAt === 'number' && user.sessionExpiresAt > Date.now()
         ? user.sessionExpiresAt
         : Date.now() + SESSION_TTL_MS,
-  };
+  } as UserSession;
 }
 
 function readPersistedSession(): UserSession | null {

@@ -42,67 +42,13 @@ import HandbookView from './Handbook/HandbookView';
 import LoginView from './Login/LoginView';
 import StaffPermissionsView from './StaffPermissions/StaffPermissionsView';
 import NotificationsView, { NotificationsBellPopover } from './Notifications/NotificationsView';
+import { enrichSessionWithDefaultFields } from '../shared/auth';
 import { SESSION_STORAGE_KEY, useAppStore } from '../stores/app-store';
 import { signOutInternalStaff } from '../services/admin/internal-auth-service';
 import { MODULE_CODE } from '../constants/staff-permissions.constants';
 import { isOwnerUser, useAllowedModules } from '../shared/hooks/use-module-permissions';
 import AppFrameLayout, { type AppFrameLayoutLink } from './_components/AppFrameLayout';
 import HeaderProfilePopover from './_components/HeaderProfilePopover';
-
-
-export interface UserSession {
-  username: string;
-  fullName: string;
-  role: string;
-  roleCode?: string;
-  avatar?: string;
-  id?: string;
-  employeeCode?: string;
-  phone?: string;
-  email?: string;
-  department?: string;
-  position?: string;
-  statusLabel?: string;
-}
-
-export function enrichSessionWithDefaultFields(user: any): UserSession {
-  if (!user) {
-    return {
-      username: 'sales',
-      fullName: 'Nguyễn Văn A',
-      role: 'Nhân viên bán lẻ',
-      id: 'NV-002',
-      employeeCode: 'MNS-002',
-      phone: '0987654321',
-      email: 'sales@mrtaocoop.com',
-      department: 'Phòng Kinh Doanh',
-      position: 'Quầy Bán Lẻ Hàng Hóa',
-      statusLabel: 'Đang hoạt động',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
-    };
-  }
-  const username = user.username || 'admin';
-  const fullName = user.fullName || (username === 'admin' ? 'Nguyễn Minh Đức' : username === 'sales' ? 'Nguyễn Văn A' : username === 'tech' ? 'Trần Thị B' : 'Lê Hoàng C');
-  const role = user.role || (username === 'admin' ? 'Chủ cửa hàng' : username === 'sales' ? 'Nhân viên bán lẻ' : username === 'tech' ? 'Kỹ thuật viên' : 'Quản lý cửa hàng');
-
-  return {
-    username,
-    fullName,
-    role,
-    avatar: user.avatar || (username === 'admin'
-      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-      : username === 'sales'
-        ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'),
-    id: user.id || (username === 'admin' ? 'NV-001' : username === 'sales' ? 'NV-002' : username === 'tech' ? 'NV-003' : 'NV-005'),
-    employeeCode: user.employeeCode || user.maNhanSu || (username === 'admin' ? 'MNS-001' : username === 'sales' ? 'MNS-002' : username === 'tech' ? 'MNS-003' : 'MNS-005'),
-    phone: user.phone || (username === 'admin' ? '0912345678' : username === 'sales' ? '0987654321' : username === 'tech' ? '0901238899' : '0944556677'),
-    email: user.email || (username === 'admin' ? 'duc.nm@mrtaocoop.com' : username === 'sales' ? 'sales@mrtaocoop.com' : username === 'tech' ? 'tech@mrtaocoop.com' : 'manager@mrtaocoop.com'),
-    department: user.department || user.boPhan || (username === 'admin' ? 'Ban Điều Hành' : username === 'sales' ? 'Phòng Kinh Doanh' : username === 'tech' ? 'Ban Kỹ Thuật' : 'Ban Quản Lý'),
-    position: user.position || user.viTri || (username === 'admin' ? 'Quầy Trưởng Showroom' : username === 'sales' ? 'Quầy Bán Lẻ Hàng Hóa' : username === 'tech' ? 'Bàn Sửa Chữa & Thẩm Định' : 'Phòng Làm Việc'),
-    statusLabel: user.statusLabel || user.trangThai || 'Đang hoạt động'
-  };
-}
 
 const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
   Today: [MODULE_CODE.HOM_NAY],
