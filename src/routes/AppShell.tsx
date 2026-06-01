@@ -42,7 +42,7 @@ import HandbookView from './Handbook/HandbookView';
 import LoginView from './Login/LoginView';
 import StaffPermissionsView from './StaffPermissions/StaffPermissionsView';
 import NotificationsView, { NotificationsBellPopover } from './Notifications/NotificationsView';
-import { useAppStore } from '../stores/app-store';
+import { SESSION_STORAGE_KEY, useAppStore } from '../stores/app-store';
 import { signOutInternalStaff } from '../services/admin/internal-auth-service';
 import { MODULE_CODE } from '../constants/staff-permissions.constants';
 import { isOwnerUser, useAllowedModules } from '../shared/hooks/use-module-permissions';
@@ -125,6 +125,7 @@ export default function App() {
   const handleLogin = useAppStore((state) => state.login);
   const clearSession = useAppStore((state) => state.logout);
   const extendSession = useAppStore((state) => state.extendSession);
+  const syncSessionFromStorage = useAppStore((state) => state.syncSessionFromStorage);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tabTransitioning, setTabTransitioning] = useState(false);
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
@@ -132,11 +133,30 @@ export default function App() {
   const isOwner = isOwnerUser(currentUser);
   const { allowedModules } = useAllowedModules(currentUser, isOwner);
 
+  const handleLogout = useCallback(async ({ reason = 'manual' }: { reason?: 'manual' | 'expired' } = {}) => {
+    if (reason === 'expired' && !sessionExpiryHandledRef.current) {
+      sessionExpiryHandledRef.current = true;
+      setSessionExpiredMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+
+    try {
+      await signOutInternalStaff();
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
   // Lắng nghe tương tác của người dùng để gia hạn phiên đăng nhập
   useEffect(() => {
     if (!currentUser) return;
 
     const handleActivity = () => {
+      const expiresAt = useAppStore.getState().currentUser?.sessionExpiresAt ?? 0;
+      if (expiresAt <= Date.now()) {
+        void handleLogout({ reason: 'expired' });
+        return;
+      }
+
       extendSession();
     };
 
@@ -150,7 +170,46 @@ export default function App() {
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [currentUser, extendSession]);
+  }, [currentUser, extendSession, handleLogout]);
+
+  useEffect(() => {
+    const handleStorageSync = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage || event.key !== SESSION_STORAGE_KEY) {
+        return;
+      }
+
+      const hadSession = Boolean(useAppStore.getState().currentUser);
+      syncSessionFromStorage();
+
+      if (hadSession && !event.newValue) {
+        sessionExpiryHandledRef.current = true;
+        setSessionExpiredMessage('Phiên đăng nhập đã kết thúc ở tab khác. Vui lòng đăng nhập lại.');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, [syncSessionFromStorage]);
+
+  useEffect(() => {
+    const validateSessionOnForeground = () => {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+
+      const expiresAt = useAppStore.getState().currentUser?.sessionExpiresAt;
+      if (typeof expiresAt === 'number' && expiresAt <= Date.now()) {
+        void handleLogout({ reason: 'expired' });
+      }
+    };
+
+    document.addEventListener('visibilitychange', validateSessionOnForeground);
+    window.addEventListener('focus', validateSessionOnForeground);
+    return () => {
+      document.removeEventListener('visibilitychange', validateSessionOnForeground);
+      window.removeEventListener('focus', validateSessionOnForeground);
+    };
+  }, [handleLogout]);
 
   useEffect(() => {
     setTabTransitioning(true);
@@ -201,19 +260,6 @@ export default function App() {
   const [issues, setIssues] = useState<SOPIssue[]>([]);
   const [dailyReport, setDailyReport] = useState<DailyReport>(DAILY_REPORT_DATA);
   const activeStoreId = dailyReport.storeId || DEFAULT_STORE_ID;
-
-  const handleLogout = useCallback(async ({ reason = 'manual' }: { reason?: 'manual' | 'expired' } = {}) => {
-    if (reason === 'expired' && !sessionExpiryHandledRef.current) {
-      sessionExpiryHandledRef.current = true;
-      setSessionExpiredMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-    }
-
-    try {
-      await signOutInternalStaff();
-    } finally {
-      clearSession();
-    }
-  }, [clearSession]);
 
   const handleChecklistMetricsChange = useCallback(({
     items,

@@ -17,8 +17,9 @@ export interface UserSession {
   sessionExpiresAt?: number;
 }
 
-const SESSION_STORAGE_KEY = 'mrt_user_session';
+export const SESSION_STORAGE_KEY = 'mrt_user_session';
 const SESSION_TTL_MS = 30 * 60 * 1000;
+const SESSION_RENEW_BUFFER_MS = 60 * 1000;
 const KNOWN_ROLE_CODES = new Set([
   'CHU_CUA_HANG',
   'QUAN_LY',
@@ -128,7 +129,12 @@ function readPersistedSession(): UserSession | null {
     }
 
     const parsed = JSON.parse(persistedUser) as Partial<UserSession>;
-    if (typeof parsed.sessionExpiresAt === 'number' && parsed.sessionExpiresAt <= Date.now()) {
+    if (typeof parsed.sessionExpiresAt !== 'number') {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+
+    if (parsed.sessionExpiresAt <= Date.now()) {
       localStorage.removeItem(SESSION_STORAGE_KEY);
       return null;
     }
@@ -156,6 +162,7 @@ interface AppStoreState {
   login: (sessionData: Partial<UserSession>) => void;
   logout: () => void;
   extendSession: () => void;
+  syncSessionFromStorage: () => void;
 }
 
 export const useAppStore = create<AppStoreState>((set, get) => ({
@@ -186,7 +193,13 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
 
     // Chỉ cập nhật nếu thời gian hết hạn mới kéo dài hơn thời gian cũ ít nhất 1 phút
     // Điều này tránh việc gọi ghi localStorage liên tục khi di chuột/click liên tiếp
-    if (currentExpiry - now > SESSION_TTL_MS - 60000) {
+    if (currentExpiry <= now) {
+      set({ currentUser: null, notificationFocus: null });
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      return;
+    }
+
+    if (currentExpiry - now > SESSION_TTL_MS - SESSION_RENEW_BUFFER_MS) {
       return;
     }
 
@@ -196,5 +209,14 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     };
     set({ currentUser: enriched });
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(enriched));
+  },
+  syncSessionFromStorage: () => {
+    const restored = readPersistedSession();
+    if (!restored) {
+      set({ currentUser: null, notificationFocus: null });
+      return;
+    }
+
+    set({ currentUser: restored });
   },
 }));
