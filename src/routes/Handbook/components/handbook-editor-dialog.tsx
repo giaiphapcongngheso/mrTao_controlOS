@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import {
   Button,
@@ -19,6 +19,7 @@ import CategoryCreateMetaDialog from './category-create-meta-dialog';
 interface HandbookEditorDialogProps {
   isOpen: boolean;
   isSaving: boolean;
+  isUploadingImages: boolean;
   editingDocId: string | null;
   formState: HandbookFormState;
   canManageCategories: boolean;
@@ -27,6 +28,7 @@ interface HandbookEditorDialogProps {
   onClose: () => void;
   onSave: () => void;
   onFormPatch: (patch: Partial<HandbookFormState>) => void;
+  onUploadImages: (files: File[]) => Promise<void>;
   onAddCategory: (payload: HandbookCategoryRequestType) => Promise<void>;
   onDeleteCategory?: (name: string) => Promise<void>;
 }
@@ -34,6 +36,7 @@ interface HandbookEditorDialogProps {
 export default function HandbookEditorDialog({
   isOpen,
   isSaving,
+  isUploadingImages,
   editingDocId,
   formState,
   canManageCategories,
@@ -42,6 +45,7 @@ export default function HandbookEditorDialog({
   onClose,
   onSave,
   onFormPatch,
+  onUploadImages,
   onAddCategory,
   onDeleteCategory,
 }: HandbookEditorDialogProps) {
@@ -51,6 +55,7 @@ export default function HandbookEditorDialog({
     resolve: () => void;
     reject: (error?: unknown) => void;
   } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<HandbookFormState>({
     values: formState,
@@ -125,6 +130,30 @@ export default function HandbookEditorDialog({
       onFormPatch({ isUpdated: event.target.checked });
     },
     [onFormPatch],
+  );
+  const handleOpenImagePicker = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
+  const handleImageSelection = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
+      event.target.value = '';
+      if (!selectedFiles.length) {
+        return;
+      }
+      void onUploadImages(selectedFiles);
+    },
+    [onUploadImages],
+  );
+
+  const handleRemoveImage = useCallback(
+    (index: number) => {
+      onFormPatch({
+        imageUrls: formState.imageUrls.filter((_, itemIndex) => itemIndex !== index),
+      });
+    },
+    [formState.imageUrls, onFormPatch],
   );
 
   const handleAddCategoryRequest = useCallback((name: string) => {
@@ -340,6 +369,63 @@ export default function HandbookEditorDialog({
               </FormItem>
             )}
           />
+
+          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                <ImageIcon className="h-3.5 w-3.5" />
+                Hình ảnh handbook ({formState.imageUrls.length})
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isUploadingImages}
+                onClick={handleOpenImagePicker}
+                className="h-8 rounded-lg px-2.5 text-[11px] font-black"
+              >
+                {isUploadingImages ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Đang tải...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload ảnh
+                  </span>
+                )}
+              </Button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelection}
+                className="hidden"
+              />
+            </div>
+            {errors.imageUrls && (
+              <p className="text-[10px] font-semibold text-rose-600">{errors.imageUrls}</p>
+            )}
+            {formState.imageUrls.length > 0 && (
+              <div className="grid grid-cols-5 gap-2">
+                {formState.imageUrls.map((url, index) => (
+                  <div key={`${url}-${index}`} className="group relative overflow-hidden rounded-lg border border-slate-200">
+                    <img src={url} alt={`Ảnh đã upload ${index + 1}`} className="h-14 w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      title="Gỡ ảnh"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <FormField
