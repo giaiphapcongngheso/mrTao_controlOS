@@ -28,7 +28,7 @@ import { handbookCategoryService } from '../../services/handbook-category-servic
 import { uploadHandbookImage } from '../../services/firebase-storage-service';
 import { ScrollArea } from '../../shared/components/scroll-area';
 import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@shared/ui';
+import { Button } from '@shared/ui';
 import { useAppStore } from '../../stores/app-store';
 import type { HandbookCategory, HandbookCategoryRequestType, HandbookDoc } from '../../types/handbook.types';
 import HandbookEditorDialog from './components/handbook-editor-dialog';
@@ -423,38 +423,6 @@ export default function HandbookView() {
 
     return [...unique].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [handbookCategories, handbookDocs]);
-
-  const MAX_VISIBLE = 5;
-
-  const { visibleCategories, hiddenCategories } = useMemo(() => {
-    if (categoryOptions.length <= MAX_VISIBLE) {
-      return {
-        visibleCategories: categoryOptions,
-        hiddenCategories: [],
-      };
-    }
-
-    const isSelectedHidden =
-      selectedCategory !== null &&
-      !categoryOptions.slice(0, MAX_VISIBLE).includes(selectedCategory);
-
-    if (isSelectedHidden) {
-      const visible = [
-        selectedCategory,
-        ...categoryOptions.filter((c) => c !== selectedCategory).slice(0, MAX_VISIBLE - 1),
-      ];
-      const hidden = categoryOptions.filter((c) => !visible.includes(c));
-      return {
-        visibleCategories: visible,
-        hiddenCategories: hidden,
-      };
-    }
-
-    return {
-      visibleCategories: categoryOptions.slice(0, MAX_VISIBLE),
-      hiddenCategories: categoryOptions.slice(MAX_VISIBLE),
-    };
-  }, [categoryOptions, selectedCategory]);
 
   const currentReadKey = currentUser?.id || currentUser?.username || '';
   const readDocs = useMemo(() => {
@@ -1003,7 +971,7 @@ export default function HandbookView() {
               >
                 Tất cả nhóm
               </Button>
-              {visibleCategories.map((categoryName) => {
+              {categoryOptions.map((categoryName) => {
                 const isSelected = selectedCategory === categoryName;
                 const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
                 const config = getCategoryIconConfig(categoryName, categoryMeta);
@@ -1023,37 +991,6 @@ export default function HandbookView() {
                   </Button>
                 );
               })}
-              {hiddenCategories.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      className="rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-                    >
-                      +{hiddenCategories.length} nhóm
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-                    {hiddenCategories.map((categoryName) => {
-                      const isSelected = selectedCategory === categoryName;
-                      const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
-                      const config = getCategoryIconConfig(categoryName, categoryMeta);
-                      const CatIcon = config.icon;
-                      return (
-                        <DropdownMenuItem
-                          key={categoryName}
-                          onClick={() => handleToggleCategory(categoryName)}
-                          className={`text-xs font-semibold cursor-pointer flex items-center gap-2 ${isSelected ? 'text-[#C21A1A] font-extrabold bg-red-50' : 'text-slate-600'
-                            }`}
-                        >
-                          <CatIcon className={`h-3.5 w-3.5 ${config.iconColor}`} />
-                          <span>{categoryName}</span>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
           </div>
 
