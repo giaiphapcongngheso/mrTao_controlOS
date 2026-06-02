@@ -1,3 +1,5 @@
+import type { KiotProduct } from '../types/kiotviet.types';
+
 const DEFAULT_KIOT_TOKEN_URL = 'https://id.kiotviet.vn/connect/token';
 const DEFAULT_KIOT_API_BASE_URL = 'https://public.kiotapi.com';
 const DEFAULT_KIOT_SCOPE = 'PublicApi.Access';
@@ -273,7 +275,7 @@ export const kiotVietService = {
   syncBranches: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('branches', options),
   syncCategories: <TItem = unknown>(options?: KiotEntitySyncOptions) =>
     fetchEntityData<TItem>('categories', options),
-  syncProducts: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('products', options),
+  syncProducts: <TItem = KiotProduct>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('products', options),
   syncCustomers: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('customers', options),
   syncInvoices: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('invoices', options),
 };

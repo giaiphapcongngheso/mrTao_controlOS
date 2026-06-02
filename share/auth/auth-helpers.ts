@@ -1,5 +1,42 @@
-import type { User } from 'oidc-client-ts';
-import type { IBaseEmployee, IBaseUser, IFlatItem } from '../types';
+import type { IFlatItem } from '../types';
+
+interface BaseWorkPositionLike {
+  organization?: IFlatItem;
+  position?: IFlatItem;
+  board?: IFlatItem;
+  endedDate?: string | null;
+  createdDate?: string | null;
+}
+
+interface EmployeeWithWorkHistory {
+  offices?: BaseWorkPositionLike[];
+  workers?: BaseWorkPositionLike[];
+}
+
+interface BaseUserLike {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  employeeId?: string;
+}
+
+export interface OidcUserProfile {
+  sub: string;
+  preferred_username?: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+  [key: string]: unknown;
+}
+
+export interface OidcUserLike {
+  profile: OidcUserProfile;
+  access_token: string;
+  refresh_token?: string;
+  expired?: boolean;
+}
 
 /**
  * Decode JWT token to extract payload
@@ -38,7 +75,7 @@ export function isAccessTokenValid(accessToken: string | null): boolean {
  * Sorted by createdDate (newest first)
  * Priority: Offices first (office employees), then Workers (production workers)
  */
-export const findCurrentWorkPosition = <T extends IBaseEmployee>(
+export const findCurrentWorkPosition = <T extends EmployeeWithWorkHistory>(
   employee: T,
 ): { organization?: IFlatItem; position?: IFlatItem; board?: IFlatItem } | null => {
   const now = new Date();
@@ -79,14 +116,14 @@ export const findCurrentWorkPosition = <T extends IBaseEmployee>(
 };
 
 /**
- * Convert OIDC User profile to base user object
- * @param oidcUser - OIDC User from oidc-client-ts
+ * Convert OIDC user profile to base user object
+ * @param oidcUser - OIDC user payload
  * @param accessToken - Optional; uses oidcUser.access_token when not provided
  */
 export const convertOidcUserToBaseUser = (
-  oidcUser: User,
+  oidcUser: OidcUserLike,
   _accessToken?: string,
-): IBaseUser & Record<string, unknown> => {
+): BaseUserLike & Record<string, unknown> => {
   const profile = oidcUser.profile;
 
   return {
