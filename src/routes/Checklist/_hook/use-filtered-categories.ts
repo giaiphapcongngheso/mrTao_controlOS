@@ -114,13 +114,15 @@ export function useFilteredCategories({
     }
 
     // 3. Today's checklists (subTab === 'today')
+    const todayItemsForRole = hasRoleFilter
+      ? items.filter((it) => matchesSelectedRole(it.roleCode))
+      : items;
+
     return todayCategories
       .map((cat, index) => {
         const meta = getStableMeta(cat.title, index);
 
-        const catTasks = items.filter(
-          (it) => it.categoryId === cat.id && matchesSelectedRole(it.roleCode)
-        );
+        const catTasks = todayItemsForRole.filter((it) => it.categoryId === cat.id);
         const filteredTasks = catTasks.filter((it) =>
           it.title.toLowerCase().includes(searchLower)
         );
