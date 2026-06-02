@@ -871,8 +871,19 @@ export default function HandbookView() {
       console.error('Không thể tải ảnh handbook:', error);
       const maybeCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
       const maybeMessage = error instanceof Error ? error.message : '';
+      const maybeStatus =
+        typeof error === 'object' && error && 'status' in error && typeof error.status === 'number'
+          ? error.status
+          : NaN;
+      const hasNotFoundMessage = /(404\s*not\s*found|status\s*code\s*404|response\s*status:?\s*404)/i.test(
+        maybeMessage,
+      );
+      const isNotFoundError =
+        maybeStatus === 404 || maybeCode === 'storage/object-not-found' || hasNotFoundMessage;
       if (maybeMessage === 'INVALID_IMAGE_TYPE') {
         showToast('Chỉ cho phép tải lên file ảnh.');
+      } else if (isNotFoundError) {
+        showToast('Đường dẫn upload ảnh không tồn tại (404). Đã dừng thao tác upload.');
       } else if (maybeCode === 'storage/unauthorized') {
         showToast('Không có quyền upload ảnh lên Firebase Storage.');
       } else if (maybeCode === 'storage/canceled') {
