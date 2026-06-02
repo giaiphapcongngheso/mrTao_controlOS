@@ -872,9 +872,14 @@ export default function HandbookView() {
       const maybeCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
       const maybeMessage = error instanceof Error ? error.message : '';
       const maybeStatus =
-        typeof error === 'object' && error && 'status' in error ? Number((error as { status?: unknown }).status) : NaN;
+        typeof error === 'object' && error && 'status' in error && typeof error.status === 'number'
+          ? error.status
+          : NaN;
+      const hasNotFoundMessage = /(404\s*not\s*found|status\s*code\s*404|response\s*status:?\s*404)/i.test(
+        maybeMessage,
+      );
       const isNotFoundError =
-        maybeStatus === 404 || maybeCode === 'storage/object-not-found' || maybeMessage.includes('404');
+        maybeStatus === 404 || maybeCode === 'storage/object-not-found' || hasNotFoundMessage;
       if (maybeMessage === 'INVALID_IMAGE_TYPE') {
         showToast('Chỉ cho phép tải lên file ảnh.');
       } else if (isNotFoundError) {
