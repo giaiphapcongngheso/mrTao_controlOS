@@ -530,7 +530,9 @@ export default function HandbookView() {
       category: doc.category || '',
       summary: doc.summary || '',
       content: doc.content || '',
-      imageUrls: Array.isArray(doc.imageUrls) ? doc.imageUrls.filter(Boolean) : [],
+      imageUrls: Array.isArray(doc.imageUrls)
+        ? Array.from(new Set(doc.imageUrls.filter(Boolean)))
+        : [],
       requiredRead: Boolean(doc.requiredRead),
       isUpdated: Boolean(doc.isUpdated),
       driveLink: doc.driveLink || '',
@@ -695,7 +697,7 @@ export default function HandbookView() {
     const nowIso = new Date().toISOString();
     const driveLink = validated.data.driveLink.trim();
     const categoryKey = validated.data.categoryKey.trim();
-    const imageUrls = validated.data.imageUrls.filter(Boolean);
+    const imageUrls = Array.from(new Set(validated.data.imageUrls.filter(Boolean)));
     const payload: Partial<HandbookDoc> = {
       title,
       category,
@@ -854,7 +856,7 @@ export default function HandbookView() {
       );
       setFormState((prev) => ({
         ...prev,
-        imageUrls: [...prev.imageUrls, ...uploadedUrls],
+        imageUrls: Array.from(new Set([...prev.imageUrls, ...uploadedUrls])),
       }));
       setFormErrors((prev) => {
         if (!prev.imageUrls) {
@@ -867,13 +869,23 @@ export default function HandbookView() {
       showToast(`Đã tải lên ${uploadedUrls.length} hình ảnh.`);
     } catch (error) {
       console.error('Không thể tải ảnh handbook:', error);
-      showToast('Tải ảnh thất bại. Vui lòng kiểm tra cấu hình Firebase.');
+      const maybeCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+      const maybeMessage = error instanceof Error ? error.message : '';
+      if (maybeMessage === 'INVALID_IMAGE_TYPE') {
+        showToast('Chỉ cho phép tải lên file ảnh.');
+      } else if (maybeCode === 'storage/unauthorized') {
+        showToast('Không có quyền upload ảnh lên Firebase Storage.');
+      } else if (maybeCode === 'storage/canceled') {
+        showToast('Đã hủy thao tác upload ảnh.');
+      } else {
+        showToast('Tải ảnh thất bại. Vui lòng kiểm tra cấu hình Firebase và kết nối mạng.');
+      }
     } finally {
       setIsUploadingImages(false);
     }
   }, [editingDocId, showToast]);
   const activeDocImageUrls = useMemo(
-    () => (activeDoc && Array.isArray(activeDoc.imageUrls) ? activeDoc.imageUrls.filter(Boolean) : []),
+    () => (activeDoc && Array.isArray(activeDoc.imageUrls) ? Array.from(new Set(activeDoc.imageUrls.filter(Boolean))) : []),
     [activeDoc],
   );
 
@@ -1320,7 +1332,7 @@ export default function HandbookView() {
                       <div className="grid grid-cols-4 gap-2">
                         {activeDocImageUrls.map((url, index) => (
                           <button
-                            key={`${url}-${index}`}
+                            key={url}
                             type="button"
                             onClick={() => setPreviewImageUrl(url)}
                             className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100"

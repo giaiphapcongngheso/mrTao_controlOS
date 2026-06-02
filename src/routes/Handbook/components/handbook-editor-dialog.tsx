@@ -411,7 +411,7 @@ export default function HandbookEditorDialog({
             {formState.imageUrls.length > 0 && (
               <div className="grid grid-cols-5 gap-2">
                 {formState.imageUrls.map((url, index) => (
-                  <div key={`${url}-${index}`} className="group relative overflow-hidden rounded-lg border border-slate-200">
+                  <div key={url} className="group relative overflow-hidden rounded-lg border border-slate-200">
                     <img src={url} alt={`Ảnh đã upload ${index + 1}`} className="h-14 w-full object-cover" />
                     <button
                       type="button"

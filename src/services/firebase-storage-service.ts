@@ -17,7 +17,11 @@ export async function uploadHandbookImage(file: File, editingDocId?: string | nu
   const storage = getFirebaseStorage();
   const fileName = sanitizeFileName(file.name);
   const folderName = editingDocId || 'draft';
-  const objectPath = `handbook-images/${folderName}/${Date.now()}-${crypto.randomUUID()}-${fileName}`;
+  const uniqueId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const objectPath = `handbook-images/${folderName}/${uniqueId}-${fileName}`;
 
   const imageRef = ref(storage, objectPath);
   const snapshot = await uploadBytes(imageRef, file, {
