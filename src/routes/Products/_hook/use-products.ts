@@ -23,8 +23,8 @@ export function useCreateProductMutation() {
 export function useUpdateProductMutation() {
   const invalidate = useInvalidateProductQueries();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<KiotProduct> }) =>
-      productsService.update(id, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<KiotProduct> }) =>
+      productsService.update(String(id), payload),
     onSuccess: invalidate,
   });
 }
@@ -32,7 +32,7 @@ export function useUpdateProductMutation() {
 export function useDeleteProductMutation() {
   const invalidate = useInvalidateProductQueries();
   return useMutation({
-    mutationFn: (id: string) => productsService.delete(id),
+    mutationFn: (id: number) => productsService.delete(String(id)),
     onSuccess: invalidate,
   });
 }

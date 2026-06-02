@@ -1,4 +1,26 @@
-import type { IBaseEmployee, IBaseUser, IFlatItem } from '../types';
+import type { IFlatItem } from '../types';
+
+interface BaseWorkPositionLike {
+  organization?: IFlatItem;
+  position?: IFlatItem;
+  board?: IFlatItem;
+  endedDate?: string | null;
+  createdDate?: string | null;
+}
+
+interface EmployeeWithWorkHistory {
+  offices?: BaseWorkPositionLike[];
+  workers?: BaseWorkPositionLike[];
+}
+
+interface BaseUserLike {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  employeeId?: string;
+}
 
 export interface OidcUserProfile {
   sub: string;
@@ -53,7 +75,7 @@ export function isAccessTokenValid(accessToken: string | null): boolean {
  * Sorted by createdDate (newest first)
  * Priority: Offices first (office employees), then Workers (production workers)
  */
-export const findCurrentWorkPosition = <T extends IBaseEmployee>(
+export const findCurrentWorkPosition = <T extends EmployeeWithWorkHistory>(
   employee: T,
 ): { organization?: IFlatItem; position?: IFlatItem; board?: IFlatItem } | null => {
   const now = new Date();
@@ -101,7 +123,7 @@ export const findCurrentWorkPosition = <T extends IBaseEmployee>(
 export const convertOidcUserToBaseUser = (
   oidcUser: OidcUserLike,
   _accessToken?: string,
-): IBaseUser & Record<string, unknown> => {
+): BaseUserLike & Record<string, unknown> => {
   const profile = oidcUser.profile;
 
   return {
