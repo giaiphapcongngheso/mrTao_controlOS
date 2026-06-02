@@ -7,7 +7,6 @@ import type {
 } from '../types/warehouse.types';
 
 const CLIENT_ID_KEY = 'kv_client_id';
-const CLIENT_SECRET_KEY = 'kv_client_secret';
 const RETAILER_KEY = 'kv_retailer';
 
 export const DEMO_BRANCHES: Branch[] = [
@@ -84,7 +83,7 @@ export function loadStoredCredentials(): WarehouseCredentials {
 
   return {
     clientId: window.localStorage.getItem(CLIENT_ID_KEY) ?? '',
-    clientSecret: window.localStorage.getItem(CLIENT_SECRET_KEY) ?? '',
+    clientSecret: '',
     retailer: window.localStorage.getItem(RETAILER_KEY) ?? '',
   };
 }
@@ -95,7 +94,7 @@ export function saveCredentials(credentials: WarehouseCredentials) {
   }
 
   window.localStorage.setItem(CLIENT_ID_KEY, credentials.clientId);
-  window.localStorage.setItem(CLIENT_SECRET_KEY, credentials.clientSecret);
+  window.localStorage.removeItem('kv_client_secret');
   window.localStorage.setItem(RETAILER_KEY, credentials.retailer);
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEMO_BRANCHES,
   DEMO_PRODUCTS,
@@ -29,6 +29,11 @@ export function useWarehouseData() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncTime, setSyncTime] = useState<string | null>(null);
+  const credentialsRef = useRef(credentials);
+
+  useEffect(() => {
+    credentialsRef.current = credentials;
+  }, [credentials]);
 
   const filteredProducts = useMemo(() => filterWarehouseProducts(products, filters), [products, filters]);
 
@@ -57,7 +62,7 @@ export function useWarehouseData() {
 
   const syncData = useCallback(
     async (nextCredentials?: WarehouseCredentials) => {
-      const targetCredentials = nextCredentials ?? credentials;
+      const targetCredentials = nextCredentials ?? credentialsRef.current;
       setIsLoading(true);
       setError(null);
 
@@ -75,7 +80,7 @@ export function useWarehouseData() {
         setIsLoading(false);
       }
     },
-    [credentials],
+    [],
   );
 
   useEffect(() => {
