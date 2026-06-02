@@ -92,10 +92,10 @@ export function useWarehouseData() {
 
   const createProduct = useCallback(
     (input: WarehouseProductCreateInput) => {
-      let targetBranch = branches.find((branch) => branch.id === input.branchId) ?? null;
+      const existingBranch = branches.find((branch) => branch.id === input.branchId);
+      const targetBranch = existingBranch ?? createWarehouseBranch(input.branchName.trim());
 
-      if (targetBranch === null) {
-        targetBranch = createWarehouseBranch(input.branchName.trim());
+      if (!existingBranch) {
         setManualBranches((prev) => [targetBranch, ...prev]);
       }
 
