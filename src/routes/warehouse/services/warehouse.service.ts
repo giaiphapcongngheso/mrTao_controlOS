@@ -3,74 +3,16 @@ import type {
   WarehouseCredentials,
   WarehouseFilters,
   WarehouseProduct,
+  WarehouseProductCreateInput,
   WarehouseSyncResponse,
 } from '../types/warehouse.types';
 
 const CLIENT_ID_KEY = 'kv_client_id';
 const RETAILER_KEY = 'kv_retailer';
 
-export const DEMO_BRANCHES: Branch[] = [
-  {
-    id: 10001,
-    branchName: 'Mr.Táo - Chi nhánh Trung tâm',
-    address: '79 Đường Láng, Ngã Tư Sở, Đống Đa, Hà Nội',
-    contactNumber: '0968.123.456',
-    isActive: true,
-  },
-  {
-    id: 10002,
-    branchName: 'Mr.Táo - Kho Tổng miền Bắc',
-    address: '22 Trần Duy Hưng, Cầu Giấy, Hà Nội',
-    contactNumber: '0968.999.888',
-    isActive: true,
-  },
-  {
-    id: 10003,
-    branchName: 'Mr.Táo - Chi nhánh Cầu Giấy',
-    address: '155 Cầu Giấy, Quan Hoa, Hà Nội',
-    contactNumber: '0977.123.789',
-    isActive: true,
-  },
-];
-
-export const DEMO_PRODUCTS: WarehouseProduct[] = [
-  {
-    id: 9001,
-    code: 'IP15PM256',
-    name: 'iPhone 15 Pro Max 256GB - Titan Tự Nhiên (Zin 99%)',
-    categoryName: 'Điện thoại iPhone',
-    basePrice: 28900000,
-    inventories: [
-      { branchId: 10001, branchName: 'Mr.Táo - Chi nhánh Trung tâm', onHand: 14 },
-      { branchId: 10002, branchName: 'Mr.Táo - Kho Tổng miền Bắc', onHand: 45 },
-      { branchId: 10003, branchName: 'Mr.Táo - Chi nhánh Cầu Giấy', onHand: 2 },
-    ],
-  },
-  {
-    id: 9002,
-    code: 'IP14P128',
-    name: 'iPhone 14 Pro 128GB - Tím Deep Purple (Zin 99%)',
-    categoryName: 'Điện thoại iPhone',
-    basePrice: 19800000,
-    inventories: [
-      { branchId: 10001, branchName: 'Mr.Táo - Chi nhánh Trung tâm', onHand: 3 },
-      { branchId: 10002, branchName: 'Mr.Táo - Kho Tổng miền Bắc', onHand: 15 },
-      { branchId: 10003, branchName: 'Mr.Táo - Chi nhánh Cầu Giấy', onHand: 8 },
-    ],
-  },
-  {
-    id: 9003,
-    code: 'IP11_128',
-    name: 'iPhone 11 128GB - Đen Quốc Tế (Kính thay)',
-    categoryName: 'Điện thoại iPhone',
-    basePrice: 7200000,
-    inventories: [
-      { branchId: 10001, branchName: 'Mr.Táo - Chi nhánh Trung tâm', onHand: 1 },
-      { branchId: 10002, branchName: 'Mr.Táo - Kho Tổng miền Bắc', onHand: 24 },
-      { branchId: 10003, branchName: 'Mr.Táo - Chi nhánh Cầu Giấy', onHand: 0 },
-    ],
-  },
-];
+function generateLocalId() {
+  return Date.now() + Math.floor(Math.random() * 1000);
+}
 
 export function loadStoredCredentials(): WarehouseCredentials {
   if (typeof window === 'undefined') {
@@ -96,6 +38,10 @@ export function saveCredentials(credentials: WarehouseCredentials) {
   window.localStorage.setItem(CLIENT_ID_KEY, credentials.clientId);
   window.localStorage.removeItem('kv_client_secret');
   window.localStorage.setItem(RETAILER_KEY, credentials.retailer);
+}
+
+export function hasWarehouseCredentials(credentials: WarehouseCredentials) {
+  return Boolean(credentials.clientId && credentials.clientSecret && credentials.retailer);
 }
 
 function normalizeSyncError(error: unknown): string {
@@ -133,10 +79,10 @@ async function fetchJson(path: string) {
 }
 
 export async function syncWarehouseData(credentials: WarehouseCredentials): Promise<WarehouseSyncResponse> {
-  if (!credentials.clientId || !credentials.clientSecret || !credentials.retailer) {
+  if (!hasWarehouseCredentials(credentials)) {
     return {
-      branches: DEMO_BRANCHES,
-      products: DEMO_PRODUCTS,
+      branches: [],
+      products: [],
     };
   }
 
@@ -154,12 +100,48 @@ export async function syncWarehouseData(credentials: WarehouseCredentials): Prom
     ]);
 
     return {
-      branches: (branchesData.data as Branch[]) ?? DEMO_BRANCHES,
-      products: (productsData.data as WarehouseProduct[]) ?? DEMO_PRODUCTS,
+      branches: ((branchesData.data as Branch[] | undefined) ?? []).map((branch) => ({
+        ...branch,
+        source: 'synced',
+      })),
+      products: ((productsData.data as WarehouseProduct[] | undefined) ?? []).map((product) => ({
+        ...product,
+        source: 'synced',
+      })),
     };
   } catch (error) {
     throw new Error(normalizeSyncError(error));
   }
+}
+
+export function createWarehouseBranch(branchName: string): Branch {
+  return {
+    id: generateLocalId(),
+    branchName,
+    isActive: true,
+    source: 'manual',
+  };
+}
+
+export function createWarehouseProduct(
+  input: WarehouseProductCreateInput,
+  branch: Branch,
+): WarehouseProduct {
+  return {
+    id: generateLocalId(),
+    code: input.code,
+    name: input.name,
+    categoryName: input.categoryName,
+    basePrice: input.basePrice,
+    inventories: [
+      {
+        branchId: branch.id,
+        branchName: branch.branchName,
+        onHand: input.onHand,
+      },
+    ],
+    source: 'manual',
+  };
 }
 
 export function filterWarehouseProducts(

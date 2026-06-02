@@ -60,7 +60,7 @@ export default function MarketingCreateForm({ onCreate, onCancel }: MarketingCre
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={form.control}

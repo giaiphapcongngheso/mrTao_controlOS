@@ -6,6 +6,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   Select,
   SelectContent,
   SelectItem,
@@ -58,9 +62,7 @@ export default function MarketingView() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Marketing & truyền thông</CardTitle>
-          <Button onClick={() => setShowCreateForm((prev) => !prev)}>
-            {showCreateForm ? 'Đóng form' : 'Tạo chiến dịch'}
-          </Button>
+          <Button onClick={() => setShowCreateForm(true)}>Tạo chiến dịch</Button>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-4">
@@ -72,15 +74,20 @@ export default function MarketingView() {
         </CardContent>
       </Card>
 
-      {showCreateForm && (
-        <MarketingCreateForm
-          onCreate={(values) => {
-            createCampaign(values);
-            setShowCreateForm(false);
-          }}
-          onCancel={() => setShowCreateForm(false)}
-        />
-      )}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Tạo chiến dịch marketing</DialogTitle>
+          </DialogHeader>
+          <MarketingCreateForm
+            onCreate={(values) => {
+              createCampaign(values);
+              setShowCreateForm(false);
+            }}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader className="space-y-3">
