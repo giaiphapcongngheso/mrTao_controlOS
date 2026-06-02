@@ -3,6 +3,7 @@ export interface HandbookFormState {
   category: string;
   summary: string;
   content: string;
+  imageUrls: string[];
   requiredRead: boolean;
   isUpdated: boolean;
   driveLink: string;

@@ -10,6 +10,7 @@ export interface HandbookDoc {
   category: string;
   summary: string;
   content: string;
+  imageUrls?: string[];
   requiredRead?: boolean;
   isUpdated?: boolean;
   driveLink?: string;

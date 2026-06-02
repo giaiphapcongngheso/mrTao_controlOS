@@ -6,6 +6,7 @@ export const handbookFormSchema = z.object({
   category: z.string().trim().min(1, 'Vui lòng chọn hoặc nhập danh mục.').max(120, 'Danh mục tối đa 120 ký tự.'),
   summary: z.string().trim().min(1, 'Vui lòng nhập tóm tắt.').max(500, 'Tóm tắt tối đa 500 ký tự.'),
   content: z.string().trim().min(1, 'Vui lòng nhập nội dung tài liệu.'),
+  imageUrls: z.array(z.string().trim().url('Liên kết ảnh không hợp lệ.')).default([]),
   requiredRead: z.boolean(),
   isUpdated: z.boolean(),
   driveLink: z

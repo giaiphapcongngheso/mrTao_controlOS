@@ -1,10 +1,10 @@
-import { MODULE_CODE, ROLE_CODE } from '../../constants';
+import { MODULE_CODE } from '../../constants';
 import type { PermissionField, PermissionFormState, RoleFormState, StaffFormState } from './StaffPermissionsView.types';
 
 export const DEFAULT_STAFF_FORM: StaffFormState = {
   fullName: '',
   username: '',
-  role: ROLE_CODE.SALES,
+  role: '',
   phone: '',
   status: 'active',
   email: '',

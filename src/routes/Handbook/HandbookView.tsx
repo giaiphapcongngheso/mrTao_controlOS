@@ -9,6 +9,7 @@ import {
   FileCheck,
   FileText,
   GraduationCap,
+  ImageIcon,
   Info,
   Lock,
   Network,
@@ -19,10 +20,12 @@ import {
   Shield,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
 import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
 import { handbookCategoryService } from '../../services/handbook-category-service';
+import { uploadHandbookImage } from '../../services/firebase-storage-service';
 import { ScrollArea } from '../../shared/components/scroll-area';
 import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@shared/ui';
@@ -67,6 +70,7 @@ const EMPTY_FORM_STATE: HandbookFormState = {
   category: '',
   summary: '',
   content: '',
+  imageUrls: [],
   requiredRead: false,
   isUpdated: false,
   driveLink: '',
@@ -288,6 +292,8 @@ export default function HandbookView() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [formState, setFormState] = useState<HandbookFormState>(EMPTY_FORM_STATE);
   const [formErrors, setFormErrors] = useState<HandbookFormFieldErrors>({});
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const [deletingCategory, setDeletingCategory] = useState<HandbookCategory | null>(null);
   const [isDeleteCategoryConfirmOpen, setIsDeleteCategoryConfirmOpen] = useState(false);
@@ -524,6 +530,9 @@ export default function HandbookView() {
       category: doc.category || '',
       summary: doc.summary || '',
       content: doc.content || '',
+      imageUrls: Array.isArray(doc.imageUrls)
+        ? Array.from(new Set(doc.imageUrls.filter(Boolean)))
+        : [],
       requiredRead: Boolean(doc.requiredRead),
       isUpdated: Boolean(doc.isUpdated),
       driveLink: doc.driveLink || '',
@@ -688,11 +697,13 @@ export default function HandbookView() {
     const nowIso = new Date().toISOString();
     const driveLink = validated.data.driveLink.trim();
     const categoryKey = validated.data.categoryKey.trim();
+    const imageUrls = Array.from(new Set(validated.data.imageUrls.filter(Boolean)));
     const payload: Partial<HandbookDoc> = {
       title,
       category,
       summary,
       content,
+      imageUrls,
       requiredRead: validated.data.requiredRead,
       isUpdated: validated.data.isUpdated,
       updatedAt: nowIso,
@@ -833,6 +844,50 @@ export default function HandbookView() {
     setFormErrors({});
     setIsEditorOpen(false);
   }, []);
+  const handleUploadImages = useCallback(async (files: File[]) => {
+    if (!files.length) {
+      return;
+    }
+
+    setIsUploadingImages(true);
+    try {
+      const uploadedUrls = await Promise.all(
+        files.map((file) => uploadHandbookImage(file, editingDocId)),
+      );
+      setFormState((prev) => ({
+        ...prev,
+        imageUrls: Array.from(new Set([...prev.imageUrls, ...uploadedUrls])),
+      }));
+      setFormErrors((prev) => {
+        if (!prev.imageUrls) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next.imageUrls;
+        return next;
+      });
+      showToast(`Đã tải lên ${uploadedUrls.length} hình ảnh.`);
+    } catch (error) {
+      console.error('Không thể tải ảnh handbook:', error);
+      const maybeCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+      const maybeMessage = error instanceof Error ? error.message : '';
+      if (maybeMessage === 'INVALID_IMAGE_TYPE') {
+        showToast('Chỉ cho phép tải lên file ảnh.');
+      } else if (maybeCode === 'storage/unauthorized') {
+        showToast('Không có quyền upload ảnh lên Firebase Storage.');
+      } else if (maybeCode === 'storage/canceled') {
+        showToast('Đã hủy thao tác upload ảnh.');
+      } else {
+        showToast('Tải ảnh thất bại. Vui lòng kiểm tra cấu hình Firebase và kết nối mạng.');
+      }
+    } finally {
+      setIsUploadingImages(false);
+    }
+  }, [editingDocId, showToast]);
+  const activeDocImageUrls = useMemo(
+    () => (activeDoc && Array.isArray(activeDoc.imageUrls) ? Array.from(new Set(activeDoc.imageUrls.filter(Boolean))) : []),
+    [activeDoc],
+  );
 
   const isFilterActive = selectedFilter !== 'all' || Boolean(searchTerm) || Boolean(selectedCategory);
 
@@ -1267,6 +1322,33 @@ export default function HandbookView() {
                       </a>
                     </div>
                   )}
+
+                  {activeDocImageUrls.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        <span>Hình ảnh đính kèm ({activeDocImageUrls.length})</span>
+                      </span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {activeDocImageUrls.map((url, index) => (
+                          <button
+                            key={url}
+                            type="button"
+                            onClick={() => setPreviewImageUrl(url)}
+                            className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+                            title={`Xem hình ${index + 1}`}
+                          >
+                            <img
+                              src={url}
+                              alt={`Ảnh đính kèm ${index + 1}`}
+                              className="h-12 w-full object-cover transition-transform duration-150 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1313,6 +1395,7 @@ export default function HandbookView() {
       <HandbookEditorDialog
         isOpen={isEditorOpen}
         isSaving={isSavingDoc}
+        isUploadingImages={isUploadingImages}
         editingDocId={editingDocId}
         formState={formState}
         canManageCategories={canManageCategories}
@@ -1323,6 +1406,7 @@ export default function HandbookView() {
           void handleSaveDoc();
         }}
         onFormPatch={handleFormPatch}
+        onUploadImages={handleUploadImages}
         onAddCategory={handleCreateCategory}
         onDeleteCategory={handleDeleteCategory}
       />
@@ -1338,6 +1422,27 @@ export default function HandbookView() {
         className="!z-[80]"
         overlayClassName="!z-[80]"
       />
+
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/80 p-4"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewImageUrl(null)}
+            className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-400/50 bg-black/30 text-white transition-colors hover:bg-black/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <img
+            src={previewImageUrl}
+            alt="Xem ảnh handbook"
+            className="max-h-[90vh] max-w-[92vw] rounded-xl object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
