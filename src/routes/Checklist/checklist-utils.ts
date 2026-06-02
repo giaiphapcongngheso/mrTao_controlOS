@@ -1,71 +1,12 @@
 import { ChecklistItem } from '../../types/checklist.types';
 import type { CategoryMeta } from './components/checklist-view.types';
-
-// Dynamic category metadata for UI theming
-export const DYNAMIC_PALETTES = [
-  {
-    themeColor: 'border-emerald-200 bg-emerald-50/20 text-emerald-800',
-    barColor: 'bg-emerald-600',
-    iconBg: 'bg-emerald-100 text-emerald-700',
-    iconColor: 'text-emerald-600',
-    badgeBg: 'bg-emerald-100/70 text-emerald-850',
-    accentHex: '#107c41'
-  },
-  {
-    themeColor: 'border-blue-200 bg-blue-50/20 text-blue-800',
-    barColor: 'bg-blue-600',
-    iconBg: 'bg-blue-100 text-blue-700',
-    iconColor: 'text-blue-600',
-    badgeBg: 'bg-blue-100/70 text-blue-850',
-    accentHex: '#0066CC'
-  },
-  {
-    themeColor: 'border-amber-200 bg-amber-50/20 text-amber-800',
-    barColor: 'bg-amber-500',
-    iconBg: 'bg-amber-100 text-amber-700',
-    iconColor: 'text-amber-600',
-    badgeBg: 'bg-amber-100/70 text-amber-850',
-    accentHex: '#E67E22'
-  },
-  {
-    themeColor: 'border-purple-200 bg-purple-50/20 text-purple-800',
-    barColor: 'bg-purple-600',
-    iconBg: 'bg-purple-100 text-purple-700',
-    iconColor: 'text-purple-600',
-    badgeBg: 'bg-purple-100/70 text-purple-850',
-    accentHex: '#8E44AD'
-  },
-  {
-    themeColor: 'border-rose-200 bg-rose-50/20 text-rose-800',
-    barColor: 'bg-[#C21A1A]',
-    iconBg: 'bg-rose-100 text-rose-700',
-    iconColor: 'text-[#C21A1A]',
-    badgeBg: 'bg-rose-100/70 text-[#C21A1A]',
-    accentHex: '#C21A1A'
-  },
-  {
-    themeColor: 'border-cyan-200 bg-cyan-50/20 text-cyan-800',
-    barColor: 'bg-cyan-600',
-    iconBg: 'bg-cyan-100 text-cyan-700',
-    iconColor: 'text-cyan-600',
-    badgeBg: 'bg-cyan-100/70 text-cyan-850',
-    accentHex: '#008B8B'
-  },
-  {
-    themeColor: 'border-teal-200 bg-teal-50/20 text-teal-800',
-    barColor: 'bg-teal-650',
-    iconBg: 'bg-teal-100 text-teal-700',
-    iconColor: 'text-teal-600',
-    badgeBg: 'bg-teal-100/70 text-teal-850',
-    accentHex: '#008080'
-  }
-];
+import { getChecklistColorMeta } from './checklist-meta';
 
 /**
  * Generates styling metadata for a category based on its title and order index
  */
-export function getCategoryMeta(categoryTitle: string, index: number): CategoryMeta {
-  const palette = DYNAMIC_PALETTES[index % DYNAMIC_PALETTES.length];
+export function getCategoryMeta(categoryTitle: string, index: number, colorKey?: string): CategoryMeta {
+  const palette = getChecklistColorMeta(colorKey);
   return {
     label: `${index + 1}. ${categoryTitle}`,
     themeColor: palette.themeColor,

@@ -93,7 +93,7 @@ export default function TodayView({
 
       {/* 3. KPI NHANH GRID (LABEL 2 IN SCREENSHOT) */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
-        
+
         {/* Doanh thu hôm nay */}
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 text-left">
           <div className="flex items-center justify-between">
@@ -103,11 +103,11 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-base md:text-lg font-black text-[#1E293B] font-mono leading-none">
+            <h3 className="text-base md:text-lg font-black text-[#1E293B] font-sans leading-none">
               28,450,000đ
             </h3>
             <p className="text-[9.5px] font-extrabold text-[#16C784] mt-1 pt-1 border-t border-slate-100 flex items-center gap-0.5">
-              vs hôm qua <span className="font-mono">↑ 18.6%</span>
+              vs hôm qua <span className="font-sans">↑ 18.6%</span>
             </p>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-[#1E293B] font-mono leading-none">
+            <h3 className="text-lg font-black text-[#1E293B] font-sans leading-none">
               {checklistPercent}%
             </h3>
             <p className="text-[9.5px] font-bold text-slate-400 mt-1 pt-1 border-t border-slate-100">
@@ -139,7 +139,7 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-rose-600 font-mono leading-none">
+            <h3 className="text-lg font-black text-rose-600 font-sans leading-none">
               7
             </h3>
             <p className="text-[9.5px] font-extrabold text-rose-600 mt-1 pt-1 border-t border-slate-100 uppercase tracking-wider">
@@ -157,7 +157,7 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-[#FFB800] font-mono leading-none">
+            <h3 className="text-lg font-black text-[#FFB800] font-sans leading-none">
               2
             </h3>
             <p className="text-[9.5px] font-extrabold text-[#FFB800] mt-1 pt-1 border-t border-slate-100 uppercase tracking-wider">
@@ -175,7 +175,7 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-slate-800 font-mono leading-none">
+            <h3 className="text-lg font-black text-slate-800 font-sans leading-none">
               3
             </h3>
             <p className="text-[9.5px] font-bold text-emerald-600 mt-1 pt-1 border-t border-[#16C784]/20">
@@ -193,7 +193,7 @@ export default function TodayView({
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-blue-600 font-mono leading-none">
+            <h3 className="text-lg font-black text-blue-600 font-sans leading-none">
               4
             </h3>
             <p className="text-[9.5px] font-extrabold text-blue-500 mt-1 pt-1 border-t border-blue-100">
@@ -205,7 +205,7 @@ export default function TodayView({
 
       {/* 4. TIMELINE HÔM NAY (LABEL 3) & MỤC TIÊU HỆ THỐNG (LABEL 4) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        
+
         {/* Left Section (Spans 7): Timeline Hôm nay */}
         <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
@@ -229,7 +229,7 @@ export default function TodayView({
               className="p-3.5 bg-slate-50 hover:bg-slate-100/55 rounded-xl border border-slate-150 flex items-center justify-between gap-4 cursor-pointer transition-all"
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                <span className="font-mono text-xs font-black text-slate-500 shrink-0 w-10">
+                <span className="font-sans text-xs font-black text-slate-500 shrink-0 w-10">
                   09:15
                 </span>
                 <span className="p-1.5 rounded-lg bg-rose-50 border border-rose-150 text-rose-600 shrink-0">
@@ -249,7 +249,7 @@ export default function TodayView({
               className="p-3.5 bg-slate-50 hover:bg-slate-100/55 rounded-xl border border-slate-150 flex items-center justify-between gap-4 cursor-pointer transition-all"
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                <span className="font-mono text-xs font-black text-slate-500 shrink-0 w-10">
+                <span className="font-sans text-xs font-black text-slate-500 shrink-0 w-10">
                   08:40
                 </span>
                 <span className="p-1.5 rounded-lg bg-amber-50 border border-amber-150 text-[#FFB800] shrink-0">
@@ -269,7 +269,7 @@ export default function TodayView({
               className="p-3.5 bg-slate-50 hover:bg-slate-100/55 rounded-xl border border-slate-150 flex items-center justify-between gap-4 cursor-pointer transition-all"
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                <span className="font-mono text-xs font-black text-slate-500 shrink-0 w-10">
+                <span className="font-sans text-xs font-black text-slate-500 shrink-0 w-10">
                   07:30
                 </span>
                 <span className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-150 text-[#16C784] shrink-0">
@@ -305,7 +305,7 @@ export default function TodayView({
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-slate-700">Doanh thu tháng 5</span>
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className="font-sans text-[11px] text-slate-500">
                   <span className="font-bold text-[#16C784]">235.6M</span> / 300M
                 </span>
               </div>
@@ -325,7 +325,7 @@ export default function TodayView({
             <div className="space-y-2 pt-1">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-bold text-slate-700">Điểm vận hành trung bình</span>
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className="font-sans text-[11px] text-slate-500">
                   <span className="font-bold text-[#FFB800]">86</span> / 100
                 </span>
               </div>
@@ -399,7 +399,7 @@ export default function TodayView({
             </h4>
             <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1">
               <span className="text-[10px] font-black text-[#C21A1A] uppercase tracking-wider block">ID Bảng tính liên kết</span>
-              <p className="text-[10.5px] font-mono text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
+              <p className="text-[10.5px] font-sans text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
                 1mr-tao-control-os-2026-production-sheet-v1
               </p>
               <p className="text-[9.5px] text-slate-400 font-medium pt-1">Trạng thái: Hoạt động đồng bộ 2 chiều tức thời</p>

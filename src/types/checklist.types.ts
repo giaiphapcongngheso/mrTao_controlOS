@@ -12,6 +12,7 @@ export interface ChecklistTask extends BaseEntity {
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
+  imageUrls?: string[];
 }
 
 /**
@@ -31,6 +32,8 @@ export interface ChecklistTemplateDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
   title: string;
+  iconName?: string;
+  colorKey?: string;
   tasks: ChecklistTemplateTask[];
 }
 
@@ -48,14 +51,29 @@ export interface ChecklistDocument extends BaseEntity {
 }
 
 /**
+ * A single step (and optional nested sub-steps) inside a ProcessDocument.
+ * Supports one level of nesting: a core step can contain sub-steps.
+ */
+export interface ProcessStep {
+  id: string;
+  title: string;
+  tasks?: string[];
+  steps?: ProcessStep[];
+}
+
+/**
  * Independent process collection (not checklist snapshot).
+ * Supports a parent-child tree structure via ProcessStep.
  * Collection: processes
  */
 export interface ProcessDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
   title: string;
-  tasks: ChecklistTemplateTask[];
+  description?: string;
+  iconName?: string;
+  colorKey?: string;
+  steps: ProcessStep[];
 }
 
 /**
@@ -69,6 +87,9 @@ export interface ChecklistCategory {
   countDone: number;
   countTotal: number;
   isCompleted: boolean;
+  roleCode?: string;
+  iconName?: string;
+  colorKey?: string;
 }
 
 /**
@@ -87,4 +108,5 @@ export interface ChecklistItem extends BaseEntity {
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
+  imageUrls?: string[];
 }

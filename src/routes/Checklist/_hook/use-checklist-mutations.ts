@@ -5,7 +5,8 @@ import type {
   ChecklistItem,
   ChecklistDocument,
   ChecklistTemplateDocument,
-  ChecklistTemplateTask,
+  ProcessDocument,
+  ProcessStep,
 } from '../../../types/checklist.types';
 import type { SystemLogActionType } from '../../../types/system-log.types';
 import { ENTITY_PREFIX } from '../../../constants/entity-id.constants';
@@ -19,21 +20,23 @@ import {
 import { systemLogService } from '../../../services/system-log-service';
 import { toastError, toastSuccess, toastWarning } from '../../../shared/lib/toast';
 import { normalizeAccessCode } from '../../../shared/hooks/use-module-permissions';
-import { guardAction, initBaseEntity, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
+import { guardAction, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
 import { getTodayKey } from '../checklist-utils';
 import {
   buildTodaySnapshotFromTemplate,
-  findProcessTaskById,
   findSnapshotTaskById,
   mergeTemplateTasksIntoSnapshot,
   normalizeTaskInputs,
   toSnapshotTasks,
   toTemplateTasks,
-  type ChecklistCategoryType,
   type ChecklistDataState,
   type PendingTemplateSyncState,
   type SaveCategoryTaskInput,
 } from '../checklist-domain';
+import {
+  DEFAULT_CHECKLIST_COLOR_KEY,
+  DEFAULT_CHECKLIST_ICON_NAME,
+} from '../checklist-meta';
 
 type ChecklistPermissions = {
   canCreate: boolean;
@@ -160,84 +163,6 @@ export function useChecklistMutations({
     updateLocalState,
   ]);
 
-  const handleCreateRoleChecklistBatch = useCallback(async (
-    roleCode: string,
-    categoryId: string,
-    checklistName: string,
-    tasksList: Array<{ title: string; timeLimit?: string }>,
-  ) => {
-    const err = guardAction(permissions, 'canCreate', null, 'cong viec quy trinh');
-    if (err) {
-      toastError(err);
-      return;
-    }
-
-    const normalizedRoleCode = normalizeAccessCode(roleCode);
-    const safeTitle = checklistName.trim();
-    const newTasks = toTemplateTasks(tasksList);
-    if (!safeTitle || newTasks.length === 0) {
-      return;
-    }
-
-    const nowIso = new Date().toISOString();
-    const existingDoc = categoryId ? dataStateRef.current.processes.find((doc) => doc.id === categoryId) : null;
-
-    if (existingDoc) {
-      const updatedDoc = {
-        ...existingDoc,
-        tasks: [...(existingDoc.tasks || []), ...newTasks],
-        updatedAt: nowIso,
-      };
-      const previousState = updateLocalState((state) => ({
-        ...state,
-        processes: replaceById(state.processes, updatedDoc),
-      }));
-
-      try {
-        await processService.update(existingDoc.id, {
-          tasks: updatedDoc.tasks,
-          updatedAt: nowIso,
-        });
-      } catch (error) {
-        restoreLocalState(previousState);
-        console.error('Khong the luu quy trinh:', error);
-        toastError('Khong the luu quy trinh. Vui long thu lai.');
-        throw error;
-      }
-      return;
-    }
-
-    const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
-    const newProcess = {
-      ...baseEntity,
-      storeId: activeStoreId,
-      roleCode: normalizedRoleCode,
-      title: safeTitle,
-      tasks: newTasks,
-    };
-    const previousState = updateLocalState((state) => ({
-      ...state,
-      processes: [...state.processes, newProcess],
-    }));
-
-    try {
-      await processService.create(newProcess);
-      void appendChecklistLog('CREATE', 'Checklist - Tao quy trinh', `Tao nhom quy trinh "${safeTitle}".`);
-    } catch (error) {
-      restoreLocalState(previousState);
-      console.error('Khong the luu quy trinh:', error);
-      toastError('Khong the luu quy trinh. Vui long thu lai.');
-      throw error;
-    }
-  }, [
-    activeStoreId,
-    appendChecklistLog,
-    dataStateRef,
-    permissions,
-    restoreLocalState,
-    updateLocalState,
-  ]);
-
   const handleCreateTodayChecklistBatch = useCallback(async (
     roleCode: string,
     categoryId: string,
@@ -323,8 +248,8 @@ export function useChecklistMutations({
     checklistName: string,
     taskTitle: string,
   ) => {
-    await handleCreateRoleChecklistBatch(roleCode, categoryId, checklistName, [{ title: taskTitle }]);
-  }, [handleCreateRoleChecklistBatch]);
+    await handleCreateTodayChecklistBatch(roleCode, categoryId, checklistName, [{ title: taskTitle }]);
+  }, [handleCreateTodayChecklistBatch]);
 
   const handleDeleteChecklistItem = useCallback(async (itemId: string) => {
     const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
@@ -363,37 +288,7 @@ export function useChecklistMutations({
       return;
     }
 
-    const processFound = findProcessTaskById(dataStateRef.current.processes, itemId);
-    if (processFound) {
-      const err = guardAction(permissions, 'canDelete', processFound.doc, `cong viec "${processFound.task.title}"`);
-      if (err) {
-        toastError(err);
-        return;
-      }
 
-      const updatedDoc = {
-        ...processFound.doc,
-        tasks: processFound.doc.tasks.filter((task) => task.id !== itemId),
-        updatedAt: new Date().toISOString(),
-      };
-      const previousState = updateLocalState((state) => ({
-        ...state,
-        processes: replaceById(state.processes, updatedDoc),
-      }));
-
-      try {
-        await processService.update(processFound.doc.id, {
-          tasks: updatedDoc.tasks,
-          updatedAt: updatedDoc.updatedAt,
-        });
-      } catch (error) {
-        restoreLocalState(previousState);
-        console.error('Khong the xoa cong viec quy trinh:', error);
-        toastError('Xoa cong viec that bai. Vui long thu lai.');
-        throw error;
-      }
-      return;
-    }
 
     toastError(`Khong tim thay cong viec voi ID: ${itemId}`);
   }, [
@@ -429,6 +324,7 @@ export function useChecklistMutations({
               ...task,
               ...(updates.title !== undefined ? { title: safeTitle } : {}),
               ...(updates.timeLimit !== undefined ? { timeLimit: updates.timeLimit } : {}),
+              ...(updates.imageUrls !== undefined ? { imageUrls: updates.imageUrls } : {}),
               updatedAt: nowIso,
             }
             : task
@@ -453,46 +349,6 @@ export function useChecklistMutations({
       return;
     }
 
-    const processFound = findProcessTaskById(dataStateRef.current.processes, itemId);
-    if (processFound) {
-      const err = guardAction(permissions, 'canUpdate', processFound.doc, `cong viec "${processFound.task.title}"`);
-      if (err) {
-        toastError(err);
-        return;
-      }
-
-      const updatedDoc = {
-        ...processFound.doc,
-        updatedAt: new Date().toISOString(),
-        tasks: processFound.doc.tasks.map((task) => (
-          task.id === itemId
-            ? {
-              ...task,
-              ...(updates.title !== undefined ? { title: safeTitle || task.title } : {}),
-              ...(updates.timeLimit !== undefined ? { timeLimit: updates.timeLimit } : {}),
-            }
-            : task
-        )),
-      };
-      const previousState = updateLocalState((state) => ({
-        ...state,
-        processes: replaceById(state.processes, updatedDoc),
-      }));
-
-      try {
-        await processService.update(processFound.doc.id, {
-          tasks: updatedDoc.tasks,
-          updatedAt: updatedDoc.updatedAt,
-        });
-      } catch (error) {
-        restoreLocalState(previousState);
-        console.error('Khong the cap nhat cong viec quy trinh:', error);
-        toastError('Cap nhat cong viec that bai. Vui long thu lai.');
-        throw error;
-      }
-      return;
-    }
-
     toastError(`Khong tim thay cong viec voi ID: ${itemId}.`);
   }, [
     dataStateRef,
@@ -502,17 +358,18 @@ export function useChecklistMutations({
   ]);
 
   const handleSaveCategoryBatch = useCallback(async (params: {
-    categoryType: ChecklistCategoryType;
     id: string | null;
     title: string;
     roleCode: string;
+    iconName: string;
+    colorKey: string;
     tasks: SaveCategoryTaskInput[];
   }) => {
     const err = guardAction(
       permissions,
       params.id ? 'canUpdate' : 'canCreate',
       null,
-      params.categoryType === 'process' ? 'nhom quy trinh' : 'nhom checklist',
+      'nhom checklist',
     );
     if (err) {
       throw new Error(err);
@@ -526,66 +383,6 @@ export function useChecklistMutations({
     }
 
     const nowIso = new Date().toISOString();
-
-    if (params.categoryType === 'process') {
-      if (params.id) {
-        const targetProcess = dataStateRef.current.processes.find((doc) => doc.id === params.id);
-        if (!targetProcess) {
-          throw new Error('Khong tim thay nhom quy trinh de cap nhat.');
-        }
-
-        const updatedProcess = {
-          ...targetProcess,
-          title: safeTitle,
-          roleCode: normalizedRoleCode,
-          tasks: templateTasks,
-          updatedAt: nowIso,
-        };
-        const previousState = updateLocalState((state) => ({
-          ...state,
-          processes: replaceById(state.processes, updatedProcess),
-        }));
-
-        try {
-          await processService.update(targetProcess.id, {
-            title: safeTitle,
-            roleCode: normalizedRoleCode,
-            tasks: templateTasks,
-            updatedAt: nowIso,
-          });
-          toastSuccess('Đã lưu quy trình.');
-        } catch (error) {
-          restoreLocalState(previousState);
-          console.error('Khong the luu quy trinh:', error);
-          toastError('Khong the luu quy trinh. Vui long thu lai.');
-          throw new Error('Khong the luu quy trinh. Vui long thu lai.');
-        }
-        return;
-      }
-
-      try {
-        const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
-        const persistedProcess = {
-          ...baseEntity,
-          storeId: activeStoreId,
-          roleCode: normalizedRoleCode,
-          title: safeTitle,
-          tasks: templateTasks,
-        };
-        await processService.create(persistedProcess);
-        updateLocalState((state) => ({
-          ...state,
-          processes: [...state.processes, persistedProcess],
-        }));
-        toastSuccess('Đã tạo quy trình.');
-      } catch (error) {
-        console.error('Khong the luu quy trinh:', error);
-        toastError('Khong the luu quy trinh. Vui long thu lai.');
-        throw new Error('Khong the luu quy trinh. Vui long thu lai.');
-      }
-      return;
-    }
-
     const todayKey = getTodayKey();
     if (params.id) {
       const originalTemplate = dataStateRef.current.templates.find((template) => template.id === params.id);
@@ -597,6 +394,8 @@ export function useChecklistMutations({
         ...originalTemplate,
         title: safeTitle,
         roleCode: normalizedRoleCode,
+        iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+        colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
         updatedAt: nowIso,
       };
@@ -623,6 +422,8 @@ export function useChecklistMutations({
         await checklistTemplateService.update(originalTemplate.id, {
           title: safeTitle,
           roleCode: normalizedRoleCode,
+          iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+          colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
           tasks: templateTasks,
           updatedAt: nowIso,
         });
@@ -645,6 +446,8 @@ export function useChecklistMutations({
         storeId: activeStoreId,
         roleCode: normalizedRoleCode,
         title: safeTitle,
+        iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+        colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
       };
       const persistedTemplate = await checklistTemplateService.create(newTemplate);
@@ -687,25 +490,7 @@ export function useChecklistMutations({
 
   const handleRequestEditCategory = useCallback(async (
     categoryId: string,
-    categoryType: ChecklistCategoryType,
   ) => {
-    if (categoryType === 'process') {
-      const targetProcess = dataStateRef.current.processes.find((doc) => doc.id === categoryId && !doc.deletedAt);
-      if (!targetProcess) {
-        return null;
-      }
-      return {
-        id: targetProcess.id,
-        title: targetProcess.title,
-        roleCode: targetProcess.roleCode,
-        tasks: (targetProcess.tasks || []).map((task) => ({
-          id: task.id,
-          title: task.title,
-          timeLimit: task.timeLimit,
-        })),
-      };
-    }
-
     const targetTemplate = dataStateRef.current.templates.find((template) => template.id === categoryId && !template.deletedAt);
     if (!targetTemplate) {
       return null;
@@ -715,6 +500,8 @@ export function useChecklistMutations({
       id: targetTemplate.id,
       title: targetTemplate.title,
       roleCode: targetTemplate.roleCode,
+      iconName: targetTemplate.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+      colorKey: targetTemplate.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
       tasks: (targetTemplate.tasks || []).map((task) => ({
         id: task.id,
         title: task.title,
@@ -725,7 +512,6 @@ export function useChecklistMutations({
 
   const handleDeleteChecklistCategory = useCallback(async (
     id: string,
-    categoryType: ChecklistCategoryType,
   ) => {
     const err = guardAction(permissions, 'canDelete', null, 'nhom checklist');
     if (err) {
@@ -734,32 +520,13 @@ export function useChecklistMutations({
     }
 
     const deletedFields = softDeleteEntity(currentUser);
-    if (categoryType === 'process') {
-      const targetProcess = dataStateRef.current.processes.find((doc) => doc.id === id && !doc.deletedAt);
-      if (!targetProcess) {
-        toastError('Khong tim thay nhom quy trinh.');
-        return;
-      }
-
-      const previousState = updateLocalState((state) => ({
-        ...state,
-        processes: removeById(state.processes, id),
-      }));
-      try {
-        await processService.update(targetProcess.id, deletedFields);
-      } catch (error) {
-        restoreLocalState(previousState);
-        console.error('Khong the xoa nhom checklist:', error);
-        toastError('Xoa nhom that bai. Vui long thu lai.');
-      }
-      return;
-    }
 
     const targetTemplate = dataStateRef.current.templates.find((template) => template.id === id && !template.deletedAt);
     if (!targetTemplate) {
       toastError('Khong tim thay template checklist.');
       return;
     }
+
 
     const relatedSnapshots = dataStateRef.current.snapshots.filter((doc) => doc.templateId === id && !doc.deletedAt);
     const previousState = updateLocalState((state) => ({
@@ -786,6 +553,7 @@ export function useChecklistMutations({
     restoreLocalState,
     updateLocalState,
   ]);
+
   const handleConfirmTemplateSync = useCallback(async () => {
     if (!pendingTemplateSync) {
       return;
@@ -838,12 +606,98 @@ export function useChecklistMutations({
     setPendingTemplateSync(null);
   }, []);
 
+  const handleCreateProcess = useCallback(async (payload: {
+    title: string;
+    description?: string;
+    roleCode: string;
+    iconName?: string;
+    colorKey?: string;
+    steps: ProcessStep[];
+  }) => {
+    const err = guardAction(permissions, 'canCreate', null, 'quy trinh');
+    if (err) {
+      toastError(err);
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    try {
+      const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
+      const newProcess: ProcessDocument = {
+        ...baseEntity,
+        storeId: activeStoreId,
+        roleCode: normalizeAccessCode(payload.roleCode),
+        title: payload.title.trim(),
+        description: payload.description,
+        iconName: payload.iconName,
+        colorKey: payload.colorKey,
+        steps: payload.steps,
+      };
+      await processService.create(newProcess);
+      updateLocalState((state) => ({
+        ...state,
+        processes: [...state.processes, newProcess],
+      }));
+      toastSuccess('Đã tạo quy trình.');
+    } catch (error) {
+      console.error('Khong the tao quy trinh:', error);
+      toastError('Khong the tao quy trinh. Vui long thu lai.');
+      throw error;
+    }
+  }, [activeStoreId, permissions, updateLocalState]);
+
+  const handleUpdateProcess = useCallback(async (id: string, updates: Partial<ProcessDocument>) => {
+    const err = guardAction(permissions, 'canUpdate', null, 'quy trinh');
+    if (err) {
+      toastError(err);
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const targetProcess = dataStateRef.current.processes.find((doc) => doc.id === id && !doc.deletedAt);
+    if (!targetProcess) {
+      toastError('Khong tim thay quy trinh.');
+      return;
+    }
+    const updatedProcess = { ...targetProcess, ...updates, updatedAt: nowIso };
+    const previousState = updateLocalState((state) => ({
+      ...state,
+      processes: replaceById(state.processes, updatedProcess),
+    }));
+    try {
+      await processService.update(id, { ...updates, updatedAt: nowIso });
+      toastSuccess('Đã lưu quy trình.');
+    } catch (error) {
+      restoreLocalState(previousState);
+      console.error('Khong the cap nhat quy trinh:', error);
+      toastError('Khong the cap nhat quy trinh. Vui long thu lai.');
+      throw error;
+    }
+  }, [dataStateRef, permissions, restoreLocalState, updateLocalState]);
+
+  const handleDeleteProcess = useCallback(async (id: string) => {
+    const err = guardAction(permissions, 'canDelete', null, 'quy trinh');
+    if (err) {
+      toastError(err);
+      return;
+    }
+    const deletedFields = softDeleteEntity(currentUser);
+    const previousState = updateLocalState((state) => ({
+      ...state,
+      processes: removeById(state.processes, id),
+    }));
+    try {
+      await processService.update(id, deletedFields);
+    } catch (error) {
+      restoreLocalState(previousState);
+      console.error('Khong the xoa quy trinh:', error);
+      toastError('Xoa quy trinh that bai. Vui long thu lai.');
+    }
+  }, [currentUser, permissions, restoreLocalState, updateLocalState]);
+
   return {
     pendingTemplateSync,
     handleToggleChecklistItem,
     handleCreateRoleChecklist,
     handleCreateTodayChecklistBatch,
-    handleCreateRoleChecklistBatch,
     handleSaveCategoryBatch,
     handleRequestEditCategory,
     handleDeleteChecklistCategory,
@@ -851,5 +705,8 @@ export function useChecklistMutations({
     handleUpdateChecklistItem,
     handleConfirmTemplateSync,
     handleCancelTemplateSync,
+    handleCreateProcess,
+    handleUpdateProcess,
+    handleDeleteProcess,
   };
 }

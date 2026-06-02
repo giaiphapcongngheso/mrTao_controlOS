@@ -8,19 +8,18 @@ import {
   ChevronUp,
   Circle,
   Clock,
-  Coins,
   Edit2,
   FileText,
   Image,
   Info,
-  Layers,
   Plus,
   Smile,
   Trash2,
-  Warehouse,
-  Wrench,
-  Calendar,
   X,
+  Camera,
+  Upload,
+  User,
+  Loader2,
 } from 'lucide-react';
 import { Button, Card, ScrollArea, Textarea, Tooltip, TooltipTrigger, TooltipContent } from '../../../../share/ui';
 import { DeleteConfirm } from '../../../../share/components/delete-confirm';
@@ -28,6 +27,8 @@ import { Badge } from '../../../../share/ui/badge';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
 import { toastError } from '../../../shared/lib/toast';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
+import { Dialog, DialogContent, DialogTitle } from '../../../../share/ui/dialog';
+import { uploadChecklistItemImage } from '../../../services/firebase-storage-service';
 import type {
   ChecklistPermissions,
   ChecklistSubTab,
@@ -36,6 +37,7 @@ import type {
 import { isItemLate, formatCheckedAt } from '../checklist-utils';
 import { cn } from '../../../../share/lib/utils';
 import type { ChecklistItem } from '../../../types/checklist.types';
+import { resolveChecklistIcon } from '../checklist-meta';
 
 const parseTimeToDate = (timeStr: string) => {
   if (!timeStr) return undefined;
@@ -52,7 +54,298 @@ const formatDateToTime = (date: Date | undefined) => {
   return `${h}:${m}`;
 };
 
-const CATEGORY_ICON_COMPONENTS = [Calendar, Coins, Wrench, Warehouse, FileText, Layers] as const;
+// ── Item Detail Dialog Component ────────────────────────────────────────────
+interface ChecklistItemDetailDialogProps {
+  item: ChecklistItem | null;
+  isOpen: boolean;
+  onClose: () => void;
+  roleOptions: Array<{ code: string; name: string }>;
+  onToggleItem: (itemId: string) => void;
+  onUpdateItem: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  onConfirmDeleteItem: (itemId: string, title: string) => void;
+}
+
+const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog({
+  item,
+  isOpen,
+  onClose,
+  roleOptions,
+  onToggleItem,
+  onUpdateItem,
+  onConfirmDeleteItem,
+}: ChecklistItemDetailDialogProps) {
+  const [titleValue, setTitleValue] = React.useState('');
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [activeZoomUrl, setActiveZoomUrl] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (item) {
+      setTitleValue(item.title);
+    }
+  }, [item]);
+
+  if (!item) return null;
+
+  const roleName = roleOptions.find((r) => r.code === item.roleCode)?.name || item.roleCode || 'N/A';
+  const imageUrls = item.imageUrls || [];
+
+  const handleBlurSave = async () => {
+    const trimmed = titleValue.trim();
+    if (!trimmed || trimmed === item.title) return;
+    try {
+      await onUpdateItem(item.id, { title: trimmed });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleTimeLimitChange = async (date: Date | undefined) => {
+    const newTime = formatDateToTime(date);
+    if (newTime === item.timeLimit) return;
+    try {
+      await onUpdateItem(item.id, { timeLimit: newTime });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleStatus = () => {
+    onToggleItem(item.id);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadChecklistItemImage(file, item.id);
+      const nextUrls = [...imageUrls, url];
+      await onUpdateItem(item.id, { imageUrls: nextUrls });
+    } catch (error) {
+      console.error('Lỗi khi tải ảnh lên:', error);
+      toastError('Tải ảnh lên thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteImage = async (urlToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextUrls = imageUrls.filter((url) => url !== urlToDelete);
+    try {
+      await onUpdateItem(item.id, { imageUrls: nextUrls });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteTaskClick = () => {
+    onClose();
+    onConfirmDeleteItem(item.id, item.title);
+  };
+
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent
+          showCloseButton={false}
+          className="!p-0 !border-0 overflow-hidden max-w-lg rounded-2xl bg-white shadow-2xl font-sans"
+        >
+          {/* Header màu đỏ thương hiệu */}
+          <div className="bg-[#C21A1A] p-5 text-white relative rounded-t-2xl">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70 block mb-1">
+              CHI TIẾT CHECKLIST
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-white/80 block mb-2">
+              TÊN ĐẦU VIỆC (QUẢN LÝ SỬA)
+            </span>
+            
+            <input
+              type="text"
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onBlur={handleBlurSave}
+              placeholder="Nhập tên đầu việc..."
+              className="w-full bg-[#A31616] text-white placeholder-white/50 border-none outline-none focus:ring-1 focus:ring-white/25 rounded-xl px-3 py-2 text-sm font-bold leading-normal transition-colors"
+            />
+
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none focus:outline-none"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-5 bg-white text-left">
+            {/* Grid 2 cột */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-center">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 block">
+                  VAI TRÒ CỦA NHÓM
+                </span>
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                  <User className="w-4 h-4 text-[#C21A1A] shrink-0" />
+                  <span>{roleName}</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-center">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">
+                  GIỜ CHỐT HOÀN THÀNH
+                </span>
+                <div className="w-full">
+                  <DatePicker
+                    value={parseTimeToDate(item.timeLimit || '')}
+                    onChange={handleTimeLimitChange}
+                    timeOnly={true}
+                    clearable={false}
+                    size="sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Trạng thái công việc */}
+            <div className="flex items-center justify-between py-2.5 border-y border-slate-100">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Trạng thái công việc</span>
+                {item.isCompleted ? (
+                  <span className="text-[10px] font-medium text-slate-400">
+                    Đã hoàn thành bởi: <span className="font-semibold text-slate-600">{item.checkedByName || 'Hệ thống'}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-slate-400">Chưa hoàn thành</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={handleToggleStatus}
+                className={cn(
+                  "px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 border cursor-pointer h-9",
+                  item.isCompleted
+                    ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
+                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                )}
+              >
+                {item.isCompleted ? '✓ Đã hoàn thành' : 'Chưa hoàn thành'}
+              </Button>
+            </div>
+
+            {/* Bằng chứng hình ảnh */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 uppercase tracking-wider">
+                  <Camera className="w-4 h-4 text-slate-400" />
+                  <span>BẰNG CHỨNG HÌNH ẢNH ({imageUrls.length})</span>
+                </div>
+                <Button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={triggerFileInput}
+                  variant="link"
+                  className="text-xs font-extrabold text-[#C21A1A] hover:text-[#A81515] p-0 h-auto flex items-center gap-1 cursor-pointer focus:outline-none"
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  <span>Tải ảnh lên</span>
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+
+              {imageUrls.length === 0 ? (
+                <div className="border border-dashed border-slate-200 rounded-2xl py-6 flex flex-col items-center justify-center text-center bg-slate-50/50">
+                  <Camera className="w-8 h-8 text-slate-300 mb-2" />
+                  <p className="text-xs font-bold text-slate-400">Chưa có ảnh bằng chứng</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Vui lòng tải ảnh lên làm minh chứng hoàn thành.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {imageUrls.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group animate-in fade-in duration-200"
+                    >
+                      <img
+                        src={url}
+                        alt={`Bằng chứng ${idx + 1}`}
+                        onClick={() => setActiveZoomUrl(url)}
+                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteImage(url, e)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-md bg-black/60 hover:bg-black/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer border-none outline-none"
+                        title="Xóa ảnh"
+                      >
+                        <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-5 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-b-2xl">
+            <Button
+              type="button"
+              onClick={handleDeleteTaskClick}
+              variant="ghost"
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl px-3 py-2 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>XÓA ĐẦU VIỆC</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-5 text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 border border-slate-200 bg-white rounded-xl cursor-pointer"
+            >
+              ĐÓNG LẠI
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lightbox Zoom Dialog */}
+      {activeZoomUrl && (
+        <Dialog open={activeZoomUrl !== null} onOpenChange={(open) => { if (!open) setActiveZoomUrl(null); }}>
+          <DialogContent
+            showCloseButton={true}
+            className="max-w-4xl p-2 bg-black border-none rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
+          >
+            <img
+              src={activeZoomUrl}
+              alt="Bằng chứng phóng to"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+});
 
 interface TaskEditState {
   editingItemId: string | null;
@@ -72,6 +365,7 @@ interface ChecklistTaskItemProps {
   onToggleItem: (itemId: string) => void;
   onConfirmDeleteItem: (itemId: string, title: string) => void;
   setUncheckTarget: React.Dispatch<React.SetStateAction<{ id: string; title: string; timeLimit: string } | null>>;
+  onOpenDetail: (item: ChecklistItem) => void;
 }
 
 const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
@@ -82,6 +376,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
   onToggleItem,
   onConfirmDeleteItem,
   setUncheckTarget,
+  onOpenDetail,
 }: ChecklistTaskItemProps) {
   const isLate = isItemLate(item);
   const isCurrentlyEditing = editState.editingItemId === item.id;
@@ -162,7 +457,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
     <div
       onClick={handleRowClick}
       className={cn(
-        "group/row px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2.5 sm:gap-3.5 transition-colors duration-150",
+        "font-sans group/row px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2.5 sm:gap-3.5 transition-colors duration-150",
         subTab === 'today' ? "hover:bg-slate-50/80 cursor-pointer select-none" : "hover:bg-slate-50/80",
         isCurrentlyEditing ? "bg-slate-50 ring-1 ring-inset ring-slate-200" : ""
       )}
@@ -201,7 +496,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
                 }
               }}
               placeholder="Nhập tên đầu việc..."
-              className="flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
+              className="font-sans flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
             />
             {subTab !== 'process' && (
               <div className="w-28 shrink-0">
@@ -304,7 +599,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
           {subTab !== 'process' && item.timeLimit && (
             <span
               className={cn(
-                "text-xs font-mono font-bold px-2 py-1 rounded-lg flex items-center gap-1 select-none",
+                "text-xs font-sans font-bold px-2 py-1 rounded-lg flex items-center gap-1 select-none",
                 isLate
                   ? "bg-rose-50 text-rose-600 border border-rose-100"
                   : "bg-slate-50 text-slate-500 border border-slate-150"
@@ -315,14 +610,18 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
             </span>
           )}
 
-          {/* Image evidence */}
-          {subTab === 'today' && (
+          {/* Image evidence / Detail */}
+          {(subTab === 'today' || subTab === 'completed') && (
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="hidden sm:flex w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 items-center justify-center transition-colors cursor-pointer"
-              title="Bằng chứng hình ảnh"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetail(item);
+              }}
+              className="flex w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 items-center justify-center transition-colors cursor-pointer animate-in fade-in"
+              title="Bằng chứng hình ảnh & Chi tiết"
             >
               <Image className="w-3.5 h-3.5" />
             </Button>
@@ -375,7 +674,6 @@ interface CategoryCardProps {
   isExpanded: boolean;
   subTab: ChecklistSubTab;
   permissions: ChecklistPermissions;
-  activeCategoryType: 'today' | 'process';
   onToggleExpand: (categoryId: string) => void;
   onToggleItem: (itemId: string) => void;
   onConfirmDeleteCategory: (id: string, title: string) => void;
@@ -383,6 +681,7 @@ interface CategoryCardProps {
   editState: TaskEditState;
   onConfirmDeleteItem: (itemId: string, title: string) => void;
   onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
+  onOpenDetail: (item: ChecklistItem) => void;
 }
 
 const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
@@ -390,7 +689,6 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   isExpanded,
   subTab,
   permissions,
-  activeCategoryType,
   onToggleExpand,
   onToggleItem,
   onConfirmDeleteCategory,
@@ -398,10 +696,11 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   editState,
   onConfirmDeleteItem,
   onAddInlineItem,
+  onOpenDetail,
 }: CategoryCardProps) {
   const ratio = cat.countTotal > 0 ? (cat.countDone / cat.countTotal) : 0;
   const isFinishedList = cat.countTotal > 0 && cat.countDone === cat.countTotal;
-  const CategoryIcon = CATEGORY_ICON_COMPONENTS[cat.iconIndex % CATEGORY_ICON_COMPONENTS.length];
+  const CategoryIcon = resolveChecklistIcon(cat.iconName);
   const percentText = Math.round(ratio * 100);
 
   // States for adding inline task
@@ -458,7 +757,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   return (
     <Card
       className={cn(
-        "w-full bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col gap-0 py-0 shadow-none",
+        "font-sans w-full bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col gap-0 py-0 shadow-none",
         isExpanded ? "border-slate-200 shadow-sm" : "border-slate-200/80 hover:shadow-sm"
       )}
     >
@@ -567,6 +866,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                   onToggleItem={onToggleItem}
                   onConfirmDeleteItem={onConfirmDeleteItem}
                   setUncheckTarget={setUncheckTarget}
+                  onOpenDetail={onOpenDetail}
                 />
               ))}
             </div>
@@ -597,7 +897,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                     }
                   }}
                   placeholder="Nhập tên đầu việc mới..."
-                  className="flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
+                  className="font-sans flex-1 min-w-0 h-[34px] min-h-[34px] py-1.5 resize-none overflow-hidden text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
                 />
                 {subTab === 'today' && (
                   <div className="w-28 shrink-0">
@@ -683,9 +983,8 @@ interface ChecklistContentAreaProps {
   expandedCategoryId: string | null;
   onToggleExpand: (categoryId: string) => void;
   permissions: ChecklistPermissions;
-  activeCategoryType: 'today' | 'process';
   onToggleItem: (itemId: string) => void;
-  onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
+  onDeleteCategory?: (id: string) => Promise<void>;
   onOpenEditCategoryDialog: (cat: ChecklistViewCategory) => void;
   editState: TaskEditState;
   onDeleteItem: (itemId: string) => Promise<void>;
@@ -700,6 +999,8 @@ interface ChecklistContentAreaProps {
     latePercent: number;
     completionPercent: number;
   };
+  roleOptions: Array<{ code: string; name: string }>;
+  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
 }
 
 const ChecklistContentArea = React.memo(function ChecklistContentArea({
@@ -709,7 +1010,6 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   expandedCategoryId,
   onToggleExpand,
   permissions,
-  activeCategoryType,
   onToggleItem,
   onDeleteCategory,
   onOpenEditCategoryDialog,
@@ -718,10 +1018,13 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   onAddInlineItem,
   onResetFilters,
   kpiStats,
+  roleOptions,
+  onUpdateChecklistItem,
 }: ChecklistContentAreaProps) {
   // States for delete confirmation
   const [deleteCategoryTarget, setDeleteCategoryTarget] = React.useState<{ id: string; title: string } | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [activeDetailItem, setActiveDetailItem] = React.useState<ChecklistItem | null>(null);
 
   const handleConfirmDeleteCategory = React.useCallback((id: string, title: string) => {
     setDeleteCategoryTarget({ id, title });
@@ -732,7 +1035,31 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div className="font-sans grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      {/* Detail Dialog */}
+      {activeDetailItem && (
+        <ChecklistItemDetailDialog
+          item={activeDetailItem}
+          isOpen={activeDetailItem !== null}
+          onClose={() => setActiveDetailItem(null)}
+          roleOptions={roleOptions}
+          onToggleItem={onToggleItem}
+          onUpdateItem={async (id, updates) => {
+            if (onUpdateChecklistItem) {
+              await onUpdateChecklistItem(id, updates);
+              // Update local state in dialog to reflect updates
+              setActiveDetailItem((prev) => {
+                if (prev && prev.id === id) {
+                  return { ...prev, ...updates };
+                }
+                return prev;
+              });
+            }
+          }}
+          onConfirmDeleteItem={handleConfirmDeleteItem}
+        />
+      )}
+
       {/* ── Category Cards Column ────────────────────────── */}
       <ScrollArea className="w-full lg:col-span-8 h-auto lg:h-[calc(100dvh-230px)] pr-0 lg:pr-1" viewportClassName="w-full pr-0 sm:pr-2 [&>div]:w-full [&>div]:min-w-0 [&>div]:max-w-full overflow-x-hidden">
         <div className="w-full space-y-3 pb-4">
@@ -766,7 +1093,6 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                 isExpanded={expandedCategoryId === cat.id}
                 subTab={subTab}
                 permissions={permissions}
-                activeCategoryType={activeCategoryType}
                 onToggleExpand={onToggleExpand}
                 onToggleItem={onToggleItem}
                 onConfirmDeleteCategory={handleConfirmDeleteCategory}
@@ -774,6 +1100,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                 editState={editState}
                 onConfirmDeleteItem={handleConfirmDeleteItem}
                 onAddInlineItem={onAddInlineItem}
+                onOpenDetail={setActiveDetailItem}
               />
             ))
           )}
@@ -864,7 +1191,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
         cancelText="Hủy"
         onConfirm={async () => {
           if (deleteCategoryTarget && onDeleteCategory) {
-            await onDeleteCategory(deleteCategoryTarget.id, activeCategoryType);
+            await onDeleteCategory(deleteCategoryTarget.id);
           }
           setDeleteCategoryTarget(null);
         }}

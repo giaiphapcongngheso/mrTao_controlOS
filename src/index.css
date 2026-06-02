@@ -31,6 +31,8 @@
 }
 
 @theme inline {
+  --font-display: var(--font-sans);
+  --font-mono: var(--font-sans);
   --color-surface-bg: #f8f9fb;
   --color-cg-1: #3174d5;
   --color-cg-2: #76c9de;
@@ -175,7 +177,7 @@ html {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground text-sm;
+    @apply bg-background text-foreground text-sm font-sans;
   }
 }
 

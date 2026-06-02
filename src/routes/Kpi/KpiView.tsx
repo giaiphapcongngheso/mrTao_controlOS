@@ -213,7 +213,7 @@ export default function KpiView({
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
                     {card.title}
                   </span>
-                  <h3 className="text-2xl font-black font-mono tracking-tight text-slate-900 mt-1">
+                  <h3 className="text-2xl font-black font-sans tracking-tight text-slate-900 mt-1">
                     {card.value}
                   </h3>
                 </div>
@@ -290,7 +290,7 @@ export default function KpiView({
             
             {/* Horizontal Target Line with absolute value */}
             <div className="absolute left-10 right-0 top-[40%] border-t border-dashed border-blue-500/40 z-10 flex justify-between items-start pointer-events-none">
-              <span className="text-[9px] font-mono font-black text-blue-600 bg-white px-2 -mt-2.5 border border-blue-200/50 rounded-md">
+              <span className="text-[9px] font-sans font-black text-blue-600 bg-white px-2 -mt-2.5 border border-blue-200/50 rounded-md">
                 TARGET SÀN: 200M
               </span>
             </div>
@@ -299,7 +299,7 @@ export default function KpiView({
             <div className="flex items-end justify-between h-48 pl-10 relative border-l border-b border-slate-200">
               
               {/* Side numbers absolute positioning */}
-              <div className="absolute left-[-35px] top-0 bottom-0 flex flex-col justify-between text-[9px] font-mono font-black text-slate-400 select-none text-right">
+              <div className="absolute left-[-35px] top-0 bottom-0 flex flex-col justify-between text-[9px] font-sans font-black text-slate-400 select-none text-right">
                 <span>300M</span>
                 <span>200M</span>
                 <span>100M</span>
@@ -323,7 +323,7 @@ export default function KpiView({
                     onMouseLeave={() => setHoveredWeek(null)}
                   >
                     {/* Floating statistics directly above the column */}
-                    <span className="text-xs font-mono font-black text-blue-600 mb-2 transition-transform duration-300 group-hover:scale-110">
+                    <span className="text-xs font-sans font-black text-blue-600 mb-2 transition-transform duration-300 group-hover:scale-110">
                       {data.label}
                     </span>
 
@@ -346,7 +346,7 @@ export default function KpiView({
                     </div>
 
                     {/* X axis tag naming */}
-                    <span className="text-[11px] font-mono font-extrabold text-slate-400 mt-3 select-none">
+                    <span className="text-[11px] font-sans font-extrabold text-slate-400 mt-3 select-none">
                       {data.week}
                     </span>
                   </div>
@@ -413,11 +413,11 @@ export default function KpiView({
                     {/* Medal Circle Badge */}
                     <div className="col-span-2 flex justify-center shrink-0">
                       {relativeIndex === 0 ? (
-                        <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-mono font-black text-[11px] flex items-center justify-center shadow-sm">1</span>
+                        <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-sans font-black text-[11px] flex items-center justify-center shadow-sm">1</span>
                       ) : relativeIndex === 1 ? (
-                        <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-mono font-black text-[11px] flex items-center justify-center shadow-sm">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-sans font-black text-[11px] flex items-center justify-center shadow-sm">2</span>
                       ) : (
-                        <span className="w-5 h-5 rounded-full bg-amber-600/60 text-white font-mono font-black text-[11px] flex items-center justify-center shadow-sm">3</span>
+                        <span className="w-5 h-5 rounded-full bg-amber-600/60 text-white font-sans font-black text-[11px] flex items-center justify-center shadow-sm">3</span>
                       )}
                     </div>
 
@@ -440,7 +440,7 @@ export default function KpiView({
 
                     {/* Main value KPI standard number */}
                     <div className="col-span-3 text-right">
-                      <span className={`text-xs font-mono font-black ${
+                      <span className={`text-xs font-sans font-black ${
                         staff.score >= 90 
                           ? 'text-emerald-600' 
                           : staff.score >= 80 
@@ -482,7 +482,7 @@ export default function KpiView({
                   </span>
                 </div>
                 
-                <span className="text-[10px] font-mono font-black bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg uppercase tracking-wider">
+                <span className="text-[10px] font-sans font-black bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg uppercase tracking-wider">
                   {selectedStaff.role}
                 </span>
               </div>
@@ -493,7 +493,7 @@ export default function KpiView({
                 <div className="bg-white p-3 border border-slate-150 rounded-xl space-y-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Doanh số cá nhân</p>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-slate-900">
+                    <span className="font-sans font-black text-slate-900">
                       {selectedStaff.score >= 90 ? '98%' : selectedStaff.score >= 80 ? '91%' : '79%'}
                     </span>
                     <span className="text-[9.5px] font-bold text-emerald-600">🟢 Đạt</span>
@@ -503,7 +503,7 @@ export default function KpiView({
                 <div className="bg-white p-3 border border-slate-150 rounded-xl space-y-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Hoàn thành Checklist</p>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-slate-900">
+                    <span className="font-sans font-black text-slate-900">
                       {selectedStaff.score >= 90 ? '100%' : selectedStaff.score >= 80 ? '94%' : '82%'}
                     </span>
                     <span className="text-[9.5px] font-bold text-emerald-600">🟢 Khớp</span>

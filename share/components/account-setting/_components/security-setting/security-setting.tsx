@@ -205,7 +205,7 @@ export function SecuritySettingContent() {
                           {t('auth:2fa.manualEntryDescription')}
                         </p>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          <code className="flex-1 bg-white px-3 py-2 rounded-md border border-amber-300 text-xs font-mono break-all overflow-x-auto">
+                          <code className="flex-1 bg-white px-3 py-2 rounded-md border border-amber-300 text-xs font-sans break-all overflow-x-auto">
                             {getSetupInfoMutation.data?.data?.secretKey}
                           </code>
                           <Button
@@ -257,7 +257,7 @@ export function SecuritySettingContent() {
                         {getSetupInfoMutation?.data?.data?.backupCodes?.map((code, index) => (
                           <div
                             key={index}
-                            className="bg-background border rounded-md px-2 sm:px-3 py-2 sm:py-2.5 text-center font-mono text-xs sm:text-sm font-medium shadow-sm min-w-0 overflow-hidden break-all hyphens-auto"
+                            className="bg-background border rounded-md px-2 sm:px-3 py-2 sm:py-2.5 text-center font-sans text-xs sm:text-sm font-medium shadow-sm min-w-0 overflow-hidden break-all hyphens-auto"
                           >
                             {code}
                           </div>

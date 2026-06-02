@@ -20,6 +20,5 @@ export type CategoryMeta = {
 
 export type ChecklistViewCategory = ChecklistCategory & {
   meta: CategoryMeta;
-  iconIndex: number;
   tasks: ChecklistItem[];
 };

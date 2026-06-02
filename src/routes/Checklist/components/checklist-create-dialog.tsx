@@ -1,34 +1,42 @@
-import React, { useCallback, useEffect } from 'react';
-import { AlertTriangle, Plus, Trash2, X, Edit2 } from 'lucide-react';
-import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { AlertTriangle, Edit2, Plus, Trash2, X } from 'lucide-react';
+import { useFieldArray, useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Button,
-  Input,
-  Textarea,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  Input,
+  Textarea,
+  Label,
 } from '../../../../share/ui';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../../../../share/ui/dialog';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
+import { SheetFooter } from '../../../../share/ui/sheet';
+import { cn } from '../../../../share/lib/utils';
 import { TimeSelect } from '@/src/components/custom/time-select';
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableHead,
-  TableRow,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '../../../../share/ui/table';
+import {
+  CHECKLIST_COLOR_META,
+  CHECKLIST_ICON_OPTIONS,
+  getChecklistColorMeta,
+  resolveChecklistIcon,
+} from '../checklist-meta';
 import { checklistFormSchema, type ChecklistFormValues } from '../_hook/use-checklist-dialog';
 
 interface ChecklistTaskRowProps {
   index: number;
   control: any;
-  showTimeLimit: boolean;
   canRemove: boolean;
   onRemove: (index: number) => void;
 }
@@ -36,18 +44,15 @@ interface ChecklistTaskRowProps {
 const ChecklistTaskRow = React.memo(function ChecklistTaskRow({
   index,
   control,
-  showTimeLimit,
   canRemove,
   onRemove,
 }: ChecklistTaskRowProps) {
-  const handleRemove = useCallback(() => {
-    onRemove(index);
-  }, [onRemove, index]);
+  const handleRemove = useCallback(() => onRemove(index), [index, onRemove]);
 
   return (
     <TableRow className="animate-in fade-in duration-100 !border-b last:!border-b-0">
       <TableCell className="!bg-white !px-3 !py-1.5 text-center">
-        <span className="text-slate-400 text-xs font-mono font-bold">{index + 1}</span>
+        <span className="text-slate-400 text-xs font-sans font-bold">{index + 1}</span>
       </TableCell>
       <TableCell className="!bg-white !px-2 !py-1.5">
         <FormField
@@ -59,9 +64,9 @@ const ChecklistTaskRow = React.memo(function ChecklistTaskRow({
                 <Textarea
                   {...field}
                   rows={1}
-                  placeholder="VD: Dọn sạch quầy, Kiểm két..."
+                  placeholder="VD: Dọn sạch quầy, kiểm két, báo cáo..."
                   style={{ minHeight: 32 }}
-                  className="w-full py-1.5 resize-none overflow-hidden bg-transparent border-0 focus:ring-0 focus:outline-none font-medium text-sm leading-normal placeholder:text-slate-300"
+                  className="font-sans w-full py-1.5 resize-none overflow-hidden bg-transparent border-0 focus:ring-0 focus:outline-none font-medium text-sm leading-normal placeholder:text-slate-300"
                 />
               </FormControl>
               <FormMessage className="text-[11px] mt-0.5" />
@@ -69,25 +74,20 @@ const ChecklistTaskRow = React.memo(function ChecklistTaskRow({
           )}
         />
       </TableCell>
-      {showTimeLimit && (
-        <TableCell className="!bg-white !px-2 !py-1.5 text-center">
-          <FormField
-            control={control}
-            name={`tasks.${index}.timeLimit`}
-            render={({ field }) => (
-              <FormItem className="grid gap-0">
-                <FormControl>
-                  <TimeSelect
-                    value={field.value}
-                    onChangeValue={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage className="text-[11px] mt-0.5" />
-              </FormItem>
-            )}
-          />
-        </TableCell>
-      )}
+      <TableCell className="!bg-white !px-2 !py-1.5 text-center">
+        <FormField
+          control={control}
+          name={`tasks.${index}.timeLimit`}
+          render={({ field }) => (
+            <FormItem className="grid gap-0">
+              <FormControl>
+                <TimeSelect value={field.value} onChangeValue={field.onChange} />
+              </FormControl>
+              <FormMessage className="text-[11px] mt-0.5" />
+            </FormItem>
+          )}
+        />
+      </TableCell>
       <TableCell className="!bg-white !px-1.5 !py-1.5 text-center">
         <Button
           type="button"
@@ -95,11 +95,7 @@ const ChecklistTaskRow = React.memo(function ChecklistTaskRow({
           size="icon-sm"
           onClick={handleRemove}
           disabled={!canRemove}
-          className={`rounded-lg ${
-            !canRemove
-              ? 'text-slate-200'
-              : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-          }`}
+          className={!canRemove ? 'rounded-lg text-slate-200' : 'rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50'}
           title="Xóa dòng"
         >
           <Trash2 className="size-3.5" />
@@ -111,7 +107,6 @@ const ChecklistTaskRow = React.memo(function ChecklistTaskRow({
 
 interface ChecklistCreateDialogProps {
   isOpen: boolean;
-  subTab: 'today' | 'process' | 'completed';
   initialValues: ChecklistFormValues | null;
   roleOptions: Array<{ code: string; name: string }>;
   isSubmittingDialog: boolean;
@@ -123,7 +118,6 @@ interface ChecklistCreateDialogProps {
 
 const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
   isOpen,
-  subTab,
   initialValues,
   roleOptions,
   isSubmittingDialog,
@@ -136,46 +130,61 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
     resolver: zodResolver(checklistFormSchema),
     defaultValues: {
       roleCode: '',
-      categoryId: '',
+      title: '',
+      iconName: 'Layers',
+      colorKey: 'rose',
       tasks: [{ title: '', timeLimit: '08:00' }],
     },
   });
+
+  const selectedColorKey = form.watch('colorKey');
+  const selectedIconName = form.watch('iconName');
+  const previewColor = useMemo(() => getChecklistColorMeta(selectedColorKey), [selectedColorKey]);
+  const PreviewIcon = useMemo(() => resolveChecklistIcon(selectedIconName), [selectedIconName]);
+
+  const [isMetaDialogOpen, setIsMetaDialogOpen] = React.useState(false);
+  const [tempIconName, setTempIconName] = React.useState('Layers');
+  const [tempColorKey, setTempColorKey] = React.useState('rose');
+
+  const handleOpenMetaDialog = useCallback(() => {
+    setTempIconName(form.getValues('iconName') || 'Layers');
+    setTempColorKey(form.getValues('colorKey') || 'rose');
+    setIsMetaDialogOpen(true);
+  }, [form]);
+
+  const handleSaveMeta = useCallback(() => {
+    form.setValue('iconName', tempIconName, { shouldDirty: true, shouldValidate: true });
+    form.setValue('colorKey', tempColorKey, { shouldDirty: true, shouldValidate: true });
+    setIsMetaDialogOpen(false);
+  }, [form, tempIconName, tempColorKey]);
+
+  const tempColorMeta = useMemo(() => getChecklistColorMeta(tempColorKey), [tempColorKey]);
+  const TempPreviewIcon = useMemo(() => resolveChecklistIcon(tempIconName), [tempIconName]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'tasks',
   });
 
-  // Reset form values when initialValues updates
   useEffect(() => {
     if (isOpen && initialValues) {
       form.reset(initialValues);
     }
-  }, [isOpen, initialValues, form]);
+  }, [form, initialValues, isOpen]);
 
-  const handleRemoveRow = useCallback((index: number) => {
-    remove(index);
-  }, [remove]);
-
-  const handleAddRow = useCallback(() => {
-    append({ title: '', timeLimit: '08:00' });
-  }, [append]);
-
+  const handleRemoveRow = useCallback((index: number) => remove(index), [remove]);
+  const handleAddRow = useCallback(() => append({ title: '', timeLimit: '08:00' }), [append]);
   const onSubmitHandler = useCallback(async (values: ChecklistFormValues) => {
     try {
       await onSubmit(values);
-    } catch (error) {
-      // API error handled by parent dialogError state
+    } catch {
+      // handled upstream
     }
   }, [onSubmit]);
 
   if (!isOpen) {
     return null;
   }
-
-  // Determine if timeLimit column should be visible (only for daily checklist)
-  const showTimeLimit = subTab === 'today';
-  const canRemove = fields.length > 1;
 
   return (
     <Dialog
@@ -188,24 +197,18 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
         showCloseButton={false}
         className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !p-4 !border-0 !bg-transparent !shadow-none flex items-center justify-center"
       >
-        <div className="bg-white rounded-2xl p-0 w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col border border-slate-200/80 relative overflow-hidden">
-          {/* Header */}
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/60">
+        <div className="font-sans w-full max-w-3xl rounded-[28px] border border-slate-200 bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
             <DialogTitle className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">
-                {isEditMode ? <Edit2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5 stroke-[3]" />}
+              <span className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                {isEditMode ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4 stroke-[3]" />}
               </span>
-              <span>
-                {isEditMode 
-                  ? (subTab === 'process' ? 'Chỉnh sửa quy trình' : 'Chỉnh sửa checklist') 
-                  : (subTab === 'process' ? 'Thêm quy trình mới' : 'Thêm checklist mới')
-                }
-              </span>
+              <span>{isEditMode ? 'Chỉnh sửa checklist mẫu' : 'Thêm checklist mẫu mới'}</span>
             </DialogTitle>
             <DialogClose asChild>
               <Button
                 variant="ghost"
-                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1.5 hover:bg-slate-100 rounded-xl"
               >
                 <X className="w-4.5 h-4.5" />
               </Button>
@@ -214,69 +217,86 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
 
           <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmitHandler)} className="flex-1 overflow-y-auto flex flex-col">
-              <div className="px-5 py-4 space-y-4">
-                {/* Error Banner */}
+              <div className="px-6 py-5 space-y-5">
                 {dialogError && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5 flex items-start gap-2 text-rose-700 animate-in slide-in-from-top-2 duration-150 text-sm">
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 flex items-start gap-2 text-rose-700 text-sm">
                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                     <p className="font-semibold leading-normal">{dialogError}</p>
                   </div>
                 )}
 
-                {/* Role & Category Name - side by side */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="roleCode"
-                    render={({ field }) => (
-                      <FormItem className="grid gap-0">
-                        <FormLabel isRequired className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                          Vai trò
-                        </FormLabel>
-                        <FormControl>
-                          <CustomSelect
-                            value={field.value}
-                            onChangeValue={field.onChange}
-                            options={roleOptions.map((role) => ({
-                              label: role.name,
-                              value: role.code,
-                            }))}
-                            clearable={false}
-                            className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg cursor-pointer transition-colors"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="grid grid-cols-1 lg:grid-cols-[128px_1fr] gap-5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleOpenMetaDialog}
+                    title="Cấu hình icon và màu checklist"
+                    className="h-auto rounded-2xl p-3 flex flex-col items-center justify-center text-center transition-all cursor-pointer select-none outline-none border border-slate-200 bg-slate-50 hover:bg-slate-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2"
+                  >
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border", previewColor.iconBg)}>
+                      <PreviewIcon className={cn("w-5.5 h-5.5", previewColor.iconColor)} />
+                    </div>
+                    <p className="mt-2.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Preview</p>
+                    <p className="mt-0.5 text-xs font-bold text-slate-500 leading-relaxed max-w-[100px] truncate">
+                      {form.watch('title') || 'Nhóm checklist'}
+                    </p>
+                  </Button>
 
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem className="grid gap-0">
-                        <FormLabel isRequired className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
-                          Nhóm công việc
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="VD: Ca sáng, Bếp, Kho..."
-                            clearable={false}
-                            {...field}
-                            className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="roleCode"
+                        render={({ field }) => (
+                          <FormItem className="grid gap-0">
+                            <FormLabel isRequired className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">
+                              Vai trò
+                            </FormLabel>
+                            <FormControl>
+                              <CustomSelect
+                                value={field.value}
+                                onChangeValue={field.onChange}
+                                options={roleOptions.map((role) => ({
+                                  label: role.name,
+                                  value: role.code,
+                                }))}
+                                clearable={false}
+                                className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer transition-colors"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem className="grid gap-0">
+                            <FormLabel isRequired className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">
+                              Tên nhóm
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                placeholder="VD: Ca sáng, chốt ca, kiểm kho..."
+                                clearable={false}
+                                {...field}
+                                className="font-sans w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Task Table */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <FormLabel className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                    <FormLabel className="text-xs font-black text-slate-500 uppercase tracking-wider block">
                       Danh sách công việc
                     </FormLabel>
                     <Button
@@ -284,31 +304,22 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                       variant="ghost"
                       size="sm"
                       onClick={handleAddRow}
-                      className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold h-7 px-2"
+                      className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold h-8 px-2.5 rounded-xl"
                     >
-                      <Plus className="size-3 stroke-[2.5]" />
+                      <Plus className="size-3.5 stroke-[2.5]" />
                       <span>Thêm dòng</span>
                     </Button>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="max-h-56 overflow-y-auto">
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
                       <Table className="w-full">
                         <TableHeader>
                           <TableRow className="!border-b-0">
-                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3 w-10 text-center">
-                              #
-                            </TableHead>
-                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3">
-                              Nội dung công việc
-                            </TableHead>
-                            {showTimeLimit && (
-                              <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3 w-28 text-center">
-                                Giờ quy định
-                              </TableHead>
-                            )}
-                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-2 w-10 text-center">
-                            </TableHead>
+                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3 w-10 text-center">#</TableHead>
+                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3">Nội dung công việc</TableHead>
+                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-3 w-28 text-center">Giờ quy định</TableHead>
+                            <TableHead className="!bg-slate-100 !text-slate-500 !font-bold !text-[11px] !uppercase !tracking-wider !h-8 !px-2 w-10 text-center" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -317,8 +328,7 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                               key={fieldItem.id}
                               index={index}
                               control={form.control}
-                              showTimeLimit={showTimeLimit}
-                              canRemove={canRemove}
+                              canRemove={fields.length > 1}
                               onRemove={handleRemoveRow}
                             />
                           ))}
@@ -329,13 +339,12 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                 </div>
               </div>
 
-              {/* Footer actions */}
-              <div className="px-5 py-3.5 border-t border-slate-100 flex gap-2.5 justify-end shrink-0 bg-slate-50/40 mt-auto">
+              <div className="px-6 py-4 border-t border-slate-100 flex gap-2.5 justify-end shrink-0 bg-slate-50/50 mt-auto">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
-                  className="h-9 px-4 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-slate-200 rounded-lg transition-all duration-200 cursor-pointer active:scale-95"
+                  className="h-10 px-4 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-slate-200 rounded-xl"
                 >
                   Hủy
                 </Button>
@@ -343,7 +352,7 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                   type="submit"
                   variant="default"
                   disabled={isSubmittingDialog}
-                  className="h-9 px-5 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer uppercase tracking-wider flex items-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 px-5 text-sm font-bold text-white bg-[#C21A1A] hover:bg-[#A81515] rounded-xl shadow-sm uppercase tracking-wider flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isSubmittingDialog ? (
                     <>
@@ -351,7 +360,7 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                       <span>Đang lưu...</span>
                     </>
                   ) : (
-                    <span>Lưu</span>
+                    <span>{isEditMode ? 'Lưu thay đổi' : 'Tạo checklist'}</span>
                   )}
                 </Button>
               </div>
@@ -359,6 +368,118 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
           </FormProvider>
         </div>
       </DialogContent>
+
+      <Dialog open={isMetaDialogOpen} onOpenChange={setIsMetaDialogOpen}>
+        <DialogContent showCloseButton={false} className="max-w-lg p-5 rounded-[22px] bg-white border border-slate-200 shadow-2xl text-left font-sans">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <DialogTitle className="text-sm font-black uppercase tracking-wider text-slate-800">
+                Cấu hình hiển thị nhóm checklist
+              </DialogTitle>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                Chọn icon và màu sắc đặc trưng cho nhóm checklist
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setIsMetaDialogOpen(false)}
+              className="rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 focus:outline-none"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-[130px_1fr]">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className={cn("flex h-14 w-14 items-center justify-center rounded-xl border", tempColorMeta.iconBg)}>
+                <TempPreviewIcon className={cn("h-7 w-7", tempColorMeta.iconColor)} />
+              </div>
+              <span className="mt-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Preview
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  Icon hiển thị
+                </Label>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {CHECKLIST_ICON_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    const isSelected = tempIconName === option.name;
+                    return (
+                      <Button
+                        key={option.name}
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTempIconName(option.name)}
+                        title={option.label}
+                        className={cn(
+                          "h-11 rounded-xl border p-0 flex flex-col items-center justify-center gap-0.5 focus:outline-none",
+                          isSelected
+                            ? "border-[#C21A1A] bg-rose-50 text-[#C21A1A]"
+                            : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="text-[9px] font-bold leading-none">{option.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  Màu giao diện
+                </Label>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {Object.entries(CHECKLIST_COLOR_META).map(([key, meta]) => {
+                    const isSelected = tempColorKey === key;
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTempColorKey(key)}
+                        title={meta.label}
+                        className={cn(
+                          "h-10 rounded-xl border p-0 focus:outline-none",
+                          isSelected ? "border-slate-900 ring-2 ring-slate-900/10" : "border-slate-200",
+                          meta.filterIdleClass
+                        )}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-current" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="mt-5 flex flex-row justify-end gap-2 border-t border-slate-100 pt-3 p-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsMetaDialogOpen(false)}
+              className="rounded-xl px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50 focus:outline-none"
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveMeta}
+              className="rounded-xl bg-[#C21A1A] px-4 py-2 text-xs font-black text-white transition-colors hover:bg-[#A81515] focus:outline-none"
+            >
+              Lưu cấu hình
+            </Button>
+          </SheetFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 });

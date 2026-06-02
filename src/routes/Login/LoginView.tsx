@@ -73,7 +73,7 @@ export default function LoginView({ onLogin }: LoginViewProps) {
 
       <div className="mb-6 flex flex-col items-center text-center relative z-10 animate-fade-in select-none">
         <Logo size="md" variant="dark" />
-        <p className="text-[9px] text-slate-500 font-mono font-bold tracking-wider uppercase mt-4.5 py-1 px-3 bg-slate-100 border border-slate-200/70 rounded-full select-none shadow-xs">
+        <p className="text-[9px] text-slate-500 font-sans font-bold tracking-wider uppercase mt-4.5 py-1 px-3 bg-slate-100 border border-slate-200/70 rounded-full select-none shadow-xs">
           RETAIL ERP &amp; STANDARD SOP MANAGER
         </p>
       </div>

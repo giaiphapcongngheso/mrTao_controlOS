@@ -462,7 +462,7 @@ const IssueCard = React.memo(function IssueCard({
 
             <div className="flex items-center gap-1">
               <span className="text-slate-400 font-medium">Lần xảy ra:</span>
-              <Badge variant="outline" className="font-bold font-mono text-[#C21A1A] bg-rose-50/70 border-rose-100 px-2 py-0.5 rounded text-[10px]">
+              <Badge variant="outline" className="font-bold font-sans text-[#C21A1A] bg-rose-50/70 border-rose-100 px-2 py-0.5 rounded text-[10px]">
                 {issue.occurrence || 1}
               </Badge>
             </div>
