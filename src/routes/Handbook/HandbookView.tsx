@@ -275,6 +275,10 @@ function renderFormattedContent(content: string): React.ReactNode[] {
   });
 }
 
+function isHtmlContent(content: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(content || '');
+}
+
 export default function HandbookView() {
   const currentUser = useAppStore((state) => state.currentUser);
 
@@ -869,9 +873,11 @@ export default function HandbookView() {
   );
 
   const isFilterActive = selectedFilter !== 'all' || Boolean(searchTerm) || Boolean(selectedCategory);
+  const activeDocContent = activeDoc?.content || '';
+  const activeDocIsRead = activeDoc ? Boolean(readDocs[activeDoc.id]) : false;
 
   return (
-    <div className="h-[calc(100vh-128px)] w-full space-y-3 overflow-y-auto pb-24 pr-1 text-left font-sans antialiased scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
+    <div className="h-[calc(100vh-128px)] w-full space-y-4 overflow-y-auto pb-24 pr-1 text-left font-sans antialiased scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
       {toastMessage && (
         <div className="fixed bottom-5 left-5 z-[80] flex max-w-sm items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl">
           <Check className="h-4 w-4 shrink-0 text-emerald-600" />
@@ -879,7 +885,41 @@ export default function HandbookView() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0 text-left">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
+              <h1 className="text-base font-black uppercase tracking-wide text-slate-900 sm:text-lg">
+                Sổ tay điều hành & hệ thống vận hành
+              </h1>
+            </div>
+            <p className="mt-1.5 text-xs font-bold leading-relaxed text-slate-500">
+              Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 shrink-0">
+            {permissions.canCreate && (
+              <button
+                type="button"
+                onClick={openCreateEditor}
+                className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                <span>Thêm tài liệu mới</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Hệ thống tóm tắt tối ưu (SOP Lite)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-900 break-words sm:text-lg">
@@ -905,6 +945,52 @@ export default function HandbookView() {
               </button>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+        <h3 className="mb-2.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+          Danh mục phễu lọc tài liệu
+        </h3>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <Button
+            type="button"
+            onClick={() => handleToggleCategory(null)}
+            className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase ${
+              !selectedCategory
+                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+            }`}
+          >
+            Tất cả danh mục
+          </Button>
+
+          {categoryOptions.map((categoryName) => {
+            const isSelected = selectedCategory === categoryName;
+            const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+            const config = getCategoryIconConfig(categoryName, categoryMeta);
+            const CatIcon = config.icon;
+
+            return (
+              <Button
+                key={categoryName}
+                type="button"
+                onClick={() => handleToggleCategory(categoryName)}
+                className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase transition-all ${
+                  isSelected
+                    ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                    : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`rounded-md p-1 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
+                    <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
+                  </span>
+                  <span>{categoryName}</span>
+                </span>
+              </Button>
+            );
+          })}
         </div>
       </section>
 
@@ -959,7 +1045,7 @@ export default function HandbookView() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <div className="hidden mt-3 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Nhóm danh mục:</span>
               <Button
                 type="button"
@@ -1009,7 +1095,7 @@ export default function HandbookView() {
                   </span>
                 )}
                 {searchTerm && (
-                  <span className="rounded border bg-white px-2 py-0.5 font-mono text-emerald-700">
+                  <span className="rounded border bg-white px-2 py-0.5 font-sans text-emerald-700">
                     Từ khóa: "{searchTerm}"
                   </span>
                 )}

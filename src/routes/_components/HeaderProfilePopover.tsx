@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Briefcase,
   Check,
@@ -101,7 +101,6 @@ export default function HeaderProfilePopover({
         title="Cập nhật thông tin vận hành"
       >
         <div className="text-right leading-tight">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-mono font-bold">Phiên vận hành</span>
           <span className="text-[11.5px] font-black text-slate-800 group-hover:text-[#C21A1A] transition-colors block">{currentUser?.fullName}</span>
           <span className="text-[9.5px] font-bold text-slate-500 opacity-95 block leading-none mt-0.5">{currentUser?.role}</span>
         </div>

@@ -5,7 +5,6 @@ import type {
   ChecklistItem,
   ChecklistDocument,
   ChecklistTemplateDocument,
-  ChecklistTemplateTask,
   ProcessDocument,
   ProcessStep,
 } from '../../../types/checklist.types';
@@ -21,7 +20,7 @@ import {
 import { systemLogService } from '../../../services/system-log-service';
 import { toastError, toastSuccess, toastWarning } from '../../../shared/lib/toast';
 import { normalizeAccessCode } from '../../../shared/hooks/use-module-permissions';
-import { guardAction, initBaseEntity, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
+import { guardAction, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
 import { getTodayKey } from '../checklist-utils';
 import {
   buildTodaySnapshotFromTemplate,
@@ -30,11 +29,14 @@ import {
   normalizeTaskInputs,
   toSnapshotTasks,
   toTemplateTasks,
-  type ChecklistCategoryType,
   type ChecklistDataState,
   type PendingTemplateSyncState,
   type SaveCategoryTaskInput,
 } from '../checklist-domain';
+import {
+  DEFAULT_CHECKLIST_COLOR_KEY,
+  DEFAULT_CHECKLIST_ICON_NAME,
+} from '../checklist-meta';
 
 type ChecklistPermissions = {
   canCreate: boolean;
@@ -161,58 +163,6 @@ export function useChecklistMutations({
     updateLocalState,
   ]);
 
-  const handleCreateRoleChecklistBatch = useCallback(async (
-    roleCode: string,
-    categoryId: string,
-    checklistName: string,
-    tasksList: Array<{ title: string; timeLimit?: string }>,
-  ) => {
-    const err = guardAction(permissions, 'canCreate', null, 'cong viec quy trinh');
-    if (err) {
-      toastError(err);
-      return;
-    }
-
-    const normalizedRoleCode = normalizeAccessCode(roleCode);
-    const safeTitle = checklistName.trim();
-    const newTasks = toTemplateTasks(tasksList);
-    if (!safeTitle || newTasks.length === 0) {
-      return;
-    }
-
-    const nowIso = new Date().toISOString();
-
-    const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
-    const newProcess = {
-      ...baseEntity,
-      storeId: activeStoreId,
-      roleCode: normalizedRoleCode,
-      title: safeTitle,
-      tasks: newTasks,
-    };
-    const previousState = updateLocalState((state) => ({
-      ...state,
-      processes: [...state.processes, newProcess],
-    }));
-
-    try {
-      await processService.create(newProcess);
-      void appendChecklistLog('CREATE', 'Checklist - Tao quy trinh', `Tao nhom quy trinh "${safeTitle}".`);
-    } catch (error) {
-      restoreLocalState(previousState);
-      console.error('Khong the luu quy trinh:', error);
-      toastError('Khong the luu quy trinh. Vui long thu lai.');
-      throw error;
-    }
-  }, [
-    activeStoreId,
-    appendChecklistLog,
-    dataStateRef,
-    permissions,
-    restoreLocalState,
-    updateLocalState,
-  ]);
-
   const handleCreateTodayChecklistBatch = useCallback(async (
     roleCode: string,
     categoryId: string,
@@ -298,8 +248,8 @@ export function useChecklistMutations({
     checklistName: string,
     taskTitle: string,
   ) => {
-    await handleCreateRoleChecklistBatch(roleCode, categoryId, checklistName, [{ title: taskTitle }]);
-  }, [handleCreateRoleChecklistBatch]);
+    await handleCreateTodayChecklistBatch(roleCode, categoryId, checklistName, [{ title: taskTitle }]);
+  }, [handleCreateTodayChecklistBatch]);
 
   const handleDeleteChecklistItem = useCallback(async (itemId: string) => {
     const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
@@ -338,6 +288,8 @@ export function useChecklistMutations({
       return;
     }
 
+
+
     toastError(`Khong tim thay cong viec voi ID: ${itemId}`);
   }, [
     appendChecklistLog,
@@ -372,6 +324,7 @@ export function useChecklistMutations({
               ...task,
               ...(updates.title !== undefined ? { title: safeTitle } : {}),
               ...(updates.timeLimit !== undefined ? { timeLimit: updates.timeLimit } : {}),
+              ...(updates.imageUrls !== undefined ? { imageUrls: updates.imageUrls } : {}),
               updatedAt: nowIso,
             }
             : task
@@ -405,10 +358,11 @@ export function useChecklistMutations({
   ]);
 
   const handleSaveCategoryBatch = useCallback(async (params: {
-    categoryType: ChecklistCategoryType;
     id: string | null;
     title: string;
     roleCode: string;
+    iconName: string;
+    colorKey: string;
     tasks: SaveCategoryTaskInput[];
   }) => {
     const err = guardAction(
@@ -440,6 +394,8 @@ export function useChecklistMutations({
         ...originalTemplate,
         title: safeTitle,
         roleCode: normalizedRoleCode,
+        iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+        colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
         updatedAt: nowIso,
       };
@@ -466,6 +422,8 @@ export function useChecklistMutations({
         await checklistTemplateService.update(originalTemplate.id, {
           title: safeTitle,
           roleCode: normalizedRoleCode,
+          iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+          colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
           tasks: templateTasks,
           updatedAt: nowIso,
         });
@@ -488,6 +446,8 @@ export function useChecklistMutations({
         storeId: activeStoreId,
         roleCode: normalizedRoleCode,
         title: safeTitle,
+        iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+        colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
       };
       const persistedTemplate = await checklistTemplateService.create(newTemplate);
@@ -530,7 +490,6 @@ export function useChecklistMutations({
 
   const handleRequestEditCategory = useCallback(async (
     categoryId: string,
-    categoryType: ChecklistCategoryType,
   ) => {
     const targetTemplate = dataStateRef.current.templates.find((template) => template.id === categoryId && !template.deletedAt);
     if (!targetTemplate) {
@@ -541,6 +500,8 @@ export function useChecklistMutations({
       id: targetTemplate.id,
       title: targetTemplate.title,
       roleCode: targetTemplate.roleCode,
+      iconName: targetTemplate.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+      colorKey: targetTemplate.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
       tasks: (targetTemplate.tasks || []).map((task) => ({
         id: task.id,
         title: task.title,
@@ -551,7 +512,6 @@ export function useChecklistMutations({
 
   const handleDeleteChecklistCategory = useCallback(async (
     id: string,
-    categoryType: ChecklistCategoryType,
   ) => {
     const err = guardAction(permissions, 'canDelete', null, 'nhom checklist');
     if (err) {
@@ -566,6 +526,7 @@ export function useChecklistMutations({
       toastError('Khong tim thay template checklist.');
       return;
     }
+
 
     const relatedSnapshots = dataStateRef.current.snapshots.filter((doc) => doc.templateId === id && !doc.deletedAt);
     const previousState = updateLocalState((state) => ({
@@ -592,6 +553,7 @@ export function useChecklistMutations({
     restoreLocalState,
     updateLocalState,
   ]);
+
   const handleConfirmTemplateSync = useCallback(async () => {
     if (!pendingTemplateSync) {
       return;
@@ -648,6 +610,8 @@ export function useChecklistMutations({
     title: string;
     description?: string;
     roleCode: string;
+    iconName?: string;
+    colorKey?: string;
     steps: ProcessStep[];
   }) => {
     const err = guardAction(permissions, 'canCreate', null, 'quy trinh');
@@ -664,6 +628,8 @@ export function useChecklistMutations({
         roleCode: normalizeAccessCode(payload.roleCode),
         title: payload.title.trim(),
         description: payload.description,
+        iconName: payload.iconName,
+        colorKey: payload.colorKey,
         steps: payload.steps,
       };
       await processService.create(newProcess);
@@ -732,7 +698,6 @@ export function useChecklistMutations({
     handleToggleChecklistItem,
     handleCreateRoleChecklist,
     handleCreateTodayChecklistBatch,
-    handleCreateRoleChecklistBatch,
     handleSaveCategoryBatch,
     handleRequestEditCategory,
     handleDeleteChecklistCategory,

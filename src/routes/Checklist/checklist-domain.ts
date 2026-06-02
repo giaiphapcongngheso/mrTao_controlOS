@@ -10,6 +10,10 @@ import type {
 import { ENTITY_PREFIX } from '../../constants/entity-id.constants';
 import { initBaseEntity, initBusinessEntity } from '../../types/base.types';
 import { getTodayKey } from './checklist-utils';
+import {
+  DEFAULT_CHECKLIST_COLOR_KEY,
+  DEFAULT_CHECKLIST_ICON_NAME,
+} from './checklist-meta';
 
 export type ChecklistCategoryType = 'today' | 'process';
 
@@ -130,6 +134,7 @@ export function flattenSnapshotTask(doc: ChecklistDocument, task: ChecklistTask)
     deletedAt: task.deletedAt,
     deletedByName: task.deletedByName,
     deletedByUsername: task.deletedByUsername,
+    imageUrls: task.imageUrls || [],
   };
 }
 
@@ -190,6 +195,9 @@ export function deriveChecklistState(state: ChecklistDataState, todayKey = getTo
       countDone: doneCount,
       countTotal: catItems.length,
       isCompleted: catItems.length > 0 && doneCount === catItems.length,
+      roleCode: template.roleCode,
+      iconName: template.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+      colorKey: template.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
     };
   });
 
@@ -207,6 +215,9 @@ export function deriveChecklistState(state: ChecklistDataState, todayKey = getTo
         countDone: doneCount,
         countTotal: catItems.length,
         isCompleted: catItems.length > 0 && doneCount === catItems.length,
+        roleCode: snapshot.roleCode,
+        iconName: DEFAULT_CHECKLIST_ICON_NAME,
+        colorKey: DEFAULT_CHECKLIST_COLOR_KEY,
       };
     });
 

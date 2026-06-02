@@ -30,3 +30,24 @@ export async function uploadHandbookImage(file: File, editingDocId?: string | nu
 
   return getDownloadURL(snapshot.ref);
 }
+
+export async function uploadChecklistItemImage(file: File, itemId: string): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('INVALID_IMAGE_TYPE');
+  }
+
+  const storage = getFirebaseStorage();
+  const fileName = sanitizeFileName(file.name);
+  const uniqueId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const objectPath = `checklist-images/${itemId}/${uniqueId}-${fileName}`;
+
+  const imageRef = ref(storage, objectPath);
+  const snapshot = await uploadBytes(imageRef, file, {
+    contentType: file.type || 'application/octet-stream',
+  });
+
+  return getDownloadURL(snapshot.ref);
+}

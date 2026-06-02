@@ -40,7 +40,6 @@ export default function ChecklistContainer({
     handleToggleChecklistItem,
     handleCreateRoleChecklist,
     handleCreateTodayChecklistBatch,
-    handleCreateRoleChecklistBatch,
     handleSaveCategoryBatch,
     handleRequestEditCategory,
     handleDeleteChecklistCategory,
@@ -72,7 +71,6 @@ export default function ChecklistContainer({
       defaultRoleCode={currentChecklistRoleCode}
       onCreateRoleChecklist={handleCreateRoleChecklist}
       onCreateTodayChecklistBatch={handleCreateTodayChecklistBatch}
-      onCreateRoleChecklistBatch={handleCreateRoleChecklistBatch}
       onSaveCategoryBatch={handleSaveCategoryBatch}
       onRequestEditCategory={handleRequestEditCategory}
       onDeleteCategory={handleDeleteChecklistCategory}

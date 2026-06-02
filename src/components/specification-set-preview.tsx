@@ -61,7 +61,7 @@ export function SpecificationSetPreview({ details, className }: SpecificationSet
                 <span className="shrink-0 text-[10px] text-muted-foreground/60 w-4 text-right">
                   {index + 1}.
                 </span>
-                <span className="font-mono text-muted-foreground shrink-0">
+                <span className="font-sans text-muted-foreground shrink-0">
                   {detail.specification?.code ?? '-'}
                 </span>
                 <span className="text-foreground truncate">

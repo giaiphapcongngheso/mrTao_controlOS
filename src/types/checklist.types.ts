@@ -12,6 +12,7 @@ export interface ChecklistTask extends BaseEntity {
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
+  imageUrls?: string[];
 }
 
 /**
@@ -31,6 +32,8 @@ export interface ChecklistTemplateDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
   title: string;
+  iconName?: string;
+  colorKey?: string;
   tasks: ChecklistTemplateTask[];
 }
 
@@ -68,6 +71,8 @@ export interface ProcessDocument extends BaseEntity {
   roleCode: string;
   title: string;
   description?: string;
+  iconName?: string;
+  colorKey?: string;
   steps: ProcessStep[];
 }
 
@@ -82,6 +87,9 @@ export interface ChecklistCategory {
   countDone: number;
   countTotal: number;
   isCompleted: boolean;
+  roleCode?: string;
+  iconName?: string;
+  colorKey?: string;
 }
 
 /**
@@ -100,4 +108,5 @@ export interface ChecklistItem extends BaseEntity {
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
+  imageUrls?: string[];
 }

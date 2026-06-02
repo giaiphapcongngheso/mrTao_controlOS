@@ -411,7 +411,7 @@ export default function TasksView({
           <div key={stat.label} className={cn('p-4 rounded-xl border', stat.wrapperClass)}>
             <p className={cn('text-[10px] font-black uppercase tracking-wider', stat.labelColor)}>{stat.label}</p>
             <div className="flex items-center justify-between mt-1.5">
-              <span className={cn('text-xl font-black font-mono', stat.countColor)}>{stat.count}</span>
+              <span className={cn('text-xl font-black font-sans', stat.countColor)}>{stat.count}</span>
               <span className={cn('w-1.5 h-1.5 rounded-full', stat.dotClass)}></span>
             </div>
           </div>
@@ -580,7 +580,7 @@ export default function TasksView({
                     <h4 className="font-extrabold text-slate-900 text-[14.5px] leading-snug tracking-tight hover:text-slate-950 transition-colors break-words">
                       {task.title}
                     </h4>
-                    <div className="text-[10px] text-slate-400 font-mono tracking-wider">
+                    <div className="text-[10px] text-slate-400 font-sans tracking-wider">
                       {generateTaskCode(task)}
                     </div>
                   </div>

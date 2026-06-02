@@ -2,13 +2,15 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../share/ui';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
-import { ChecklistCategory, ChecklistItem } from '../../types/checklist.types';
+import { ChecklistCategory, ChecklistItem, ProcessDocument, ProcessStep } from '../../types/checklist.types';
 import ChecklistContentArea from './components/checklist-content-area';
 import ChecklistCreateDialog from './components/checklist-create-dialog';
 import ChecklistHeader from './components/checklist-header';
 import ChecklistTabBar from './components/checklist-tab-bar';
 import ChecklistConfigBar from './components/checklist-config-bar';
 import ChecklistErrorBanner from './components/checklist-error-banner';
+import ProcessContentArea from './components/process-content-area';
+import ProcessCreateDialog, { type ProcessDialogValues } from './components/process-create-dialog';
 import {
   useFilteredCategories,
   useKpiStats,
@@ -19,7 +21,7 @@ import { getTodayKey, getWeekDates } from './checklist-utils';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
-  processCategories: ChecklistCategory[];
+  processes: ProcessDocument[];
   items: ChecklistItem[];
   allChecklistItems?: ChecklistItem[];
   onToggleItem: (itemId: string) => void;
@@ -27,24 +29,25 @@ interface ChecklistViewProps {
   defaultRoleCode: string;
   onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
   onCreateTodayChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onCreateRoleChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
   onSaveCategoryBatch?: (params: {
-    categoryType: 'today' | 'process';
     id: string | null;
     title: string;
     roleCode: string;
+    iconName: string;
+    colorKey: string;
     tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
   }) => Promise<void>;
   onRequestEditCategory?: (
     categoryId: string,
-    categoryType: 'today' | 'process',
   ) => Promise<{
     id: string;
     title: string;
     roleCode: string;
+    iconName?: string;
+    colorKey?: string;
     tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
   } | null>;
-  onDeleteCategory?: (id: string, categoryType: 'today' | 'process') => Promise<void>;
+  onDeleteCategory?: (id: string) => Promise<void>;
   onDeleteChecklistItem?: (itemId: string) => Promise<void>;
   onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
   pendingTemplateSync?: {
@@ -53,6 +56,16 @@ interface ChecklistViewProps {
   } | null;
   onConfirmTemplateSync?: () => Promise<void>;
   onCancelTemplateSync?: () => void;
+  onCreateProcess?: (payload: {
+    title: string;
+    description?: string;
+    roleCode: string;
+    iconName?: string;
+    colorKey?: string;
+    steps: ProcessStep[];
+  }) => Promise<void>;
+  onUpdateProcess?: (id: string, updates: Partial<ProcessDocument>) => Promise<void>;
+  onDeleteProcess?: (id: string) => Promise<void>;
   permissions: {
     canCreate: boolean;
     canUpdate: boolean;
@@ -63,13 +76,45 @@ interface ChecklistViewProps {
   onDismissError?: () => void;
 }
 
-/**
- * ChecklistView component representing the UI shell of the operational checklists.
- * Combines hooks and isolated visual sub-components into a thin orchestrator page.
- */
+function createProcessDialogDefaults(roleCode: string): ProcessDialogValues {
+  return {
+    title: '',
+    roleCode,
+    description: '',
+    iconName: 'Layers',
+    colorKey: 'rose',
+    steps: [{
+      id: `step-${Date.now()}`,
+      title: '',
+      tasksText: '',
+      subSteps: [],
+    }],
+  };
+}
+
+function mapProcessToDialogValues(process: ProcessDocument): ProcessDialogValues {
+  return {
+    title: process.title,
+    roleCode: process.roleCode,
+    description: process.description || '',
+    iconName: process.iconName || 'Layers',
+    colorKey: process.colorKey || 'rose',
+    steps: (process.steps || []).map((step) => ({
+      id: step.id,
+      title: step.title,
+      tasksText: (step.tasks || []).join('\n'),
+      subSteps: (step.steps || []).map((subStep) => ({
+        id: subStep.id,
+        title: subStep.title,
+        tasksText: (subStep.tasks || []).join('\n'),
+      })),
+    })),
+  };
+}
+
 export default function ChecklistView({
   todayCategories,
-  processCategories,
+  processes,
   items,
   allChecklistItems = [],
   onToggleItem,
@@ -77,7 +122,6 @@ export default function ChecklistView({
   defaultRoleCode,
   onCreateRoleChecklist,
   onCreateTodayChecklistBatch,
-  onCreateRoleChecklistBatch,
   onSaveCategoryBatch,
   onRequestEditCategory,
   onDeleteCategory,
@@ -86,6 +130,9 @@ export default function ChecklistView({
   pendingTemplateSync,
   onConfirmTemplateSync,
   onCancelTemplateSync,
+  onCreateProcess,
+  onUpdateProcess,
+  onDeleteProcess,
   permissions,
   isLoading = false,
   errorMessage,
@@ -94,20 +141,20 @@ export default function ChecklistView({
   const [subTab, setSubTab] = useState<'today' | 'process' | 'completed'>('today');
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Tab Completed Viewing Mode
   const [completedViewMode, setCompletedViewMode] = useState<'day' | 'week'>('day');
   const [selectedWeekDayKey, setSelectedWeekDayKey] = useState(getTodayKey());
+  const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
+  const [processDialogInitialValues, setProcessDialogInitialValues] = useState<ProcessDialogValues | null>(null);
+  const [processDialogError, setProcessDialogError] = useState<string | null>(null);
+  const [processDialogEditId, setProcessDialogEditId] = useState<string | null>(null);
+  const [isSubmittingProcessDialog, setIsSubmittingProcessDialog] = useState(false);
+
   const weekDates = useMemo(() => getWeekDates(), []);
 
-  const activeCategoryType: 'today' | 'process' = subTab === 'process' ? 'process' : 'today';
-
-  // Toggle category accordion expansion
   const toggleExpand = useCallback((catId: string) => {
-    setExpandedCategoryId(prev => prev === catId ? null : catId);
+    setExpandedCategoryId((prev) => prev === catId ? null : catId);
   }, []);
 
-  // 1. Batch Create Dialog Hook
   const {
     isAddingItem,
     setIsAddingItem,
@@ -122,15 +169,16 @@ export default function ChecklistView({
     handleDialogSubmit,
   } = useChecklistDialog({
     defaultRoleCode,
-    subTab,
     onSaveCategoryBatch,
     onRequestEditCategory,
   });
 
-  // 2. Filtered Categories Hook
-  const filteredCategories = useFilteredCategories({
+  const {
+    filteredCategories,
+    filteredProcesses,
+  } = useFilteredCategories({
     todayCategories,
-    processCategories,
+    processes,
     items,
     allChecklistItems,
     subTab,
@@ -140,10 +188,8 @@ export default function ChecklistView({
     selectedWeekDayKey,
   });
 
-  // 3. Operational KPI stats Hook
   const kpiStats = useKpiStats(items);
 
-  // 4. Inline Edit Item Hook
   const {
     editingItemId,
     setEditingItemId,
@@ -168,45 +214,50 @@ export default function ChecklistView({
     onInlineSave: handleInlineSave,
   }), [
     editingItemId,
-    setEditingItemId,
     editItemTitle,
-    setEditItemTitle,
     editItemTimeLimit,
-    setEditItemTimeLimit,
     handleInlineSave,
+    setEditItemTimeLimit,
+    setEditItemTitle,
+    setEditingItemId,
   ]);
 
-  // Stable callback references for child components
   const handleOpenCreateDialog = useCallback(() => {
+    if (subTab === 'process') {
+      setProcessDialogEditId(null);
+      setProcessDialogError(null);
+      setProcessDialogInitialValues(createProcessDialogDefaults(dialogRoleCode || defaultRoleCode));
+      setIsProcessDialogOpen(true);
+      return;
+    }
     openCreateDialog();
-  }, [openCreateDialog]);
+  }, [defaultRoleCode, dialogRoleCode, openCreateDialog, subTab]);
 
-  const handleOpenEditDialog = useCallback((cat: { id: string }) => {
-    const categoryType: 'today' | 'process' = subTab === 'process' ? 'process' : 'today';
-    void openEditDialog(cat.id, categoryType);
-  }, [openEditDialog, subTab]);
+  const handleOpenEditChecklistDialog = useCallback((cat: { id: string }) => {
+    void openEditDialog(cat.id);
+  }, [openEditDialog]);
+
+  const handleOpenEditProcessDialog = useCallback((process: ProcessDocument) => {
+    setProcessDialogEditId(process.id);
+    setProcessDialogError(null);
+    setProcessDialogInitialValues(mapProcessToDialogValues(process));
+    setIsProcessDialogOpen(true);
+  }, []);
 
   const handleAddInlineItem = useCallback(async (
     categoryId: string,
     categoryTitle: string,
     title: string,
-    timeLimit?: string
+    timeLimit?: string,
   ) => {
     const roleCode = dialogRoleCode || defaultRoleCode;
-    if (subTab === 'today') {
-      if (onCreateTodayChecklistBatch) {
-        await onCreateTodayChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
-      } else {
-        await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
-      }
-    } else {
-      if (onCreateRoleChecklistBatch) {
-        await onCreateRoleChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
-      } else {
-        await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
-      }
+    if (onCreateTodayChecklistBatch) {
+      await onCreateTodayChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
+      return;
     }
-  }, [dialogRoleCode, defaultRoleCode, subTab, onCreateTodayChecklistBatch, onCreateRoleChecklistBatch, onCreateRoleChecklist]);
+
+    await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
+  }, [defaultRoleCode, dialogRoleCode, onCreateRoleChecklist, onCreateTodayChecklistBatch]);
 
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
@@ -214,26 +265,55 @@ export default function ChecklistView({
     setCompletedViewMode('day');
   }, []);
 
-  const handleCloseDialog = useCallback(() => {
+  const handleCloseChecklistDialog = useCallback(() => {
     setIsAddingItem(false);
   }, [setIsAddingItem]);
 
+  const handleCloseProcessDialog = useCallback(() => {
+    setIsProcessDialogOpen(false);
+    setProcessDialogError(null);
+    setProcessDialogEditId(null);
+  }, []);
+
+  const handleSubmitProcessDialog = useCallback(async (payload: {
+    title: string;
+    description?: string;
+    roleCode: string;
+    iconName?: string;
+    colorKey?: string;
+    steps: ProcessStep[];
+  }) => {
+    setProcessDialogError(null);
+    setIsSubmittingProcessDialog(true);
+
+    try {
+      if (processDialogEditId) {
+        await onUpdateProcess?.(processDialogEditId, payload);
+      } else {
+        await onCreateProcess?.(payload);
+      }
+      handleCloseProcessDialog();
+    } catch (error: any) {
+      setProcessDialogError(error?.message || 'Khong the luu quy trinh. Vui long thu lai.');
+      throw error;
+    } finally {
+      setIsSubmittingProcessDialog(false);
+    }
+  }, [handleCloseProcessDialog, onCreateProcess, onUpdateProcess, processDialogEditId]);
+
   return (
     <div className="space-y-2.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
-      {/* 1. Header Block */}
       <ChecklistHeader
         subTab={subTab}
         canCreate={permissions.canCreate}
         onOpenCreateDialog={handleOpenCreateDialog}
       />
 
-      {/* 2. Error Message Banner */}
       <ChecklistErrorBanner
         errorMessage={errorMessage}
         onDismissError={onDismissError}
       />
 
-      {/* 3. Navigation tabs and Search Filter bar */}
       <ChecklistTabBar
         subTab={subTab}
         setSubTab={setSubTab}
@@ -244,7 +324,6 @@ export default function ChecklistView({
         roleOptions={roleOptions}
       />
 
-      {/* 4. Sub-Configuration Bar / Completed view logs selector */}
       <ChecklistConfigBar
         subTab={subTab}
         completedViewMode={completedViewMode}
@@ -254,47 +333,71 @@ export default function ChecklistView({
         weekDates={weekDates}
       />
 
-      {/* 5. Main content renderer */}
-      <ChecklistContentArea
-        filteredCategories={filteredCategories}
-        subTab={subTab}
-        expandedCategoryId={expandedCategoryId}
-        onToggleExpand={toggleExpand}
-        permissions={permissions}
-        activeCategoryType={activeCategoryType}
-        onToggleItem={onToggleItem}
-        onDeleteCategory={onDeleteCategory}
-        onOpenEditCategoryDialog={handleOpenEditDialog}
-        editState={editState}
-        onDeleteItem={handleDeleteItem}
-        onAddInlineItem={handleAddInlineItem}
-        onResetFilters={handleResetFilters}
-        kpiStats={kpiStats}
-        isLoading={isLoading}
-      />
+      {subTab === 'process' ? (
+        <ProcessContentArea
+          processes={filteredProcesses}
+          isLoading={isLoading}
+          canCreate={permissions.canCreate}
+          canUpdate={permissions.canUpdate}
+          canDelete={permissions.canDelete}
+          onOpenCreateDialog={handleOpenCreateDialog}
+          onOpenEditDialog={handleOpenEditProcessDialog}
+          onDeleteProcess={async (id) => {
+            await onDeleteProcess?.(id);
+          }}
+          onResetFilters={handleResetFilters}
+        />
+      ) : (
+        <ChecklistContentArea
+          filteredCategories={filteredCategories}
+          subTab={subTab}
+          expandedCategoryId={expandedCategoryId}
+          onToggleExpand={toggleExpand}
+          permissions={permissions}
+          onToggleItem={onToggleItem}
+          onDeleteCategory={onDeleteCategory}
+          onOpenEditCategoryDialog={handleOpenEditChecklistDialog}
+          editState={editState}
+          onDeleteItem={handleDeleteItem}
+          onAddInlineItem={handleAddInlineItem}
+          onResetFilters={handleResetFilters}
+          kpiStats={kpiStats}
+          isLoading={isLoading}
+          roleOptions={roleOptions}
+          onUpdateChecklistItem={onUpdateChecklistItem}
+        />
+      )}
 
-      {/* 6. Floating Action Button (FAB) */}
       {permissions.canCreate && (
         <Button
           onClick={handleOpenCreateDialog}
           className="fixed bottom-24 right-5 sm:hidden w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-lg cursor-pointer z-40"
-          title="Thêm checklist mới nhanh (1 tay)"
+          title={subTab === 'process' ? 'Them quy trinh moi' : 'Them checklist moi'}
         >
           <Plus className="w-6 h-6 stroke-[3]" />
         </Button>
       )}
 
-      {/* 7. Modal Create Dialog */}
       <ChecklistCreateDialog
         isOpen={isAddingItem}
-        subTab={subTab}
         initialValues={dialogInitialValues}
         roleOptions={roleOptions}
         isSubmittingDialog={isSubmittingDialog}
         dialogError={dialogError}
-        onClose={handleCloseDialog}
+        onClose={handleCloseChecklistDialog}
         onSubmit={handleDialogSubmit}
         isEditMode={dialogEditCategoryId !== null}
+      />
+
+      <ProcessCreateDialog
+        isOpen={isProcessDialogOpen}
+        roleOptions={roleOptions}
+        initialValues={processDialogInitialValues}
+        isSubmitting={isSubmittingProcessDialog}
+        errorMessage={processDialogError}
+        isEditMode={processDialogEditId !== null}
+        onClose={handleCloseProcessDialog}
+        onSubmit={handleSubmitProcessDialog}
       />
 
       <ActionConfirmDialog
@@ -304,10 +407,10 @@ export default function ChecklistView({
             onCancelTemplateSync?.();
           }
         }}
-        title="Đồng bộ thay đổi template xuống checklist hôm nay"
+        title="Dong bo thay doi template xuong checklist hom nay"
         description={
           pendingTemplateSync
-            ? `Template "${pendingTemplateSync.templateTitle}" đã thay đổi. Bạn có muốn đồng bộ xuống checklist hôm nay "${pendingTemplateSync.snapshotTitle}" không?`
+            ? `Template "${pendingTemplateSync.templateTitle}" da thay doi. Ban co muon dong bo xuong checklist hom nay "${pendingTemplateSync.snapshotTitle}" khong?`
             : ''
         }
         onConfirm={() => {

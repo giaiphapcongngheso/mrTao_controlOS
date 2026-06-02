@@ -30,12 +30,12 @@ interface InternalAuthInput {
 }
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  CHU_CUA_HANG: 'Chá»§ cá»­a hÃ ng',
-  QUAN_LY: 'Quáº£n lÃ½ showroom',
-  SALES: 'NhÃ¢n viÃªn bÃ¡n láº»',
-  KHO: 'Ká»¹ thuáº­t viÃªn',
-  CSKH: 'ChÄƒm sÃ³c khÃ¡ch hÃ ng',
-  QUAN_TRI_VIEN: 'Quáº£n trá»‹ viÃªn há»‡ thá»‘ng',
+  CHU_CUA_HANG: 'Chủ cửa hàng',
+  QUAN_LY: 'Quản lý showroom',
+  SALES: 'Nhân viên bán lẻ',
+  KHO: 'Kỹ thuật viên',
+  CSKH: 'Chăm sóc khách hàng',
+  QUAN_TRI_VIEN: 'Quản trị viên hệ thống',
 };
 
 const FALLBACK_AUTH_EMAIL_DOMAIN = 'mrtaocoop.com';
@@ -76,7 +76,7 @@ function toUserSession(staff: StaffMember): UserSession {
     email: staff.email || `${normalizedUsername}@mrtaocoop.com`,
     department: staff.department || getDepartmentForRole(staff.role),
     position: staff.position || getPositionForRole(staff.role),
-    statusLabel: staff.status === 'active' ? 'Äang hoáº¡t Ä‘á»™ng' : 'NgÆ°ng hoáº¡t Ä‘á»™ng',
+    statusLabel: staff.status === 'active' ? 'Đang hoạt động' : 'Ngưng hoạt động',
   };
 }
 

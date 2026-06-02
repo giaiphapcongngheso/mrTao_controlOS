@@ -42,8 +42,24 @@ export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null
 
   const username = user?.username || '';
   const fullName = user?.fullName || '';
-  const role = user?.role || '';
   const roleCode = resolveRoleCode(user ?? {}, legacyUser);
+
+  const roleMap: Record<string, string> = {
+    CHU_CUA_HANG: 'Chủ cửa hàng',
+    QUAN_LY: 'Quản lý showroom',
+    SALES: 'Nhân viên bán lẻ',
+    KHO: 'Kỹ thuật viên',
+    CSKH: 'Chăm sóc khách hàng',
+    QUAN_TRI_VIEN: 'Quản trị viên hệ thống',
+  };
+  const role = roleMap[roleCode] || user?.role || roleCode;
+
+  let statusLabel = user?.statusLabel || (legacyUser.trangThai as string | undefined) || '';
+  if (statusLabel === 'Đang hoạt động') {
+    statusLabel = 'Đang hoạt động';
+  } else if (statusLabel === 'Ngưng hoạt động') {
+    statusLabel = 'Ngưng hoạt động';
+  }
 
   return {
     ...user,
@@ -58,7 +74,7 @@ export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null
     email: user?.email ?? '',
     department: user?.department || (legacyUser.boPhan as string | undefined) || '',
     position: user?.position || (legacyUser.viTri as string | undefined) || '',
-    statusLabel: user?.statusLabel || (legacyUser.trangThai as string | undefined) || '',
+    statusLabel,
     sessionExpiresAt:
       typeof user?.sessionExpiresAt === 'number' && user.sessionExpiresAt > Date.now()
         ? user.sessionExpiresAt
