@@ -1,6 +1,5 @@
-import type { User } from 'oidc-client-ts';
 import { create } from 'zustand';
-import { convertOidcUserToBaseUser } from './auth-helpers';
+import { convertOidcUserToBaseUser, type OidcUserLike } from './auth-helpers';
 import { getAuthStoreDeps } from './auth-store-deps';
 import type {
   IAuthUser,
@@ -124,7 +123,7 @@ export interface AuthState {
   organization: IFlatItem | null;
   accessToken: string | null;
   refreshToken: string | null;
-  oidcUser: User | null;
+  oidcUser: OidcUserLike | null;
   oidcAccessToken: string | null;
   /** Hash của access token tại thời điểm permissions được load lần cuối. Dùng để phát hiện token đổi. */
   permissionTokenHash: string | null;
@@ -135,7 +134,7 @@ export interface AuthState {
   employeeList: IAuthEmployee[] | null;
   needsEmployeeSelection: boolean;
 
-  syncFromOidcUser: (oidcUser: User) => void;
+  syncFromOidcUser: (oidcUser: OidcUserLike) => void;
   saveToken: (user: Record<string, unknown>, tokens: { access: string; refresh: string }) => void;
   setProfileFromApi: (payload: { user?: IAuthUser | null; permissions?: string[] | null }) => void;
   setEmployeeInfo: (employee: IAuthEmployee | null) => void;
@@ -256,7 +255,7 @@ export const useAuthStore = create<AuthState>((set: SetStateAuth, get: GetStateA
     return current !== null && current === permissionTokenHash;
   },
 
-  syncFromOidcUser: (oidcUser: User) => {
+  syncFromOidcUser: (oidcUser: OidcUserLike) => {
     const oidcUserData = convertOidcUserToBaseUser(oidcUser) as unknown as IAuthUser;
     const current = get().user;
     const user: IAuthUser = {
@@ -506,8 +505,8 @@ export const useAuthStore = create<AuthState>((set: SetStateAuth, get: GetStateA
     if (!deps) return;
     try {
       const oidcUser = await deps.userManager.getUser();
-      if (oidcUser && !(oidcUser as { expired?: boolean }).expired) {
-        get().syncFromOidcUser(oidcUser as User);
+      if (oidcUser && !(oidcUser as OidcUserLike).expired) {
+        get().syncFromOidcUser(oidcUser as OidcUserLike);
       }
     } catch (e) {
       console.error('[AuthStore] Failed to restore from OIDC:', e);

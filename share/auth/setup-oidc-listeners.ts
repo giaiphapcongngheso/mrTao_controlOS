@@ -1,6 +1,6 @@
-import type { User } from 'oidc-client-ts';
 import { useAuthStore } from './auth-store';
 import { getAuthStoreDeps } from './auth-store-deps';
+import type { OidcUserLike } from './auth-helpers';
 
 const AUTH_EMPLOYEE_KEY = 'auth_employee';
 
@@ -37,7 +37,7 @@ export function setupOidcEventListeners(deps: SetupOidcListenersDeps): void {
   });
 
   userManager.events.addUserLoaded((user: unknown) => {
-    const u = user as User;
+    const u = user as OidcUserLike;
     console.log('[AuthStore] User loaded/renewed from OIDC (automaticSilentRenew)');
     useAuthStore.getState().syncFromOidcUser(u);
     const current = useAuthStore.getState().user;

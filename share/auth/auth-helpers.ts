@@ -1,5 +1,20 @@
-import type { User } from 'oidc-client-ts';
 import type { IBaseEmployee, IBaseUser, IFlatItem } from '../types';
+
+export interface OidcUserProfile {
+  sub: string;
+  preferred_username?: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+  [key: string]: unknown;
+}
+
+export interface OidcUserLike {
+  profile: OidcUserProfile;
+  access_token: string;
+  refresh_token?: string;
+  expired?: boolean;
+}
 
 /**
  * Decode JWT token to extract payload
@@ -79,12 +94,12 @@ export const findCurrentWorkPosition = <T extends IBaseEmployee>(
 };
 
 /**
- * Convert OIDC User profile to base user object
- * @param oidcUser - OIDC User from oidc-client-ts
+ * Convert OIDC user profile to base user object
+ * @param oidcUser - OIDC user payload
  * @param accessToken - Optional; uses oidcUser.access_token when not provided
  */
 export const convertOidcUserToBaseUser = (
-  oidcUser: User,
+  oidcUser: OidcUserLike,
   _accessToken?: string,
 ): IBaseUser & Record<string, unknown> => {
   const profile = oidcUser.profile;

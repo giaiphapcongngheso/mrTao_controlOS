@@ -23,6 +23,7 @@ export const RESOURCE_PATH = {
   ISSUES: '/issues',
   NOTIFICATIONS: '/notifications',
   TASKS: '/tasks',
+  PRODUCTS: '/products',
   HANDBOOK_DOCUMENTS: '/handbook/documents',
   HANDBOOK_CATEGORIES: '/handbook/categories',
 } as const;
