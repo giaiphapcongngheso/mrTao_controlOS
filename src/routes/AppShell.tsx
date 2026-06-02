@@ -42,6 +42,8 @@ import HandbookView from './Handbook/HandbookView';
 import LoginView from './Login/LoginView';
 import StaffPermissionsView from './StaffPermissions/StaffPermissionsView';
 import NotificationsView, { NotificationsBellPopover } from './Notifications/NotificationsView';
+import { MarketingView } from './marketing';
+import { WarehouseView } from './warehouse';
 import { enrichSessionWithDefaultFields } from '../shared/auth';
 import { SESSION_STORAGE_KEY, useAppStore } from '../stores/app-store';
 import { signOutInternalStaff } from '../services/admin/internal-auth-service';
@@ -416,8 +418,8 @@ export default function App() {
       case 'SOP': return renderIssues();
       case 'Reports': return renderReports();
       case 'Handbook': return renderHandbook();
-      case 'Marketing': return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center"><Megaphone className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-black text-slate-700">Marketing & Truyền thông</h2><p className="mt-2 text-sm text-slate-500">Tính năng đang được phát triển...</p></div>;
-      case 'Warehouse': return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center"><Package className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-black text-slate-700">Quản lý Kho hàng</h2><p className="mt-2 text-sm text-slate-500">Tính năng đang được phát triển...</p></div>;
+      case 'Marketing': return <MarketingView />;
+      case 'Warehouse': return <WarehouseView />;
       case 'Staff': return <StaffPermissionsView currentUser={currentUser ? { fullName: currentUser.fullName, role: currentUser.role, user: currentUser.username } : null} />;
       default: return renderToday();
     }
