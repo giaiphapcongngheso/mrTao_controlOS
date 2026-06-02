@@ -37,7 +37,10 @@ export function useFilteredCategories({
 
   return useMemo<ChecklistViewCategory[]>(() => {
     const normalizedSelectedRole = selectedRoleCode.trim().toUpperCase();
+    const hasRoleFilter = normalizedSelectedRole.length > 0;
     const metaCache = metaCacheRef.current;
+    const matchesSelectedRole = (roleCode?: string) =>
+      !hasRoleFilter || roleCode?.trim().toUpperCase() === normalizedSelectedRole;
 
     // Stable getCategoryMeta - returns same reference for same title+index
     const getStableMeta = (title: string, index: number): CategoryMeta => {
@@ -56,7 +59,7 @@ export function useFilteredCategories({
     // 1. Process templates (subTab === 'process')
     if (subTab === 'process') {
       const templates = allChecklistItems.filter(
-        (it) => !it.dateKey && it.roleCode?.trim().toUpperCase() === normalizedSelectedRole
+        (it) => !it.dateKey && matchesSelectedRole(it.roleCode)
       );
 
       return processCategories
@@ -85,7 +88,7 @@ export function useFilteredCategories({
     if (subTab === 'completed') {
       const targetDateKey = completedViewMode === 'day' ? getTodayKey() : selectedWeekDayKey;
       const completedItems = allChecklistItems.filter(
-        (it) => it.isCompleted && it.dateKey === targetDateKey
+        (it) => it.isCompleted && it.dateKey === targetDateKey && matchesSelectedRole(it.roleCode)
       );
 
       return todayCategories
@@ -115,7 +118,9 @@ export function useFilteredCategories({
       .map((cat, index) => {
         const meta = getStableMeta(cat.title, index);
 
-        const catTasks = items.filter((it) => it.categoryId === cat.id);
+        const catTasks = items.filter(
+          (it) => it.categoryId === cat.id && matchesSelectedRole(it.roleCode)
+        );
         const filteredTasks = catTasks.filter((it) =>
           it.title.toLowerCase().includes(searchLower)
         );
@@ -131,7 +136,12 @@ export function useFilteredCategories({
           tasks: filteredTasks,
         };
       })
-      .filter((cat) => (hasSearch ? cat.tasks.length > 0 : true));
+      .filter((cat) => {
+        if (hasSearch) {
+          return cat.tasks.length > 0;
+        }
+        return hasRoleFilter ? cat.countTotal > 0 : true;
+      });
   }, [
     todayCategories,
     processCategories,
