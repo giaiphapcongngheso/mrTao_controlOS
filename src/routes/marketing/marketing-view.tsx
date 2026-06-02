@@ -6,6 +6,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   Select,
   SelectContent,
   SelectItem,
@@ -13,6 +17,7 @@ import {
   SelectValue,
 } from '@shared/ui';
 import { Trash2 } from 'lucide-react';
+import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import MarketingCreateForm from './components/marketing-create-form';
 import { useMarketingCampaigns } from './hooks/use-marketing-campaigns';
 import { MARKETING_CHANNEL_OPTIONS, MARKETING_STATUS_OPTIONS } from './services/marketing.service';
@@ -33,6 +38,12 @@ const STATUS_LABEL: Record<MarketingCampaignStatus, string> = {
 
 export default function MarketingView() {
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [campaignToRotateStatus, setCampaignToRotateStatus] = useState<{
+    id: string;
+    name: string;
+    currentStatus: MarketingCampaignStatus;
+  } | null>(null);
   const {
     filters,
     filteredCampaigns,
@@ -53,14 +64,21 @@ export default function MarketingView() {
     [summary.totalConversions, summary.totalSpent],
   );
 
+  const nextStatusLabel = useMemo(() => {
+    if (!campaignToRotateStatus) {
+      return '';
+    }
+    const currentIndex = MARKETING_STATUS_OPTIONS.indexOf(campaignToRotateStatus.currentStatus);
+    const nextStatus = MARKETING_STATUS_OPTIONS[(currentIndex + 1) % MARKETING_STATUS_OPTIONS.length];
+    return STATUS_LABEL[nextStatus];
+  }, [campaignToRotateStatus]);
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Marketing & truyền thông</CardTitle>
-          <Button onClick={() => setShowCreateForm((prev) => !prev)}>
-            {showCreateForm ? 'Đóng form' : 'Tạo chiến dịch'}
-          </Button>
+          <Button onClick={() => setShowCreateForm(true)}>Tạo chiến dịch</Button>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-4">
@@ -72,15 +90,20 @@ export default function MarketingView() {
         </CardContent>
       </Card>
 
-      {showCreateForm && (
-        <MarketingCreateForm
-          onCreate={(values) => {
-            createCampaign(values);
-            setShowCreateForm(false);
-          }}
-          onCancel={() => setShowCreateForm(false)}
-        />
-      )}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Tạo chiến dịch marketing</DialogTitle>
+          </DialogHeader>
+          <MarketingCreateForm
+            onCreate={(values) => {
+              createCampaign(values);
+              setShowCreateForm(false);
+            }}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader className="space-y-3">
@@ -144,10 +167,29 @@ export default function MarketingView() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{STATUS_LABEL[campaign.status]}</Badge>
-                    <Button size="sm" variant="outline" onClick={() => rotateCampaignStatus(campaign.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setCampaignToRotateStatus({
+                          id: campaign.id,
+                          name: campaign.name,
+                          currentStatus: campaign.status,
+                        })
+                      }
+                    >
                       Đổi trạng thái
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => deleteCampaign(campaign.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setCampaignToDelete({
+                          id: campaign.id,
+                          name: campaign.name,
+                        })
+                      }
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -163,6 +205,48 @@ export default function MarketingView() {
           )}
         </CardContent>
       </Card>
+
+      <ActionConfirmDialog
+        open={campaignToRotateStatus !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCampaignToRotateStatus(null);
+          }
+        }}
+        title="Xác nhận đổi trạng thái"
+        description={
+          campaignToRotateStatus
+            ? `Bạn có chắc muốn đổi trạng thái chiến dịch "${campaignToRotateStatus.name}" sang "${nextStatusLabel}"?`
+            : ''
+        }
+        onConfirm={() => {
+          if (campaignToRotateStatus) {
+            rotateCampaignStatus(campaignToRotateStatus.id);
+          }
+        }}
+        variant="confirm"
+      />
+
+      <ActionConfirmDialog
+        open={campaignToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCampaignToDelete(null);
+          }
+        }}
+        title="Xác nhận xóa chiến dịch"
+        description={
+          campaignToDelete
+            ? `Bạn có chắc muốn xóa chiến dịch "${campaignToDelete.name}" không?`
+            : ''
+        }
+        onConfirm={() => {
+          if (campaignToDelete) {
+            deleteCampaign(campaignToDelete.id);
+          }
+        }}
+        variant="confirm"
+      />
     </div>
   );
 }

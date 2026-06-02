@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  INITIAL_MARKETING_CAMPAIGNS,
   MARKETING_STATUS_OPTIONS,
   calculateMarketingSummary,
   createMarketingCampaign,
@@ -18,7 +17,7 @@ const DEFAULT_FILTERS: MarketingCampaignFilters = {
 };
 
 export function useMarketingCampaigns() {
-  const [campaigns, setCampaigns] = useState<MarketingCampaign[]>(INITIAL_MARKETING_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [filters, setFilters] = useState<MarketingCampaignFilters>(DEFAULT_FILTERS);
 
   const summary = useMemo(() => calculateMarketingSummary(campaigns), [campaigns]);

@@ -1,9 +1,12 @@
+export type WarehouseDataSource = 'synced' | 'manual';
+
 export interface Branch {
   id: number;
   branchName: string;
   address?: string;
   contactNumber?: string;
   isActive?: boolean;
+  source: WarehouseDataSource;
 }
 
 export interface InventoryDetail {
@@ -20,6 +23,17 @@ export interface WarehouseProduct {
   categoryName?: string;
   basePrice: number;
   inventories?: InventoryDetail[];
+  source: WarehouseDataSource;
+}
+
+export interface WarehouseProductCreateInput {
+  code: string;
+  name: string;
+  categoryName?: string;
+  basePrice: number;
+  onHand: number;
+  branchId: number | null;
+  branchName: string;
 }
 
 export interface WarehouseCredentials {

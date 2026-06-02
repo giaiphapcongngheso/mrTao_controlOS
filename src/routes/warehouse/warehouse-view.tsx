@@ -8,6 +8,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   Input,
   Select,
   SelectContent,
@@ -16,6 +20,7 @@ import {
   SelectValue,
 } from '@shared/ui';
 import WarehouseSyncForm from './components/warehouse-sync-form';
+import WarehouseCreateForm from './components/warehouse-create-form';
 import { useWarehouseData } from './hooks/use-warehouse-data';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -26,6 +31,7 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
 
 export default function WarehouseView() {
   const [showConfigForm, setShowConfigForm] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const {
     credentials,
     branches,
@@ -38,6 +44,7 @@ export default function WarehouseView() {
     totalOnHand,
     totalValue,
     setFilters,
+    createProduct,
     syncData,
   } = useWarehouseData();
 
@@ -56,6 +63,9 @@ export default function WarehouseView() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Quản lý kho hàng</CardTitle>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowCreateForm(true)}>
+              Tạo sản phẩm
+            </Button>
             <Button variant="outline" onClick={() => setShowConfigForm((prev) => !prev)}>
               {showConfigForm ? 'Đóng cấu hình' : 'Mở cấu hình'}
             </Button>
@@ -79,6 +89,22 @@ export default function WarehouseView() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Tạo sản phẩm kho</DialogTitle>
+          </DialogHeader>
+          <WarehouseCreateForm
+            branches={branches}
+            onCreate={(values) => {
+              createProduct(values);
+              setShowCreateForm(false);
+            }}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {showConfigForm && (
         <WarehouseSyncForm
@@ -164,7 +190,7 @@ export default function WarehouseView() {
         </CardHeader>
         <CardContent className="space-y-2">
           {filteredProducts.length === 0 ? (
-            <p className="text-sm text-slate-500">Không có sản phẩm phù hợp bộ lọc.</p>
+            <p className="text-sm text-slate-500">Chưa có sản phẩm. Hãy đồng bộ dữ liệu hoặc tạo mới trong kho.</p>
           ) : (
             filteredProducts.map((product) => {
               const onHand = (product.inventories ?? []).reduce((sum, inventory) => sum + inventory.onHand, 0);
@@ -178,6 +204,9 @@ export default function WarehouseView() {
                       <p className="text-xs text-slate-500">{product.code} • {product.categoryName ?? 'Khác'}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Badge variant={product.source === 'manual' ? 'secondary' : 'outline'}>
+                        {product.source === 'manual' ? 'Tự tạo' : 'Đồng bộ'}
+                      </Badge>
                       <Badge variant={isLow ? 'destructive' : 'outline'}>
                         {isLow ? 'Tồn thấp' : 'Ổn định'}
                       </Badge>
