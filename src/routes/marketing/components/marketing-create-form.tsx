@@ -25,7 +25,7 @@ import type { MarketingCampaignCreateInput } from '../types/marketing.types';
 const marketingCreateSchema = z.object({
   name: z.string().trim().min(1, 'Vui lòng nhập tên chiến dịch'),
   channel: z.enum(MARKETING_CHANNEL_OPTIONS),
-  budget: z.number().min(100000, 'Ngân sách tối thiểu 100.000đ'),
+  budget: z.coerce.number().min(100000, 'Ngân sách tối thiểu 100.000đ'),
   status: z.enum(MARKETING_STATUS_OPTIONS),
   startDate: z.string().min(1, 'Vui lòng chọn ngày bắt đầu'),
   endDate: z.string().min(1, 'Vui lòng chọn ngày kết thúc'),
@@ -136,8 +136,9 @@ export default function MarketingCreateForm({ onCreate, onCancel }: MarketingCre
                   <Input
                     type="number"
                     min={100000}
+                    inputMode="numeric"
                     value={String(field.value)}
-                    onChange={(event) => field.onChange(Number(event.target.value))}
+                    onChange={(event) => field.onChange(event.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
