@@ -275,7 +275,7 @@ export const kiotVietService = {
   syncBranches: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('branches', options),
   syncCategories: <TItem = unknown>(options?: KiotEntitySyncOptions) =>
     fetchEntityData<TItem>('categories', options),
-  syncProducts: (options?: KiotEntitySyncOptions) => fetchEntityData<KiotProduct>('products', options),
+  syncProducts: <TItem = KiotProduct>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('products', options),
   syncCustomers: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('customers', options),
   syncInvoices: <TItem = unknown>(options?: KiotEntitySyncOptions) => fetchEntityData<TItem>('invoices', options),
 };
