@@ -48,14 +48,27 @@ export interface ChecklistDocument extends BaseEntity {
 }
 
 /**
+ * A single step (and optional nested sub-steps) inside a ProcessDocument.
+ * Supports one level of nesting: a core step can contain sub-steps.
+ */
+export interface ProcessStep {
+  id: string;
+  title: string;
+  tasks?: string[];
+  steps?: ProcessStep[];
+}
+
+/**
  * Independent process collection (not checklist snapshot).
+ * Supports a parent-child tree structure via ProcessStep.
  * Collection: processes
  */
 export interface ProcessDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
   title: string;
-  tasks: ChecklistTemplateTask[];
+  description?: string;
+  steps: ProcessStep[];
 }
 
 /**

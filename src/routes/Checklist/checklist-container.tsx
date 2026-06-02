@@ -48,6 +48,9 @@ export default function ChecklistContainer({
     handleUpdateChecklistItem,
     handleConfirmTemplateSync,
     handleCancelTemplateSync,
+    handleCreateProcess,
+    handleUpdateProcess,
+    handleDeleteProcess,
   } = useChecklistMutations({
     currentUser,
     activeStoreId,
@@ -61,7 +64,7 @@ export default function ChecklistContainer({
   return (
     <ChecklistView
       todayCategories={derivedState.todayCategories}
-      processCategories={derivedState.processCategories}
+      processes={derivedState.processes}
       items={derivedState.todayItems}
       allChecklistItems={derivedState.allItems}
       onToggleItem={handleToggleChecklistItem}
@@ -85,6 +88,9 @@ export default function ChecklistContainer({
       }
       onConfirmTemplateSync={handleConfirmTemplateSync}
       onCancelTemplateSync={handleCancelTemplateSync}
+      onCreateProcess={handleCreateProcess}
+      onUpdateProcess={handleUpdateProcess}
+      onDeleteProcess={handleDeleteProcess}
       permissions={checklistPermissions}
       isLoading={isLoading}
     />

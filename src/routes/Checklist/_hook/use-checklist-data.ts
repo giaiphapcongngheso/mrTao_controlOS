@@ -58,7 +58,6 @@ export function useChecklistData({
     ),
     processes: state.processes.filter((processDoc) =>
       processDoc.storeId === activeStoreId &&
-      normalizeAccessCode(processDoc.roleCode) === currentRoleCode &&
       !processDoc.deletedAt,
     ),
   }), [activeStoreId, currentRoleCode]);

@@ -34,7 +34,7 @@ export type ChecklistDerivedState = {
   todayItems: ChecklistItem[];
   allItems: ChecklistItem[];
   todayCategories: ChecklistCategory[];
-  processCategories: ChecklistCategory[];
+  processes: ProcessDocument[];
   completion: number;
 };
 
@@ -133,41 +133,10 @@ export function flattenSnapshotTask(doc: ChecklistDocument, task: ChecklistTask)
   };
 }
 
-export function flattenProcessTask(doc: ProcessDocument, task: ChecklistTemplateTask): ChecklistItem {
-  return {
-    id: task.id,
-    storeId: doc.storeId,
-    categoryId: doc.id,
-    title: task.title,
-    isCompleted: false,
-    timeLimit: task.timeLimit,
-    roleCode: doc.roleCode,
-    checklistName: doc.title,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
-    deletedAt: doc.deletedAt,
-    deletedByName: doc.deletedByName,
-    deletedByUsername: doc.deletedByUsername,
-  };
-}
-
 export function findSnapshotTaskById(
   docs: ChecklistDocument[],
   itemId: string,
 ): { doc: ChecklistDocument; task: ChecklistTask } | null {
-  for (const doc of docs) {
-    const task = (doc.tasks || []).find((entry) => entry.id === itemId);
-    if (task) {
-      return { doc, task };
-    }
-  }
-  return null;
-}
-
-export function findProcessTaskById(
-  docs: ProcessDocument[],
-  itemId: string,
-): { doc: ProcessDocument; task: ChecklistTemplateTask } | null {
   for (const doc of docs) {
     const task = (doc.tasks || []).find((entry) => entry.id === itemId);
     if (task) {
@@ -193,9 +162,6 @@ export function deriveChecklistState(state: ChecklistDataState, todayKey = getTo
     (doc.tasks || [])
       .filter((task) => !task.deletedAt)
       .map((task) => flattenSnapshotTask(doc, task)),
-  );
-  const processItems = safeProcesses.flatMap((doc) =>
-    (doc.tasks || []).map((task) => flattenProcessTask(doc, task)),
   );
 
   // Pre-group todayItems by categoryId for O(1) lookups (avoids O(n²) filter-per-category)
@@ -244,23 +210,14 @@ export function deriveChecklistState(state: ChecklistDataState, todayKey = getTo
       };
     });
 
-  const processCategories: ChecklistCategory[] = safeProcesses.map((processDoc) => ({
-    id: processDoc.id,
-    storeId: processDoc.storeId,
-    title: processDoc.title,
-    countDone: 0,
-    countTotal: (processDoc.tasks || []).length,
-    isCompleted: false,
-  }));
-
   const totalCount = todayItems.length;
   const completion = totalCount > 0 ? Math.round((totalDone / totalCount) * 100) : 0;
 
   return {
     todayItems,
-    allItems: [...snapshotItems, ...processItems],
+    allItems: snapshotItems,
     todayCategories: [...todayCategoriesFromTemplates, ...orphanTodayCategories],
-    processCategories,
+    processes: safeProcesses,
     completion: Math.min(completion, 100),
   };
 }
