@@ -138,7 +138,7 @@ export default function MarketingCreateForm({ onCreate, onCancel }: MarketingCre
                     min={100000}
                     inputMode="numeric"
                     value={String(field.value)}
-                    onChange={(event) => field.onChange(event.target.value)}
+                    onChange={(event) => field.onChange(Number(event.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
