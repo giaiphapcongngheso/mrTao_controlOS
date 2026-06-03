@@ -22,6 +22,7 @@ import { StaffRank } from '../types/kpi.types';
 import { DailyReport } from '../types/reports.types';
 import { TaskItem } from '../types/tasks.types';
 import { KPIStats } from '../types/today.types';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 
 // Initial Data
 import {
@@ -69,6 +70,50 @@ const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
 export default function App() {
   const activeTab = useAppStore((state) => state.activeTab);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
+
+  const routerState = useRouterState();
+  const navigate = useNavigate();
+  const pathname = routerState.location.pathname;
+
+  const handleSelectTab = useCallback(
+    (tab: TabType) => {
+      const routeMap: Record<TabType, string> = {
+        Today: '/',
+        Checklist: '/checklist',
+        Tasks: '/tasks',
+        KPI: '/kpi',
+        SOP: '/sop',
+        Reports: '/reports',
+        Handbook: '/handbook',
+        Marketing: '/marketing',
+        Warehouse: '/warehouse',
+        Staff: '/staff',
+        Notifications: '/notifications',
+      };
+      void navigate({ to: routeMap[tab] });
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    const tabMap: Record<string, TabType> = {
+      '/': 'Today',
+      '/checklist': 'Checklist',
+      '/tasks': 'Tasks',
+      '/kpi': 'KPI',
+      '/sop': 'SOP',
+      '/reports': 'Reports',
+      '/handbook': 'Handbook',
+      '/marketing': 'Marketing',
+      '/warehouse': 'Warehouse',
+      '/staff': 'Staff',
+      '/notifications': 'Notifications',
+    };
+    const tab = tabMap[pathname] || 'Today';
+    if (activeTab !== tab) {
+      setActiveTab(tab);
+    }
+  }, [pathname, activeTab, setActiveTab]);
   const currentUser = useAppStore((state) => state.currentUser);
   const handleLogin = useAppStore((state) => state.login);
   const clearSession = useAppStore((state) => state.logout);
@@ -280,7 +325,7 @@ export default function App() {
     return (
       <TodayView
         stats={stats}
-        onSetTab={setActiveTab}
+        onSetTab={handleSelectTab}
         completedChecklistsCount={completedChecklistsCount}
         totalChecklistsCount={totalChecklistsCount}
       />
@@ -320,7 +365,7 @@ export default function App() {
     return (
       <KpiView
         staffRanks={staffRanks}
-        onSetTab={setActiveTab}
+        onSetTab={handleSelectTab}
       />
     );
   }
@@ -465,7 +510,7 @@ export default function App() {
     if (!canViewTab(activeTab)) {
       const fallbackTab = (visibleSidebarLinks[0]?.key as TabType | undefined) ?? 'Today';
       if (fallbackTab !== activeTab) {
-        setActiveTab(fallbackTab);
+        handleSelectTab(fallbackTab);
       }
     }
   }, [activeTab, currentUser?.id, allowedModules.join('|'), isOwner]);
@@ -511,12 +556,12 @@ export default function App() {
         mobileMenuOpen={mobileMenuOpen}
         canViewNotifications={canViewTab('Notifications')}
         desktopTitle={desktopTitle}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onLogout={() => {
           void handleLogout();
         }}
         onOpenNotifications={() => {
-          setActiveTab('Notifications');
+          handleSelectTab('Notifications');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -527,14 +572,14 @@ export default function App() {
               <button
                 className="px-3 py-1.5 bg-[#C21A1A]/5 border border-rose-100 text-[#C21A1A] hover:bg-[#C21A1A]/10 rounded-xl text-[10.5px] font-black tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Huong dan chuan SOP"
-                onClick={() => setActiveTab('Handbook')}
+                onClick={() => handleSelectTab('Handbook')}
               >
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span>Tro giup &amp; HD SOP</span>
               </button>
             )}
             {canViewTab('Notifications') && (
-              <NotificationsBellPopover activeTab={activeTab} onSelectTab={setActiveTab} />
+              <NotificationsBellPopover activeTab={activeTab} onSelectTab={handleSelectTab} />
             )}
             <HeaderProfilePopover
               currentUser={currentUser}
