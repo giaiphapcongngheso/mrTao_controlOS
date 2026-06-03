@@ -15,6 +15,7 @@ import {
 } from '@shared/ui';
 import type { TaskItem, TaskRequestType } from '../../../types/tasks.types';
 import type { StaffMember } from '../../../types/staff.types';
+import { getRoleFriendlyName } from '../../../constants';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import {
   DEFAULT_QUICK_DELEGATE_FORM_VALUES,
@@ -150,7 +151,7 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
                       }`}
                     >
                       <h4 className="font-extrabold text-slate-800 text-xs">{staff.fullName}</h4>
-                      <p className="text-[9px] text-slate-400 mt-0.5">{staff.position || staff.role}</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{staff.position || getRoleFriendlyName(staff.role)}</p>
                     </Button>
                   ))
                 )}

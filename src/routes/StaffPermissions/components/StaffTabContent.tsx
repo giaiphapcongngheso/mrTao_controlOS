@@ -17,7 +17,7 @@ import type { StaffFormState } from '../StaffPermissionsView.types';
 interface StaffTabContentProps {
   staffSearch: string;
   staffRoleFilter: string;
-  roleOptions: string[];
+  roleOptions: Array<{ code: string; name: string }>;
   showAddStaffForm: boolean;
   staffForm: StaffFormState;
   totalStaff: number;
@@ -53,6 +53,11 @@ export function StaffTabContent({
 }: StaffTabContentProps) {
   const inactiveStaffCount = Math.max(totalStaff - activeStaffCount, 0);
 
+  const getRoleName = (roleCode: string) => {
+    const found = roleOptions.find((r) => r.code === roleCode);
+    return found ? found.name : getRoleFriendlyName(roleCode);
+  };
+
   return (
     <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_45px_-34px_rgba(15,23,42,0.55)]">
       <div className="border-b border-slate-200 bg-slate-50/80 p-4 md:p-5">
@@ -75,8 +80,8 @@ export function StaffTabContent({
           >
             <option value="ALL">Tất cả vai trò</option>
             {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                {getRoleFriendlyName(role)}
+              <option key={role.code} value={role.code}>
+                {role.name}
               </option>
             ))}
           </select>
@@ -152,8 +157,8 @@ export function StaffTabContent({
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
                   >
                     {roleOptions.map((role) => (
-                      <option key={role} value={role}>
-                        {getRoleFriendlyName(role)}
+                      <option key={role.code} value={role.code}>
+                        {role.name}
                       </option>
                     ))}
                   </select>
@@ -280,7 +285,7 @@ export function StaffTabContent({
                   </TableCell>
                   <TableCell className="py-4">
                     <div className="min-w-[180px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
-                      {getRoleFriendlyName(staff.role)}
+                      {getRoleName(staff.role)}
                     </div>
                   </TableCell>
                   <TableCell className="py-4">

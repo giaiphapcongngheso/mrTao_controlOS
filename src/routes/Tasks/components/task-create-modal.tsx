@@ -17,6 +17,7 @@ import {
 } from '@shared/ui';
 import type { TaskRequestType } from '../../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
+import { getRoleFriendlyName } from '../../../constants';
 import {
   DEFAULT_TASK_FORM_VALUES,
   taskFormSchema,
@@ -47,7 +48,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   const staffOptions = useMemo(() => {
     return (staffMembers || []).map((staff) => ({
       value: staff.fullName,
-      label: `${staff.fullName} (${staff.position || staff.role})`,
+      label: `${staff.fullName} (${staff.position || getRoleFriendlyName(staff.role)})`,
     }));
   }, [staffMembers]);
 

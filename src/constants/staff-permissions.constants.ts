@@ -61,9 +61,21 @@ export function getModuleMeta(mKey: string): ModuleMetadata {
 }
 
 // ---------------------------------------------------------------------------
+const ROLE_LABEL_MAP: Record<string, string> = {
+  CHU_CUA_HANG: 'Chủ cửa hàng',
+  QUAN_LY: 'Quản lý showroom',
+  SALES: 'Nhân viên bán lẻ',
+  KHO: 'Kỹ thuật viên',
+  CSKH: 'Chăm sóc khách hàng',
+  QUAN_TRI_VIEN: 'Quản trị viên hệ thống',
+};
+
 export function getRoleFriendlyName(roleStr: string): string {
-  return roleStr;
+  if (!roleStr) return '';
+  const cleanRole = roleStr.toUpperCase().trim();
+  return ROLE_LABEL_MAP[cleanRole] ?? roleStr;
 }
+
 
 // ---------------------------------------------------------------------------
 // Filter Sentinel

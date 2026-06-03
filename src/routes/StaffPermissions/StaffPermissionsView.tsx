@@ -220,7 +220,9 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
   }, []);
 
   const roleOptions = useMemo(() => {
-    return roles.map((role) => role.code).sort((a, b) => a.localeCompare(b, 'vi'));
+    return roles
+      .map((role) => ({ code: role.code, name: role.name }))
+      .sort((a, b) => a.code.localeCompare(b.code, 'vi'));
   }, [roles]);
 
   const roleByCode = useMemo(() => {
