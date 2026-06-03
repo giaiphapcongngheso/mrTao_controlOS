@@ -1,0 +1,31 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]: Mr
+            - generic [ref=e26]: .
+            - generic [ref=e27]: T
+            - generic [ref=e29]: áo
+          - paragraph [ref=e30]: Bán hàng bằng cả trái tim
+      - paragraph [ref=e31]: RETAIL ERP & STANDARD SOP MANAGER
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - img [ref=e35]
+        - heading "Xác thực nhân sự ca trực" [level=2] [ref=e39]
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - img [ref=e42]
+          - text: Tên đăng nhập
+        - textbox "Nhập username nhân sự" [ref=e45]: admin
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - img [ref=e48]
+          - text: Mật khẩu vận hành
+        - textbox "Nhập mật khẩu" [active] [ref=e51]: admin123
+      - button "Đang tải..." [disabled] [ref=e52] [cursor=pointer]:
+        - generic [ref=e54]: Đang tải...
+    - paragraph [ref=e55]: Quầy bán lẻ Mr. Táo • Hệ thống ERP lưu ký thông tin nội bộ
+  - region "Notifications alt+T"

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Bell, ChevronRight, Layers, Menu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TabType } from '../../types/app.types';
@@ -31,9 +31,10 @@ interface AppFrameLayoutProps {
   onOpenNotifications: () => void;
   onToggleMobileMenu: () => void;
   onCloseMobileMenu: () => void;
+  onPrefetchTab?: (tab: TabType) => void;
 }
 
-export default function AppFrameLayout({
+function AppFrameLayout({
   activeTab,
   visibleSidebarLinks,
   currentUser,
@@ -47,11 +48,12 @@ export default function AppFrameLayout({
   onOpenNotifications,
   onToggleMobileMenu,
   onCloseMobileMenu,
+  onPrefetchTab,
 }: AppFrameLayoutProps) {
-  const handleSelectTab = (tab: TabType) => {
+  const handleSelectTab = useCallback((tab: TabType) => {
     onSelectTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [onSelectTab]);
 
   return (
     <div className="min-h-screen bg-surface-bg flex justify-center w-full antialiased p-0">
@@ -70,6 +72,7 @@ export default function AppFrameLayout({
                   <button
                     key={link.key}
                     onClick={() => handleSelectTab(link.key)}
+                    onMouseEnter={() => onPrefetchTab?.(link.key)}
                     className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-left text-sm font-semibold transition-all group cursor-pointer ${isSelected
                       ? 'bg-[#C21A1A] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-rose-50 hover:text-[#C21A1A] border border-transparent'
@@ -231,3 +234,5 @@ export default function AppFrameLayout({
     </div>
   );
 }
+
+export default React.memo(AppFrameLayout);

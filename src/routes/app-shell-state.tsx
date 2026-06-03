@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import {
   DAILY_REPORT_DATA,
   DEFAULT_STORE_ID,
@@ -14,7 +14,7 @@ import type { KPIStats } from '../types/today.types';
 import type { TabType } from '../types/app.types';
 
 export const TAB_ROUTE_MAP: Record<TabType, string> = {
-  Today: '/',
+  Today: '/today',
   Checklist: '/checklist',
   Tasks: '/tasks',
   KPI: '/kpi',
@@ -29,6 +29,7 @@ export const TAB_ROUTE_MAP: Record<TabType, string> = {
 
 export const PATH_TAB_MAP: Record<string, TabType> = {
   '/': 'Today',
+  '/today': 'Today',
   '/checklist': 'Checklist',
   '/tasks': 'Tasks',
   '/kpi': 'KPI',
@@ -41,8 +42,16 @@ export const PATH_TAB_MAP: Record<string, TabType> = {
   '/notifications': 'Notifications',
 };
 
+function normalizePathname(pathname: string): string {
+  if (!pathname || pathname === '/') {
+    return '/';
+  }
+
+  return pathname.replace(/\/+$/, '') || '/';
+}
+
 export function getTabFromPath(pathname: string): TabType {
-  return PATH_TAB_MAP[pathname] ?? 'Today';
+  return PATH_TAB_MAP[normalizePathname(pathname)] ?? 'Today';
 }
 
 interface AppShellStateValue {
@@ -68,7 +77,7 @@ export function AppShellStateProvider({ children }: { children: React.ReactNode 
   const [issues, setIssues] = useState<SOPIssue[]>([]);
   const [dailyReport] = useState<DailyReport>(DAILY_REPORT_DATA);
 
-  const setTodayMetrics = ({ items, checklistCompletion }: { items: ChecklistItem[]; checklistCompletion: number }) => {
+  const setTodayMetrics = useCallback(({ items, checklistCompletion }: { items: ChecklistItem[]; checklistCompletion: number }) => {
     setTodayChecklistItems(items);
     setStats((prev) =>
       prev.checklistCompletion === checklistCompletion
@@ -78,9 +87,9 @@ export function AppShellStateProvider({ children }: { children: React.ReactNode 
             checklistCompletion,
           },
     );
-  };
+  }, []);
 
-  const setTaskMetrics = ({ tasks: nextTasks, delayedTasksCount }: { tasks: TaskItem[]; delayedTasksCount: number }) => {
+  const setTaskMetrics = useCallback(({ tasks: nextTasks, delayedTasksCount }: { tasks: TaskItem[]; delayedTasksCount: number }) => {
     setTasks(nextTasks);
     setStats((prev) =>
       prev.delayedTasksCount === delayedTasksCount
@@ -90,9 +99,9 @@ export function AppShellStateProvider({ children }: { children: React.ReactNode 
             delayedTasksCount,
           },
     );
-  };
+  }, []);
 
-  const setIssueMetrics = ({ issues: nextIssues, sopErrorsCount }: { issues: SOPIssue[]; sopErrorsCount: number }) => {
+  const setIssueMetrics = useCallback(({ issues: nextIssues, sopErrorsCount }: { issues: SOPIssue[]; sopErrorsCount: number }) => {
     setIssues(nextIssues);
     setStats((prev) =>
       prev.sopErrorsCount === sopErrorsCount
@@ -102,7 +111,7 @@ export function AppShellStateProvider({ children }: { children: React.ReactNode 
             sopErrorsCount,
           },
     );
-  };
+  }, []);
 
   const value = useMemo<AppShellStateValue>(
     () => ({

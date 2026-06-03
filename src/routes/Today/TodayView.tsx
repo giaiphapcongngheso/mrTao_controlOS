@@ -20,15 +20,6 @@ import {
   TimelineEvent 
 } from '../../types/today.types';
 import { ScrollArea } from '../../shared/components/scroll-area';
-import { 
-  TIMELINE_EVENTS, 
-  SYSTEM_GOALS, 
-  DAILY_OPERATING_CYCLE, 
-  PRINCIPLES_5_NO, 
-  SHEET_DATABASE_STRUCTURE, 
-  ROLE_PERMISSIONS, 
-  AUTOMATION_SYSTEM_FLOW 
-} from '../../data';
 
 interface TodayViewProps {
   stats: KPIStats;

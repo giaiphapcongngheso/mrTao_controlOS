@@ -4,6 +4,25 @@ import path from 'path';
 import { defineConfig, Plugin } from 'vite';
 import pkg from './package.json' with { type: 'json' };
 
+function normalizeBasePath(basePath: string): string {
+  const trimmed = basePath.trim();
+  if (!trimmed || trimmed === '/') {
+    return '/';
+  }
+
+  const withoutSlashes = trimmed.replace(/^\/+|\/+$/g, '');
+  return `/${withoutSlashes}/`;
+}
+
+function resolveBasePath(): string {
+  const explicitBase = process.env.VITE_BASE_PATH;
+  if (explicitBase) {
+    return normalizeBasePath(explicitBase);
+  }
+
+  return '/';
+}
+
 function kiotVietProxyPlugin(): Plugin {
   return {
     name: 'kiotviet-proxy',
@@ -89,7 +108,7 @@ function kiotVietProxyPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    base: '/',
+    base: resolveBasePath(),
     define: {
       __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || pkg.version),
     },

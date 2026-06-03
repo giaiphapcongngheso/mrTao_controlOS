@@ -23,6 +23,7 @@ import AppFrameLayout, { type AppFrameLayoutLink } from './_components/AppFrameL
 import HeaderProfilePopover from './_components/HeaderProfilePopover';
 import { NotificationsBellPopover } from './Notifications/NotificationsView';
 import { AppShellStateProvider, TAB_ROUTE_MAP, getTabFromPath } from './app-shell-state';
+import { ROUTE_PRELOAD_MAP } from './route-preload';
 
 const LazyLoginView = lazy(() => import('./Login/LoginView'));
 
@@ -110,6 +111,30 @@ export default function AppShell() {
       clearSession();
     }
   }, [clearSession]);
+
+  const handleLogoutClick = useCallback(() => {
+    void handleLogout();
+  }, [handleLogout]);
+
+  const handleOpenNotifications = useCallback(() => {
+    handleSelectTab('Notifications');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [handleSelectTab]);
+
+  const handleToggleMobileMenu = useCallback(() => setMobileMenuOpen((prev) => !prev), []);
+  const handleCloseMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+
+  // Prefetch route chunk + data on sidebar hover to eliminate lazy-load delay
+  const prefetchedRef = useRef<Set<TabType>>(new Set());
+  const handlePrefetchTab = useCallback((tab: TabType) => {
+    if (prefetchedRef.current.has(tab)) return;
+    prefetchedRef.current.add(tab);
+    // Trigger route chunk import
+    const preloader = ROUTE_PRELOAD_MAP[tab];
+    if (preloader) {
+      void preloader();
+    }
+  }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -277,15 +302,11 @@ export default function AppShell() {
           canViewNotifications={canViewTab('Notifications')}
           desktopTitle={DESKTOP_TITLE_MAP[activeTab]}
           onSelectTab={handleSelectTab}
-          onLogout={() => {
-            void handleLogout();
-          }}
-          onOpenNotifications={() => {
-            handleSelectTab('Notifications');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
-          onCloseMobileMenu={() => setMobileMenuOpen(false)}
+          onLogout={handleLogoutClick}
+          onOpenNotifications={handleOpenNotifications}
+          onToggleMobileMenu={handleToggleMobileMenu}
+          onCloseMobileMenu={handleCloseMobileMenu}
+          onPrefetchTab={handlePrefetchTab}
           headerRight={
             <>
               {canViewTab('Handbook') && (

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import { Navigate, createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import AppShell from './AppShell';
 
 const LazyTodayRoute = lazy(() => import('./Today/today-route'));
@@ -59,6 +59,12 @@ const appRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
+  component: () => <Navigate to="/today" replace />,
+});
+
+const todayRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'today',
   component: withSuspense(LazyTodayRoute),
 });
 
@@ -125,6 +131,7 @@ const notificationsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     indexRoute,
+    todayRoute,
     checklistRoute,
     tasksRoute,
     kpiRoute,
