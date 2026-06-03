@@ -26,6 +26,9 @@ export const RESOURCE_PATH = {
   PRODUCTS: '/products',
   HANDBOOK_DOCUMENTS: '/handbook/documents',
   HANDBOOK_CATEGORIES: '/handbook/categories',
+  WAREHOUSE_BRANCHES: '/warehouse_branches',
+  WAREHOUSE_PRODUCTS: '/warehouse_products',
+  WAREHOUSE_SYNC_LOGS: '/warehouse_sync_logs',
 } as const;
 
 export type ResourcePath = (typeof RESOURCE_PATH)[keyof typeof RESOURCE_PATH];

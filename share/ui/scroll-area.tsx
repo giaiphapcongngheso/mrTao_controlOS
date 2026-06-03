@@ -3,39 +3,36 @@ import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 
 import { cn } from '../lib/utils';
 
-type ScrollAreaProps = React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+type ScrollAreaProps = React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
   readonly viewportClassName?: string;
   readonly viewportStyle?: React.CSSProperties;
 };
 
-function ScrollArea({
-  className,
-  children,
-  viewportClassName,
-  viewportStyle,
-  ...props
-}: Readonly<ScrollAreaProps>) {
-  return (
-    <ScrollAreaPrimitive.Root
-      data-slot="scroll-area"
-      className={cn('relative', className)}
-      {...props}
+const ScrollArea = React.forwardRef<
+  React.ElementRef<typeof ScrollAreaPrimitive.Viewport>,
+  ScrollAreaProps
+>(({ className, children, viewportClassName, viewportStyle, ...props }, ref) => (
+  <ScrollAreaPrimitive.Root
+    data-slot="scroll-area"
+    className={cn('relative', className)}
+    {...props}
+  >
+    <ScrollAreaPrimitive.Viewport
+      ref={ref}
+      data-slot="scroll-area-viewport"
+      className={cn(
+        'focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1',
+        viewportClassName,
+      )}
+      style={viewportStyle}
     >
-      <ScrollAreaPrimitive.Viewport
-        data-slot="scroll-area-viewport"
-        className={cn(
-          'focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1',
-          viewportClassName,
-        )}
-        style={viewportStyle}
-      >
-        {children}
-      </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
-      <ScrollAreaPrimitive.Corner />
-    </ScrollAreaPrimitive.Root>
-  );
-}
+      {children}
+    </ScrollAreaPrimitive.Viewport>
+    <ScrollBar />
+    <ScrollAreaPrimitive.Corner />
+  </ScrollAreaPrimitive.Root>
+));
+ScrollArea.displayName = 'ScrollArea';
 
 function ScrollBar({
   className,

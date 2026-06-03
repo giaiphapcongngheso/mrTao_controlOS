@@ -40,6 +40,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  ScrollArea,
 } from '../ui';
 import { BulkSelectionBar } from './bulk-selection-bar';
 import { TablePagination } from './table-pagination';
@@ -1149,9 +1150,10 @@ export function CustomTable<TData>({
       />
 
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
-        <div
+        <ScrollArea
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto overflow-x-auto relative rounded-lg border shadow-sm bg-white"
+          className="flex-1 relative rounded-lg border shadow-sm bg-white min-h-0"
+          viewportClassName="overflow-y-auto overflow-x-auto h-full"
         >
           <Table
             className="bg-white"
@@ -1355,7 +1357,7 @@ export function CustomTable<TData>({
               style={{ left: resizeLine.left }}
             />
           )}
-        </div>
+        </ScrollArea>
 
         {shouldEnablePagination && (
           <TablePagination

@@ -147,12 +147,12 @@ const routeTree = rootRoute.addChildren([
 
 const basepath = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const hashHistory = createHashHistory();
+// const hashHistory = createHashHistory();
 
 export const router = createRouter({
   routeTree,
   basepath,
-  history: hashHistory,
+  // history: hashHistory,
 });
 
 declare module '@tanstack/react-router' {
