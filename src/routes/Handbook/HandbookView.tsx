@@ -255,6 +255,20 @@ function renderFormattedContent(content: string): React.ReactNode[] {
       return <div key={`empty-${index}`} className="h-2" />;
     }
 
+    const imgMatch = line.match(/!\[(.*?)\]\((.*?)\)/);
+    if (imgMatch) {
+      return (
+        <div key={`img-${index}`} className="my-3 flex justify-start">
+          <img
+            src={imgMatch[2]}
+            alt={imgMatch[1] || 'Embedded Image'}
+            className="max-h-96 w-auto max-w-full rounded-xl border border-slate-200 object-contain shadow-xs"
+            loading="lazy"
+          />
+        </div>
+      );
+    }
+
     const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
     if (linkMatch) {
       return (
@@ -483,10 +497,29 @@ export default function HandbookView() {
     () => (activeDoc && currentReadKey ? activeDoc.readAudits?.[currentReadKey] : undefined),
     [activeDoc, currentReadKey],
   );
-  const renderedActiveContent = useMemo(
-    () => (activeDoc ? renderFormattedContent(activeDoc.content || '') : null),
-    [activeDoc],
-  );
+  const renderedActiveContent = useMemo(() => {
+    if (!activeDoc) return null;
+    const content = activeDoc.content || '';
+    if (isHtmlContent(content)) {
+      return (
+        <div 
+          className="rich-text-content space-y-3 select-text text-slate-700 text-xs leading-relaxed text-left
+            [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:uppercase [&_h2]:tracking-wider
+            [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-800 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-100 [&_h3]:pb-1 [&_h3]:uppercase [&_h3]:tracking-wide
+            [&_h4]:text-xs [&_h4]:font-black [&_h4]:text-[#C21A1A] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:uppercase
+            [&_p]:mb-2 [&_p]:leading-relaxed
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
+            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
+            [&_li]:text-xs [&_li]:text-slate-700
+            [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
+            [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
+            [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      );
+    }
+    return renderFormattedContent(content);
+  }, [activeDoc]);
   const openCreateEditor = useCallback(() => {
     setEditingDocId(null);
     setFormState({ ...EMPTY_FORM_STATE });
@@ -816,9 +849,9 @@ export default function HandbookView() {
     setFormErrors({});
     setIsEditorOpen(false);
   }, []);
-  const handleUploadImages = useCallback(async (files: File[]) => {
+  const handleUploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!files.length) {
-      return;
+      return [];
     }
 
     setIsUploadingImages(true);
@@ -826,19 +859,8 @@ export default function HandbookView() {
       const uploadedUrls = await Promise.all(
         files.map((file) => uploadHandbookImage(file, editingDocId)),
       );
-      setFormState((prev) => ({
-        ...prev,
-        imageUrls: Array.from(new Set([...prev.imageUrls, ...uploadedUrls])),
-      }));
-      setFormErrors((prev) => {
-        if (!prev.imageUrls) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next.imageUrls;
-        return next;
-      });
       showToast(`Đã tải lên ${uploadedUrls.length} hình ảnh.`);
+      return uploadedUrls;
     } catch (error) {
       console.error('Không thể tải ảnh handbook:', error);
       const maybeCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
@@ -863,6 +885,7 @@ export default function HandbookView() {
       } else {
         showToast('Tải ảnh thất bại. Vui lòng kiểm tra cấu hình Firebase và kết nối mạng.');
       }
+      return [];
     } finally {
       setIsUploadingImages(false);
     }

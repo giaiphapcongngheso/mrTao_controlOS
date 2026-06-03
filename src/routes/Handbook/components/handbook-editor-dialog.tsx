@@ -1,5 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, ExternalLink, ImageIcon, Upload, Loader2 } from 'lucide-react';
+import {
+  X,
+  ExternalLink,
+  ImageIcon,
+  Upload,
+  Loader2,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
+  Heading,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import {
   Button,
@@ -28,7 +44,7 @@ interface HandbookEditorDialogProps {
   onClose: () => void;
   onSave: () => void;
   onFormPatch: (patch: Partial<HandbookFormState>) => void;
-  onUploadImages: (files: File[]) => Promise<void>;
+  onUploadImages: (files: File[]) => Promise<string[]>;
   onAddCategory: (payload: HandbookCategoryRequestType) => Promise<void>;
   onDeleteCategory?: (name: string) => Promise<void>;
 }
@@ -56,6 +72,8 @@ export default function HandbookEditorDialog({
     reject: (error?: unknown) => void;
   } | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const [editorInitialized, setEditorInitialized] = useState(false);
 
   const form = useForm<HandbookFormState>({
     values: formState,
@@ -111,12 +129,32 @@ export default function HandbookEditorDialog({
     [onFormPatch],
   );
 
-  const handleContentChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onFormPatch({ content: event.target.value });
-    },
-    [onFormPatch],
-  );
+  const handleEditorInput = useCallback(() => {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      onFormPatch({ content: html });
+      form.setValue('content', html);
+    }
+  }, [onFormPatch, form]);
+
+  const runEditorCommand = useCallback((command: string, value = '') => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand(command, false, value);
+      handleEditorInput();
+    }
+  }, [handleEditorInput]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (!editorInitialized && editorRef.current) {
+        editorRef.current.innerHTML = formState.content || '';
+        setEditorInitialized(true);
+      }
+    } else {
+      setEditorInitialized(false);
+    }
+  }, [isOpen, editorInitialized, formState.content]);
 
   const handleRequiredReadChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,29 +169,31 @@ export default function HandbookEditorDialog({
     },
     [onFormPatch],
   );
+
   const handleOpenImagePicker = useCallback(() => {
     imageInputRef.current?.click();
   }, []);
 
   const handleImageSelection = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
       event.target.value = '';
       if (!selectedFiles.length) {
         return;
       }
-      void onUploadImages(selectedFiles);
+      const urls = await onUploadImages(selectedFiles);
+      if (urls && urls.length > 0) {
+        if (editorRef.current) {
+          editorRef.current.focus();
+          urls.forEach((url) => {
+            const imgHtml = `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh tài liệu" />`;
+            document.execCommand('insertHTML', false, imgHtml);
+          });
+          handleEditorInput();
+        }
+      }
     },
-    [onUploadImages],
-  );
-
-  const handleRemoveImage = useCallback(
-    (index: number) => {
-      onFormPatch({
-        imageUrls: formState.imageUrls.filter((_, itemIndex) => itemIndex !== index),
-      });
-    },
-    [formState.imageUrls, onFormPatch],
+    [onUploadImages, handleEditorInput],
   );
 
   const handleAddCategoryRequest = useCallback((name: string) => {
@@ -354,78 +394,254 @@ export default function HandbookEditorDialog({
             name="content"
             render={({ field }) => (
               <FormItem className="grid gap-0">
-                <FormLabel className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Nội dung</FormLabel>
-                <FormControl>
-                  <textarea
-                    rows={10}
-                    className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A] ${
-                      errors.content ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200'
-                    }`}
-                    {...field}
-                    onChange={handleContentChange}
+                <FormLabel className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  Nội dung tài liệu
+                </FormLabel>
+                
+                {/* Rich Text Editor Container */}
+                <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                  
+                  {/* Rich Text Editor Toolbar */}
+                  <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-slate-50 p-2 select-none">
+                    
+                    {/* Text styles */}
+                    <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('bold')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Chữ đậm"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('italic')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Chữ nghiêng"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('underline')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Gạch chân"
+                      >
+                        <Underline className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Paragraph sizes */}
+                    <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('formatBlock', '<h3>')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer text-[10px] font-bold"
+                        title="Tiêu đề lớn (Heading 3)"
+                      >
+                        H3
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('formatBlock', '<h4>')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer text-[10px] font-bold"
+                        title="Tiêu đề phụ (Heading 4)"
+                      >
+                        H4
+                      </button>
+                    </div>
+
+                    {/* Lists */}
+                    <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('insertUnorderedList')}
+                        className="p-1 hover:bg-slate-100 text-slate-855 rounded transition-colors cursor-pointer"
+                        title="Danh sách dấu tròn"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('insertOrderedList')}
+                        className="p-1 hover:bg-slate-100 text-slate-855 rounded transition-colors cursor-pointer"
+                        title="Danh sách số"
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Alignments */}
+                    <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('justifyLeft')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Căn lề trái"
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('justifyCenter')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Căn lề giữa"
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('justifyRight')}
+                        className="p-1 hover:bg-slate-100 text-slate-800 rounded transition-colors cursor-pointer"
+                        title="Căn lề phải"
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Text Colors */}
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-2xs h-[26px]">
+                      <span className="text-[9px] text-slate-400 font-black uppercase select-none mr-0.5">Màu:</span>
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('foreColor', '#C21A1A')}
+                        className="w-3.5 h-3.5 rounded-full bg-[#C21A1A] border border-white hover:scale-120 active:scale-90 transition-all cursor-pointer shadow-xs"
+                        title="Màu đỏ thương hiệu"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('foreColor', '#1E40AF')}
+                        className="w-3.5 h-3.5 rounded-full bg-[#1E40AF] border border-white hover:scale-120 active:scale-90 transition-all cursor-pointer shadow-xs"
+                        title="Màu xanh lam"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('foreColor', '#10B981')}
+                        className="w-3.5 h-3.5 rounded-full bg-[#10B981] border border-white hover:scale-120 active:scale-90 transition-all cursor-pointer shadow-xs"
+                        title="Màu xanh lá"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('foreColor', '#F59E0B')}
+                        className="w-3.5 h-3.5 rounded-full bg-[#F59E0B] border border-white hover:scale-120 active:scale-90 transition-all cursor-pointer shadow-xs"
+                        title="Màu vàng"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('foreColor', '#1E293B')}
+                        className="w-3.5 h-3.5 rounded-full bg-[#1E293B] border border-white hover:scale-120 active:scale-90 transition-all cursor-pointer shadow-xs"
+                        title="Màu xám đen gốc"
+                      />
+                    </div>
+
+                    {/* Media upload */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isUploadingImages}
+                        onClick={handleOpenImagePicker}
+                        className="h-[26px] bg-white border border-[#C21A1A]/30 text-[#C21A1A] hover:bg-rose-50 hover:border-[#C21A1A]/60 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer px-2.5 py-0"
+                      >
+                        {isUploadingImages ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Đang tải...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Upload Ảnh</span>
+                          </>
+                        )}
+                      </Button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = prompt("Nhập địa chỉ URL của ảnh:");
+                          if (url) {
+                            runEditorCommand('insertHTML', `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh liên kết" />`);
+                          }
+                        }}
+                        className="h-[26px] bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-700 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer px-2.5 py-1.5 shadow-2xs"
+                        title="Dán link ảnh"
+                      >
+                        🔗 Dán link ảnh
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = prompt("Nhập đường dẫn liên kết URL:", "https://");
+                          if (url) {
+                            runEditorCommand('createLink', url);
+                          }
+                        }}
+                        className="h-[26px] bg-white border border-slate-200 hover:bg-purple-50 hover:text-purple-750 hover:border-purple-200 rounded-lg text-slate-700 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer px-2.5 py-1.5 shadow-2xs"
+                        title="Thêm link chữ"
+                      >
+                        <LinkIcon className="w-3 h-3 text-purple-600" />
+                        <span>Thêm Link chữ</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('insertHorizontalRule')}
+                        className="h-[26px] bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-700 text-[10px] font-black transition-all cursor-pointer px-2 py-1.5 shadow-2xs"
+                        title="Chèn đường kẻ ngang"
+                      >
+                        Kẻ ngang [––]
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => runEditorCommand('removeFormat')}
+                        className="h-[26px] bg-white border border-slate-200 hover:bg-amber-50 hover:text-amber-705 hover:border-amber-300 rounded-lg text-slate-400 text-[10px] font-black transition-all cursor-pointer px-2 py-1.5 shadow-2xs"
+                        title="Xóa định dạng"
+                      >
+                        Xóa định dạng x
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* HTML Content Editable Editor Area */}
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={handleEditorInput}
+                    onBlur={handleEditorInput}
+                    className="min-h-[300px] max-h-[450px] p-4 bg-white text-slate-800 text-xs font-semibold focus:outline-none overflow-y-auto leading-relaxed text-left select-text rounded-b-xl
+                              [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:uppercase [&_h2]:tracking-wider
+                              [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-800 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-100 [&_h3]:pb-1 [&_h3]:uppercase [&_h3]:tracking-wide
+                              [&_h4]:text-xs [&_h4]:font-black [&_h4]:text-[#C21A1A] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:uppercase
+                              [&_p]:mb-2 [&_p]:leading-relaxed
+                              [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
+                              [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
+                              [&_li]:text-xs [&_li]:text-slate-700
+                              [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
+                              [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
+                              [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
+                    placeholder="Nhập nội dung tài liệu chi tiết..."
                   />
-                </FormControl>
+
+                </div>
                 <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelection}
+                  className="hidden"
+                />
               </FormItem>
             )}
           />
-
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600">
-                <ImageIcon className="h-3.5 w-3.5" />
-                Hình ảnh handbook ({formState.imageUrls.length})
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isUploadingImages}
-                onClick={handleOpenImagePicker}
-                className="h-8 rounded-lg px-2.5 text-[11px] font-black"
-              >
-                {isUploadingImages ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Đang tải...
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Upload className="h-3.5 w-3.5" />
-                    Upload ảnh
-                  </span>
-                )}
-              </Button>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageSelection}
-                className="hidden"
-              />
-            </div>
-            {errors.imageUrls && (
-              <p className="text-[10px] font-semibold text-rose-600">{errors.imageUrls}</p>
-            )}
-            {formState.imageUrls.length > 0 && (
-              <div className="grid grid-cols-5 gap-2">
-                {formState.imageUrls.map((url, index) => (
-                  <div key={url} className="group relative overflow-hidden rounded-lg border border-slate-200">
-                    <img src={url} alt={`Ảnh đã upload ${index + 1}`} className="h-14 w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                      title="Gỡ ảnh"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <FormField
