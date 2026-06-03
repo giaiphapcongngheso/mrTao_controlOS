@@ -5,7 +5,6 @@ import {
   filterWarehouseProducts,
   hasWarehouseCredentials,
   loadStoredCredentials,
-  saveCredentials,
   syncWarehouseData,
 } from '../services/warehouse.service';
 import type {
@@ -72,7 +71,6 @@ export function useWarehouseData() {
     setError(null);
 
     try {
-      saveCredentials(targetCredentials);
       setCredentials(targetCredentials);
 
       if (!hasWarehouseCredentials(targetCredentials)) {
@@ -104,14 +102,6 @@ export function useWarehouseData() {
     },
     [branches],
   );
-
-  useEffect(() => {
-    if (!hasWarehouseCredentials(credentialsRef.current)) {
-      return;
-    }
-
-    void syncData();
-  }, [syncData]);
 
   return {
     credentials,

@@ -5,10 +5,10 @@ export const staffPermissionQueryKeys = {
   all: ['staff', 'permissions'] as const,
 };
 
-export function useStaffPermissionsQuery() {
+export function useStaffPermissionsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: staffPermissionQueryKeys.all,
     queryFn: staffPermissionService.getAll,
-    enabled: false,
+    enabled: options?.enabled ?? true,
   });
 }

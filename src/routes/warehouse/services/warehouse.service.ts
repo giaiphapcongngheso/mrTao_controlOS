@@ -7,37 +7,16 @@ import type {
   WarehouseSyncResponse,
 } from '../types/warehouse.types';
 
-const CLIENT_ID_KEY = 'kv_client_id';
-const RETAILER_KEY = 'kv_retailer';
-
 function generateLocalId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
 export function loadStoredCredentials(): WarehouseCredentials {
-  if (typeof window === 'undefined') {
-    return {
-      clientId: '',
-      clientSecret: '',
-      retailer: '',
-    };
-  }
-
   return {
-    clientId: window.localStorage.getItem(CLIENT_ID_KEY) ?? '',
-    clientSecret: '',
-    retailer: window.localStorage.getItem(RETAILER_KEY) ?? '',
+    clientId: import.meta.env.VITE_KIOT_CLIENT_ID ?? '',
+    clientSecret: import.meta.env.VITE_KIOT_CLIENT_SECRET ?? '',
+    retailer: import.meta.env.VITE_KIOT_RETAILER ?? '',
   };
-}
-
-export function saveCredentials(credentials: WarehouseCredentials) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(CLIENT_ID_KEY, credentials.clientId);
-  window.localStorage.removeItem('kv_client_secret');
-  window.localStorage.setItem(RETAILER_KEY, credentials.retailer);
 }
 
 export function hasWarehouseCredentials(credentials: WarehouseCredentials) {
@@ -94,9 +73,10 @@ export async function syncWarehouseData(credentials: WarehouseCredentials): Prom
       pageSize: '100',
     });
 
+    const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
     const [branchesData, productsData] = await Promise.all([
-      fetchJson(`/api/kiotviet/branches?${params.toString()}`),
-      fetchJson(`/api/kiotviet/products?${params.toString()}`),
+      fetchJson(`${baseUrl}/api/kiotviet/branches?${params.toString()}`),
+      fetchJson(`${baseUrl}/api/kiotviet/products?${params.toString()}`),
     ]);
 
     return {

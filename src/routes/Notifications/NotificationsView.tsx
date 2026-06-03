@@ -1,12 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { Bell, CircleAlert, Clock3, FileSearch, ListChecks, MessageSquare, Siren, X } from 'lucide-react';
 import { Alert, AlertDescription, Badge, Button, Popover, PopoverContent, PopoverTrigger, ScrollArea, Textarea } from '@shared/ui';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
-import { notificationsService, subscribeNotificationsRealtime } from '../../services/notifications-service';
+import {
+  notificationsService,
+  subscribeNotificationsRealtime,
+  subscribePendingNotificationsCount,
+} from '../../services/notifications-service';
 import { useAppStore } from '../../stores/app-store';
 import type { TabType } from '../../types/app.types';
 import type { AppNotification } from '../../types/notification.types';
+import { TAB_ROUTE_MAP, getTabFromPath } from '../app-shell-state';
 
 type NotificationDestination = Exclude<TabType, 'Notifications' | 'Today'> | 'Notifications';
 
@@ -144,7 +150,7 @@ function resolveNotificationDestination(notification: AppNotification): Notifica
   return 'Notifications';
 }
 
-function useNotificationsData() {
+function useNotificationsData(enabled: boolean) {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,6 +182,11 @@ function useNotificationsData() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     const unsubscribe = subscribeNotificationsRealtime(
       (rows) => {
         setItems(sortNotifications(rows || []));
@@ -192,21 +203,36 @@ function useNotificationsData() {
     return () => {
       unsubscribe();
     };
-  }, [sortNotifications]);
-
-  const pendingCount = useMemo(
-    () => items.filter((notification) => notification.status === 'pending').length,
-    [items],
-  );
+  }, [enabled, sortNotifications]);
 
   return {
     items,
-    pendingCount,
     isLoading,
     errorMessage,
     loadFromApi,
     patchNotificationLocal,
   };
+}
+
+function usePendingNotificationsCount() {
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribePendingNotificationsCount(
+      (count) => {
+        setPendingCount(count);
+      },
+      (error) => {
+        console.error('Khong the dong bo so thong bao cho duyet:', error);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  return pendingCount;
 }
 
 function useNotificationPermissions() {
@@ -532,7 +558,10 @@ export const NotificationsBellPopover = React.memo(function NotificationsBellPop
   const [commentDraftById, setCommentDraftById] = useState<Record<string, string>>({});
   const setNotificationFocus = useAppStore((state) => state.setNotificationFocus);
   const permissions = useNotificationPermissions();
-  const { items, pendingCount, isLoading, errorMessage, loadFromApi, patchNotificationLocal } = useNotificationsData();
+  const shouldLoadFullNotifications = open || activeTab === 'Notifications';
+  const pendingCount = usePendingNotificationsCount();
+  const { items, isLoading, errorMessage, loadFromApi, patchNotificationLocal } =
+    useNotificationsData(shouldLoadFullNotifications);
 
   const handleRetry = useCallback(() => {
     void loadFromApi();
@@ -777,8 +806,9 @@ export const NotificationsBellPopover = React.memo(function NotificationsBellPop
 });
 
 export default function NotificationsView() {
-  const activeTab = useAppStore((state) => state.activeTab);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const navigate = useNavigate();
+  const routerState = useRouterState();
+  const activeTab = getTabFromPath(routerState.location.pathname);
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-3">
@@ -790,7 +820,12 @@ export default function NotificationsView() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
-        <NotificationsBellPopover activeTab={activeTab} onSelectTab={setActiveTab} />
+        <NotificationsBellPopover
+          activeTab={activeTab}
+          onSelectTab={(tab) => {
+            void navigate({ to: TAB_ROUTE_MAP[tab] });
+          }}
+        />
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ import { notificationsService } from '../../services/notifications-service';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import ReportForm, { type ReportFormState, type ReportPeriod, type ReportStatus } from './components/report-form';
+import { useDailyReportQuery } from './_hook/use-reports';
 
 interface ReportsViewProps {
   dailyReport: DailyReport;
@@ -95,6 +96,7 @@ export default function ReportsView({
   const [currentPage, setCurrentPage] = useState(1);
   const [isReportFormOpen, setIsReportFormOpen] = useState(false);
   const [reportForm, setReportForm] = useState<ReportFormState>(DEFAULT_FORM_STATE);
+  const reportsQuery = useDailyReportQuery();
 
   const totalChecklist = useMemo(() => checklistItems.length || 28, [checklistItems.length]);
   const completedChecklist = useMemo(
@@ -222,6 +224,26 @@ export default function ReportsView({
       cancelled = true;
     };
   }, [dailyReport.storeId, triggerToast]);
+
+  useEffect(() => {
+    if (!reportsQuery.data?.length) {
+      return;
+    }
+
+    const nextReports = reportsQuery.data
+      .filter((item) => item.storeId === dailyReport.storeId)
+      .sort((a, b) => {
+        const timeA = a.updatedAt || a.createdAt || a.timestamp || '';
+        const timeB = b.updatedAt || b.createdAt || b.timestamp || '';
+        return timeA < timeB ? 1 : -1;
+      })
+      .map((item) => ({
+        ...item,
+        timestamp: item.timestamp || new Date(item.createdAt || Date.now()).toLocaleString('vi-VN'),
+      }));
+
+    setSubmittedReports(nextReports);
+  }, [dailyReport.storeId, reportsQuery.data]);
 
   useEffect(() => {
     setIsLoading(true);

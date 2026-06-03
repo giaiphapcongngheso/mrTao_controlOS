@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import type { TabType } from '../types/app.types';
-
 export interface UserSession {
   username: string;
   fullName: string;
@@ -107,14 +105,12 @@ function readPersistedSession(): UserSession | null {
 }
 
 interface AppStoreState {
-  activeTab: TabType;
   currentUser: UserSession | null;
   notificationFocus: {
     notificationId: string;
     sourceModule?: 'SOP' | 'REPORTS' | 'CHECKLIST' | 'TASKS';
     sourceId?: string;
   } | null;
-  setActiveTab: (tab: TabType) => void;
   setNotificationFocus: (focus: {
     notificationId: string;
     sourceModule?: 'SOP' | 'REPORTS' | 'CHECKLIST' | 'TASKS';
@@ -127,10 +123,8 @@ interface AppStoreState {
 }
 
 export const useAppStore = create<AppStoreState>((set, get) => ({
-  activeTab: 'Today',
   currentUser: readPersistedSession(),
   notificationFocus: null,
-  setActiveTab: (tab) => set({ activeTab: tab }),
   setNotificationFocus: (focus) => set({ notificationFocus: focus }),
   login: (sessionData) => {
     const enriched = enrichSessionWithDefaultFields({

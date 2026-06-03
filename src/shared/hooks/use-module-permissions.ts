@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { staffPermissionService } from '../../services/admin';
+import { useMemo } from 'react';
+import { useStaffPermissionsQuery } from '../../routes/StaffPermissions/_hook/use-staff-permissions';
 import type { UserSession } from '../../stores/app-store';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -72,67 +72,40 @@ export function useModulePermissions(
   currentUser: UserSession | null,
   isOwner: boolean,
 ): { permissions: ModulePermissions; isLoading: boolean } {
-  const [permissions, setPermissions] = useState<ModulePermissions>(DEFAULT_PERMISSIONS);
-  const [isLoading, setIsLoading] = useState(true);
+  const shouldLoadPermissions = Boolean(currentUser) && !isOwner;
+  const permissionsQuery = useStaffPermissionsQuery({ enabled: shouldLoadPermissions });
 
-  useEffect(() => {
-    let cancelled = false;
-
+  const permissions = useMemo(() => {
     if (!currentUser) {
-      setPermissions(DEFAULT_PERMISSIONS);
-      setIsLoading(false);
-      return;
+      return DEFAULT_PERMISSIONS;
     }
 
     if (isOwner) {
-      setPermissions(FULL_PERMISSIONS);
-      setIsLoading(false);
-      return;
+      return FULL_PERMISSIONS;
     }
 
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
+    const allPermissions = permissionsQuery.data ?? [];
+    const roleCode = normalizeAccessCode(currentUser.roleCode);
+    const normalizedModule = normalizeAccessCode(moduleCode);
+    const permRow = allPermissions.find(
+      (row) =>
+        normalizeAccessCode(row.roleCode) === roleCode &&
+        normalizeAccessCode(row.module) === normalizedModule,
+    );
 
-        const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const normalizedModule = normalizeAccessCode(moduleCode);
-        const permRow = allPermissions.find(
-          (row) =>
-            normalizeAccessCode(row.roleCode) === roleCode &&
-            normalizeAccessCode(row.module) === normalizedModule,
-        );
-
-        setPermissions({
-          canView: !!permRow?.canView,
-          canCreate: !!permRow?.canCreate,
-          canUpdate: !!permRow?.canUpdate,
-          canDelete: !!permRow?.canDelete,
-          canApprove: !!permRow?.canApprove,
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.error(`Failed to load permissions for module [${moduleCode}]:`, error);
-          setPermissions(DEFAULT_PERMISSIONS);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+    return {
+      canView: !!permRow?.canView,
+      canCreate: !!permRow?.canCreate,
+      canUpdate: !!permRow?.canUpdate,
+      canDelete: !!permRow?.canDelete,
+      canApprove: !!permRow?.canApprove,
     };
+  }, [currentUser, isOwner, moduleCode, permissionsQuery.data]);
 
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.id, currentUser?.roleCode, currentUser?.username, isOwner, moduleCode]);
-
-  return { permissions, isLoading };
+  return {
+    permissions,
+    isLoading: shouldLoadPermissions ? permissionsQuery.isLoading : false,
+  };
 }
 
 // ─── Hook: Allowed Module List (for sidebar visibility) ──────────────────────
@@ -151,55 +124,33 @@ export function useAllowedModules(
   currentUser: UserSession | null,
   isOwner: boolean,
 ): { allowedModules: string[]; isLoading: boolean } {
-  const [allowedModules, setAllowedModules] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const shouldLoadPermissions = Boolean(currentUser) && !isOwner;
+  const permissionsQuery = useStaffPermissionsQuery({ enabled: shouldLoadPermissions });
 
-  useEffect(() => {
-    let cancelled = false;
-
+  const allowedModules = useMemo(() => {
     if (!currentUser) {
-      setAllowedModules([]);
-      setIsLoading(false);
-      return;
+      return [];
     }
 
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const allPermissions = await staffPermissionService.getAll();
-        if (cancelled) {
-          return;
-        }
+    if (isOwner) {
+      return [];
+    }
 
-        const roleCode = normalizeAccessCode(currentUser.roleCode);
-        const modules = allPermissions
-          .filter(
-            (permission) =>
-              permission?.canView &&
-              normalizeAccessCode(permission.roleCode) === roleCode,
-          )
-          .map((permission) => normalizeAccessCode(permission.module))
-          .filter(Boolean);
+    const roleCode = normalizeAccessCode(currentUser.roleCode);
+    const modules = (permissionsQuery.data ?? [])
+      .filter(
+        (permission) =>
+          permission?.canView &&
+          normalizeAccessCode(permission.roleCode) === roleCode,
+      )
+      .map((permission) => normalizeAccessCode(permission.module))
+      .filter(Boolean);
 
-        setAllowedModules(Array.from(new Set(modules)));
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load allowed modules:', error);
-          setAllowedModules([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
+    return Array.from(new Set(modules));
+  }, [currentUser, isOwner, permissionsQuery.data]);
 
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.id, currentUser?.roleCode, currentUser?.username, isOwner]);
-
-  return { allowedModules, isLoading };
+  return {
+    allowedModules,
+    isLoading: shouldLoadPermissions ? permissionsQuery.isLoading : false,
+  };
 }
