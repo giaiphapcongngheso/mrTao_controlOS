@@ -908,114 +908,118 @@ export default function HandbookView() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0 text-left">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
-              <h1 className="text-base font-black uppercase tracking-wide text-slate-900 sm:text-lg">
-                Sổ tay điều hành & hệ thống vận hành
-              </h1>
+      {activeDocId === null && (
+        <>
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 text-left">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
+                  <h1 className="text-base font-black uppercase tracking-wide text-slate-900 sm:text-lg">
+                    Sổ tay điều hành & hệ thống vận hành
+                  </h1>
+                </div>
+                <p className="mt-1.5 text-xs font-bold leading-relaxed text-slate-500">
+                  Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 shrink-0">
+                {permissions.canCreate && (
+                  <button
+                    type="button"
+                    onClick={openCreateEditor}
+                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex"
+                  >
+                    <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                    <span>Thêm tài liệu mới</span>
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Hệ thống tóm tắt tối ưu (SOP Lite)</span>
+                </div>
+              </div>
             </div>
-            <p className="mt-1.5 text-xs font-bold leading-relaxed text-slate-500">
-              Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
-            </p>
-          </div>
+          </section>
 
-          <div className="flex flex-wrap items-center gap-4 shrink-0">
-            {permissions.canCreate && (
-              <button
-                type="button"
-                onClick={openCreateEditor}
-                className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex"
-              >
-                <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                <span>Thêm tài liệu mới</span>
-              </button>
-            )}
+          <section className="hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-900 break-words sm:text-lg">
+                  <BookOpen className="h-4 w-4 shrink-0 text-[#C21A1A] sm:h-5 sm:w-5" />
+                  <span>Sổ tay điều hành vận hành</span>
+                </h1>
+                <p className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
+                  Tập trung chuẩn vận hành cốt lõi, giúp nhân sự tra cứu nhanh và thực thi đúng quy trình.
+                </p>
+              </div>
 
-            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Hệ thống tóm tắt tối ưu (SOP Lite)</span>
+              <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>SOP Lite</span>
+                {permissions.canCreate && (
+                  <button
+                    type="button"
+                    onClick={openCreateEditor}
+                    className="ml-2 hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white transition-colors hover:bg-[#A81515] sm:inline-flex"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Thêm tài liệu</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      <section className="hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-900 break-words sm:text-lg">
-              <BookOpen className="h-4 w-4 shrink-0 text-[#C21A1A] sm:h-5 sm:w-5" />
-              <span>Sổ tay điều hành vận hành</span>
-            </h1>
-            <p className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
-              Tập trung chuẩn vận hành cốt lõi, giúp nhân sự tra cứu nhanh và thực thi đúng quy trình.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>SOP Lite</span>
-            {permissions.canCreate && (
-              <button
-                type="button"
-                onClick={openCreateEditor}
-                className="ml-2 hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white transition-colors hover:bg-[#A81515] sm:inline-flex"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Thêm tài liệu</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <h3 className="mb-2.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">
-          Danh mục phễu lọc tài liệu
-        </h3>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <Button
-            type="button"
-            onClick={() => handleToggleCategory(null)}
-            className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase ${
-              !selectedCategory
-                ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
-            }`}
-          >
-            Tất cả danh mục
-          </Button>
-
-          {categoryOptions.map((categoryName) => {
-            const isSelected = selectedCategory === categoryName;
-            const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
-            const config = getCategoryIconConfig(categoryName, categoryMeta);
-            const CatIcon = config.icon;
-
-            return (
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <h3 className="mb-2.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Danh mục phễu lọc tài liệu
+            </h3>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <Button
-                key={categoryName}
                 type="button"
-                onClick={() => handleToggleCategory(categoryName)}
-                className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase transition-all ${
-                  isSelected
-                    ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                    : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+                onClick={() => handleToggleCategory(null)}
+                className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase ${
+                  !selectedCategory
+                    ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                    : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  <span className={`rounded-md p-1 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
-                    <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
-                  </span>
-                  <span>{categoryName}</span>
-                </span>
+                Tất cả danh mục
               </Button>
-            );
-          })}
-        </div>
-      </section>
+
+              {categoryOptions.map((categoryName) => {
+                const isSelected = selectedCategory === categoryName;
+                const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+                const config = getCategoryIconConfig(categoryName, categoryMeta);
+                const CatIcon = config.icon;
+
+                return (
+                  <Button
+                    key={categoryName}
+                    type="button"
+                    onClick={() => handleToggleCategory(categoryName)}
+                    className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase transition-all ${
+                      isSelected
+                        ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                        : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`rounded-md p-1 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
+                        <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
+                      </span>
+                      <span>{categoryName}</span>
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      )}
 
       {activeDocId === null ? (
         <section className="space-y-3">
@@ -1268,8 +1272,8 @@ export default function HandbookView() {
           </div>
         </section>
       ) : (
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <section className="space-y-4 w-full">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-100/70 p-3">
             <button
               type="button"
               onClick={handleBackToList}
@@ -1318,7 +1322,7 @@ export default function HandbookView() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-8">
+            <div className="rounded-2xl bg-white p-5 shadow-xs lg:col-span-8">
               <div className="mb-3 flex items-center gap-2 text-[#C21A1A]">
                 <span className="h-2 w-2 rounded-full bg-[#C21A1A]" />
                 <span className="text-[10px] font-black uppercase tracking-widest">mr.táo SOP standard</span>
@@ -1328,12 +1332,12 @@ export default function HandbookView() {
                 {activeDoc?.title}
               </h2>
 
-              <ScrollArea className="h-[calc(100vh-360px)] min-h-[360px] pr-3 md:h-[450px]">
+              <ScrollArea className="h-auto pr-3 md:h-[450px]">
                 <div className="space-y-2 pb-10 text-slate-700">{renderedActiveContent}</div>
               </ScrollArea>
             </div>
 
-            <aside className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-4">
+            <aside className="flex flex-col justify-between rounded-2xl bg-white p-5 shadow-xs lg:col-span-4">
               <div className="space-y-4">
                 <div className="flex items-center gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3">
                   <span className="rounded-full bg-[#C21A1A] p-1 text-white">
