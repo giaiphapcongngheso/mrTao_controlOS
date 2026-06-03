@@ -36,12 +36,6 @@ export interface WarehouseProductCreateInput {
   branchName: string;
 }
 
-export interface WarehouseCredentials {
-  clientId: string;
-  clientSecret: string;
-  retailer: string;
-}
-
 export interface WarehouseSyncResponse {
   branches: Branch[];
   products: WarehouseProduct[];
@@ -63,4 +57,3 @@ export interface WarehouseSyncLog {
   branchesAdded: number;
   branchesUpdated: number;
 }
-

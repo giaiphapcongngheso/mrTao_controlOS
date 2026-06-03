@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createWarehouseBranch,
   createWarehouseProduct,
   filterWarehouseProducts,
-  hasWarehouseCredentials,
-  loadStoredCredentials,
+  saveWarehouseDataWithStats,
   syncWarehouseData,
   warehouseBranchesService,
   warehouseProductsService,
-  saveWarehouseDataWithStats,
   warehouseSyncLogsService,
 } from '../../../services/warehouse-service';
 import type {
   Branch,
-  WarehouseCredentials,
   WarehouseFilters,
   WarehouseProduct,
   WarehouseProductCreateInput,
@@ -28,7 +25,6 @@ const DEFAULT_FILTERS: WarehouseFilters = {
 };
 
 export function useWarehouseData() {
-  const [credentials, setCredentials] = useState<WarehouseCredentials>(() => loadStoredCredentials());
   const [branches, setBranches] = useState<Branch[]>([]);
   const [products, setProducts] = useState<WarehouseProduct[]>([]);
   const [tempSyncedData, setTempSyncedData] = useState<{
@@ -37,24 +33,20 @@ export function useWarehouseData() {
   } | null>(null);
   const [syncLogs, setSyncLogs] = useState<WarehouseSyncLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-
   const [filters, setFilters] = useState<WarehouseFilters>(DEFAULT_FILTERS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncTime, setSyncTime] = useState<string | null>(null);
-  const credentialsRef = useRef(credentials);
 
-  useEffect(() => {
-    credentialsRef.current = credentials;
-  }, [credentials]);
-
-  // 1. Load from Firestore
   const loadFromFirestore = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
     try {
-      const allBranches = await warehouseBranchesService.getAll();
-      const allProducts = await warehouseProductsService.getAll();
+      const [allBranches, allProducts] = await Promise.all([
+        warehouseBranchesService.getAll(),
+        warehouseProductsService.getAll(),
+      ]);
       setBranches(allBranches);
       setProducts(allProducts);
     } catch (err) {
@@ -66,10 +58,11 @@ export function useWarehouseData() {
 
   const loadSyncLogs = useCallback(async () => {
     setIsLoadingLogs(true);
+
     try {
       const allLogs = await warehouseSyncLogsService.getAll();
       const sortedLogs = [...allLogs].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
       setSyncLogs(sortedLogs);
     } catch (err) {
@@ -84,22 +77,20 @@ export function useWarehouseData() {
     void loadSyncLogs();
   }, [loadFromFirestore, loadSyncLogs]);
 
-  // 2. Compute displayed data (use tempSyncedData if in preview mode)
-  const displayedBranches = useMemo(() => {
-    if (tempSyncedData) {
-      return tempSyncedData.branches;
-    }
-    return branches;
-  }, [tempSyncedData, branches]);
+  const displayedBranches = useMemo(
+    () => tempSyncedData?.branches ?? branches,
+    [tempSyncedData, branches],
+  );
 
-  const displayedProducts = useMemo(() => {
-    if (tempSyncedData) {
-      return tempSyncedData.products;
-    }
-    return products;
-  }, [tempSyncedData, products]);
+  const displayedProducts = useMemo(
+    () => tempSyncedData?.products ?? products,
+    [tempSyncedData, products],
+  );
 
-  const filteredProducts = useMemo(() => filterWarehouseProducts(displayedProducts, filters), [displayedProducts, filters]);
+  const filteredProducts = useMemo(
+    () => filterWarehouseProducts(displayedProducts, filters),
+    [displayedProducts, filters],
+  );
 
   const categories = useMemo(
     () => Array.from(new Set(displayedProducts.map((product) => product.categoryName ?? 'Khác'))),
@@ -124,37 +115,32 @@ export function useWarehouseData() {
     [filteredProducts],
   );
 
-  // 3. Sync from KiotViet to memory
-  const syncData = useCallback(async (nextCredentials?: WarehouseCredentials) => {
-    const targetCredentials = nextCredentials ?? credentialsRef.current;
+  const syncData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      setCredentials(targetCredentials);
-
-      if (!hasWarehouseCredentials(targetCredentials)) {
-        throw new Error('Vui lòng nhập đầy đủ cấu hình KiotViet để đồng bộ kho.');
-      }
-
-      const data = await syncWarehouseData(targetCredentials);
+      const data = await syncWarehouseData();
       setTempSyncedData({
         branches: data.branches,
         products: data.products,
       });
       setSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu kho');
+      setError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu kho.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // 4. Save memory data to Firestore
   const saveTempDataToSystem = useCallback(async (): Promise<WarehouseSyncLog | null> => {
-    if (!tempSyncedData) return null;
+    if (!tempSyncedData) {
+      return null;
+    }
+
     setIsLoading(true);
     setError(null);
+
     try {
       const log = await saveWarehouseDataWithStats(tempSyncedData.branches, tempSyncedData.products);
       await loadFromFirestore();
@@ -169,20 +155,20 @@ export function useWarehouseData() {
     }
   }, [tempSyncedData, loadFromFirestore, loadSyncLogs]);
 
-  // 5. Discard memory data
   const discardTempData = useCallback(() => {
     setTempSyncedData(null);
     setError(null);
   }, []);
 
-  // 6. Create product manual directly to Firestore
   const createProduct = useCallback(
     async (input: WarehouseProductCreateInput) => {
       setIsLoading(true);
       setError(null);
+
       try {
         const existingBranch = branches.find((branch) => branch.id === input.branchId);
         let targetBranch = existingBranch;
+
         if (!targetBranch) {
           const newBranch = createWarehouseBranch(input.branchName.trim());
           targetBranch = await warehouseBranchesService.create(newBranch);
@@ -192,7 +178,7 @@ export function useWarehouseData() {
         await warehouseProductsService.create(nextProduct);
         await loadFromFirestore();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể tạo sản phẩm');
+        setError(err instanceof Error ? err.message : 'Không thể tạo sản phẩm.');
       } finally {
         setIsLoading(false);
       }
@@ -200,8 +186,79 @@ export function useWarehouseData() {
     [branches, loadFromFirestore],
   );
 
+  const updateProduct = useCallback(
+    async (productId: number, input: WarehouseProductCreateInput) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const existingBranch = branches.find((branch) => branch.id === input.branchId);
+        let targetBranch = existingBranch;
+
+        if (!targetBranch) {
+          const newBranch = createWarehouseBranch(input.branchName.trim());
+          targetBranch = await warehouseBranchesService.create(newBranch);
+        }
+
+        const existingProduct = products.find((p) => p.id === productId);
+        if (!existingProduct) {
+          throw new Error('Không tìm thấy sản phẩm cần cập nhật.');
+        }
+
+        const updatedProduct: WarehouseProduct = {
+          ...existingProduct,
+          code: input.code,
+          name: input.name,
+          categoryName: input.categoryName,
+          basePrice: input.basePrice,
+          inventories: [
+            {
+              branchId: targetBranch.id,
+              branchName: targetBranch.branchName,
+              onHand: input.onHand,
+            },
+          ],
+        };
+
+        await warehouseProductsService.update(String(productId), updatedProduct);
+        await loadFromFirestore();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể cập nhật sản phẩm.');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [branches, products, loadFromFirestore],
+  );
+
+  const deleteProduct = useCallback(
+    async (productId: number) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const product = products.find((p) => p.id === productId);
+        if (!product) {
+          throw new Error('Không tìm thấy sản phẩm cần xóa.');
+        }
+        if (product.source !== 'manual') {
+          throw new Error('Không thể xóa sản phẩm đồng bộ từ KiotViet.');
+        }
+
+        await warehouseProductsService.delete(String(productId));
+        await loadFromFirestore();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể xóa sản phẩm.');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [products, loadFromFirestore],
+  );
+
   return {
-    credentials,
     branches: displayedBranches,
     categories,
     filteredProducts,
@@ -213,6 +270,8 @@ export function useWarehouseData() {
     totalValue,
     setFilters,
     createProduct,
+    updateProduct,
+    deleteProduct,
     syncData,
     tempSyncedData,
     saveTempDataToSystem,

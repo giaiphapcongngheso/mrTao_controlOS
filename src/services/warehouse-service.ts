@@ -1,6 +1,5 @@
 import type {
   Branch,
-  WarehouseCredentials,
   WarehouseFilters,
   WarehouseProduct,
   WarehouseProductCreateInput,
@@ -12,90 +11,141 @@ import { getFirestoreDb } from './firebase-config';
 import { createBaseService } from '../shared/services/create-base-service';
 import { dataClient } from './data-client';
 import { RESOURCE_PATH } from '../constants/resource-paths';
+import { getCurrentFirebaseIdToken } from './firebase-auth-service';
 
+const KIOT_SYNC_FUNCTION_URL = import.meta.env.VITE_KIOT_SYNC_FUNCTION_URL ?? '';
+
+class WarehouseSyncRequestError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'WarehouseSyncRequestError';
+  }
+}
 
 function generateLocalId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
-export function loadStoredCredentials(): WarehouseCredentials {
+function normalizeSyncError(error: unknown): string {
+  if (error instanceof WarehouseSyncRequestError) {
+    if (error.status === 401) {
+      return 'Phiên đăng nhập Firebase đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại trước khi đồng bộ kho.';
+    }
+
+    if (error.status === 404) {
+      return 'Không tìm thấy endpoint đồng bộ KiotViet. Vui lòng kiểm tra VITE_KIOT_SYNC_FUNCTION_URL.';
+    }
+
+    if (error.status === 502) {
+      return `KiotViet trả về lỗi khi đồng bộ kho: ${error.message}`;
+    }
+
+    if (error.status === 503) {
+      return 'KiotViet đang tạm thời không khả dụng hoặc đang chặn kết nối từ máy chủ Firebase Functions. Vui lòng kiểm tra whitelist IP hoặc trạng thái public API của KiotViet.';
+    }
+
+    return error.message;
+  }
+
+  return error instanceof Error ? error.message : 'Không thể đồng bộ dữ liệu kho.';
+}
+
+function getRequiredFunctionUrl(): string {
+  const trimmed = KIOT_SYNC_FUNCTION_URL.trim();
+  if (!trimmed) {
+    throw new Error(
+      'Thiếu cấu hình VITE_KIOT_SYNC_FUNCTION_URL. Vui lòng cấu hình URL Firebase Function cho đồng bộ KiotViet.',
+    );
+  }
+
+  return trimmed;
+}
+
+async function parseResponseBody(response: Response): Promise<{
+  contentType: string;
+  body: Record<string, unknown> | string | null;
+}> {
+  const contentType = response.headers.get('content-type') ?? '';
+  const rawText = await response.text();
+
+  if (!rawText) {
+    return { contentType, body: null };
+  }
+
+  if (contentType.includes('application/json')) {
+    try {
+      return {
+        contentType,
+        body: JSON.parse(rawText) as Record<string, unknown>,
+      };
+    } catch {
+      throw new Error(`Firebase Function trả về JSON không hợp lệ: ${rawText.slice(0, 120)}`);
+    }
+  }
+
+  return { contentType, body: rawText };
+}
+
+async function fetchWarehouseSyncPayload(): Promise<WarehouseSyncResponse> {
+  const idToken = await getCurrentFirebaseIdToken();
+  if (!idToken) {
+    throw new WarehouseSyncRequestError(
+      401,
+      'Bạn cần đăng nhập Firebase trước khi đồng bộ dữ liệu kho.',
+    );
+  }
+
+  const response = await fetch(getRequiredFunctionUrl(), {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  const { contentType, body } = await parseResponseBody(response);
+  if (!response.ok) {
+    const errorMessage =
+      body && typeof body === 'object' && 'error' in body
+        ? String(body.error || `Yêu cầu thất bại (${response.status})`)
+        : typeof body === 'string'
+          ? body.slice(0, 160)
+          : `Yêu cầu thất bại (${response.status})`;
+
+    throw new WarehouseSyncRequestError(response.status, errorMessage);
+  }
+
+  if (!contentType.includes('application/json')) {
+    throw new WarehouseSyncRequestError(
+      502,
+      `Firebase Function trả về nội dung không hợp lệ: ${String(body || '').slice(0, 120)}`,
+    );
+  }
+
+  const payload = body as Partial<WarehouseSyncResponse> | null;
+
   return {
-    clientId: import.meta.env.VITE_KIOT_CLIENT_ID ?? '',
-    clientSecret: import.meta.env.VITE_KIOT_CLIENT_SECRET ?? '',
-    retailer: import.meta.env.VITE_KIOT_RETAILER ?? '',
+    branches: Array.isArray(payload?.branches)
+      ? payload.branches.map((branch) => ({
+          ...(branch as Branch),
+          source: 'synced',
+        }))
+      : [],
+    products: Array.isArray(payload?.products)
+      ? payload.products.map((product) => ({
+          ...(product as WarehouseProduct),
+          source: 'synced',
+        }))
+      : [],
   };
 }
 
-export function hasWarehouseCredentials(credentials: WarehouseCredentials) {
-  return Boolean(credentials.clientId && credentials.clientSecret && credentials.retailer);
-}
-
-function normalizeSyncError(error: unknown): string {
-  const message = error instanceof Error ? error.message : 'Không thể đồng bộ dữ liệu kho.';
-  const normalized = message.toLowerCase();
-
-  if (
-    normalized.includes('503') ||
-    normalized.includes('service unavailable') ||
-    normalized.includes('unexpected token') ||
-    normalized.includes('doctype')
-  ) {
-    return 'KiotViet từ chối kết nối từ IP hiện tại (503). Vui lòng kiểm tra cấu hình API whitelist trong KiotViet.';
-  }
-
-  return message;
-}
-
-async function fetchJson(path: string) {
-  const response = await fetch(path);
-  const contentType = response.headers.get('content-type') ?? '';
-
-  if (!contentType.includes('application/json')) {
-    const text = await response.text();
-    throw new Error(`API trả về định dạng không hợp lệ: ${text.slice(0, 120)}`);
-  }
-
-  const json = await response.json();
-
-  if (!response.ok) {
-    throw new Error(json.error || `Yêu cầu thất bại (${response.status})`);
-  }
-
-  return json;
-}
-
-export async function syncWarehouseData(credentials: WarehouseCredentials): Promise<WarehouseSyncResponse> {
-  if (!hasWarehouseCredentials(credentials)) {
-    return {
-      branches: [],
-      products: [],
-    };
-  }
-
+export async function syncWarehouseData(): Promise<WarehouseSyncResponse> {
   try {
-    const params = new URLSearchParams({
-      clientId: credentials.clientId,
-      clientSecret: credentials.clientSecret,
-      retailer: credentials.retailer,
-      pageSize: '100',
-    });
-
-    const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-    const [branchesData, productsData] = await Promise.all([
-      fetchJson(`${baseUrl}/api/kiotviet/branches?${params.toString()}`),
-      fetchJson(`${baseUrl}/api/kiotviet/products?${params.toString()}`),
-    ]);
-
-    return {
-      branches: ((branchesData.data as Branch[] | undefined) ?? []).map((branch) => ({
-        ...branch,
-        source: 'synced',
-      })),
-      products: ((productsData.data as WarehouseProduct[] | undefined) ?? []).map((product) => ({
-        ...product,
-        source: 'synced',
-      })),
-    };
+    return await fetchWarehouseSyncPayload();
   } catch (error) {
     throw new Error(normalizeSyncError(error));
   }
@@ -167,8 +217,6 @@ export function filterWarehouseProducts(
   });
 }
 
-// ─── Firestore Services ──────────────────────────────────────────────────────
-
 export const warehouseBranchesService = createBaseService<Branch, Partial<Branch>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_BRANCHES,
@@ -184,27 +232,24 @@ export const warehouseSyncLogsService = createBaseService<WarehouseSyncLog, Part
   resource: RESOURCE_PATH.WAREHOUSE_SYNC_LOGS,
 });
 
-// ─── Batch Save to Firestore with Logs ───────────────────────────────────────
-
 export async function saveWarehouseDataWithStats(
   branches: Branch[],
-  products: WarehouseProduct[]
+  products: WarehouseProduct[],
 ): Promise<WarehouseSyncLog> {
   const db = getFirestoreDb();
 
-  // 1. Fetch current data to count additions vs updates
   const existingBranches = await warehouseBranchesService.getAll();
   const existingProducts = await warehouseProductsService.getAll();
 
-  const existingBranchIds = new Set(existingBranches.map((b) => String(b.id)));
-  const existingProductIds = new Set(existingProducts.map((p) => String(p.id)));
+  const existingBranchIds = new Set(existingBranches.map((branch) => String(branch.id)));
+  const existingProductIds = new Set(existingProducts.map((product) => String(product.id)));
 
   let branchesAdded = 0;
   let branchesUpdated = 0;
   let productsAdded = 0;
   let productsUpdated = 0;
 
-  const operations: { ref: any; data: any }[] = [];
+  const operations: Array<{ ref: ReturnType<typeof doc>; data: Branch | WarehouseProduct }> = [];
 
   branches.forEach((branch) => {
     const branchIdStr = String(branch.id);
@@ -213,8 +258,11 @@ export async function saveWarehouseDataWithStats(
     } else {
       branchesAdded++;
     }
-    const docRef = doc(db, 'warehouse_branches', branchIdStr);
-    operations.push({ ref: docRef, data: branch });
+
+    operations.push({
+      ref: doc(db, 'warehouse_branches', branchIdStr),
+      data: branch,
+    });
   });
 
   products.forEach((product) => {
@@ -224,22 +272,23 @@ export async function saveWarehouseDataWithStats(
     } else {
       productsAdded++;
     }
-    const docRef = doc(db, 'warehouse_products', productIdStr);
-    operations.push({ ref: docRef, data: product });
+
+    operations.push({
+      ref: doc(db, 'warehouse_products', productIdStr),
+      data: product,
+    });
   });
 
-  // 2. Perform Batch Write in chunks of 500
   const CHUNK_SIZE = 500;
-  for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
-    const chunk = operations.slice(i, i + CHUNK_SIZE);
+  for (let index = 0; index < operations.length; index += CHUNK_SIZE) {
+    const chunk = operations.slice(index, index + CHUNK_SIZE);
     const batch = writeBatch(db);
-    chunk.forEach((op) => {
-      batch.set(op.ref, op.data, { merge: true });
+    chunk.forEach((operation) => {
+      batch.set(operation.ref, operation.data, { merge: true });
     });
     await batch.commit();
   }
 
-  // 3. Create Sync Log Document
   const logId = `log_${Date.now()}`;
   const timestamp = new Date().toISOString();
   const summary = `Đồng bộ KiotViet: Thêm mới ${branchesAdded} & Cập nhật ${branchesUpdated} chi nhánh. Thêm mới ${productsAdded} & Cập nhật ${productsUpdated} sản phẩm.`;
@@ -256,11 +305,9 @@ export async function saveWarehouseDataWithStats(
 
   await warehouseSyncLogsService.create(syncLog);
 
-  // Invalidate Caches
   warehouseBranchesService.invalidateCache();
   warehouseProductsService.invalidateCache();
   warehouseSyncLogsService.invalidateCache();
 
   return syncLog;
 }
-

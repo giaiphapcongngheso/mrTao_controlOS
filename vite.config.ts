@@ -35,6 +35,7 @@ function kiotVietProxyPlugin(): Plugin {
   return {
     name: 'kiotviet-proxy',
     configureServer(server) {
+      // Legacy dev-only proxy. Production warehouse sync now goes through Firebase Functions.
       server.middlewares.use(async (req, res, next) => {
         const [pathname, search] = (req.url || '').split('?');
 
@@ -114,13 +115,13 @@ function kiotVietProxyPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
   return {
     base: resolveBasePath(),
     define: {
       __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || pkg.version),
     },
-    plugins: [react(), tailwindcss(), kiotVietProxyPlugin()],
+    plugins: [react(), tailwindcss(), ...(command === 'serve' ? [kiotVietProxyPlugin()] : [])],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

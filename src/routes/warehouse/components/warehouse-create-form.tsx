@@ -14,8 +14,8 @@ import {
   NumericInput,
 } from '@shared/ui';
 import { CreatableCombobox } from '@shared/components/custom/creatable-combobox';
-import type { Branch, WarehouseProductCreateInput } from '../../../types/warehouse.types';
-import { Barcode, Package, FolderTree, Coins, Boxes, Warehouse, X, Plus } from 'lucide-react';
+import type { Branch, WarehouseProduct, WarehouseProductCreateInput } from '../../../types/warehouse.types';
+import { Barcode, Package, FolderTree, Coins, Boxes, Warehouse, X, Plus, Check } from 'lucide-react';
 
 const MANUAL_BRANCH_VALUE = 'manual';
 
@@ -33,13 +33,15 @@ type WarehouseCreateFormValues = z.infer<typeof warehouseCreateSchema>;
 
 interface WarehouseCreateFormProps {
   branches: Branch[];
-  onCreate: (values: WarehouseProductCreateInput) => void;
+  initialData?: WarehouseProduct | null;
+  onSubmit: (values: WarehouseProductCreateInput) => void;
   onCancel: () => void;
 }
 
 export default function WarehouseCreateForm({
   branches,
-  onCreate,
+  initialData,
+  onSubmit,
   onCancel,
 }: WarehouseCreateFormProps) {
   const defaultBranchId = useMemo(
@@ -52,9 +54,20 @@ export default function WarehouseCreateForm({
     [branches],
   );
 
-  const form = useForm<WarehouseCreateFormValues>({
-    resolver: zodResolver(warehouseCreateSchema),
-    defaultValues: {
+  const defaultValues = useMemo(() => {
+    if (initialData) {
+      const inventory = initialData.inventories?.[0];
+      return {
+        code: initialData.code,
+        name: initialData.name,
+        categoryName: initialData.categoryName ?? '',
+        basePrice: initialData.basePrice,
+        onHand: inventory?.onHand ?? 0,
+        branchId: inventory ? String(inventory.branchId) : defaultBranchId,
+        branchName: inventory ? inventory.branchName : defaultBranchName,
+      };
+    }
+    return {
       code: '',
       name: '',
       categoryName: '',
@@ -62,25 +75,22 @@ export default function WarehouseCreateForm({
       onHand: 0,
       branchId: defaultBranchId,
       branchName: defaultBranchName,
-    },
+    };
+  }, [initialData, defaultBranchId, defaultBranchName]);
+
+  const form = useForm<WarehouseCreateFormValues>({
+    resolver: zodResolver(warehouseCreateSchema),
+    defaultValues,
   });
 
   useEffect(() => {
-    form.reset({
-      code: '',
-      name: '',
-      categoryName: '',
-      basePrice: 0,
-      onHand: 0,
-      branchId: defaultBranchId,
-      branchName: defaultBranchName,
-    });
-  }, [defaultBranchId, defaultBranchName, form]);
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
 
   const handleSubmit = form.handleSubmit((values) => {
     const selectedBranch = branches.find((branch) => String(branch.id) === values.branchId);
 
-    onCreate({
+    onSubmit({
       code: values.code,
       name: values.name,
       categoryName: values.categoryName || undefined,
@@ -90,15 +100,17 @@ export default function WarehouseCreateForm({
       branchName: selectedBranch?.branchName ?? values.branchName,
     });
 
-    form.reset({
-      code: '',
-      name: '',
-      categoryName: '',
-      basePrice: 0,
-      onHand: 0,
-      branchId: defaultBranchId,
-      branchName: defaultBranchName,
-    });
+    if (!initialData) {
+      form.reset({
+        code: '',
+        name: '',
+        categoryName: '',
+        basePrice: 0,
+        onHand: 0,
+        branchId: defaultBranchId,
+        branchName: defaultBranchName,
+      });
+    }
   });
 
   return (
@@ -287,8 +299,8 @@ export default function WarehouseCreateForm({
             type="submit"
             className="rounded-lg px-5 h-9 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/75 text-white font-medium text-sm flex items-center gap-1.5 shadow-sm hover:shadow transition-all active:scale-97 cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            Tạo sản phẩm
+            {initialData ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {initialData ? 'Cập nhật' : 'Tạo sản phẩm'}
           </Button>
         </div>
       </form>

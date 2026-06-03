@@ -26,6 +26,8 @@ import {
   Filter,
   Check,
   History,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import WarehouseCreateForm from './components/warehouse-create-form';
 import WarehouseSyncHistoryDrawer from './components/warehouse-sync-history-drawer';
@@ -45,8 +47,8 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
 export default function WarehouseView() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<WarehouseProduct | null>(null);
   const {
-    credentials,
     branches,
     categories,
     filteredProducts,
@@ -58,6 +60,8 @@ export default function WarehouseView() {
     totalValue,
     setFilters,
     createProduct,
+    updateProduct,
+    deleteProduct,
     syncData,
     tempSyncedData,
     saveTempDataToSystem,
@@ -269,6 +273,46 @@ export default function WarehouseView() {
           </div>
         );
       },
+    },
+    {
+      id: 'actions',
+      header: 'Thao tác',
+      size: 140,
+      cell: ({ row }) => {
+        const product = row.original;
+        const isManual = product.source === 'manual';
+        return (
+          <div className="flex items-center gap-1.5 font-sans">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2.5 text-slate-700 hover:text-indigo-650 hover:bg-indigo-50/60 rounded-xl font-bold text-sm transition-all flex items-center gap-1 cursor-pointer"
+              onClick={() => setEditingProduct(product)}
+            >
+              <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+              Sửa
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 px-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1 ${
+                isManual
+                  ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
+                  : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
+              }`}
+              disabled={!isManual}
+              onClick={() => {
+                if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
+                  void deleteProduct(product.id);
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Xóa
+            </Button>
+          </div>
+        );
+      },
     }
   ], []);
 
@@ -409,18 +453,34 @@ export default function WarehouseView() {
       )}
 
 
-      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+      <Dialog open={showCreateForm || !!editingProduct} onOpenChange={(open) => {
+        if (!open) {
+          setShowCreateForm(false);
+          setEditingProduct(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl rounded-2xl font-sans">
           <DialogHeader>
-            <DialogTitle className="text-[16px] font-bold text-slate-800">Tạo mới sản phẩm kho</DialogTitle>
+            <DialogTitle className="text-[16px] font-bold text-slate-800">
+              {editingProduct ? 'Chỉnh sửa sản phẩm kho' : 'Tạo mới sản phẩm kho'}
+            </DialogTitle>
           </DialogHeader>
           <WarehouseCreateForm
             branches={branches}
-            onCreate={(values) => {
-              createProduct(values);
+            initialData={editingProduct}
+            onSubmit={(values) => {
+              if (editingProduct) {
+                void updateProduct(editingProduct.id, values);
+              } else {
+                void createProduct(values);
+              }
               setShowCreateForm(false);
+              setEditingProduct(null);
             }}
-            onCancel={() => setShowCreateForm(false)}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setEditingProduct(null);
+            }}
           />
         </DialogContent>
       </Dialog>

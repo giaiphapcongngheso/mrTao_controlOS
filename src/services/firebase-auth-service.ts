@@ -54,6 +54,16 @@ export async function signOutFirebaseSession(): Promise<void> {
   await signOut(auth);
 }
 
+export async function getCurrentFirebaseIdToken(forceRefresh = false): Promise<string | null> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    return null;
+  }
+
+  return user.getIdToken(forceRefresh);
+}
+
 async function postToIdentityToolkit<T>(path: string, payload: Record<string, unknown>): Promise<T> {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
   if (!apiKey) {
