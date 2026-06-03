@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Navigate, createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import { Navigate, createRootRoute, createRoute, createRouter, Outlet, createHashHistory } from '@tanstack/react-router';
 import AppShell from './AppShell';
 
 const LazyTodayRoute = lazy(() => import('./Today/today-route'));
@@ -147,9 +147,12 @@ const routeTree = rootRoute.addChildren([
 
 const basepath = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '');
 
+const hashHistory = createHashHistory();
+
 export const router = createRouter({
   routeTree,
   basepath,
+  history: hashHistory,
 });
 
 declare module '@tanstack/react-router' {
