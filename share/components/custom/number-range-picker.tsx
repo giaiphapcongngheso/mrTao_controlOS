@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { NumericInput } from '../../ui/numeric-input';
+import { Button } from '../../ui/button';
 
 interface NumberRangePickerProps {
   value?: [number, number] | undefined;
@@ -83,13 +84,15 @@ export function NumberRangePicker({
         )}
       />
       {hasValue && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={handleClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all border border-slate-100 shadow-3xs cursor-pointer z-20"
+          className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer z-20"
         >
-          <X className="w-3 h-3" />
-        </button>
+          <X className="w-3.5 h-3.5" />
+        </Button>
       )}
     </div>
   );
