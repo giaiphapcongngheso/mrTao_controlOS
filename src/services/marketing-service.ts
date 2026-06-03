@@ -6,6 +6,9 @@ import type {
   MarketingCampaignSummary,
   MarketingChannel,
 } from '../types/marketing.types';
+import { createBaseService } from '../shared/services/create-base-service';
+import { dataClient } from './data-client';
+import { RESOURCE_PATH } from '../constants/resource-paths';
 
 export const MARKETING_CHANNEL_OPTIONS = [
   'Facebook',
@@ -26,7 +29,6 @@ export function createMarketingCampaign(input: MarketingCampaignCreateInput): Ma
   return {
     ...input,
     id: `camp-${Date.now()}`,
-    spent: 0,
     reach: 0,
     clicks: 0,
     conversions: 0,
@@ -68,3 +70,8 @@ export function calculateMarketingSummary(campaigns: MarketingCampaign[]): Marke
     },
   );
 }
+
+export const marketingCampaignsService = createBaseService<MarketingCampaign, Partial<MarketingCampaign>>({
+  client: dataClient,
+  resource: RESOURCE_PATH.MARKETING_CAMPAIGNS,
+});

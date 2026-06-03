@@ -31,6 +31,7 @@ import WarehouseCreateForm from './components/warehouse-create-form';
 import WarehouseSyncHistoryDrawer from './components/warehouse-sync-history-drawer';
 import { useWarehouseData } from './hooks/use-warehouse-data';
 import { ModuleHeader, CustomTable } from '@shared/components';
+import { NumberRangePicker } from '../../../share/components/custom/number-range-picker';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { WarehouseProduct, WarehouseSyncLog } from '../../types/warehouse.types';
 
@@ -186,34 +187,14 @@ export default function WarehouseView() {
         return true;
       },
       meta: {
-        filterElement: (column) => {
-          const filterValue = (column.getFilterValue() as [number | undefined, number | undefined]) ?? [undefined, undefined];
-          return (
-            <div className="flex items-center gap-1 px-1 py-0.5">
-              <input
-                type="number"
-                placeholder="Từ..."
-                value={filterValue[0] ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  column.setFilterValue([val, filterValue[1]]);
-                }}
-                className="w-full h-8 text-xs px-1 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
-              />
-              <span className="text-slate-400 text-xs font-semibold">-</span>
-              <input
-                type="number"
-                placeholder="Đến..."
-                value={filterValue[1] ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  column.setFilterValue([filterValue[0], val]);
-                }}
-                className="w-full h-8 text-xs px-1 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
-              />
-            </div>
-          );
-        },
+        filterElement: (column) => (
+          <NumberRangePicker
+            value={column.getFilterValue() as [number, number] | undefined}
+            onChange={(val) => column.setFilterValue(val)}
+            placeholderFrom="Từ..."
+            placeholderTo="Đến..."
+          />
+        ),
       },
       cell: ({ row }) => {
         const product = row.original;
@@ -237,34 +218,14 @@ export default function WarehouseView() {
         return true;
       },
       meta: {
-        filterElement: (column) => {
-          const filterValue = (column.getFilterValue() as [number | undefined, number | undefined]) ?? [undefined, undefined];
-          return (
-            <div className="flex items-center gap-1 px-1 py-0.5">
-              <input
-                type="number"
-                placeholder="Từ..."
-                value={filterValue[0] ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  column.setFilterValue([val, filterValue[1]]);
-                }}
-                className="w-full h-8 text-xs px-1 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
-              />
-              <span className="text-slate-400 text-xs font-semibold">-</span>
-              <input
-                type="number"
-                placeholder="Đến..."
-                value={filterValue[1] ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value ? Number(e.target.value) : undefined;
-                  column.setFilterValue([filterValue[0], val]);
-                }}
-                className="w-full h-8 text-xs px-1 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
-              />
-            </div>
-          );
-        },
+        filterElement: (column) => (
+          <NumberRangePicker
+            value={column.getFilterValue() as [number, number] | undefined}
+            onChange={(val) => column.setFilterValue(val)}
+            placeholderFrom="Từ..."
+            placeholderTo="Đến..."
+          />
+        ),
       },
       cell: ({ row }) => {
         const product = row.original;

@@ -168,9 +168,14 @@ export function DatePicker({
     if (tempDateTime && (showTime || timeOnly)) {
       newDate.setHours(tempDateTime.getHours());
       newDate.setMinutes(tempDateTime.getMinutes());
+      setTempDateTime(newDate);
+    } else {
+      setTempDateTime(newDate);
+      const formatted = format(newDate, getFormatString(), { locale: vi });
+      setInputValue(formatted);
+      onChange?.(newDate);
+      setOpen(false);
     }
-
-    setTempDateTime(newDate);
   };
 
   const handleTimeChange = (type: 'hour' | 'minute' | 'meridiem', newValue: string) => {
@@ -332,15 +337,17 @@ export function DatePicker({
                   </div>
                 )}
 
-                <div className="flex gap-2 border-t border-border pt-2">
-                  <Button variant="outline" onClick={handleCancel} className="flex-1" size="sm">
-                    Cancel
-                  </Button>
+                {(showTime || timeOnly) && (
+                  <div className="flex gap-2 border-t border-border pt-2">
+                    <Button variant="outline" onClick={handleCancel} className="flex-1" size="sm">
+                      Cancel
+                    </Button>
 
-                  <Button onClick={handleSet} className="flex-1" size="sm">
-                    Set
-                  </Button>
-                </div>
+                    <Button onClick={handleSet} className="flex-1" size="sm">
+                      Set
+                    </Button>
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>

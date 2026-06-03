@@ -20,6 +20,7 @@ export interface MarketingCampaignCreateInput {
   name: string;
   channel: MarketingChannel;
   budget: number;
+  spent: number;
   status: MarketingCampaignStatus;
   startDate: string;
   endDate: string;
