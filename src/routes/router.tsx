@@ -91,7 +91,6 @@ const hashHistory = createHashHistory();
 
 export const router = createRouter({
   routeTree,
-  basepath,
   history: hashHistory,
 });
 
