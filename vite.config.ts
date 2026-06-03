@@ -20,6 +20,14 @@ function resolveBasePath(): string {
     return normalizeBasePath(explicitBase);
   }
 
+  // Auto-detect when building on GitHub Actions for GitHub Pages
+  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_REPOSITORY) {
+    const repoName = process.env.GITHUB_REPOSITORY.split('/')[1];
+    if (repoName) {
+      return normalizeBasePath(repoName);
+    }
+  }
+
   return '/';
 }
 
