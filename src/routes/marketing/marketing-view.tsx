@@ -31,6 +31,7 @@ import {
   CalendarDays,
   Pause,
   StopCircle,
+  Edit,
 } from 'lucide-react';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import { NumberRangePicker } from '../../../share/components/custom/number-range-picker';
@@ -117,11 +118,7 @@ export default function MarketingView() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [campaignToDelete, setCampaignToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [campaignToRotateStatus, setCampaignToRotateStatus] = useState<{
-    id: string;
-    name: string;
-    currentStatus: MarketingCampaignStatus;
-  } | null>(null);
+  const [editingCampaign, setEditingCampaign] = useState<MarketingCampaign | null>(null);
 
   const {
     filters,
@@ -129,7 +126,7 @@ export default function MarketingView() {
     setFilters,
     createCampaign,
     deleteCampaign,
-    rotateCampaignStatus,
+    updateCampaign,
   } = useMarketingCampaigns();
 
   // Filter campaigns locally by searchQuery to sync stats cards with search results
@@ -165,14 +162,7 @@ export default function MarketingView() {
     [summary.totalConversions, summary.totalSpent],
   );
 
-  const nextStatusLabel = useMemo(() => {
-    if (!campaignToRotateStatus) {
-      return '';
-    }
-    const currentIndex = MARKETING_STATUS_OPTIONS.indexOf(campaignToRotateStatus.currentStatus);
-    const nextStatus = MARKETING_STATUS_OPTIONS[(currentIndex + 1) % MARKETING_STATUS_OPTIONS.length];
-    return STATUS_LABEL[nextStatus];
-  }, [campaignToRotateStatus]);
+
 
   // Define columns for CustomTable
   const columns = useMemo<ColumnDef<MarketingCampaign>[]>(
@@ -371,16 +361,11 @@ export default function MarketingView() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs px-2 rounded-lg font-semibold hover:bg-slate-50 transition-all active:scale-97 cursor-pointer"
-              onClick={() =>
-                setCampaignToRotateStatus({
-                  id: row.original.id,
-                  name: row.original.name,
-                  currentStatus: row.original.status,
-                })
-              }
+              className="h-8 text-xs px-2.5 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+              onClick={() => setEditingCampaign(row.original)}
             >
-              Đổi trạng thái
+              <Edit className="h-3.5 w-3.5" />
+              Sửa
             </Button>
             <Button
               size="sm"
@@ -399,7 +384,7 @@ export default function MarketingView() {
         ),
       },
     ],
-    [rotateCampaignStatus, deleteCampaign],
+    [deleteCampaign],
   );
 
   return (
@@ -568,41 +553,39 @@ export default function MarketingView() {
         className="h-[calc(100vh-365px)]"
       />
 
-      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+      <Dialog
+        open={showCreateForm || editingCampaign !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateForm(false);
+            setEditingCampaign(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-2xl rounded-2xl font-sans">
           <DialogHeader>
-            <DialogTitle className="text-[16px] font-bold text-slate-800">Tạo chiến dịch marketing</DialogTitle>
+            <DialogTitle className="text-[16px] font-bold text-slate-800">
+              {editingCampaign ? 'Chỉnh sửa chiến dịch' : 'Tạo chiến dịch marketing'}
+            </DialogTitle>
           </DialogHeader>
           <MarketingCreateForm
+            initialValues={editingCampaign}
             onCreate={(values) => {
-              createCampaign(values);
-              setShowCreateForm(false);
+              if (editingCampaign) {
+                updateCampaign(editingCampaign.id, values);
+                setEditingCampaign(null);
+              } else {
+                createCampaign(values);
+                setShowCreateForm(false);
+              }
             }}
-            onCancel={() => setShowCreateForm(false)}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setEditingCampaign(null);
+            }}
           />
         </DialogContent>
       </Dialog>
-
-      <ActionConfirmDialog
-        open={campaignToRotateStatus !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCampaignToRotateStatus(null);
-          }
-        }}
-        title="Xác nhận đổi trạng thái"
-        description={
-          campaignToRotateStatus
-            ? `Bạn có chắc muốn đổi trạng thái chiến dịch "${campaignToRotateStatus.name}" sang "${nextStatusLabel}"?`
-            : ''
-        }
-        onConfirm={() => {
-          if (campaignToRotateStatus) {
-            rotateCampaignStatus(campaignToRotateStatus.id);
-          }
-        }}
-        variant="confirm"
-      />
 
       <ActionConfirmDialog
         open={campaignToDelete !== null}

@@ -78,7 +78,19 @@ export function useMarketingCampaigns() {
       );
       marketingCampaignsService.invalidateCache();
     } catch (error) {
-      console.error('Failed to update marketing campaign status in Firestore:', error);
+      console.error('Failed to rotate campaign status in Firestore:', error);
+    }
+  };
+
+  const updateCampaign = async (campaignId: string, input: Partial<MarketingCampaign>) => {
+    try {
+      await marketingCampaignsService.update(campaignId, input);
+      setCampaigns((prev) =>
+        prev.map((c) => (c.id === campaignId ? { ...c, ...input } : c))
+      );
+      marketingCampaignsService.invalidateCache();
+    } catch (error) {
+      console.error('Failed to update marketing campaign in Firestore:', error);
     }
   };
 
@@ -92,5 +104,6 @@ export function useMarketingCampaigns() {
     createCampaign,
     deleteCampaign,
     rotateCampaignStatus,
+    updateCampaign,
   };
 }

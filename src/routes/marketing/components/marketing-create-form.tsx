@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -21,8 +22,8 @@ import {
   MARKETING_CHANNEL_OPTIONS,
   MARKETING_STATUS_OPTIONS,
 } from '../../../services/marketing-service';
-import type { MarketingCampaignCreateInput } from '../../../types/marketing.types';
-import { Megaphone, Share2, Activity, Coins, Calendar, X, Plus, Facebook, MapPin, Star, Play, CalendarDays, Pause, StopCircle } from 'lucide-react';
+import type { MarketingCampaignCreateInput, MarketingCampaign } from '../../../types/marketing.types';
+import { Megaphone, Share2, Activity, Coins, Calendar, X, Plus, Facebook, MapPin, Star, Play, CalendarDays, Pause, StopCircle, Check } from 'lucide-react';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
 
 const marketingCreateSchema = z.object({
@@ -50,6 +51,7 @@ const DEFAULT_VALUES: MarketingCreateFormValues = {
 interface MarketingCreateFormProps {
   onCreate: (values: MarketingCampaignCreateInput) => void;
   onCancel: () => void;
+  initialValues?: MarketingCampaign | null;
 }
 
 export function TikTokIcon({ className }: { className?: string }) {
@@ -140,11 +142,37 @@ const formatDateToString = (date: Date | undefined) => {
   return `${year}-${month}-${day}`;
 };
 
-export default function MarketingCreateForm({ onCreate, onCancel }: MarketingCreateFormProps) {
+export default function MarketingCreateForm({ onCreate, onCancel, initialValues }: MarketingCreateFormProps) {
+  const isEditing = !!initialValues;
+
   const form = useForm<MarketingCreateFormValues>({
     resolver: zodResolver(marketingCreateSchema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: initialValues ? {
+      name: initialValues.name,
+      channel: initialValues.channel,
+      budget: initialValues.budget,
+      spent: initialValues.spent,
+      status: initialValues.status,
+      startDate: initialValues.startDate,
+      endDate: initialValues.endDate,
+    } : DEFAULT_VALUES,
   });
+
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        name: initialValues.name,
+        channel: initialValues.channel,
+        budget: initialValues.budget,
+        spent: initialValues.spent,
+        status: initialValues.status,
+        startDate: initialValues.startDate,
+        endDate: initialValues.endDate,
+      });
+    } else {
+      form.reset(DEFAULT_VALUES);
+    }
+  }, [initialValues, form]);
 
   const handleSubmit = form.handleSubmit((values) => {
     onCreate(values);
@@ -376,8 +404,8 @@ export default function MarketingCreateForm({ onCreate, onCancel }: MarketingCre
             type="submit"
             className="rounded-lg px-5 h-9 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/75 text-white font-medium text-sm flex items-center gap-1.5 shadow-sm hover:shadow transition-all active:scale-97 cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            Tạo chiến dịch
+            {isEditing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {isEditing ? 'Lưu thay đổi' : 'Tạo chiến dịch'}
           </Button>
         </div>
       </form>
