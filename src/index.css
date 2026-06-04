@@ -1,6 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 
 /* Scan shared folder for Tailwind classes */
 @source "../../shared";
@@ -20,6 +20,7 @@ body {
 
 
 @theme inline {
+  --font-sans: 'Be Vietnam Pro', system-ui, sans-serif;
   --font-display: var(--font-sans);
   --font-mono: var(--font-sans);
   --color-surface-bg: #f8f9fb;
