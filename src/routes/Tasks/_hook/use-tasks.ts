@@ -88,3 +88,34 @@ export function useUpdateTaskStatusMutation(storeId: string) {
     },
   });
 }
+
+export function useDeleteTaskMutation(storeId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['deleteTask', storeId],
+    mutationFn: async (taskId: string) => {
+      return await tasksService.delete(taskId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: tasksQueryKeys.list(storeId) });
+    },
+  });
+}
+
+export function useUpdateTaskMutation(storeId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['updateTask', storeId],
+    mutationFn: async ({ taskId, input }: { taskId: string; input: Partial<TaskRequestType> }) => {
+      return await tasksService.update(taskId, {
+        ...input,
+        updatedAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: tasksQueryKeys.list(storeId) });
+    },
+  });
+}

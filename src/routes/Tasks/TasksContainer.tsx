@@ -6,6 +6,8 @@ import {
   useTasksQuery,
   useUpdateTaskStatusMutation,
   useRolesQuery,
+  useDeleteTaskMutation,
+  useUpdateTaskMutation,
 } from './_hook/use-tasks';
 import { useAppStore } from '../../stores/app-store';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
@@ -64,6 +66,8 @@ export default function TasksContainer({
 
   const createTaskMutation = useCreateTaskMutation(activeStoreId);
   const updateTaskStatusMutation = useUpdateTaskStatusMutation(activeStoreId);
+  const deleteTaskMutation = useDeleteTaskMutation(activeStoreId);
+  const updateTaskMutation = useUpdateTaskMutation(activeStoreId);
 
   const delayedTasksCount = useMemo(
     () => tasks.filter(isDelayedTask).length,
@@ -117,6 +121,34 @@ export default function TasksContainer({
     [updateTaskStatusMutation],
   );
 
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await deleteTaskMutation.mutateAsync(taskId);
+        setErrorMessage(null);
+      } catch (error) {
+        console.error('Failed to delete task:', error);
+        setErrorMessage('Không thể xóa công việc. Vui lòng thử lại.');
+        throw error;
+      }
+    },
+    [deleteTaskMutation],
+  );
+
+  const handleUpdateTask = useCallback(
+    async (taskId: string, input: Partial<TaskRequestType>) => {
+      try {
+        await updateTaskMutation.mutateAsync({ taskId, input });
+        setErrorMessage(null);
+      } catch (error) {
+        console.error('Failed to update task:', error);
+        setErrorMessage('Không thể cập nhật công việc. Vui lòng thử lại.');
+        throw error;
+      }
+    },
+    [updateTaskMutation],
+  );
+
   const queryErrorMessage = queryError
     ? 'Không thể tải danh sách công việc. Vui lòng thử lại.'
     : null;
@@ -127,11 +159,19 @@ export default function TasksContainer({
       staffMembers={staffMembers}
       roles={roles}
       isLoading={isLoading || permissionsLoading || isStaffLoading || isRolesLoading}
-      isSaving={createTaskMutation.isPending || updateTaskStatusMutation.isPending || isFetching}
+      isSaving={
+        createTaskMutation.isPending ||
+        updateTaskStatusMutation.isPending ||
+        deleteTaskMutation.isPending ||
+        updateTaskMutation.isPending ||
+        isFetching
+      }
       errorMessage={errorMessage || queryErrorMessage}
       onRefresh={() => void refetch()}
       onAddTask={handleAddTask}
       onUpdateTaskStatus={handleUpdateTaskStatus}
+      onDeleteTask={handleDeleteTask}
+      onUpdateTask={handleUpdateTask}
       canCreate={permissions.canCreate}
       canUpdate={permissions.canUpdate}
       currentUser={currentUser}

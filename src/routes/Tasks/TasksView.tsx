@@ -16,6 +16,8 @@ import {
   ClipboardList,
   AlignLeft,
   Building,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { TaskItem, TaskRequestType, TaskStatus } from '../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../types/staff.types';
@@ -40,6 +42,7 @@ import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
 import { TaskCreateModal } from './components/task-create-modal';
 import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
+import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 
 interface TasksViewProps {
   tasks: TaskItem[];
@@ -51,6 +54,8 @@ interface TasksViewProps {
   onRefresh?: () => void;
   onAddTask: (task: TaskRequestType) => void | Promise<void>;
   onUpdateTaskStatus: (taskId: string, status: TaskStatus) => void | Promise<void>;
+  onDeleteTask: (taskId: string) => void | Promise<void>;
+  onUpdateTask: (taskId: string, input: Partial<TaskRequestType>) => void | Promise<void>;
   canCreate?: boolean;
   canUpdate?: boolean;
   currentUser?: UserSession | null;
@@ -152,6 +157,8 @@ export default function TasksView({
   onRefresh,
   onAddTask,
   onUpdateTaskStatus,
+  onDeleteTask,
+  onUpdateTask,
   canCreate = false,
   canUpdate = false,
   currentUser,
@@ -162,6 +169,8 @@ export default function TasksView({
   // Modals controller
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [quickDelegateOpen, setQuickDelegateOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<TaskItem | null>(null);
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -591,7 +600,7 @@ export default function TasksView({
                   {/* Card Details (Grid key-value list with icons) */}
                   <div className="flex-1 flex flex-col gap-2.5 text-[11.5px] text-left">
                     {/* Description */}
-                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-start py-0.5">
+                    <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-start py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
                         <AlignLeft className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Mô tả
@@ -602,7 +611,7 @@ export default function TasksView({
                     </div>
 
                     {/* Assignee */}
-                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                    <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
                         <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Người phụ trách
@@ -616,7 +625,7 @@ export default function TasksView({
                     </div>
 
                     {/* Deadline */}
-                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                    <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Hạn hoàn thành
@@ -627,7 +636,7 @@ export default function TasksView({
                     </div>
 
                     {/* Branch / Dept */}
-                    <div className="grid grid-cols-[105px_1fr] sm:grid-cols-[120px_1fr] gap-2 items-center py-0.5">
+                    <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
                         <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Bộ phận
@@ -636,6 +645,35 @@ export default function TasksView({
                         {task.department}
                       </span>
                     </div>
+
+                    {/* Action Buttons */}
+                    {canUpdate && (
+                      <>
+                        <div className="border-t border-slate-100 my-1" />
+                        <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                            className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                            onClick={() => setEditingTask(task)}
+                          >
+                            <Pencil className="w-3 h-3 text-slate-500" />
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                            onClick={() => setTaskToDelete(task)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Xóa
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </Card>
               );
@@ -644,11 +682,27 @@ export default function TasksView({
         </div>
       </div>
 
-      {/* Manual Add Task Form Modal */}
+      {/* Manual Add/Edit Task Form Modal */}
       <TaskCreateModal
-        isOpen={isAddingTask}
-        onClose={() => setIsAddingTask(false)}
-        onSubmit={handleCreateTask}
+        isOpen={isAddingTask || editingTask !== null}
+        initialValues={editingTask}
+        onClose={() => {
+          setIsAddingTask(false);
+          setEditingTask(null);
+        }}
+        onSubmit={async (values) => {
+          if (editingTask) {
+            try {
+              await onUpdateTask(editingTask.id, values);
+              setEditingTask(null);
+              showToast("🎉 Đã cập nhật công việc thành công!");
+            } catch {
+              showToast("Không thể cập nhật công việc. Vui lòng thử lại.");
+            }
+          } else {
+            await handleCreateTask(values);
+          }
+        }}
         staffMembers={staffMembers}
         roles={roles}
       />
@@ -662,7 +716,33 @@ export default function TasksView({
         tasks={tasks}
       />
 
-
+      {/* Delete Confirmation Dialog */}
+      <ActionConfirmDialog
+        open={taskToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToDelete(null);
+          }
+        }}
+        title="Xác nhận xóa công việc"
+        description={
+          taskToDelete
+            ? `Bạn có chắc chắn muốn xóa công việc "${taskToDelete.title}" không? Hành động này không thể hoàn tác.`
+            : ''
+        }
+        onConfirm={async () => {
+          if (taskToDelete) {
+            try {
+              await onDeleteTask(taskToDelete.id);
+              setTaskToDelete(null);
+              showToast("🗑️ Đã xóa công việc thành công!");
+            } catch {
+              showToast("Không thể xóa công việc. Vui lòng thử lại.");
+            }
+          }
+        }}
+        variant="confirm"
+      />
     </div>
   );
 }

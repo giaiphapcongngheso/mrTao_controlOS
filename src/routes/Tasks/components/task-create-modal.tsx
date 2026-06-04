@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
 import { useForm } from 'react-hook-form';
@@ -15,7 +15,7 @@ import {
   Input,
   Textarea,
 } from '@shared/ui';
-import type { TaskRequestType } from '../../../types/tasks.types';
+import type { TaskRequestType, TaskItem } from '../../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import { getRoleFriendlyName } from '../../../constants';
 import {
@@ -25,12 +25,34 @@ import {
   type TaskFormValues,
 } from '../_hook/use-task-form';
 
+function parseDeadlineStringToDate(deadline: string): Date {
+  if (!deadline) return new Date();
+
+  // format dd/MM/yyyy
+  const match = deadline.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (match) {
+    const d = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // format yyyy-MM-dd
+  const match2 = deadline.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (match2) {
+    const d = new Date(Number(match2[1]), Number(match2[2]) - 1, Number(match2[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const parsed = new Date(deadline);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 interface TaskCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: TaskRequestType) => void | Promise<void>;
   staffMembers?: StaffMember[];
   roles?: StaffRole[];
+  initialValues?: TaskItem | null;
 }
 
 export const TaskCreateModal = React.memo(function TaskCreateModal({
@@ -39,10 +61,20 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   onSubmit,
   staffMembers = [],
   roles = [],
+  initialValues = null,
 }: TaskCreateModalProps) {
+  const isEditing = !!initialValues;
+
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
-    defaultValues: DEFAULT_TASK_FORM_VALUES,
+    defaultValues: initialValues ? {
+      title: initialValues.title,
+      department: initialValues.department,
+      priority: initialValues.priority,
+      deadline: parseDeadlineStringToDate(initialValues.deadline),
+      assignee: initialValues.assignee || '',
+      notes: initialValues.notes || '',
+    } : DEFAULT_TASK_FORM_VALUES,
   });
 
   const staffOptions = useMemo(() => {
@@ -61,9 +93,20 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(DEFAULT_TASK_FORM_VALUES);
+      if (initialValues) {
+        form.reset({
+          title: initialValues.title,
+          department: initialValues.department,
+          priority: initialValues.priority,
+          deadline: parseDeadlineStringToDate(initialValues.deadline),
+          assignee: initialValues.assignee || '',
+          notes: initialValues.notes || '',
+        });
+      } else {
+        form.reset(DEFAULT_TASK_FORM_VALUES);
+      }
     }
-  }, [isOpen, form]);
+  }, [isOpen, initialValues, form]);
 
   const handleSubmit = useCallback(async (values: TaskFormValues) => {
     await onSubmit(taskFormToRequest(values));
@@ -78,8 +121,12 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-left border border-slate-100">
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <Plus className="w-5 h-5 text-[#C21A1A] stroke-[2.5]" />
-            Tạo công việc mới chi tiết
+            {isEditing ? (
+              <Pencil className="w-5 h-5 text-[#C21A1A] stroke-[2.5]" />
+            ) : (
+              <Plus className="w-5 h-5 text-[#C21A1A] stroke-[2.5]" />
+            )}
+            {isEditing ? 'Chỉnh sửa công việc chi tiết' : 'Tạo công việc mới chi tiết'}
           </h3>
           <Button
             variant="ghost"
@@ -247,7 +294,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                 disabled={isSubmitting}
                 className="px-5 py-2.5 text-xs font-black text-white bg-[#C21A1A] hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer h-auto disabled:cursor-wait disabled:opacity-70"
               >
-                Giao việc
+                {isSubmitting ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Giao việc')}
               </Button>
             </div>
           </form>
