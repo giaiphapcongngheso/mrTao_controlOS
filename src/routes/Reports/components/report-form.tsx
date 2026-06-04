@@ -110,7 +110,7 @@ const ReportForm = React.memo(function ReportForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0">
+      <DialogContent showCloseButton={false} className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0">
         <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
           <DialogTitle className="text-sm font-black uppercase tracking-wide text-slate-800">
             Tạo báo cáo {PERIOD_LABEL[period]}

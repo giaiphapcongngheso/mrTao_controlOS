@@ -188,11 +188,11 @@ function AppFrameLayout({
         )}
 
         <main className="flex-1 flex flex-col gap-0 min-h-0">
-          <header className="hidden md:flex items-center justify-between h-14 px-6 bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-            <div className="flex items-center gap-3 select-none">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">MR.TÁO OS</span>
-              <span className="text-slate-300 text-[10px]">\</span>
-              <span className="text-[11px] font-black text-[#C21A1A] uppercase tracking-widest">{desktopTitle}</span>
+          <header className="hidden md:flex items-center justify-between h-14 px-6 bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+            <div className="flex items-center gap-2.5 select-none">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">MR.TÁO OS</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-350 stroke-[2.5]" />
+              <span className="text-sm font-bold text-slate-800 tracking-tight">{desktopTitle}</span>
             </div>
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
