@@ -83,7 +83,7 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-100">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-left border border-slate-100">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden">
         <div className="flex justify-between items-center pb-2.5 border-b border-slate-150">
           <h3 className="text-xs font-black text-[#C21A1A] uppercase tracking-wider flex items-center gap-2">
             <Send className="w-3.5 h-3.5" />
@@ -103,7 +103,8 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
         </p>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
             <FormField
               control={form.control}
               name="title"
@@ -161,7 +162,9 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
             <Input type="hidden" containerClassName="hidden" {...form.register('assignee')} />
             <Input type="hidden" containerClassName="hidden" {...form.register('department')} />
 
-            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 shrink-0">
               <Button
                 type="button"
                 variant="ghost"

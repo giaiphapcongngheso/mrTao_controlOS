@@ -118,7 +118,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-left border border-slate-100">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden">
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
             {isEditing ? (
@@ -138,7 +138,8 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
             <FormField
               control={form.control}
               name="title"
@@ -280,7 +281,9 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
               )}
             />
 
-            <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-slate-100 shrink-0">
               <Button
                 type="button"
                 variant="ghost"

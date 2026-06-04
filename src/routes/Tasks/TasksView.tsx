@@ -346,7 +346,7 @@ export default function TasksView({
   }, []);
 
   return (
-    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-auto md:overflow-visible md:pb-0 md:pr-0">
+    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 md:pr-1 font-sans text-sm text-slate-650">
 
       {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
       {toastMessage && (
@@ -586,10 +586,10 @@ export default function TasksView({
 
                   {/* Card Title & Code */}
                   <div className="space-y-1 mt-1 text-left">
-                    <h4 className="font-extrabold text-slate-900 text-[14.5px] leading-snug tracking-tight hover:text-slate-950 transition-colors break-words">
+                    <h4 className="font-extrabold text-slate-900 text-[16px] leading-snug tracking-tight hover:text-slate-950 transition-colors break-words">
                       {task.title}
                     </h4>
-                    <div className="text-[10px] text-slate-400 font-sans tracking-wider">
+                    <div className="text-xs text-slate-400 font-sans tracking-wider">
                       {generateTaskCode(task)}
                     </div>
                   </div>
@@ -598,10 +598,10 @@ export default function TasksView({
                   <div className="border-t border-slate-100/80 my-0.5" />
 
                   {/* Card Details (Grid key-value list with icons) */}
-                  <div className="flex-1 flex flex-col gap-2.5 text-[11.5px] text-left">
+                  <div className="flex-1 flex flex-col gap-2.5 text-sm text-left">
                     {/* Description */}
                     <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-start py-0.5">
-                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
                         <AlignLeft className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Mô tả
                       </span>
@@ -612,7 +612,7 @@ export default function TasksView({
 
                     {/* Assignee */}
                     <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
-                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
                         <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Người phụ trách
                       </span>
@@ -626,7 +626,7 @@ export default function TasksView({
 
                     {/* Deadline */}
                     <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
-                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Hạn hoàn thành
                       </span>
@@ -637,7 +637,7 @@ export default function TasksView({
 
                     {/* Branch / Dept */}
                     <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
-                      <span className="flex items-center gap-1.5 text-slate-500 font-bold shrink-0">
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
                         <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Bộ phận
                       </span>
