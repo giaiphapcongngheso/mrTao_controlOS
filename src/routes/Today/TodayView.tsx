@@ -57,7 +57,7 @@ export default function TodayView({
       {/* 2. TRẠNG THÁI CỬA HÀNG (LABEL 1 IN SCREENSHOT) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black tracking-widest text-[#C21A1A] uppercase">TRẠNG THÁI CỬA HÀNG</span>
+          <span className="text-xs font-bold text-[#C21A1A]">TRẠNG THÁI CỬA HÀNG</span>
           <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-[#C21A1A] rounded-full animate-ping"></span>
             Đang đồng bộ
@@ -71,7 +71,7 @@ export default function TodayView({
               <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></span>
             </div>
             <div>
-              <h3 className="font-extrabold text-xs text-slate-700 uppercase tracking-wide">
+              <h3 className="font-bold text-xs text-slate-700">
                 Đang tải trạng thái vận hành...
               </h3>
               <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
@@ -88,13 +88,13 @@ export default function TodayView({
         {/* Doanh thu hôm nay */}
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Doanh thu hôm nay</span>
+            <span className="text-xs font-bold text-slate-400">Doanh thu hôm nay</span>
             <span className="p-1 rounded-md bg-[#16C784]/10 text-[#16C784]" title="Doanh số phát sinh">
               <TrendingUp className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-base md:text-lg font-black text-[#1E293B] font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-slate-800 font-sans leading-none">
               28,450,000đ
             </h3>
             <p className="text-[9.5px] font-extrabold text-[#16C784] mt-1 pt-1 border-t border-slate-100 flex items-center gap-0.5">
@@ -106,13 +106,13 @@ export default function TodayView({
         {/* Checklist hoàn hoàn */}
         <div onClick={() => onSetTab('Checklist')} className="bg-white p-4.5 rounded-2xl border border-slate-200 hover:border-slate-350 cursor-pointer transition-colors text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Checklist hoàn thành</span>
+            <span className="text-xs font-bold text-slate-400">Checklist hoàn thành</span>
             <span className="p-1 rounded-md bg-slate-55 bg-slate-100 text-[#C21A1A]">
               <CheckCircle2 className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-[#1E293B] font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-slate-850 font-sans leading-none">
               {checklistPercent}%
             </h3>
             <p className="text-[9.5px] font-bold text-slate-400 mt-1 pt-1 border-t border-slate-100">
@@ -124,13 +124,13 @@ export default function TodayView({
         {/* Việc trễ */}
         <div onClick={() => onSetTab('Tasks')} className="bg-white p-4.5 rounded-2xl border border-slate-200 hover:border-slate-350 cursor-pointer transition-colors text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Việc trễ</span>
+            <span className="text-xs font-bold text-slate-400">Việc trễ</span>
             <span className="p-1 rounded-md bg-rose-50 text-rose-600">
               <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-rose-600 font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-rose-600 font-sans leading-none">
               7
             </h3>
             <p className="text-[9.5px] font-extrabold text-rose-600 mt-1 pt-1 border-t border-slate-100 uppercase tracking-wider">
@@ -142,13 +142,13 @@ export default function TodayView({
         {/* Lỗi SOP */}
         <div onClick={() => onSetTab('SOP')} className="bg-white p-4.5 rounded-2xl border border-slate-200 hover:border-slate-350 cursor-pointer transition-colors text-left font-sans">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Lỗi SOP</span>
+            <span className="text-xs font-bold text-slate-400">Lỗi SOP</span>
             <span className="p-1 rounded-md bg-[#FFB800]/10 text-[#FFB800]">
               <AlertOctagon className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-[#FFB800] font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-[#FFB800] font-sans leading-none">
               2
             </h3>
             <p className="text-[9.5px] font-extrabold text-[#FFB800] mt-1 pt-1 border-t border-slate-100 uppercase tracking-wider">
@@ -160,13 +160,13 @@ export default function TodayView({
         {/* Khiếu nại */}
         <div onClick={() => onSetTab('SOP')} className="bg-white p-4.5 rounded-2xl border border-slate-200 hover:border-slate-350 cursor-pointer transition-colors text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Khiếu nại</span>
+            <span className="text-xs font-bold text-slate-400">Khiếu nại</span>
             <span className="p-1 rounded-md bg-slate-100 text-slate-650">
               <Zap className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-slate-800 font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-slate-800 font-sans leading-none">
               3
             </h3>
             <p className="text-[9.5px] font-bold text-emerald-600 mt-1 pt-1 border-t border-[#16C784]/20">
@@ -178,13 +178,13 @@ export default function TodayView({
         {/* Nhân sự vắng / vấn đề */}
         <div onClick={() => onSetTab('Today')} className="bg-white p-4.5 rounded-2xl border border-slate-200 hover:border-slate-350 cursor-pointer transition-colors text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nhân sự vắng / vấn đề</span>
+            <span className="text-xs font-bold text-slate-400">Nhân sự vắng / vấn đề</span>
             <span className="p-1 rounded-md bg-blue-50 text-blue-600">
               <Users className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-black text-blue-600 font-sans leading-none">
+            <h3 className="text-[16px] font-bold text-blue-600 font-sans leading-none">
               4
             </h3>
             <p className="text-[9.5px] font-extrabold text-blue-500 mt-1 pt-1 border-t border-blue-100">
@@ -200,7 +200,7 @@ export default function TodayView({
         {/* Left Section (Spans 7): Timeline Hôm nay */}
         <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
-            <h3 className="font-extrabold text-slate-850 text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+            <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <span className="w-1.5 h-3.5 bg-[#C21A1A] rounded-sm inline-block"></span>
               TIMELINE HÔM NAY
             </h3>
@@ -279,7 +279,7 @@ export default function TodayView({
         {/* Right Section (Spans 5): Mục tiêu hệ thống (Label 4) */}
         <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
-            <h3 className="font-extrabold text-slate-850 text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+            <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <span className="w-1.5 h-3.5 bg-[#C21A1A] rounded-sm inline-block"></span>
               MỤC TIÊU HỆ THỐNG
             </h3>
@@ -339,7 +339,7 @@ export default function TodayView({
       {/* 5. METADATA SHOWROOM REFERENCE SYSTEMS (DESKTOP DETAIL BLOCK) */}
       <div className="border-t border-slate-250/70 pt-4 mt-3">
         <div className="mb-3 text-left">
-          <h2 className="text-sm font-black font-display text-slate-800 flex items-center gap-2 uppercase tracking-tight">
+          <h2 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-[#C21A1A]"></span>
             Hồ sơ Vận hành chi nhánh &amp; Quy định SOP
           </h2>

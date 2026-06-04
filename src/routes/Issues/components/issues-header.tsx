@@ -18,8 +18,8 @@ const IssuesHeader = React.memo(function IssuesHeader({
           <Layers className="w-5 h-5 sm:w-5.5 sm:h-5.5 shrink-0 stroke-[2.5]" />
         </span>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg sm:text-xl font-black font-display tracking-tight text-slate-900 uppercase leading-none">
-            KIỂM SOÁT LỖI SOP &amp; NGOẠI LỆ
+          <h1 className="text-[16px] font-bold text-slate-800 leading-none">
+            Kiểm soát lỗi SOP &amp; Ngoại lệ
           </h1>
           <p className="text-xs text-slate-400 mt-1.5 font-medium font-sans leading-relaxed">
             Ghi nhận – theo dõi – xử lý – đóng vòng cải tiến sai lệch showroom định kỳ.
@@ -30,7 +30,7 @@ const IssuesHeader = React.memo(function IssuesHeader({
       {canCreate && (
         <Button
           onClick={onOpenAddModal}
-          className="hidden sm:inline-flex items-center justify-center gap-2 px-4.5 py-2.5 bg-[#C21A1A] hover:bg-[#A31414] text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0 self-start md:self-auto border-none h-auto"
+          className="hidden sm:inline-flex items-center justify-center gap-2 px-4.5 h-9 bg-[#C21A1A] hover:bg-[#A31414] text-white font-bold text-sm rounded-xl shadow-md cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0 self-start md:self-auto border-none"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Ghi nhận phiếu phát sinh</span>

@@ -27,10 +27,10 @@ const ChecklistHeader = React.memo(function ChecklistHeader({
           CL
         </span>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 leading-tight break-words">
+          <h1 className="text-[16px] font-bold text-slate-800 leading-tight break-words">
             Checklist &amp; Quy trình vận hành
           </h1>
-          <p className="hidden sm:block text-base text-slate-400 font-bold mt-1 max-w-none leading-relaxed">
+          <p className="hidden sm:block text-xs font-medium text-slate-400 mt-1 max-w-none leading-relaxed">
             {subTab === 'today' && 'Thực thi daily các đầu việc đúng mốc giờ quy định và chụp hình minh chứng ca trực.'}
             {subTab === 'process' && 'Cấu hình và chuẩn hóa quy trình template checklist cho từng vai trò nhân sự.'}
             {subTab === 'completed' && 'Lịch sử lưu trữ đầu việc đã kiểm định hoàn thành theo ngày và tuần.'}
@@ -43,7 +43,7 @@ const ChecklistHeader = React.memo(function ChecklistHeader({
         {(subTab === 'today' || subTab === 'process') && canCreate && (
           <Button
             onClick={onOpenCreateDialog}
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-95"
+            className="hidden sm:inline-flex items-center gap-2 px-4 h-9 bg-[#C21A1A] hover:bg-rose-700 text-white font-bold text-sm rounded-xl shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>{subTab === 'process' ? 'Thêm quy trình' : 'Thêm checklist'}</span>

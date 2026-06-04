@@ -110,9 +110,9 @@ const ReportForm = React.memo(function ReportForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent showCloseButton={false} className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0">
+      <DialogContent showCloseButton={false} className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0 font-sans text-sm text-slate-650">
         <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
-          <DialogTitle className="text-sm font-black uppercase tracking-wide text-slate-800">
+          <DialogTitle className="text-[16px] font-bold text-slate-800">
             Tạo báo cáo {PERIOD_LABEL[period]}
           </DialogTitle>
           <DialogClose asChild>
@@ -128,28 +128,28 @@ const ReportForm = React.memo(function ReportForm({
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-5 overflow-y-auto">
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
               <Activity className="h-4 w-4 text-[#C21A1A]" />
               Chỉ số đồng bộ
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Doanh thu</p>
-                <p className="mt-1 text-sm font-black text-slate-800">{formatCurrency(metrics.revenue)}</p>
+                <p className="text-xs text-slate-400 font-bold">Doanh thu</p>
+                <p className="mt-1 text-sm font-bold text-slate-800">{formatCurrency(metrics.revenue)}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Đơn hàng</p>
-                <p className="mt-1 text-sm font-black text-slate-800">{metrics.billCount}</p>
+                <p className="text-xs text-slate-400 font-bold">Đơn hàng</p>
+                <p className="mt-1 text-sm font-bold text-slate-800">{metrics.billCount}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Checklist</p>
-                <p className="mt-1 text-sm font-black text-emerald-700">{metrics.checklistPercentage}%</p>
+                <p className="text-xs text-slate-400 font-bold">Checklist</p>
+                <p className="mt-1 text-sm font-bold text-emerald-700">{metrics.checklistPercentage}%</p>
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">
+              <p className="text-xs text-slate-400 font-bold mb-2">
                 Sự cố phát sinh
               </p>
               <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700">
@@ -173,7 +173,7 @@ const ReportForm = React.memo(function ReportForm({
             </div>
 
             <div className="rounded-xl border border-slate-200 p-3">
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2">
+              <p className="text-xs text-slate-400 font-bold mb-2">
                 Trạng thái vận hành
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -185,7 +185,7 @@ const ReportForm = React.memo(function ReportForm({
                       type="button"
                       data-status={statusItem}
                       onClick={handleStatusClick}
-                      className={`rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-wide transition-colors cursor-pointer ${
+                      className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
                         isActive
                           ? STATUS_STYLES[statusItem]
                           : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'
@@ -201,7 +201,7 @@ const ReportForm = React.memo(function ReportForm({
 
           <div className="space-y-3 flex flex-col">
             <div className="flex items-center justify-between">
-              <label htmlFor="report-form-notes" className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+              <label htmlFor="report-form-notes" className="text-xs font-bold text-slate-500">
                 Diễn biến vận hành
               </label>
               <span className="text-[10px] font-semibold text-slate-400">
@@ -229,7 +229,7 @@ const ReportForm = React.memo(function ReportForm({
                 variant="outline"
                 disabled={!canSubmit}
                 onClick={onSaveDraft}
-                className="h-10 text-xs font-black uppercase tracking-wide cursor-pointer"
+                className="rounded-xl h-10 text-sm font-bold cursor-pointer"
               >
                 <Bookmark className="h-4 w-4" />
                 {formState.saveStatus === 'saving'
@@ -241,7 +241,7 @@ const ReportForm = React.memo(function ReportForm({
               <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="h-10 text-xs font-black uppercase tracking-wide bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
+                className="rounded-xl h-10 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
               >
                 <Send className="h-4 w-4" />
                 Gửi duyệt

@@ -470,7 +470,7 @@ export default function ReportsView({
   }, []);
 
   return (
-    <div className="space-y-4 text-left">
+    <div className="space-y-4 text-left font-sans text-sm text-slate-650">
       {showToast.show && (
         <div
           className={`fixed left-5 bottom-5 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold shadow-lg ${
@@ -491,7 +491,7 @@ export default function ReportsView({
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-base font-black uppercase tracking-wide text-slate-800 sm:text-lg">
+            <h1 className="flex items-center gap-2 text-[16px] font-bold text-slate-800">
               <TrendingUp className="h-5 w-5 text-[#C21A1A]" />
               Ký duyệt báo cáo điều hành
             </h1>
@@ -503,7 +503,7 @@ export default function ReportsView({
             type="button"
             onClick={handleOpenReportForm}
             disabled={!canSubmitReport}
-            className="cursor-pointer bg-[#C21A1A] hover:bg-[#9d1515]"
+            className="rounded-xl h-9 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
           >
             Tạo báo cáo
           </Button>
@@ -516,7 +516,7 @@ export default function ReportsView({
                 key={tab}
                 type="button"
                 onClick={() => handleReportTabChange(tab)}
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wide transition-colors cursor-pointer lg:flex-initial ${
+                className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-bold transition-colors cursor-pointer lg:flex-initial ${
                   reportTab === tab
                     ? 'bg-white text-[#C21A1A] shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
@@ -552,11 +552,11 @@ export default function ReportsView({
         <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-[#C21A1A]" />
-            <h2 className="text-sm font-black uppercase tracking-wide text-slate-700">
+            <h2 className="text-[16px] font-bold text-slate-800">
               Lịch sử báo cáo {PERIOD_LABEL[reportTab].toLowerCase()}
             </h2>
           </div>
-          <span className="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-[#C21A1A]">
+          <span className="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-bold text-[#C21A1A]">
             {totalItems} bản ghi
           </span>
         </div>
@@ -565,14 +565,14 @@ export default function ReportsView({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Thời gian</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Người lập</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Trạng thái</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Doanh thu</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Checklist</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Sự cố</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide">Ghi chú</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-[11px] uppercase tracking-wide text-right">Tác vụ</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Thời gian</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Người lập</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Trạng thái</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Doanh thu</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Checklist</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Sự cố</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Ghi chú</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold text-right">Tác vụ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -592,11 +592,11 @@ export default function ReportsView({
               ) : paginatedReports.length > 0 ? (
                 paginatedReports.map((report) => (
                   <TableRow key={report.id}>
-                    <TableCell className="text-xs font-semibold text-slate-700">{report.timestamp}</TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-700">{report.actor}</TableCell>
+                    <TableCell className="text-sm font-semibold text-slate-700">{report.timestamp}</TableCell>
+                    <TableCell className="text-sm font-semibold text-slate-700">{report.actor}</TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
                           report.status === 'green'
                             ? 'bg-emerald-50 text-emerald-700'
                             : report.status === 'yellow'
@@ -607,16 +607,16 @@ export default function ReportsView({
                         {STATUS_LABEL[report.status]}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-slate-700">
                       {formatCurrency(report.revenue)}
                     </TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-slate-700">
                       {report.checklistPct}% ({report.checklistRatio})
                     </TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-700">
+                    <TableCell className="text-sm font-semibold text-slate-700">
                       {`Trễ ${report.delayedCount} | SOP ${report.sopErrorsCount} | KN ${report.complaintsCount}`}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-600 max-w-[260px]">
+                    <TableCell className="text-sm text-slate-600 max-w-[260px]">
                       <p className="line-clamp-2">{report.notes}</p>
                     </TableCell>
                     <TableCell className="text-right">

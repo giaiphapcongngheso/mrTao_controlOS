@@ -915,11 +915,11 @@ export default function HandbookView() {
               <div className="min-w-0 text-left">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
-                  <h1 className="text-base font-black uppercase tracking-wide text-slate-900 sm:text-lg">
+                  <h1 className="text-[16px] font-bold text-slate-800">
                     Sổ tay điều hành & hệ thống vận hành
                   </h1>
                 </div>
-                <p className="mt-1.5 text-xs font-bold leading-relaxed text-slate-500">
+                <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
                   Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
                 </p>
               </div>
@@ -929,7 +929,7 @@ export default function HandbookView() {
                   <button
                     type="button"
                     onClick={openCreateEditor}
-                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex"
+                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 h-9 text-sm font-bold text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 stroke-[3]" />
                     <span>Thêm tài liệu mới</span>
