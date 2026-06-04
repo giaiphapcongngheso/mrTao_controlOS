@@ -108,6 +108,17 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
     }
   }, [isOpen, initialValues, form]);
 
+  const notesValue = form.watch('notes') || '';
+
+  // Tự động mở rộng chiều rộng của dialog dựa trên độ dài của ghi chú để giảm độ cao cuộn
+  const dialogWidthClass = React.useMemo(() => {
+    const length = notesValue.length;
+    if (length > 250) return 'max-w-2xl'; // Rộng nhất (672px)
+    if (length > 120) return 'max-w-xl';  // Trung bình rộng (576px)
+    if (length > 50) return 'max-w-lg';   // Hơi rộng (512px)
+    return 'max-w-md';                    // Mặc định (448px)
+  }, [notesValue]);
+
   const handleSubmit = useCallback(async (values: TaskFormValues) => {
     await onSubmit(taskFormToRequest(values));
   }, [onSubmit]);
@@ -118,7 +129,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden">
+      <div className={`bg-white rounded-2xl p-6 w-full ${dialogWidthClass} max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden transition-all duration-300 ease-in-out`}>
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
             {isEditing ? (
@@ -139,7 +150,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 flex flex-col flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
             <FormField
               control={form.control}
               name="title"
@@ -272,8 +283,8 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                     <Textarea
                       {...field}
                       placeholder="Ghi rõ thông điệp, quy trình tránh nhầm lẫn..."
-                      rows={2}
-                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs font-medium rounded-lg"
+                      rows={3}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs font-medium rounded-lg [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent"
                     />
                   </FormControl>
                   <FormMessage className="text-[11px]" />

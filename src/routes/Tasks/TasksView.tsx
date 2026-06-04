@@ -605,7 +605,7 @@ export default function TasksView({
                         <AlignLeft className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         Mô tả
                       </span>
-                      <span className="text-slate-700 font-medium whitespace-pre-line leading-relaxed break-words">
+                      <span className="text-slate-700 font-medium whitespace-pre-line leading-relaxed break-words line-clamp-3 overflow-hidden">
                         {task.notes || <span className="text-slate-350 italic">Không có ghi chú...</span>}
                       </span>
                     </div>
