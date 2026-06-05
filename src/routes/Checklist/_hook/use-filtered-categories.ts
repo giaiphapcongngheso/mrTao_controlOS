@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { ChecklistCategory, ChecklistItem, ProcessDocument } from '../../../types/checklist.types';
+import { ChecklistCategory, ChecklistItem, ProcessDocument, ChecklistDocument } from '../../../types/checklist.types';
 import type { ChecklistViewCategory } from '../components/checklist-view.types';
 import type { CategoryMeta } from '../components/checklist-view.types';
 import { getCategoryMeta, getTodayKey } from '../checklist-utils';
@@ -8,8 +8,8 @@ interface UseFilteredCategoriesProps {
   todayCategories: ChecklistCategory[];
   processes: ProcessDocument[];
   items: ChecklistItem[];
-  allChecklistItems: ChecklistItem[];
-  subTab: 'today' | 'process' | 'completed';
+  historySnapshots: ChecklistDocument[];
+  subTab: 'today' | 'process' | 'history';
   searchTerm: string;
   selectedRoleCode: string;
   completedViewMode: 'day' | 'week';
@@ -52,7 +52,7 @@ export function useFilteredCategories({
   todayCategories,
   processes,
   items,
-  allChecklistItems = [],
+  historySnapshots = [],
   subTab,
   searchTerm,
   selectedRoleCode,
@@ -87,35 +87,95 @@ export function useFilteredCategories({
       (process) => matchesSelectedRole(process.roleCode) && matchesProcessSearch(process, searchLower),
     );
 
-    // 2. Completed items (subTab === 'completed')
-    if (subTab === 'completed') {
-      const targetDateKey = completedViewMode === 'day' ? getTodayKey() : selectedWeekDayKey;
-      const completedItems = allChecklistItems.filter(
-        (it) => it.isCompleted && it.dateKey === targetDateKey && matchesSelectedRole(it.roleCode)
-      );
+    // 2. History items (subTab === 'history')
+    if (subTab === 'history') {
+      const templateLookup = new Map(todayCategories.map((t) => [t.id, t] as const));
+      const categoriesMap = new Map<string, ChecklistViewCategory>();
 
-      const filteredCategories = todayCategories
-        .map((cat, index) => {
-          const meta = getStableMeta(cat.title, index, cat.colorKey);
+      // Filter snapshots by role if active
+      const targetedSnapshots = hasRoleFilter
+        ? historySnapshots.filter((s) => matchesSelectedRole(s.roleCode))
+        : historySnapshots;
 
-          const catTasks = completedItems.filter((it) => it.categoryId === cat.id);
-          const filteredTasks = catTasks.filter((it) =>
+      // Group tasks by date and templateId
+      for (const doc of targetedSnapshots) {
+        const dateKey = doc.dateKey;
+        const tasks = (doc.tasks || []).filter((task) => !task.deletedAt);
+
+        const tasksByTemplate = new Map<string, typeof tasks>();
+        for (const task of tasks) {
+          const tId = task.templateId || 'orphan';
+          const list = tasksByTemplate.get(tId) || [];
+          list.push(task);
+          tasksByTemplate.set(tId, list);
+        }
+
+        let index = 0;
+        for (const [templateId, templateTasks] of tasksByTemplate.entries()) {
+          const template = templateLookup.get(templateId);
+          const templateTitle = template?.title || 'Công việc phát sinh';
+          const title = `${templateTitle} (${dateKey})`;
+          const id = `${dateKey}_${templateId}`;
+          const colorKey = template?.colorKey || 'gray';
+          const iconName = template?.iconName || 'ClipboardList';
+
+          const flatTasks: ChecklistItem[] = templateTasks.map((task) => ({
+            id: task.id,
+            storeId: doc.storeId,
+            categoryId: id,
+            templateId: task.templateId,
+            title: task.title,
+            isCompleted: task.isCompleted,
+            timeLimit: task.timeLimit,
+            roleCode: doc.roleCode,
+            dateKey: task.dateKey || doc.dateKey,
+            checklistName: templateTitle,
+            createdAt: task.createdAt,
+            updatedAt: task.updatedAt,
+            checkedAt: task.checkedAt,
+            checkedByName: task.checkedByName,
+            checkedByUsername: task.checkedByUsername,
+            deletedAt: task.deletedAt,
+            deletedByName: task.deletedByName,
+            deletedByUsername: task.deletedByUsername,
+            imageUrls: task.imageUrls || [],
+          }));
+
+          const filteredTasks = flatTasks.filter((it) =>
             it.title.toLowerCase().includes(searchLower)
           );
 
-          return {
-            ...cat,
-            countDone: catTasks.length,
-            countTotal: catTasks.length,
-            isCompleted: catTasks.length > 0,
+          if (filteredTasks.length === 0 && hasSearch) {
+            continue;
+          }
+
+          const doneCount = flatTasks.filter((it) => it.isCompleted).length;
+          const meta = getStableMeta(title, index++, colorKey);
+
+          categoriesMap.set(id, {
+            id,
+            storeId: doc.storeId,
+            roleCode: doc.roleCode,
+            title,
+            iconName,
+            colorKey,
+            countDone: doneCount,
+            countTotal: flatTasks.length,
+            isCompleted: flatTasks.length > 0 && doneCount === flatTasks.length,
             meta,
             tasks: filteredTasks,
-          };
-        })
-        .filter((cat) => cat.tasks.length > 0);
+          });
+        }
+      }
+
+      const sortedCategories = Array.from(categoriesMap.values()).sort((a, b) => {
+        const dateA = a.id.split('_')[0];
+        const dateB = b.id.split('_')[0];
+        return dateB.localeCompare(dateA);
+      });
 
       return {
-        filteredCategories,
+        filteredCategories: sortedCategories,
         filteredProcesses,
       };
     }
@@ -166,7 +226,7 @@ export function useFilteredCategories({
     todayCategories,
     processes,
     items,
-    allChecklistItems,
+    historySnapshots,
     subTab,
     searchTerm,
     selectedRoleCode,

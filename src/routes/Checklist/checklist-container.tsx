@@ -28,6 +28,9 @@ export default function ChecklistContainer({
     isLoading,
     updateLocalState,
     restoreLocalState,
+    historySnapshots,
+    historyLoading,
+    fetchHistoryByDateRange,
   } = useChecklistData({
     currentUser,
     activeStoreId,
@@ -65,7 +68,9 @@ export default function ChecklistContainer({
       todayCategories={derivedState.todayCategories}
       processes={derivedState.processes}
       items={derivedState.todayItems}
-      allChecklistItems={derivedState.allItems}
+      historySnapshots={historySnapshots}
+      historyLoading={historyLoading}
+      onFetchHistory={fetchHistoryByDateRange}
       onToggleItem={handleToggleChecklistItem}
       roleOptions={roleOptions}
       defaultRoleCode={currentChecklistRoleCode}

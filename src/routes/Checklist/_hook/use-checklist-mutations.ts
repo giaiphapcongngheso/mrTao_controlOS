@@ -7,6 +7,7 @@ import type {
   ChecklistTemplateDocument,
   ProcessDocument,
   ProcessStep,
+  ChecklistTask,
 } from '../../../types/checklist.types';
 import type { SystemLogActionType } from '../../../types/system-log.types';
 import { ENTITY_PREFIX } from '../../../constants/entity-id.constants';
@@ -15,7 +16,6 @@ import {
   checklistTemplateService,
   createChecklistSnapshotOnce,
   processService,
-  softDeleteChecklistTemplateCascade,
 } from '../../../services/checklist-service';
 import { systemLogService } from '../../../services/system-log-service';
 import { toastError, toastSuccess, toastWarning } from '../../../shared/lib/toast';
@@ -23,7 +23,8 @@ import { normalizeAccessCode } from '../../../shared/hooks/use-module-permission
 import { guardAction, initBusinessEntity, softDeleteEntity } from '../../../types/base.types';
 import { getTodayKey } from '../checklist-utils';
 import {
-  buildTodaySnapshotFromTemplate,
+  buildDailySnapshot,
+  generateDailySnapshotId,
   findSnapshotTaskById,
   mergeTemplateTasksIntoSnapshot,
   normalizeTaskInputs,
@@ -183,32 +184,24 @@ export function useChecklistMutations({
 
     const todayKey = getTodayKey();
     const nowIso = new Date().toISOString();
+    const normalizedRole = normalizeAccessCode(roleCode);
+    const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRole);
+
     let targetSnapshot = dataStateRef.current.snapshots.find(
-      (doc) => doc.dateKey === todayKey && (doc.templateId === categoryId || doc.id === categoryId) && !doc.deletedAt,
+      (doc) => doc.id === dailySnapshotId && !doc.deletedAt,
     );
 
     if (!targetSnapshot) {
-      const template = dataStateRef.current.templates.find((entry) => entry.id === categoryId);
-      if (template) {
-        targetSnapshot = await createChecklistSnapshotOnce(
-          await buildTodaySnapshotFromTemplate(template, activeStoreId, todayKey),
-        );
-      } else {
-        const baseEntity = await initBusinessEntity(ENTITY_PREFIX.CHECKLIST);
-        targetSnapshot = await checklistService.create({
-          ...baseEntity,
-          storeId: activeStoreId,
-          roleCode: normalizeAccessCode(roleCode),
-          title: safeTitle,
-          dateKey: todayKey,
-          templateId: null,
-          tasks: [],
-        });
-      }
+      const roleTemplates = dataStateRef.current.templates.filter(
+        (entry) => normalizeAccessCode(entry.roleCode) === normalizedRole && !entry.deletedAt
+      );
+      // Tạo mới daily snapshot với các templates hiện tại (nếu có)
+      const freshSnapshot = buildDailySnapshot(roleTemplates, activeStoreId, normalizedRole, todayKey);
+      targetSnapshot = await createChecklistSnapshotOnce(freshSnapshot);
     }
 
-    const extraTasks = toSnapshotTasks(safeTasks, todayKey);
-    const updatedSnapshot = {
+    const extraTasks = toSnapshotTasks(safeTasks, categoryId, todayKey);
+    const updatedSnapshot: ChecklistDocument = {
       ...targetSnapshot,
       tasks: [...(targetSnapshot.tasks || []), ...extraTasks],
       updatedAt: nowIso,
@@ -287,8 +280,6 @@ export function useChecklistMutations({
       }
       return;
     }
-
-
 
     toastError(`Khong tim thay cong viec voi ID: ${itemId}`);
   }, [
@@ -404,15 +395,16 @@ export function useChecklistMutations({
         templates: replaceById(state.templates, updatedTemplate),
       }));
 
+      const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRoleCode);
       const todaySnapshot = dataStateRef.current.snapshots.find(
-        (doc) => doc.templateId === originalTemplate.id && doc.dateKey === todayKey && !doc.deletedAt,
+        (doc) => doc.id === dailySnapshotId && !doc.deletedAt,
       );
       if (todaySnapshot) {
         setPendingTemplateSync({
           templateId: originalTemplate.id,
           snapshotId: todaySnapshot.id,
           templateTitle: safeTitle,
-          snapshotTitle: todaySnapshot.title,
+          snapshotTitle: todayKey, // snapshot has no title now, use dateKey
           previousTemplateTaskIds: originalTemplate.tasks.map((task) => task.id),
           updatedTemplateTasks: templateTasks,
         });
@@ -456,7 +448,7 @@ export function useChecklistMutations({
         templates: [...state.templates, persistedTemplate],
       }));
       toastSuccess(
-        'Đã tạo checklist.',
+        'Đã tạo checklist mẫu.',
         'Checklist hôm nay sẽ được đồng bộ trong nền.',
       );
     } catch (error) {
@@ -469,15 +461,34 @@ export function useChecklistMutations({
       return;
     }
 
+    // Gộp checklist mẫu mới vào daily snapshot hôm nay (hoặc tạo mới daily snapshot)
     try {
-      const newSnapshot = await buildTodaySnapshotFromTemplate(newTemplate, activeStoreId, todayKey);
-      const persistedSnapshot = await createChecklistSnapshotOnce(newSnapshot);
+      const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRoleCode);
+      const existingSnapshot = dataStateRef.current.snapshots.find(
+        (s) => s.id === dailySnapshotId && !s.deletedAt
+      );
+
+      let updatedSnapshot: ChecklistDocument;
+      if (existingSnapshot) {
+        const extraTasks = toSnapshotTasks(params.tasks, newTemplate.id, todayKey);
+        updatedSnapshot = {
+          ...existingSnapshot,
+          tasks: [...existingSnapshot.tasks, ...extraTasks],
+          updatedAt: nowIso,
+        };
+      } else {
+        updatedSnapshot = buildDailySnapshot([newTemplate], activeStoreId, normalizedRoleCode, todayKey);
+      }
+
+      const persistedSnapshot = await createChecklistSnapshotOnce(updatedSnapshot);
       updateLocalState((state) => ({
         ...state,
-        snapshots: [...state.snapshots, persistedSnapshot],
+        snapshots: state.snapshots.some((s) => s.id === persistedSnapshot.id)
+          ? replaceById(state.snapshots, persistedSnapshot)
+          : [...state.snapshots, persistedSnapshot],
       }));
     } catch (error) {
-      console.error('Khong the tao snapshot checklist hom nay:', error);
+      console.error('Khong the tao/cap nhat snapshot checklist hom nay:', error);
       toastWarning('Đã tạo checklist mẫu, nhưng chưa đồng bộ được checklist hôm nay.');
     }
   }, [
@@ -520,6 +531,7 @@ export function useChecklistMutations({
     }
 
     const deletedFields = softDeleteEntity(currentUser);
+    const nowIso = new Date().toISOString();
 
     const targetTemplate = dataStateRef.current.templates.find((template) => template.id === id && !template.deletedAt);
     if (!targetTemplate) {
@@ -527,20 +539,44 @@ export function useChecklistMutations({
       return;
     }
 
+    // Không delete cả document daily snapshot, chỉ soft-delete các task thuộc template bị xoá
+    const updatedSnapshots = dataStateRef.current.snapshots.map((snapshot) => {
+      if (normalizeAccessCode(snapshot.roleCode) !== normalizeAccessCode(targetTemplate.roleCode)) {
+        return snapshot;
+      }
+      return {
+        ...snapshot,
+        tasks: snapshot.tasks.map((task) =>
+          task.templateId === id ? { ...task, ...deletedFields } : task
+        ),
+        updatedAt: nowIso,
+      };
+    });
 
-    const relatedSnapshots = dataStateRef.current.snapshots.filter((doc) => doc.templateId === id && !doc.deletedAt);
     const previousState = updateLocalState((state) => ({
       ...state,
       templates: removeById(state.templates, id),
-      snapshots: state.snapshots.filter((snapshot) => snapshot.templateId !== id),
+      snapshots: updatedSnapshots,
     }));
 
     try {
-      await softDeleteChecklistTemplateCascade(
-        targetTemplate.id,
-        relatedSnapshots.map((snapshot) => snapshot.id),
-        deletedFields,
+      // 1. Soft-delete template
+      await checklistTemplateService.update(targetTemplate.id, deletedFields);
+      
+      // 2. Cập nhật các snapshots có chứa tasks của template này
+      const activeSnapshotsToUpdate = updatedSnapshots.filter(
+        (s) => normalizeAccessCode(s.roleCode) === normalizeAccessCode(targetTemplate.roleCode) && !s.deletedAt
       );
+      await Promise.all(
+        activeSnapshotsToUpdate.map((snapshot) =>
+          checklistService.update(snapshot.id, {
+            tasks: snapshot.tasks,
+            updatedAt: nowIso,
+          })
+        )
+      );
+      
+      toastSuccess('Đã xóa nhóm checklist.');
     } catch (error) {
       restoreLocalState(previousState);
       console.error('Khong the xoa nhom checklist:', error);
@@ -574,7 +610,6 @@ export function useChecklistMutations({
     });
     const updatedSnapshot = {
       ...snapshot,
-      title: pendingTemplateSync.templateTitle,
       tasks: mergedTasks,
       updatedAt: nowIso,
     };
@@ -585,7 +620,6 @@ export function useChecklistMutations({
 
     try {
       await checklistService.update(snapshot.id, {
-        title: pendingTemplateSync.templateTitle,
         tasks: mergedTasks,
         updatedAt: nowIso,
       });
@@ -619,7 +653,6 @@ export function useChecklistMutations({
       toastError(err);
       return;
     }
-    const nowIso = new Date().toISOString();
     try {
       const baseEntity = await initBusinessEntity(ENTITY_PREFIX.PROCESS);
       const newProcess: ProcessDocument = {

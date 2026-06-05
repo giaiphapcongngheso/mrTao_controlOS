@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '../../../../share/ui';
 
 interface ChecklistHeaderProps {
-  subTab: 'today' | 'process' | 'completed';
+  subTab: 'today' | 'process' | 'history';
   canCreate: boolean;
   onOpenCreateDialog: () => void;
 }
@@ -33,7 +33,7 @@ const ChecklistHeader = React.memo(function ChecklistHeader({
           <p className="hidden sm:block text-xs font-medium text-slate-400 mt-1 max-w-none leading-relaxed">
             {subTab === 'today' && 'Thực thi daily các đầu việc đúng mốc giờ quy định và chụp hình minh chứng ca trực.'}
             {subTab === 'process' && 'Cấu hình và chuẩn hóa quy trình template checklist cho từng vai trò nhân sự.'}
-            {subTab === 'completed' && 'Lịch sử lưu trữ đầu việc đã kiểm định hoàn thành theo ngày và tuần.'}
+            {subTab === 'history' && 'Lịch sử lưu trữ và đối soát checklist toàn bộ nhân sự theo thời gian.'}
           </p>
         </div>
       </div>

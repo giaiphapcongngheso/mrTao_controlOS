@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../share/ui';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
-import { ChecklistCategory, ChecklistItem, ProcessDocument, ProcessStep } from '../../types/checklist.types';
+import { ChecklistCategory, ChecklistItem, ProcessDocument, ProcessStep, ChecklistDocument } from '../../types/checklist.types';
 import ChecklistContentArea from './components/checklist-content-area';
 import ChecklistCreateDialog from './components/checklist-create-dialog';
 import ChecklistHeader from './components/checklist-header';
@@ -17,13 +17,17 @@ import {
   useInlineEdit,
   useChecklistDialog,
 } from './_hook';
-import { getTodayKey, getWeekDates } from './checklist-utils';
+import { getTodayKey, toLocalDateKey } from './checklist-utils';
+import type { DateRange } from 'react-day-picker';
+import { subDays } from 'date-fns';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
   processes: ProcessDocument[];
   items: ChecklistItem[];
-  allChecklistItems?: ChecklistItem[];
+  historySnapshots?: ChecklistDocument[];
+  historyLoading?: boolean;
+  onFetchHistory?: (from: string, to: string) => Promise<void>;
   onToggleItem: (itemId: string) => void;
   roleOptions: Array<{ code: string; name: string }>;
   defaultRoleCode: string;
@@ -116,7 +120,9 @@ export default function ChecklistView({
   todayCategories,
   processes,
   items,
-  allChecklistItems = [],
+  historySnapshots = [],
+  historyLoading = false,
+  onFetchHistory,
   onToggleItem,
   roleOptions,
   defaultRoleCode,
@@ -138,18 +144,31 @@ export default function ChecklistView({
   errorMessage,
   onDismissError,
 }: ChecklistViewProps) {
-  const [subTab, setSubTab] = useState<'today' | 'process' | 'completed'>('today');
+  const [subTab, setSubTab] = useState<'today' | 'process' | 'history'>('today');
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [completedViewMode, setCompletedViewMode] = useState<'day' | 'week'>('day');
-  const [selectedWeekDayKey, setSelectedWeekDayKey] = useState(getTodayKey());
+
+  // Date range state for history filter
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
+
+  // Process dialog states
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
   const [processDialogInitialValues, setProcessDialogInitialValues] = useState<ProcessDialogValues | null>(null);
   const [processDialogError, setProcessDialogError] = useState<string | null>(null);
   const [processDialogEditId, setProcessDialogEditId] = useState<string | null>(null);
   const [isSubmittingProcessDialog, setIsSubmittingProcessDialog] = useState(false);
 
-  const weekDates = useMemo(() => getWeekDates(), []);
+  // Fetch history when tab is 'history' or when dateRange changes
+  useEffect(() => {
+    if (subTab === 'history' && dateRange?.from && dateRange?.to && onFetchHistory) {
+      const fromStr = toLocalDateKey(dateRange.from);
+      const toStr = toLocalDateKey(dateRange.to);
+      void onFetchHistory(fromStr, toStr);
+    }
+  }, [subTab, dateRange, onFetchHistory]);
 
   const toggleExpand = useCallback((catId: string) => {
     setExpandedCategoryId((prev) => prev === catId ? null : catId);
@@ -180,12 +199,12 @@ export default function ChecklistView({
     todayCategories,
     processes,
     items,
-    allChecklistItems,
+    historySnapshots,
     subTab,
     searchTerm,
     selectedRoleCode: dialogRoleCode,
-    completedViewMode,
-    selectedWeekDayKey,
+    completedViewMode: 'day', // fallback/legacy
+    selectedWeekDayKey: getTodayKey(), // fallback/legacy
   });
 
   const kpiStats = useKpiStats(items);
@@ -252,7 +271,13 @@ export default function ChecklistView({
   ) => {
     const roleCode = dialogRoleCode || defaultRoleCode;
     if (onCreateTodayChecklistBatch) {
-      await onCreateTodayChecklistBatch(roleCode, categoryId, categoryTitle, [{ title, timeLimit }]);
+      // For adding inline to a history category or today
+      // Extract original template ID if it is a history ID (which is in format dateKey_templateId)
+      let cleanCategoryId = categoryId;
+      if (categoryId.includes('_')) {
+        cleanCategoryId = categoryId.split('_')[1];
+      }
+      await onCreateTodayChecklistBatch(roleCode, cleanCategoryId, categoryTitle, [{ title, timeLimit }]);
       return;
     }
 
@@ -262,7 +287,10 @@ export default function ChecklistView({
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
     setSearchTerm('');
-    setCompletedViewMode('day');
+    setDateRange({
+      from: subDays(new Date(), 7),
+      to: new Date(),
+    });
   }, []);
 
   const handleCloseChecklistDialog = useCallback(() => {
@@ -326,11 +354,8 @@ export default function ChecklistView({
 
       <ChecklistConfigBar
         subTab={subTab}
-        completedViewMode={completedViewMode}
-        setCompletedViewMode={setCompletedViewMode}
-        selectedWeekDayKey={selectedWeekDayKey}
-        setSelectedWeekDayKey={setSelectedWeekDayKey}
-        weekDates={weekDates}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
       />
 
       {subTab === 'process' ? (
@@ -362,7 +387,7 @@ export default function ChecklistView({
           onAddInlineItem={handleAddInlineItem}
           onResetFilters={handleResetFilters}
           kpiStats={kpiStats}
-          isLoading={isLoading}
+          isLoading={isLoading || historyLoading}
           roleOptions={roleOptions}
           onUpdateChecklistItem={onUpdateChecklistItem}
         />
@@ -410,7 +435,7 @@ export default function ChecklistView({
         title="Dong bo thay doi template xuong checklist hom nay"
         description={
           pendingTemplateSync
-            ? `Template "${pendingTemplateSync.templateTitle}" da thay doi. Ban co muon dong bo xuong checklist hom nay "${pendingTemplateSync.snapshotTitle}" khong?`
+            ? `Template "${pendingTemplateSync.templateTitle}" da thay doi. Ban co muon dong bo xuong checklist hom nay khong?`
             : ''
         }
         onConfirm={() => {

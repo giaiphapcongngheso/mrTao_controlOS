@@ -5,39 +5,42 @@ import type {
   ProcessDocument,
 } from '../types/checklist.types';
 import {
+  collection,
   doc,
+  getDocs,
+  query,
   runTransaction,
+  where,
+  orderBy,
   writeBatch,
 } from 'firebase/firestore';
 import { createBaseService } from '../shared/services/create-base-service';
 import { RESOURCE_PATH } from '../constants/resource-paths';
 import { dataClient } from './data-client';
 import { getFirestoreDb } from './firebase-config';
+import { generateSnapshotGuardId } from '../routes/Checklist/checklist-domain';
 
 /**
  * Single unified service for the "checklists" collection.
- * Each document contains a category with embedded tasks array.
+ * Each document represents ONE day + ONE role, with all tasks embedded.
  */
 export const checklistService = createBaseService<ChecklistDocument, Partial<ChecklistDocument>>({
   client: dataClient,
   resource: RESOURCE_PATH.CHECKLISTS,
 });
 
+/**
+ * Create or return existing daily snapshot (1 per day per role).
+ * Uses Firestore transaction with guard document for idempotency.
+ *
+ * ID format: CL_{dateKey}_{roleCode} (deterministic, human-readable)
+ */
 export async function createChecklistSnapshotOnce(
   snapshot: ChecklistDocument,
 ): Promise<ChecklistDocument> {
-  if (!snapshot.templateId) {
-    return checklistService.create(snapshot);
-  }
-
   const db = getFirestoreDb();
   const targetRef = doc(db, 'checklists', snapshot.id);
-  const guardId = [
-    snapshot.storeId,
-    snapshot.roleCode,
-    snapshot.dateKey,
-    snapshot.templateId,
-  ].join('__').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const guardId = generateSnapshotGuardId(snapshot.storeId, snapshot.dateKey, snapshot.roleCode);
   const guardRef = doc(db, '_checklist_snapshot_guards', guardId);
 
   return runTransaction(db, async (tx) => {
@@ -57,9 +60,21 @@ export async function createChecklistSnapshotOnce(
       }
     }
 
+    // Check if target doc already exists (deterministic ID can collide with existing)
     const targetSnap = await tx.get(targetRef);
     if (targetSnap.exists()) {
-      throw new Error(`Document ID "${snapshot.id}" đã tồn tại trong collection "checklists". Vui lòng thử lại.`);
+      const existingData = targetSnap.data() as ChecklistDocument;
+      if (!existingData.deletedAt) {
+        // Update guard to point to existing doc
+        tx.set(guardRef, {
+          snapshotId: snapshot.id,
+          storeId: snapshot.storeId,
+          roleCode: snapshot.roleCode,
+          dateKey: snapshot.dateKey,
+          updatedAt: new Date().toISOString(),
+        });
+        return { ...existingData, id: snapshot.id };
+      }
     }
 
     tx.set(targetRef, snapshot);
@@ -68,7 +83,6 @@ export async function createChecklistSnapshotOnce(
       storeId: snapshot.storeId,
       roleCode: snapshot.roleCode,
       dateKey: snapshot.dateKey,
-      templateId: snapshot.templateId,
       updatedAt: new Date().toISOString(),
     });
     return snapshot;
@@ -89,6 +103,31 @@ export async function softDeleteChecklistTemplateCascade(
   });
 
   await batch.commit();
+}
+
+/**
+ * Query checklist snapshots by date range for history tab.
+ * Uses Firestore composite index: storeId + roleCode + deletedAt + dateKey
+ */
+export async function getChecklistsByDateRange(
+  storeId: string,
+  roleCode: string,
+  fromDateKey: string,
+  toDateKey: string,
+): Promise<ChecklistDocument[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, 'checklists');
+  const q = query(
+    colRef,
+    where('storeId', '==', storeId),
+    where('roleCode', '==', roleCode),
+    where('deletedAt', '==', null),
+    where('dateKey', '>=', fromDateKey),
+    where('dateKey', '<=', toDateKey),
+    orderBy('dateKey', 'desc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id }) as ChecklistDocument);
 }
 
 export const checklistTemplateService = createBaseService<ChecklistTemplateDocument, Partial<ChecklistTemplateDocument>>({

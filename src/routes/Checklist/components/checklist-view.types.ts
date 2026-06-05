@@ -1,6 +1,6 @@
 import type { ChecklistCategory, ChecklistItem } from '../../../types/checklist.types';
 
-export type ChecklistSubTab = 'today' | 'process' | 'completed';
+export type ChecklistSubTab = 'today' | 'process' | 'history';
 
 export type ChecklistPermissions = {
   canCreate: boolean;

@@ -380,7 +380,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
 }: ChecklistTaskItemProps) {
   const isLate = isItemLate(item);
   const isCurrentlyEditing = editState.editingItemId === item.id;
-  const isReadOnlyCompletedTab = subTab === 'completed';
+  const isReadOnlyCompletedTab = subTab === 'history';
 
   const lastClickTimeRef = React.useRef<number>(0);
   const lastToggleTimeRef = React.useRef<number>(0);
@@ -611,7 +611,7 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
           )}
 
           {/* Image evidence / Detail */}
-          {(subTab === 'today' || subTab === 'completed') && (
+          {(subTab === 'today' || subTab === 'history') && (
             <Button
               type="button"
               variant="outline"
@@ -817,7 +817,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
 
         {/* Actions & Toggle Expand */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0" onClick={stopProp}>
-          {subTab !== 'completed' && permissions.canUpdate && (
+          {subTab !== 'history' && permissions.canUpdate && (
             <Button
               type="button"
               variant="outline"
@@ -829,7 +829,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
               <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </Button>
           )}
-          {subTab !== 'completed' && permissions.canDelete && (
+          {subTab !== 'history' && permissions.canDelete && (
             <Button
               type="button"
               variant="outline"
@@ -939,7 +939,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
             </div>
           )}
 
-          {subTab !== 'completed' && permissions.canCreate && !isAddingInline && (
+          {subTab !== 'history' && permissions.canCreate && !isAddingInline && (
             <div className="px-3 sm:px-4 py-3 border-t border-slate-100">
               <Button
                 type="button"

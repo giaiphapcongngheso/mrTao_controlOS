@@ -9,6 +9,7 @@ export interface ChecklistTask extends BaseEntity {
   isCompleted: boolean;
   timeLimit?: string;
   dateKey?: string;
+  templateId?: string;  // Source template ID for category grouping
   checkedAt?: string | null;
   checkedByName?: string | null;
   checkedByUsername?: string | null;
@@ -44,9 +45,7 @@ export interface ChecklistTemplateDocument extends BaseEntity {
 export interface ChecklistDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
-  title: string;
   dateKey: string;
-  templateId: string | null;
   tasks: ChecklistTask[];
 }
 
@@ -99,6 +98,7 @@ export interface ChecklistCategory {
 export interface ChecklistItem extends BaseEntity {
   storeId: string;
   categoryId: string;
+  templateId?: string;
   title: string;
   isCompleted: boolean;
   timeLimit?: string;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChecklistDocument } from '../../../types/checklist.types';
+import type { ChecklistDocument, ChecklistTask } from '../../../types/checklist.types';
 import type { StaffRole } from '../../../types/staff.types';
 import type { UserSession } from '../../../stores/app-store';
 import { roleService } from '../../../services/admin';
@@ -7,18 +7,21 @@ import {
   checklistService,
   checklistTemplateService,
   createChecklistSnapshotOnce,
+  getChecklistsByDateRange,
   processService,
 } from '../../../services/checklist-service';
 import { toastError } from '../../../shared/lib/toast';
 import { normalizeAccessCode } from '../../../shared/hooks/use-module-permissions';
 import {
-  buildTodaySnapshotFromTemplate,
+  buildDailySnapshot,
+  generateDailySnapshotId,
   deriveChecklistState,
   EMPTY_CHECKLIST_DATA_STATE,
   type ChecklistDataState,
   type ChecklistRoleOption,
 } from '../checklist-domain';
 import { getTodayKey } from '../checklist-utils';
+import { initBaseEntity } from '../../../types/base.types';
 
 type UseChecklistDataParams = {
   currentUser: UserSession;
@@ -40,6 +43,10 @@ export function useChecklistData({
   const [roleOptions, setRoleOptions] = useState<ChecklistRoleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const dataStateRef = useRef(dataState);
+
+  // States for history tab
+  const [historySnapshots, setHistorySnapshots] = useState<ChecklistDocument[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     dataStateRef.current = dataState;
@@ -92,49 +99,97 @@ export function useChecklistData({
     filteredState: ChecklistDataState,
     todayKey: string,
   ) => {
-    const existingTodayTemplateIds = new Set(
-      filteredState.snapshots
-        .filter((snapshot) => snapshot.dateKey === todayKey)
-        .map((snapshot) => snapshot.templateId)
-        .filter((templateId): templateId is string => Boolean(templateId)),
-    );
-
-    const missingTemplates = filteredState.templates.filter(
-      (template) => !existingTodayTemplateIds.has(template.id),
-    );
-    if (missingTemplates.length === 0) {
+    if (filteredState.templates.length === 0) {
       return;
     }
 
-    // Fire-and-forget: create missing snapshots in background
-    void Promise.allSettled(
-      missingTemplates.map(async (template) => {
-        const snapshotPayload = await buildTodaySnapshotFromTemplate(template, activeStoreId, todayKey);
-        return createChecklistSnapshotOnce(snapshotPayload);
-      }),
-    ).then((results) => {
-      const ensuredSnapshots = results
-        .filter((result): result is PromiseFulfilledResult<ChecklistDocument> => result.status === 'fulfilled')
-        .map((result) => result.value)
-        .filter((snapshot) => !snapshot.deletedAt);
+    const dailySnapshotId = generateDailySnapshotId(todayKey, currentRoleCode);
+    const existingSnapshot = filteredState.snapshots.find(
+      (snapshot) => snapshot.id === dailySnapshotId && !snapshot.deletedAt
+    );
 
-      if (ensuredSnapshots.length === 0) {
+    let updatedSnapshot: ChecklistDocument;
+
+    if (!existingSnapshot) {
+      // 1. Snapshot chưa tồn tại: Tạo mới snapshot doc chứa toàn bộ task của tất cả template
+      updatedSnapshot = buildDailySnapshot(
+        filteredState.templates,
+        activeStoreId,
+        currentRoleCode,
+        todayKey
+      );
+    } else {
+      // 2. Snapshot đã tồn tại: Check xem có template nào chưa có task nào trong snapshot
+      const existingTemplateIdsInSnapshot = new Set(
+        existingSnapshot.tasks
+          .map((task) => task.templateId)
+          .filter((id): id is string => Boolean(id))
+      );
+
+      const missingTemplates = filteredState.templates.filter(
+        (template) => !existingTemplateIdsInSnapshot.has(template.id)
+      );
+
+      if (missingTemplates.length === 0) {
+        return; // Đã đủ
+      }
+
+      // Tạo thêm tasks cho các templates bị thiếu và append vào existingSnapshot
+      const nowIso = new Date().toISOString();
+      const newTasks: ChecklistTask[] = missingTemplates.flatMap((template) =>
+        template.tasks.map((task) => ({
+          ...initBaseEntity('t', task.id),
+          title: task.title,
+          timeLimit: task.timeLimit,
+          isCompleted: false,
+          dateKey: todayKey,
+          templateId: template.id,
+          checkedAt: null,
+          checkedByName: null,
+          checkedByUsername: null,
+        }))
+      );
+
+      updatedSnapshot = {
+        ...existingSnapshot,
+        tasks: [...existingSnapshot.tasks, ...newTasks],
+        updatedAt: nowIso,
+      };
+    }
+
+    // Ghi vào Firestore qua transaction (idempotent)
+    void createChecklistSnapshotOnce(updatedSnapshot).then((ensuredSnapshot) => {
+      if (!ensuredSnapshot || ensuredSnapshot.deletedAt) {
         return;
       }
 
-      // Merge into current state without blocking
+      // Merge vào state local
       const currentState = dataStateRef.current;
-      const snapshotsById = new Map(currentState.snapshots.map((snapshot) => [snapshot.id, snapshot] as const));
-      ensuredSnapshots.forEach((snapshot) => {
-        snapshotsById.set(snapshot.id, snapshot);
-      });
+      const snapshotsById = new Map(
+        currentState.snapshots.map((snapshot) => [snapshot.id, snapshot] as const)
+      );
+      snapshotsById.set(ensuredSnapshot.id, ensuredSnapshot);
 
       replaceLocalState({
         ...currentState,
         snapshots: Array.from(snapshotsById.values()),
       });
     });
-  }, [activeStoreId, replaceLocalState]);
+  }, [activeStoreId, currentRoleCode, replaceLocalState]);
+
+  // Fetch history by date range
+  const fetchHistoryByDateRange = useCallback(async (from: string, to: string) => {
+    setHistoryLoading(true);
+    try {
+      const snapshots = await getChecklistsByDateRange(activeStoreId, currentRoleCode, from, to);
+      setHistorySnapshots(snapshots || []);
+    } catch (error) {
+      console.error('Khong the tai lich su checklist:', error);
+      toastError('Khong the tai lich su checklist.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [activeStoreId, currentRoleCode]);
 
   // Phase 1: Fast path - fetch all data, show UI immediately
   const refreshChecklistData = useCallback(async () => {
@@ -233,5 +288,8 @@ export function useChecklistData({
     refreshChecklistData,
     updateLocalState,
     restoreLocalState,
+    historySnapshots,
+    historyLoading,
+    fetchHistoryByDateRange,
   };
 }
