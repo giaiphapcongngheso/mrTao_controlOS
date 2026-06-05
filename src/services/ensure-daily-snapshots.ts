@@ -105,10 +105,12 @@ async function ensureSnapshotForRole(
   const existingSnapshot = existingSnapshotsById.get(dailySnapshotId);
 
   let snapshotToWrite: ChecklistDocument;
+  let shouldCreateSnapshot = false;
 
   if (!existingSnapshot) {
     // No snapshot yet — create fresh from all templates
     snapshotToWrite = buildDailySnapshot(roleTemplates, storeId, roleCode, todayKey);
+    shouldCreateSnapshot = true;
   } else {
     // Snapshot exists — check for missing templates
     const existingTemplateIds = new Set(
@@ -148,6 +150,13 @@ async function ensureSnapshotForRole(
     };
   }
 
-  // Write via idempotent Firestore transaction
-  await createChecklistSnapshotOnce(snapshotToWrite);
+  if (shouldCreateSnapshot) {
+    await createChecklistSnapshotOnce(snapshotToWrite);
+    return;
+  }
+
+  await checklistService.update(snapshotToWrite.id, {
+    tasks: snapshotToWrite.tasks,
+    updatedAt: snapshotToWrite.updatedAt,
+  });
 }

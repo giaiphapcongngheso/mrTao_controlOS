@@ -274,4 +274,12 @@ html {
     top: 50%;
     transform-origin: top center;
   }
+  /* Hide scrollbar cross-browser */
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
 }

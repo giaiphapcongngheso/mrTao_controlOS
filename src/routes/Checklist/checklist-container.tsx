@@ -1,9 +1,7 @@
 import ChecklistView from './checklist-view';
 import type { ChecklistItem } from '../../types/checklist.types';
 import type { UserSession } from '../../stores/app-store';
-import { MODULE_CODE } from '../../constants/staff-permissions.constants';
-import { useModulePermissions, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
-import { useChecklistData, useChecklistMutations } from './_hook';
+import { useChecklist } from './_hook';
 
 interface ChecklistContainerProps {
   currentUser: UserSession;
@@ -18,27 +16,15 @@ export default function ChecklistContainer({
   activeStoreId,
   onMetricsChange,
 }: ChecklistContainerProps) {
-  const currentChecklistRoleCode = normalizeAccessCode(currentUser?.roleCode || currentUser?.role || 'SALES');
-  const { permissions: checklistPermissions } = useModulePermissions(MODULE_CODE.CHECKLIST, currentUser, isOwner);
-
   const {
-    dataStateRef,
+    currentRoleCode,
     derivedState,
     roleOptions,
     isLoading,
-    updateLocalState,
-    restoreLocalState,
+    permissions,
     historySnapshots,
     historyLoading,
     fetchHistoryByDateRange,
-  } = useChecklistData({
-    currentUser,
-    activeStoreId,
-    currentRoleCode: currentChecklistRoleCode,
-    onMetricsChange,
-  });
-
-  const {
     pendingTemplateSync,
     handleToggleChecklistItem,
     handleCreateRoleChecklist,
@@ -53,14 +39,11 @@ export default function ChecklistContainer({
     handleCreateProcess,
     handleUpdateProcess,
     handleDeleteProcess,
-  } = useChecklistMutations({
+  } = useChecklist({
     currentUser,
+    isOwner,
     activeStoreId,
-    currentRoleCode: currentChecklistRoleCode,
-    permissions: checklistPermissions,
-    dataStateRef,
-    updateLocalState,
-    restoreLocalState,
+    onMetricsChange,
   });
 
   return (
@@ -73,7 +56,7 @@ export default function ChecklistContainer({
       onFetchHistory={fetchHistoryByDateRange}
       onToggleItem={handleToggleChecklistItem}
       roleOptions={roleOptions}
-      defaultRoleCode={currentChecklistRoleCode}
+      defaultRoleCode={currentRoleCode}
       onCreateRoleChecklist={handleCreateRoleChecklist}
       onCreateTodayChecklistBatch={handleCreateTodayChecklistBatch}
       onSaveCategoryBatch={handleSaveCategoryBatch}
@@ -94,7 +77,7 @@ export default function ChecklistContainer({
       onCreateProcess={handleCreateProcess}
       onUpdateProcess={handleUpdateProcess}
       onDeleteProcess={handleDeleteProcess}
-      permissions={checklistPermissions}
+      permissions={permissions}
       isLoading={isLoading}
     />
   );

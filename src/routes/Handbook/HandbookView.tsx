@@ -15,20 +15,42 @@ import {
   Network,
   Plus,
   Scale,
-  Search,
   Settings,
   Shield,
   Trash2,
   User,
-  X,
 } from 'lucide-react';
 import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
 import { handbookCategoryService } from '../../services/handbook-category-service';
 import { uploadHandbookImage } from '../../services/firebase-storage-service';
-import { ScrollArea } from '../../shared/components/scroll-area';
 import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
-import { Button } from '@shared/ui';
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardAction,
+  Dialog,
+  DialogContent,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  ScrollArea,
+  SearchInput,
+  Separator,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@shared/ui';
 import { useAppStore } from '../../stores/app-store';
 import type { HandbookCategory, HandbookCategoryRequestType, HandbookDoc } from '../../types/handbook.types';
 import HandbookEditorDialog from './components/handbook-editor-dialog';
@@ -227,7 +249,10 @@ function resolveCardMetadata(doc: HandbookDoc, category?: HandbookCategory | nul
   };
 }
 
-function renderFormattedContent(content: string): React.ReactNode[] {
+function renderFormattedContent(
+  content: string,
+  onImageClick?: (imageUrl: string) => void,
+): React.ReactNode[] {
   return content.split('\n').map((line, index) => {
     if (line.startsWith('### ')) {
       return (
@@ -262,8 +287,9 @@ function renderFormattedContent(content: string): React.ReactNode[] {
           <img
             src={imgMatch[2]}
             alt={imgMatch[1] || 'Embedded Image'}
-            className="max-h-96 w-auto max-w-full rounded-xl border border-slate-200 object-contain shadow-xs"
+            className="!h-auto !w-auto !max-h-[70vh] !max-w-full cursor-zoom-in rounded-xl border border-slate-200 object-contain shadow-xs transition-all duration-200 hover:shadow-md"
             loading="lazy"
+            onClick={() => onImageClick?.(imgMatch[2])}
           />
         </div>
       );
@@ -295,6 +321,7 @@ function isHtmlContent(content: string): boolean {
 
 export default function HandbookView() {
   const currentUser = useAppStore((state) => state.currentUser);
+  const activeContentRef = useRef<HTMLDivElement | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
@@ -497,12 +524,37 @@ export default function HandbookView() {
     () => (activeDoc && currentReadKey ? activeDoc.readAudits?.[currentReadKey] : undefined),
     [activeDoc, currentReadKey],
   );
+  useEffect(() => {
+    const container = activeContentRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handleImageClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLImageElement)) {
+        return;
+      }
+
+      const imageUrl = target.currentSrc || target.src;
+      if (imageUrl) {
+        setPreviewImageUrl(imageUrl);
+      }
+    };
+
+    container.addEventListener('click', handleImageClick);
+    return () => {
+      container.removeEventListener('click', handleImageClick);
+    };
+  }, [activeDoc?.content]);
+
   const renderedActiveContent = useMemo(() => {
     if (!activeDoc) return null;
     const content = activeDoc.content || '';
     if (isHtmlContent(content)) {
       return (
-        <div 
+        <div
+          ref={activeContentRef}
           className="rich-text-content space-y-3 select-text text-slate-700 text-xs leading-relaxed text-left
             [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:uppercase [&_h2]:tracking-wider
             [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-800 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-100 [&_h3]:pb-1 [&_h3]:uppercase [&_h3]:tracking-wide
@@ -511,14 +563,14 @@ export default function HandbookView() {
             [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
             [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
             [&_li]:text-xs [&_li]:text-slate-700
-            [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
+            [&_img]:!block [&_img]:!mx-auto [&_img]:!my-3 [&_img]:!h-auto [&_img]:!w-auto [&_img]:!max-h-[70vh] [&_img]:!max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-150 [&_img]:object-contain [&_img]:shadow-md
             [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
             [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
           dangerouslySetInnerHTML={{ __html: content }}
         />
       );
     }
-    return renderFormattedContent(content);
+    return renderFormattedContent(content, setPreviewImageUrl);
   }, [activeDoc]);
   const openCreateEditor = useCallback(() => {
     setEditingDocId(null);
@@ -902,321 +954,268 @@ export default function HandbookView() {
   return (
     <div className="h-[calc(100vh-128px)] w-full space-y-4 overflow-y-auto pb-24 pr-1 text-left font-sans antialiased scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
       {toastMessage && (
-        <div className="fixed bottom-5 left-5 z-[80] flex max-w-sm items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl">
+        <Alert className="fixed bottom-5 left-5 z-[80] max-w-sm rounded-xl border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl">
           <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>{toastMessage}</span>
-        </div>
+          <AlertDescription className="text-xs font-bold text-emerald-800">{toastMessage}</AlertDescription>
+        </Alert>
       )}
 
       {activeDocId === null && (
         <>
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <Card className="rounded-2xl border-slate-200/80 p-5 shadow-xs gap-0">
+            <CardHeader className="p-0 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 text-left">
-                <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-[16px] font-bold text-slate-800">
                   <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
-                  <h1 className="text-[16px] font-bold text-slate-800">
-                    Sổ tay điều hành & hệ thống vận hành
-                  </h1>
-                </div>
-                <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
+                  Sổ tay điều hành & hệ thống vận hành
+                </CardTitle>
+                <CardDescription className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
                   Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
-                </p>
+                </CardDescription>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 shrink-0">
+              <CardAction className="col-start-auto row-span-auto row-start-auto self-auto justify-self-auto flex flex-wrap items-center gap-4 shrink-0">
                 {permissions.canCreate && (
-                  <button
+                  <Button
                     type="button"
                     onClick={openCreateEditor}
-                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3.5 h-9 text-sm font-bold text-white transition-all hover:bg-[#A81515] hover:shadow-md sm:inline-flex cursor-pointer"
+                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] hover:bg-[#A81515] hover:shadow-md sm:inline-flex cursor-pointer h-9 px-3.5 text-sm font-bold text-white transition-all"
                   >
                     <Plus className="h-3.5 w-3.5 stroke-[3]" />
                     <span>Thêm tài liệu mới</span>
-                  </button>
-                )}
-
-                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Hệ thống tóm tắt tối ưu (SOP Lite)</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h1 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-900 break-words sm:text-lg">
-                  <BookOpen className="h-4 w-4 shrink-0 text-[#C21A1A] sm:h-5 sm:w-5" />
-                  <span>Sổ tay điều hành vận hành</span>
-                </h1>
-                <p className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
-                  Tập trung chuẩn vận hành cốt lõi, giúp nhân sự tra cứu nhanh và thực thi đúng quy trình.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>SOP Lite</span>
-                {permissions.canCreate && (
-                  <button
-                    type="button"
-                    onClick={openCreateEditor}
-                    className="ml-2 hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white transition-colors hover:bg-[#A81515] sm:inline-flex"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Thêm tài liệu</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-            <h3 className="mb-2.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Danh mục phễu lọc tài liệu
-            </h3>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <Button
-                type="button"
-                onClick={() => handleToggleCategory(null)}
-                className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase ${
-                  !selectedCategory
-                    ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                    : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
-                }`}
-              >
-                Tất cả danh mục
-              </Button>
-
-              {categoryOptions.map((categoryName) => {
-                const isSelected = selectedCategory === categoryName;
-                const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
-                const config = getCategoryIconConfig(categoryName, categoryMeta);
-                const CatIcon = config.icon;
-
-                return (
-                  <Button
-                    key={categoryName}
-                    type="button"
-                    onClick={() => handleToggleCategory(categoryName)}
-                    className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase transition-all ${
-                      isSelected
-                        ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                        : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={`rounded-md p-1 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
-                        <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
-                      </span>
-                      <span>{categoryName}</span>
-                    </span>
                   </Button>
-                );
-              })}
-            </div>
-          </section>
+                )}
+
+                <Badge variant="outline" className="gap-2 rounded-full border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Hệ thống tóm tắt tối ưu (SOP Lite)
+                </Badge>
+              </CardAction>
+            </CardHeader>
+          </Card>
+
+
+          <Card className="rounded-2xl border-slate-200/80 p-4 shadow-sm gap-0">
+            <CardHeader className="p-0 mb-2.5">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Danh mục phễu lọc tài liệu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="w-full">
+                <div className="flex items-center gap-2 pb-1">
+                  <Button
+                    type="button"
+                    onClick={() => handleToggleCategory(null)}
+                    className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase ${!selectedCategory
+                      ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                      : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+                      }`}
+                  >
+                    Tất cả danh mục
+                  </Button>
+
+                  {categoryOptions.map((categoryName) => {
+                    const isSelected = selectedCategory === categoryName;
+                    const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+                    const config = getCategoryIconConfig(categoryName, categoryMeta);
+                    const CatIcon = config.icon;
+
+                    return (
+                      <Tooltip key={categoryName}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            onClick={() => handleToggleCategory(categoryName)}
+                            className={`h-auto shrink-0 rounded-xl border px-3.5 py-2 text-[11px] font-black uppercase transition-all ${isSelected
+                              ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
+                              : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
+                              }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className={`rounded-md p-1 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
+                                <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
+                              </span>
+                              <span>{categoryName}</span>
+                            </span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Lọc theo: {categoryName}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </>
       )}
 
       {activeDocId === null ? (
         <section className="space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex w-full gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 md:w-auto">
-                <button
-                  type="button"
-                  onClick={() => handleSetFilter('all')}
-                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'all' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  <span className="hidden sm:inline">Tất cả tài liệu</span>
-                  <span className="sm:hidden">Tất cả</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetFilter('required')}
-                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'required' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  <span className="hidden sm:inline">Bắt buộc đọc</span>
-                  <span className="sm:hidden">Bắt buộc</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetFilter('updated')}
-                  className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'updated' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  <span className="hidden sm:inline">Cập nhật mới</span>
-                  <span className="sm:hidden">Cập nhật</span>
-                </button>
-              </div>
-
-              <div className="flex w-full items-center gap-2 md:max-w-lg">
-                <div className="relative min-w-0 flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Tìm tài liệu..."
-                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-12 text-xs font-medium focus:border-[#C21A1A] focus:outline-hidden focus:ring-1 focus:ring-[#C21A1A]"
-                  />
-                  {searchTerm && (
-                    <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 hover:text-slate-700">
-                      Xóa
-                    </button>
-                  )}
+          <Card className="rounded-2xl border-slate-200 p-3 sm:p-4 shadow-xs gap-0">
+            <CardContent className="p-0">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex w-full gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 md:w-auto">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => handleSetFilter('all')}
+                    className={`flex-1 rounded-lg px-3 py-2 h-auto text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'all' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    <span className="hidden sm:inline">Tất cả tài liệu</span>
+                    <span className="sm:hidden">Tất cả</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => handleSetFilter('required')}
+                    className={`flex-1 rounded-lg px-3 py-2 h-auto text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'required' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    <span className="hidden sm:inline">Bắt buộc đọc</span>
+                    <span className="sm:hidden">Bắt buộc</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => handleSetFilter('updated')}
+                    className={`flex-1 rounded-lg px-3 py-2 h-auto text-[10px] font-black uppercase tracking-wide sm:flex-initial ${selectedFilter === 'updated' ? 'border border-red-200 bg-white text-[#C21A1A] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    <span className="hidden sm:inline">Cập nhật mới</span>
+                    <span className="sm:hidden">Cập nhật</span>
+                  </Button>
                 </div>
 
+                <div className="flex w-full items-center gap-2 md:max-w-lg">
+                  <SearchInput
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    placeholder="Tìm tài liệu..."
+                    className="rounded-xl"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="hidden mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Nhóm danh mục:</span>
-              <Button
-                type="button"
-                onClick={() => handleToggleCategory(null)}
-                className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-black uppercase ${selectedCategory === null
-                    ? 'bg-slate-800 text-white shadow-xs hover:bg-slate-900 hover:text-white'
-                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-                  }`}
-              >
-                Tất cả nhóm
-              </Button>
-              {categoryOptions.map((categoryName) => {
-                const isSelected = selectedCategory === categoryName;
-                const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
-                const config = getCategoryIconConfig(categoryName, categoryMeta);
-                const CatIcon = config.icon;
-                const buttonTheme = isSelected
-                  ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                  : config.filterIdleClass || 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800';
-                return (
-                  <Button
-                    key={categoryName}
-                    type="button"
-                    onClick={() => handleToggleCategory(categoryName)}
-                    className={`rounded-xl px-2.5 py-1.5 h-auto text-[10px] font-bold flex items-center gap-1.5 ${buttonTheme}`}
-                  >
-                    <CatIcon className={`h-3.5 w-3.5 ${isSelected ? 'text-white' : config.iconColor}`} />
-                    <span>{categoryName}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {isFilterActive && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600">
+            <Card className="flex-row flex-wrap items-center justify-between gap-2 rounded-xl border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600 shadow-none">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-slate-500">Kết quả lọc:</span>
                 {selectedCategory && (
-                  <span className="rounded border bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-[#C21A1A]">
+                  <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-[#C21A1A] border-slate-200">
                     Danh mục: {selectedCategory}
-                  </span>
+                  </Badge>
                 )}
                 {selectedFilter !== 'all' && (
-                  <span className="rounded border bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700">
+                  <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700 border-slate-200">
                     Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}
-                  </span>
+                  </Badge>
                 )}
                 {searchTerm && (
-                  <span className="rounded border bg-white px-2 py-0.5 font-sans text-emerald-700">
+                  <Badge variant="outline" className="rounded bg-white px-2 py-0.5 font-sans text-emerald-700 border-slate-200">
                     Từ khóa: "{searchTerm}"
-                  </span>
+                  </Badge>
                 )}
               </div>
 
-              <button type="button" onClick={handleResetFilters} className="text-[10px] font-black uppercase text-[#C21A1A] hover:underline">
+              <Button variant="ghost" onClick={handleResetFilters} className="text-[10px] font-black uppercase text-[#C21A1A] hover:underline hover:bg-transparent h-auto p-0">
                 Đặt lại
-              </button>
-            </div>
+              </Button>
+            </Card>
           )}
 
           {loadErrorMessage && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
-              {loadErrorMessage}
-            </div>
+            <Alert variant="destructive" className="rounded-xl border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              <AlertDescription>{loadErrorMessage}</AlertDescription>
+            </Alert>
           )}
 
           {isLoadingDocs && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
-              Đang tải dữ liệu sổ tay...
-            </div>
+            <Alert className="rounded-xl border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+              <AlertDescription>Đang tải dữ liệu sổ tay...</AlertDescription>
+            </Alert>
           )}
 
           <div className="grid grid-cols-1 gap-3 pb-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredDocs.length === 0 ? (
-              <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
-                <BookOpen className="mx-auto mb-3 h-12 w-12 text-slate-200" />
-                <h3 className="text-xs font-extrabold uppercase tracking-wide text-slate-700">Không tìm thấy tài liệu phù hợp</h3>
-                <p className="mx-auto mt-1 max-w-sm text-[11px] font-medium text-slate-400">
-                  Thử thay đổi từ khóa hoặc chọn lại bộ lọc để xem toàn bộ tài liệu.
-                </p>
-              </div>
+              <Empty className="col-span-full rounded-2xl border-dashed border-slate-200 bg-white py-16">
+                <EmptyHeader>
+                  <EmptyMedia>
+                    <BookOpen className="h-12 w-12 text-slate-200" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-xs font-extrabold uppercase tracking-wide text-slate-700">
+                    Không tìm thấy tài liệu phù hợp
+                  </EmptyTitle>
+                  <EmptyDescription className="text-[11px] font-medium text-slate-400">
+                    Thử thay đổi từ khóa hoặc chọn lại bộ lọc để xem toàn bộ tài liệu.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               filteredDocs.map((doc) => {
                 const Icon = doc.meta.icon;
                 const isRead = readDocs[doc.id] || false;
 
                 return (
-                  <article
+                  <Card
                     key={doc.id}
-                    className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C21A1A] hover:shadow-md"
+                    className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 gap-0 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#C21A1A] hover:shadow-md"
                     onClick={() => handleOpenDoc(doc)}
                   >
-                    <div className="space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${doc.meta.iconBg}`}>
-                            <Icon className={`h-4.5 w-4.5 ${doc.meta.iconColor}`} />
-                          </div>
-                          <span className="rounded border bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">
-                            {doc.category}
-                          </span>
+                    <CardHeader className="p-0 flex flex-row items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${doc.meta.iconBg}`}>
+                          <Icon className={`h-4.5 w-4.5 ${doc.meta.iconColor}`} />
                         </div>
-
-                        <div className="flex items-center gap-1">
-                          {permissions.canUpdate && (
-                            <button
-                              type="button"
-                              onClick={(event) => openEditEditor(doc, event)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                              title="Sửa tài liệu"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-
-                          {permissions.canDelete && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                void handleDeleteDoc(doc, event);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                              title="Xóa tài liệu"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-[#C21A1A]" />
-                        </div>
+                        <Badge variant="outline" className="rounded bg-slate-100 border-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500">
+                          {doc.category}
+                        </Badge>
                       </div>
 
-                      <div>
-                        <h3 className="text-xs font-extrabold leading-snug tracking-tight text-slate-900 transition-colors group-hover:text-[#C21A1A]">
-                          {doc.title}
-                        </h3>
-                        <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-relaxed text-slate-500">
-                          {doc.summary}
-                        </p>
-                      </div>
-                    </div>
+                      <CardAction className="col-start-auto row-span-auto row-start-auto self-auto justify-self-auto flex items-center gap-1">
+                        {permissions.canUpdate && (
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            type="button"
+                            onClick={(event) => openEditEditor(doc, event)}
+                            className="bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600 h-7 w-7 cursor-pointer"
+                            title="Sửa tài liệu"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
 
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 text-[10px]">
+                        {permissions.canDelete && (
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            type="button"
+                            onClick={(event) => {
+                              void handleDeleteDoc(doc, event);
+                            }}
+                            className="bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 h-7 w-7 cursor-pointer"
+                            title="Xóa tài liệu"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+
+                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-[#C21A1A]" />
+                      </CardAction>
+                    </CardHeader>
+
+                    <CardContent className="p-0 mt-3 flex-1 flex flex-col gap-1">
+                      <CardTitle className="text-xs font-extrabold leading-snug tracking-tight text-slate-900 transition-colors group-hover:text-[#C21A1A]">
+                        {doc.title}
+                      </CardTitle>
+                      <CardDescription className="mt-1 line-clamp-2 text-[11px] font-medium leading-relaxed text-slate-500">
+                        {doc.summary}
+                      </CardDescription>
+                    </CardContent>
+
+                    <CardFooter className="p-0 mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px]">
                       <div className="flex items-center gap-1.5">
                         {isRead ? (
                           <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-600">
@@ -1224,10 +1223,10 @@ export default function HandbookView() {
                             Đã đọc
                           </span>
                         ) : doc.meta.isUpdated ? (
-                          <span className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-700">
+                          <Badge variant="outline" className="inline-flex items-center gap-1 rounded border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-700">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-700" />
                             Mới cập nhật
-                          </span>
+                          </Badge>
                         ) : (
                           <span className="text-[10px] font-medium text-slate-400">Chưa đọc</span>
                         )}
@@ -1235,20 +1234,20 @@ export default function HandbookView() {
 
                       <div className="flex items-center">
                         {doc.meta.badgeText === 'Bắt buộc đọc' ? (
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[9px] font-black text-[#C21A1A]">
+                          <Badge variant="outline" className="inline-flex items-center gap-1 rounded-lg border-rose-200 bg-rose-50 px-2 py-1 text-[9px] font-black text-[#C21A1A]">
                             <span>🔖</span>
                             <span>Bắt buộc đọc</span>
-                          </span>
+                          </Badge>
                         ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isRead && canConfirmRead ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={(event) => {
                               void handleConfirmRead(doc, event);
                             }}
-                            className="rounded-lg bg-blue-800 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white transition-colors hover:bg-blue-900"
+                            className="rounded-lg bg-blue-800 hover:bg-blue-900 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white h-auto cursor-pointer"
                           >
                             Xác nhận đã đọc
-                          </button>
+                          </Button>
                         ) : doc.meta.badgeText === 'Xác nhận đã đọc' && !isRead && !canConfirmRead ? (
                           <span className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">
                             Chưa có quyền xác nhận
@@ -1264,8 +1263,8 @@ export default function HandbookView() {
                           </span>
                         )}
                       </div>
-                    </div>
-                  </article>
+                    </CardFooter>
+                  </Card>
                 );
               })
             )}
@@ -1273,15 +1272,16 @@ export default function HandbookView() {
         </section>
       ) : (
         <section className="space-y-4 w-full">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-100/70 p-3">
-            <button
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-3 shadow-xs">
+            <Button
+              variant="outline"
               type="button"
               onClick={handleBackToList}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-100"
+              className="rounded-xl border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:border-[#C21A1A] hover:text-[#C21A1A] hover:bg-red-50/30 cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Quay lại danh sách</span>
-            </button>
+            </Button>
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
@@ -1289,168 +1289,183 @@ export default function HandbookView() {
               </span>
 
               {activeDoc && permissions.canUpdate && (
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   type="button"
                   onClick={() => openEditEditor(activeDoc)}
-                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                  className="rounded-xl border-slate-200 text-[10px] font-bold text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 cursor-pointer"
                 >
                   <Edit2 className="h-3.5 w-3.5" />
-                  <span>Sửa</span>
-                </button>
+                  <span>Chỉnh sửa</span>
+                </Button>
               )}
 
               {activeDoc && permissions.canDelete && (
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   type="button"
                   onClick={() => {
                     void handleDeleteDoc(activeDoc);
                   }}
-                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  className="rounded-xl border-slate-200 text-[10px] font-bold text-slate-700 hover:border-rose-350 hover:bg-rose-50/50 hover:text-rose-600 cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span>Xóa</span>
-                </button>
+                  <span>Xóa tài liệu</span>
+                </Button>
               )}
 
               {activeDoc && readDocs[activeDoc.id] && (
-                <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-600">
+                <Badge className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-600">
                   <Check className="h-3.5 w-3.5 stroke-[3]" />
                   <span>Đã đọc</span>
-                </span>
+                </Badge>
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="rounded-2xl bg-white p-5 shadow-xs lg:col-span-8">
-              <div className="mb-3 flex items-center gap-2 text-[#C21A1A]">
-                <span className="h-2 w-2 rounded-full bg-[#C21A1A]" />
-                <span className="text-[10px] font-black uppercase tracking-widest">mr.táo SOP standard</span>
-              </div>
-
-              <h2 className="mb-4 border-b border-slate-200 pb-3 text-sm font-black uppercase tracking-wide text-slate-900 sm:text-base">
+            <Card className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-9 flex flex-col md:h-[calc(100vh-210px)] min-h-[550px] gap-0">
+              <h2 className="mb-4 border-b border-slate-100 pb-3.5 text-sm font-extrabold uppercase tracking-wider text-slate-900 sm:text-base">
                 {activeDoc?.title}
               </h2>
 
-              <ScrollArea className="h-auto pr-3 md:h-[450px]">
-                <div className="space-y-2 pb-10 text-slate-700">{renderedActiveContent}</div>
+              <ScrollArea className="flex-1 pr-3">
+                <div className="space-y-3 pb-10 text-slate-700 select-text leading-relaxed">{renderedActiveContent}</div>
               </ScrollArea>
-            </div>
+            </Card>
 
-            <aside className="flex flex-col justify-between rounded-2xl bg-white p-5 shadow-xs lg:col-span-4">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3">
-                  <span className="rounded-full bg-[#C21A1A] p-1 text-white">
-                    <Info className="h-3.5 w-3.5" />
+            <Card className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-3 md:h-[calc(100vh-210px)] min-h-[550px] gap-0">
+              <CardHeader className="p-0 mb-4">
+                <div className="flex w-full items-center gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 p-3">
+                  <span className="rounded-lg bg-[#C21A1A] p-1.5 text-white">
+                    <Info className="h-4 w-4" />
                   </span>
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-800">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-800">
                     Trách nhiệm tuân thủ
                   </span>
                 </div>
+              </CardHeader>
 
-                <div className="space-y-3 text-xs text-slate-600">
-                  <div>
-                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Chủ đề lớn</span>
-                    <span className="mt-0.5 block text-[11px] font-extrabold text-slate-800">{activeDoc?.category}</span>
-                  </div>
-
-                  <div>
-                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Loại tài liệu</span>
-                    <span className="mt-0.5 block text-[11px] font-bold text-slate-800">
-                      {activeDoc?.meta.badgeText || 'Tài liệu hướng dẫn'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Lưu vết xác nhận</span>
-                    <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-500">
-                      Lần xác nhận gần nhất của bạn: {formatDateTime(activeReadAudit?.readAt)}
-                    </p>
-                  </div>
-
-                  {activeDoc?.meta.driveLink && (
-                    <div className="space-y-1">
-                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">Liên kết tài liệu gốc</span>
-                      <a
-                        href={activeDoc.meta.driveLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-2 px-3 text-[11px] font-extrabold text-slate-700 transition-colors hover:bg-slate-100"
-                        title={activeDoc.meta.driveLink}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                        <span className="truncate flex-1 text-left font-semibold">{activeDoc.meta.driveLink}</span>
-                      </a>
-                    </div>
-                  )}
-
-                  {activeDocImageUrls.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                        <ImageIcon className="h-3.5 w-3.5" />
-                        <span>Hình ảnh đính kèm ({activeDocImageUrls.length})</span>
-                      </span>
-                      <div className="grid grid-cols-4 gap-2">
-                        {activeDocImageUrls.map((url, index) => (
-                          <button
-                            key={url}
-                            type="button"
-                            onClick={() => setPreviewImageUrl(url)}
-                            className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
-                            title={`Xem hình ${index + 1}`}
-                          >
-                            <img
-                              src={url}
-                              alt={`Ảnh đính kèm ${index + 1}`}
-                              className="h-12 w-full object-cover transition-transform duration-150 group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              <CardContent className="p-0 flex-1 overflow-y-auto pr-1 scrollbar-none space-y-3.5 text-xs text-slate-600">
+                <div className="pb-2">
+                  <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Chủ đề lớn</span>
+                  <span className="mt-1 block text-xs font-bold text-slate-800">{activeDoc?.category}</span>
                 </div>
-              </div>
+                <Separator className="bg-slate-50" />
 
-              <div className="mt-6 space-y-2 border-t pt-5">
+                <div className="pb-2">
+                  <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Loại tài liệu</span>
+                  <span className="mt-1 block text-xs font-bold text-slate-800">
+                    {activeDoc?.meta.badgeText || 'Tài liệu hướng dẫn'}
+                  </span>
+                </div>
+                <Separator className="bg-slate-50" />
+
+                <div className="pb-2">
+                  <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Lưu vết xác nhận</span>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+                    {formatDateTime(activeReadAudit?.readAt)}
+                  </p>
+                </div>
+                <Separator className="bg-slate-50" />
+
+                {activeDoc?.meta.driveLink && (
+                  <div className="space-y-1">
+                    <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Tài liệu gốc (Google Drive)</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full justify-start rounded-xl border-slate-200/80 bg-slate-50/50 text-xs font-bold text-slate-700 hover:bg-rose-50/30 hover:border-[#C21A1A] hover:text-[#C21A1A] h-auto py-2 px-3 transition-all cursor-pointer"
+                        >
+                          <a
+                            href={activeDoc.meta.driveLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate flex-1 text-left font-semibold">Xem Google Drive</span>
+                          </a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs break-all text-[10px]">
+                        {activeDoc.meta.driveLink}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+
+                {activeDocImageUrls.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      <span>Ảnh đính kèm ({activeDocImageUrls.length})</span>
+                    </span>
+                    <div className="grid grid-cols-4 gap-2">
+                      {activeDocImageUrls.map((url, index) => (
+                        <Button
+                          key={url}
+                          variant="ghost"
+                          type="button"
+                          onClick={() => setPreviewImageUrl(url)}
+                          className="group relative h-10 p-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-50 transition-all hover:border-[#C21A1A] hover:shadow-xs cursor-pointer"
+                          title={`Xem hình ${index + 1}`}
+                        >
+                          <img
+                            src={url}
+                            alt={`Ảnh đính kèm ${index + 1}`}
+                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-110"
+                            loading="lazy"
+                          />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+
+              <CardFooter className="p-0 mt-6 pt-4 border-t border-slate-100 flex flex-col items-center gap-2">
                 {activeDoc && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       void handleConfirmReadAndBack();
                     }}
                     disabled={!canConfirmRead}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wide transition-all ${!canConfirmRead
-                        ? 'cursor-not-allowed bg-slate-300 text-white'
-                        : readDocs[activeDoc.id]
-                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                          : 'bg-[#C21A1A] text-white hover:bg-[#A81515]'
+                    variant={!canConfirmRead ? 'outline' : readDocs[activeDoc.id] ? 'default' : 'destructive'}
+                    className={`w-full gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer hover:shadow-md active:scale-98 ${readDocs[activeDoc.id] && canConfirmRead
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100'
+                        : !readDocs[activeDoc.id] && canConfirmRead
+                          ? 'bg-[#C21A1A] hover:bg-[#A81515] text-white shadow-red-100'
+                          : 'bg-slate-250 border-slate-200 text-slate-400'
                       }`}
                   >
                     <FileCheck className="h-4 w-4" />
                     <span>{readDocs[activeDoc.id] ? 'Ký lại xác nhận đã đọc' : 'Ký xác nhận đã đọc'}</span>
-                  </button>
+                  </Button>
                 )}
 
-                <p className="text-center text-[10px] font-medium text-slate-400">
+                <p className="text-center text-[10px] font-medium text-slate-400 select-none">
                   Biên bản điện tử được lưu theo ca trực hiện tại.
                 </p>
-              </div>
-            </aside>
+              </CardFooter>
+            </Card>
           </div>
         </section>
       )}
 
       {permissions.canCreate && !activeDocId && (
-        <button
+        <Button
           type="button"
           onClick={openCreateEditor}
-          className="fixed bottom-24 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl transition-all hover:scale-105 hover:bg-red-700 active:scale-95 sm:hidden"
+          className="fixed bottom-24 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-2xl transition-all hover:scale-105 hover:bg-red-700 active:scale-95 sm:hidden cursor-pointer"
           title="Thêm tài liệu mới"
         >
           <Plus className="h-6 w-6 stroke-[3]" />
-        </button>
+        </Button>
       )}
 
       <HandbookEditorDialog
@@ -1484,26 +1499,20 @@ export default function HandbookView() {
         overlayClassName="!z-[80]"
       />
 
-      {previewImageUrl && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/80 p-4"
-          onClick={() => setPreviewImageUrl(null)}
+      <Dialog open={Boolean(previewImageUrl)} onOpenChange={(open) => { if (!open) setPreviewImageUrl(null); }}>
+        <DialogContent
+          className="max-w-[95vw] max-h-[95vh] p-2 bg-transparent border-none shadow-none flex items-center justify-center"
+          showCloseButton
         >
-          <button
-            type="button"
-            onClick={() => setPreviewImageUrl(null)}
-            className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-400/50 bg-black/30 text-white transition-colors hover:bg-black/50"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <img
-            src={previewImageUrl}
-            alt="Xem ảnh handbook"
-            className="max-h-[90vh] max-w-[92vw] rounded-xl object-contain"
-            onClick={(event) => event.stopPropagation()}
-          />
-        </div>
-      )}
+          {previewImageUrl && (
+            <img
+              src={previewImageUrl}
+              alt="Xem ảnh handbook"
+              className="max-h-[90vh] max-w-[92vw] rounded-xl object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

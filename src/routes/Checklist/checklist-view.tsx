@@ -330,7 +330,7 @@ export default function ChecklistView({
       }
       handleCloseProcessDialog();
     } catch (error: any) {
-      setProcessDialogError(error?.message || 'Khong the luu quy trinh. Vui long thu lai.');
+      setProcessDialogError(error?.message || 'Không thể lưu quy trình. Vui lòng thử lại.');
       throw error;
     } finally {
       setIsSubmittingProcessDialog(false);
@@ -406,7 +406,7 @@ export default function ChecklistView({
         <Button
           onClick={handleOpenCreateDialog}
           className="fixed bottom-24 right-5 sm:hidden w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-lg cursor-pointer z-40"
-          title={subTab === 'process' ? 'Them quy trinh moi' : 'Them checklist moi'}
+          title={subTab === 'process' ? 'Thêm quy trình mới' : 'Thêm checklist mới'}
         >
           <Plus className="w-6 h-6 stroke-[3]" />
         </Button>
@@ -441,10 +441,10 @@ export default function ChecklistView({
             onCancelTemplateSync?.();
           }
         }}
-        title="Dong bo thay doi template xuong checklist hom nay"
+        title="Đồng bộ thay đổi template xuống checklist hôm nay"
         description={
           pendingTemplateSync
-            ? `Template "${pendingTemplateSync.templateTitle}" da thay doi. Ban co muon dong bo xuong checklist hom nay khong?`
+            ? `Template "${pendingTemplateSync.templateTitle}" đã thay đổi. Bạn có muốn đồng bộ xuống checklist hôm nay không?`
             : ''
         }
         onConfirm={() => {
