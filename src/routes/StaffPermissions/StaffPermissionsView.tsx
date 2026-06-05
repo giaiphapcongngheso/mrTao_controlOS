@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Skeleton } from '../../shared/components/skeleton';
+import { toastError, toastSuccess } from '../../shared/lib/toast';
 import { roleService, staffPermissionService, staffService } from '../../services/admin';
 import {
   ensureFirebasePasswordUser,
@@ -13,7 +14,6 @@ import {
   LogsTabContent,
   PermissionsTabContent,
   StaffPermissionsHeader,
-  StaffPermissionsMessage,
   StaffTabContent,
 } from './components';
 import {
@@ -38,14 +38,13 @@ import {
 } from './StaffPermissionsView.utils';
 import type { PermissionRowFormValues } from './role-permission-form-schema';
 
+
 export default function StaffPermissionsView({ currentUser }: StaffPermissionsViewProps) {
   const [logs, setLogs] = useState<SystemLog[]>([]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('staff');
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const [successToast, setSuccessToast] = useState<string>('');
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
@@ -62,9 +61,9 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
   const isOwner = Boolean(
     currentUser?.user === 'admin' ||
-      currentUser?.role?.toLowerCase().includes('admin') ||
-      currentUser?.role?.toLowerCase().includes('quan ly') ||
-      currentUser?.role?.toLowerCase().includes('quản lý'),
+    currentUser?.role?.toLowerCase().includes('admin') ||
+    currentUser?.role?.toLowerCase().includes('quan ly') ||
+    currentUser?.role?.toLowerCase().includes('quản lý'),
   );
 
   const activeStaffCount = useMemo(
@@ -72,23 +71,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     [staffList],
   );
 
-  useEffect(() => {
-    if (!successToast) {
-      return;
-    }
 
-    const timer = window.setTimeout(() => {
-      setSuccessToast('');
-    }, 2600);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [successToast]);
-
-  const showSuccessToast = useCallback((message: string) => {
-    setSuccessToast(message);
-  }, []);
 
   const addLog = async (actionType: SystemLogActionType, target: string, details: string) => {
     const newLog: SystemLog = {
@@ -117,7 +100,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     } else {
       setLoading(true);
     }
-    setErrorMessage('');
 
     try {
       const [staff, permissions, roleDocs, systemLogs] = await Promise.all([
@@ -204,7 +186,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       );
     } catch (error) {
       console.error('Failed to load staff permissions data:', error);
-      setErrorMessage('Không thể tải dữ liệu phân quyền từ Firestore. Vui lòng kiểm tra cấu hình và quyền truy cập.');
+      toastError('Không thể tải dữ liệu phân quyền từ Firestore. Vui lòng kiểm tra cấu hình và quyền truy cập.');
       setStaffList([]);
       setRoles([]);
       setPermissionRows([]);
@@ -257,7 +239,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       editingRole: StaffRole | null,
     ) => {
       if (!isOwner) {
-        setErrorMessage('Bạn không có quyền thao tác.');
+        toastError('Bạn không có quyền thao tác.');
         return;
       }
 
@@ -271,7 +253,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       if (isCreating) {
         // Validate uniqueness
         if (roles.some((r) => toRoleCode(r.code) === roleCode)) {
-          setErrorMessage('Mã vai trò đã tồn tại.');
+          toastError('Mã vai trò đã tồn tại.');
           return;
         }
 
@@ -334,7 +316,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           return toSortedPermissions([...remaining, ...savedPermissions]);
         });
 
-        showSuccessToast(isCreating ? 'Đã tạo vai trò và phân quyền.' : 'Đã cập nhật phân quyền.');
+        toastSuccess(isCreating ? 'Đã tạo vai trò và phân quyền.' : 'Đã cập nhật phân quyền.');
         void addLog(
           isCreating ? 'CREATE' : 'UPDATE',
           'Vai trò & Phân quyền',
@@ -342,21 +324,77 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
             ? `Đã tạo vai trò ${role.name} (${role.code}) với ${savedPermissions.length} module.`
             : `Đã cập nhật phân quyền vai trò ${role.name} (${role.code}).`,
         );
-        setErrorMessage('');
       } catch (error) {
         console.error('Failed to save role with permissions:', error);
-        setErrorMessage('Không thể lưu vai trò và phân quyền. Vui lòng kiểm tra quyền ghi Firestore.');
+        toastError('Không thể lưu vai trò và phân quyền. Vui lòng kiểm tra quyền ghi Firestore.');
       }
     },
     [isOwner, roles, permissionRows, defaultStoreId],
   );
 
+  const handleDeleteRole = useCallback(
+    async (role: StaffRole) => {
+      if (!isOwner) {
+        toastError('Bạn không có quyền xoá vai trò.');
+        return;
+      }
+
+      // Check if any staff is using this role
+      const staffUsingRole = staffList.filter(
+        (s) => s.role === role.code || s.roleId === role.id,
+      );
+      if (staffUsingRole.length > 0) {
+        toastError(
+          `Không thể xoá vai trò "${role.name}" vì đang có ${staffUsingRole.length} nhân sự sử dụng.`,
+        );
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Xoá vai trò "${role.name}" (${role.code})? Tất cả phân quyền liên quan sẽ bị xoá.`,
+      );
+      if (!confirmed) return;
+
+      try {
+        // 1. Delete all permission rows for this role
+        const relatedPermissions = permissionRows.filter(
+          (row) => row.roleId === role.id || row.roleCode === role.code,
+        );
+        await Promise.all(
+          relatedPermissions.map((perm) => staffPermissionService.delete(perm.id)),
+        );
+
+        // 2. Delete the role itself
+        await roleService.delete(role.id);
+
+        // 3. Update local state
+        setRoles((prev) => prev.filter((r) => r.id !== role.id));
+        setPermissionRows((prev) =>
+          prev.filter((row) => row.roleId !== role.id && row.roleCode !== role.code),
+        );
+
+        toastSuccess(`Đã xoá vai trò "${role.name}" và ${relatedPermissions.length} phân quyền liên quan.`);
+        void addLog(
+          'DELETE',
+          'Vai trò',
+          `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
+        );
+      } catch (error) {
+        console.error('Failed to delete role:', error);
+        toastError('Không thể xoá vai trò. Vui lòng kiểm tra quyền ghi Firestore.');
+      }
+    },
+    [isOwner, staffList, permissionRows],
+  );
+
   const handleCreateStaff = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!isOwner) {
-      setErrorMessage('Bạn không có quyền thao tác với tài khoản nhân sự.');
+      toastError('Bạn không có quyền thao tác với tài khoản nhân sự.');
       return;
     }
+
+    const isEditMode = Boolean(staffForm.id);
 
     const fullName = staffForm.fullName.trim();
     const username = staffForm.username.trim();
@@ -364,94 +402,129 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     const selectedRoleCode = toRoleCode(staffForm.role);
     const selectedRole = roleByCode.get(selectedRoleCode);
 
-    if (!fullName || !username || !password) {
-      setErrorMessage('Vui lòng nhập đủ họ tên, tên đăng nhập và mật khẩu.');
+    if (!fullName || !username || (!isEditMode && !password)) {
+      toastError('Vui lòng nhập đủ họ tên, tên đăng nhập và mật khẩu.');
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('Mật khẩu phải có ít nhất 6 ký tự.');
+    if (!isEditMode && password && password.length < 6) {
+      toastError('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    if (isEditMode && password && password.length > 0 && password.length < 6) {
+      toastError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
 
     if (!selectedRole) {
-      setErrorMessage('Vai trò chưa tồn tại. Vui lòng tạo vai trò trước trong tab Phân quyền.');
+      toastError('Vai trò chưa tồn tại. Vui lòng tạo vai trò trước trong tab Phân quyền.');
       return;
     }
 
     const usernameExists = staffList.some(
-      (item: StaffMember) => normalizeUsername(item.username) === normalizeUsername(username),
+      (item: StaffMember) =>
+        normalizeUsername(item.username) === normalizeUsername(username) &&
+        (!isEditMode || item.id !== staffForm.id),
     );
     if (usernameExists) {
-      setErrorMessage('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.');
+      toastError('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.');
       return;
     }
 
-    const id = nextStaffId(staffList);
-    const storeId = staffList[0]?.storeId ?? DEFAULT_STORE_ID;
-    const usernameNormalized = normalizeUsername(username);
-    const authEmail = (staffForm.email.trim() || `${usernameNormalized}@mrtaocoop.com`).toLowerCase();
-    const payload: StaffMember = {
-      id,
-      storeId,
-      fullName,
-      role: selectedRole.code,
-      roleId: selectedRole.id,
-      username: usernameNormalized,
-      usernameNormalized,
-      authEmail,
-      phone: staffForm.phone.trim(),
-      status: staffForm.status,
-      joinedDate: new Date().toISOString().slice(0, 10),
-      email: authEmail,
-      password,
-      pin: '1234',
-      employeeCode: `MNS-${id.replace('NV-', '')}`,
-      avatar: DEFAULT_AVATAR,
-    };
-
     try {
-      const authUser = await ensureFirebasePasswordUser(authEmail, password);
-      const staffPayload: StaffMember = {
-        ...payload,
-        firebaseUid: authUser.uid,
+      const existingStaff = isEditMode ? staffList.find((s) => s.id === staffForm.id) : null;
+      const id = staffForm.id || nextStaffId(staffList);
+      const storeId = staffList[0]?.storeId ?? DEFAULT_STORE_ID;
+      const usernameNormalized = normalizeUsername(username);
+      const authEmail = (staffForm.email.trim() || `${usernameNormalized}@mrtaocoop.com`).toLowerCase();
+
+      let firebaseUid = existingStaff?.firebaseUid || '';
+
+      if (password) {
+        const authUser = await ensureFirebasePasswordUser(authEmail, password);
+        firebaseUid = authUser.uid;
+      }
+
+      const payload: StaffMember = {
+        avatar: DEFAULT_AVATAR,
+        pin: '1234',
+        employeeCode: `MNS-${id.replace('NV-', '')}`,
+        ...existingStaff,
+        id,
+        storeId,
+        fullName,
+        role: selectedRole.code,
+        roleId: selectedRole.id,
+        username: usernameNormalized,
+        usernameNormalized,
+        authEmail,
+        phone: staffForm.phone.trim(),
+        status: staffForm.status,
+        joinedDate: existingStaff?.joinedDate || new Date().toISOString().slice(0, 10),
+        email: authEmail,
+        firebaseUid,
       };
-      await staffService.update(staffPayload.id, staffPayload);
-      setStaffList((prev: StaffMember[]) => toSortedStaff([...prev, staffPayload]));
+
+      await staffService.update(payload.id, payload);
+
+      if (isEditMode) {
+        setStaffList((prev: StaffMember[]) =>
+          prev.map((item) => (item.id === payload.id ? payload : item)),
+        );
+        toastSuccess('Đã cập nhật thông tin nhân sự.');
+        void addLog('UPDATE', 'Nhân sự', `Đã cập nhật nhân sự ${payload.fullName} (${payload.id}).`);
+      } else {
+        setStaffList((prev: StaffMember[]) => toSortedStaff([...prev, payload]));
+        toastSuccess('Đã thêm nhân sự mới.');
+        void addLog('CREATE', 'Nhân sự', `Đã tạo nhân sự ${payload.fullName} (${payload.id}) với vai trò ${payload.role}.`);
+      }
+
       setStaffForm(DEFAULT_STAFF_FORM);
       setShowAddStaffForm(false);
-      showSuccessToast(`Đã thêm nhân sự mới (${authUser.status}).`);
-      void addLog('CREATE', 'Nhân sự', `Đã tạo nhân sự ${staffPayload.fullName} (${staffPayload.id}) với vai trò ${staffPayload.role}.`);
-      setErrorMessage('');
     } catch (error) {
-      console.error('Failed to create staff:', error);
+      console.error('Failed to create/edit staff:', error);
 
       if (error instanceof FirebaseIdentityToolkitError) {
         if (error.code.includes('WEAK_PASSWORD')) {
-          setErrorMessage('Mật khẩu yếu. Vui lòng nhập mật khẩu mạnh hơn (tối thiểu 6 ký tự).');
+          toastError('Mật khẩu yếu. Vui lòng nhập mật khẩu mạnh hơn (tối thiểu 6 ký tự).');
           return;
         }
 
         if (error.code === 'INVALID_PASSWORD' || error.code === 'INVALID_LOGIN_CREDENTIALS') {
-          setErrorMessage(
+          toastError(
             'Email đã tồn tại trên Firebase Auth với mật khẩu khác. Hãy đặt lại mật khẩu tại Firebase Console.',
           );
           return;
         }
 
-        setErrorMessage(
+        toastError(
           `Không thể tạo tài khoản Firebase Auth (${error.code}). Hãy kiểm tra Authentication > Email/Password.`,
         );
         return;
       }
 
-      setErrorMessage('Không thể thêm nhân sự. Vui lòng kiểm tra quyền ghi Firestore.');
+      toastError('Không thể cập nhật nhân sự. Vui lòng kiểm tra quyền ghi Firestore.');
     }
   };
 
+  const handleEditStaff = useCallback((staff: StaffMember) => {
+    setStaffForm({
+      id: staff.id,
+      fullName: staff.fullName,
+      username: staff.username,
+      role: staff.role,
+      phone: staff.phone || '',
+      status: staff.status,
+      email: staff.email || '',
+      password: '',
+    });
+    setShowAddStaffForm(true);
+  }, []);
+
   const handleToggleStaffStatus = async (staff: StaffMember) => {
     if (!isOwner) {
-      setErrorMessage('Bạn không có quyền đổi trạng thái nhân sự.');
+      toastError('Bạn không có quyền đổi trạng thái nhân sự.');
       return;
     }
 
@@ -463,18 +536,17 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     try {
       await staffService.update(next.id, next);
       setStaffList((prev: StaffMember[]) => prev.map((item: StaffMember) => (item.id === next.id ? next : item)));
-      showSuccessToast('Đã cập nhật trạng thái nhân sự.');
+      toastSuccess('Đã cập nhật trạng thái nhân sự.');
       void addLog('UPDATE', 'Nhân sự', `Đã đổi trạng thái nhân sự ${staff.fullName} (${staff.id}) sang ${next.status}.`);
-      setErrorMessage('');
     } catch (error) {
       console.error('Failed to update staff status:', error);
-      setErrorMessage('Không thể cập nhật trạng thái nhân sự.');
+      toastError('Không thể cập nhật trạng thái nhân sự.');
     }
   };
 
   const handleDeleteStaff = async (staff: StaffMember) => {
     if (!isOwner) {
-      setErrorMessage('Bạn không có quyền xóa nhân sự.');
+      toastError('Bạn không có quyền xóa nhân sự.');
       return;
     }
 
@@ -486,12 +558,11 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     try {
       await staffService.delete(staff.id);
       setStaffList((prev: StaffMember[]) => prev.filter((item: StaffMember) => item.id !== staff.id));
-      showSuccessToast('Đã xóa nhân sự.');
+      toastSuccess('Đã xóa nhân sự.');
       void addLog('DELETE', 'Nhân sự', `Đã xóa nhân sự ${staff.fullName} (${staff.id}).`);
-      setErrorMessage('');
     } catch (error) {
       console.error('Failed to delete staff:', error);
-      setErrorMessage('Không thể xóa nhân sự.');
+      toastError('Không thể xóa nhân sự.');
     }
   };
 
@@ -501,7 +572,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     field: PermissionField,
   ) => {
     if (!isOwner) {
-      setErrorMessage('Bạn không có quyền chỉnh sửa phân quyền.');
+      toastError('Bạn không có quyền chỉnh sửa phân quyền.');
       return;
     }
 
@@ -537,22 +608,21 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
         return prev.map((item: RolePermissionRow) => (item.id === next.id ? next : item));
       });
-      showSuccessToast('Đã cập nhật phân quyền.');
+      toastSuccess('Đã cập nhật phân quyền.');
       void addLog(
         existed ? 'UPDATE' : 'CREATE',
         'Phân quyền',
         `${existed ? 'Đã cập nhật' : 'Đã tạo'} quyền ${field} cho vai trò ${role.code} trên module ${moduleCode}.`,
       );
-      setErrorMessage('');
     } catch (error) {
       console.error('Failed to update permission row:', error);
-      setErrorMessage('Không thể cập nhật phân quyền.');
+      toastError('Không thể cập nhật phân quyền.');
     }
   };
 
   const handleClearLogs = useCallback(async () => {
     if (!isOwner) {
-      setErrorMessage('Bạn không có quyền xóa nhật ký hệ thống.');
+      toastError('Bạn không có quyền xóa nhật ký hệ thống.');
       return;
     }
 
@@ -568,13 +638,12 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
       await Promise.all(deleteTasks);
       setLogs([]);
-      showSuccessToast('Đã xóa toàn bộ nhật ký hệ thống.');
-      setErrorMessage('');
+      toastSuccess('Đã xóa toàn bộ nhật ký hệ thống.');
     } catch (error) {
       console.error('Failed to clear system logs:', error);
-      setErrorMessage('Không thể xóa log hệ thống.');
+      toastError('Không thể xóa log hệ thống.');
     }
-  }, [isOwner, showSuccessToast]);
+  }, [isOwner]);
 
   const handleOpenAddStaffDialog = useCallback(() => {
     setStaffForm(DEFAULT_STAFF_FORM);
@@ -602,8 +671,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         onClearLogs={() => void handleClearLogs()}
       />
 
-      <StaffPermissionsMessage errorMessage={errorMessage} />
-
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-40 w-full rounded-[28px]" />
@@ -627,6 +694,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           onToggleStaffStatus={(staff) => void handleToggleStaffStatus(staff)}
           onDeleteStaff={(staff) => void handleDeleteStaff(staff)}
           setStaffForm={setStaffForm}
+          onEditStaff={handleEditStaff}
         />
       ) : activeTab === 'permissions' ? (
         <PermissionsTabContent
@@ -635,17 +703,12 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           isOwner={isOwner}
           storeId={defaultStoreId}
           onSaveRoleWithPermissions={handleSaveRoleWithPermissions}
+          onDeleteRole={handleDeleteRole}
           externalCreateOpen={showRoleDialog}
           onExternalCreateOpenChange={setShowRoleDialog}
         />
       ) : (
         <LogsTabContent logs={logs} isOwner={isOwner} onClearLogs={handleClearLogs} />
-      )}
-
-      {successToast && (
-        <div className="fixed bottom-5 right-5 z-50 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-[0_18px_34px_-20px_rgba(16,124,65,0.7)]">
-          {successToast}
-        </div>
       )}
     </div>
   );

@@ -39,15 +39,15 @@ export interface ModuleMetadata {
 }
 
 export const MODULE_METADATA: Record<string, ModuleMetadata> = {
-  [MODULE_CODE.HOM_NAY]: { key: 'HOM_NAY', name: 'Trang chủ & Hôm nay', icon: '🏠', desc: 'Thẩm quyền xem tổng hợp vận hành ngày, chu kỳ làm việc, 5 điều cấm kỵ.' },
-  [MODULE_CODE.CHECKLIST]: { key: 'CHECKLIST', name: 'Checklist vận hành', icon: '✅', desc: 'Kiểm soát ca trực mở cửa, dọn dẹp, kiểm kho và chốt két an toàn.' },
-  [MODULE_CODE.GIAO_VIEC]: { key: 'GIAO_VIEC', name: 'Giao việc showroom', icon: '📋', desc: 'Tạo việc, phân công nhiệm vụ, cập nhật trạng thái tiến độ trực quan ca.' },
-  [MODULE_CODE.KPI]: { key: 'KPI', name: 'Đo lường & Doanh số (KPI)', icon: '📈', desc: 'Xem thống kê doanh số cá nhân, bảng xếp hạng nhân viên, chấm điểm dịch vụ.' },
-  [MODULE_CODE.LOI_SOP]: { key: 'LOI_SOP', name: 'Báo lỗi SOP & Rủi ro', icon: '⚠️', desc: 'Ghi nhận lỗi quy trình, ngoại lệ, bất ngờ phát sinh hoặc kiểm tra ca trực.' },
-  [MODULE_CODE.BAO_CAO]: { key: 'BAO_CAO', name: 'Báo cáo tổng quan', icon: '📊', desc: 'Xuất thống kê doanh số showroom, ước lượng lãi lỗ kinh doanh.' },
-  [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay & Tài liệu (SOP)', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
-  [MODULE_CODE.MARKETING]: { key: 'MARKETING', name: 'Marketing & Truyền thông', icon: '📣', desc: 'Quản lý chiến dịch marketing, khuyến mãi, truyền thông thương hiệu.' },
-  [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Quản lý Kho hàng', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
+  [MODULE_CODE.HOM_NAY]: { key: 'HOM_NAY', name: 'Hôm nay', icon: '🏠', desc: 'Thẩm quyền xem tổng hợp vận hành ngày, chu kỳ làm việc, 5 điều cấm kỵ.' },
+  [MODULE_CODE.CHECKLIST]: { key: 'CHECKLIST', name: 'Checklist', icon: '✅', desc: 'Kiểm soát ca trực mở cửa, dọn dẹp, kiểm kho và chốt két an toàn.' },
+  [MODULE_CODE.GIAO_VIEC]: { key: 'GIAO_VIEC', name: 'Giao việc', icon: '📋', desc: 'Tạo việc, phân công nhiệm vụ, cập nhật trạng thái tiến độ trực quan ca.' },
+  [MODULE_CODE.KPI]: { key: 'KPI', name: 'KPI', icon: '📈', desc: 'Xem thống kê doanh số cá nhân, bảng xếp hạng nhân viên, chấm điểm dịch vụ.' },
+  [MODULE_CODE.LOI_SOP]: { key: 'LOI_SOP', name: 'Lỗi SOP / Ngoại lệ', icon: '⚠️', desc: 'Ghi nhận lỗi quy trình, ngoại lệ, bất ngờ phát sinh hoặc kiểm tra ca trực.' },
+  [MODULE_CODE.BAO_CAO]: { key: 'BAO_CAO', name: 'Báo cáo', icon: '📊', desc: 'Xuất thống kê doanh số showroom, ước lượng lãi lỗ kinh doanh.' },
+  [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay chuẩn', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
+  [MODULE_CODE.MARKETING]: { key: 'MARKETING', name: 'Marketing', icon: '📣', desc: 'Quản lý chiến dịch marketing, khuyến mãi, truyền thông thương hiệu.' },
+  [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Kho', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
 };
 
 /** Fallback metadata for custom/unknown modules. */

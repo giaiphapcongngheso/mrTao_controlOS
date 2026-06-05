@@ -41,6 +41,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   ScrollArea,
+  ScrollBar,
 } from '../ui';
 import { BulkSelectionBar } from './bulk-selection-bar';
 import { TablePagination } from './table-pagination';
@@ -117,6 +118,8 @@ export interface CustomTableProps<TData> {
     updater: VisibilityState | ((prev: VisibilityState) => VisibilityState),
   ) => void;
   tableMinWidth?: number;
+  /** @default true */
+  enableInternalVerticalScroll?: boolean;
   activeRowId?: string;
   getRowId?: (original: TData) => string;
 }
@@ -352,18 +355,18 @@ function TableHeaderCell<TData>({
   const sticky = header.column.columnDef.meta?.sticky;
   const baseStyle = isSelectOrExpander
     ? {
-        width: '40px',
-        minWidth: '40px',
-        maxWidth: '40px',
-        paddingLeft: '8px',
-        paddingRight: '8px',
-        boxSizing: 'border-box' as const,
-      }
+      width: '40px',
+      minWidth: '40px',
+      maxWidth: '40px',
+      paddingLeft: '8px',
+      paddingRight: '8px',
+      boxSizing: 'border-box' as const,
+    }
     : {
-        width: widthStyle,
-        minWidth: minWidthStyle,
-        maxWidth: maxWidthStyle,
-      };
+      width: widthStyle,
+      minWidth: minWidthStyle,
+      maxWidth: maxWidthStyle,
+    };
 
   const finalStyle: React.CSSProperties = {
     ...baseStyle,
@@ -395,14 +398,14 @@ function TableHeaderCell<TData>({
               onClick={
                 enableSorting && canSort
                   ? () => {
-                      if (!isSorted) {
-                        header.column.toggleSorting(false);
-                      } else if (isSorted === 'asc') {
-                        header.column.toggleSorting(true);
-                      } else {
-                        header.column.clearSorting();
-                      }
+                    if (!isSorted) {
+                      header.column.toggleSorting(false);
+                    } else if (isSorted === 'asc') {
+                      header.column.toggleSorting(true);
+                    } else {
+                      header.column.clearSorting();
                     }
+                  }
                   : undefined
               }
             >
@@ -597,13 +600,13 @@ function TableCellWithTooltip<TData>({
   const sticky = cell.column.columnDef.meta?.sticky;
   const baseCellStyle: React.CSSProperties = isSelectOrExpander
     ? {
-        width: '40px',
-        minWidth: '40px',
-        maxWidth: '40px',
-        paddingLeft: '8px',
-        paddingRight: '8px',
-        boxSizing: 'border-box' as const,
-      }
+      width: '40px',
+      minWidth: '40px',
+      maxWidth: '40px',
+      paddingLeft: '8px',
+      paddingRight: '8px',
+      boxSizing: 'border-box' as const,
+    }
     : { width: widthStyle };
 
   const finalCellStyle: React.CSSProperties = {
@@ -777,6 +780,7 @@ export function CustomTable<TData>({
   columnVisibility: columnVisibilityProp,
   onColumnVisibilityChange: onColumnVisibilityChangeProp,
   tableMinWidth,
+  enableInternalVerticalScroll = true,
   activeRowId,
   getRowId,
 }: CustomTableProps<TData>) {
@@ -803,10 +807,10 @@ export function CustomTable<TData>({
         const computedId = tableId
           ? tableId
           : `table-${columns
-              .map((col) => col.id || (col as { accessorKey?: string }).accessorKey || '')
-              .filter(Boolean)
-              .sort()
-              .join('-')}`;
+            .map((col) => col.id || (col as { accessorKey?: string }).accessorKey || '')
+            .filter(Boolean)
+            .sort()
+            .join('-')}`;
         const storageKey = `table-column-visibility-${computedId || 'default'}`;
         const saved = localStorage.getItem(storageKey);
         if (saved) {
@@ -1141,7 +1145,13 @@ export function CustomTable<TData>({
   }, [table, columnSizing]);
 
   return (
-    <div className={cn('overflow-hidden flex flex-col min-h-0 min-w-0', className)}>
+    <div
+      className={cn(
+        'flex flex-col min-h-0 min-w-0',
+        enableInternalVerticalScroll ? 'overflow-hidden' : 'overflow-visible',
+        className,
+      )}
+    >
       <TableTitleSection
         titleProps={titleProps}
         enableColumnVisibility={enableColumnVisibility}
@@ -1152,8 +1162,16 @@ export function CustomTable<TData>({
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         <ScrollArea
           ref={scrollContainerRef}
-          className="flex-1 relative rounded-lg border shadow-sm bg-white min-h-0"
-          viewportClassName="overflow-y-auto overflow-x-auto h-full"
+          className={cn(
+            'relative rounded-lg border shadow-sm bg-white min-h-0',
+            enableInternalVerticalScroll && 'flex flex-col flex-1',
+            !enableInternalVerticalScroll && 'overflow-visible',
+          )}
+          viewportClassName={
+            enableInternalVerticalScroll
+              ? 'overflow-y-auto overflow-x-auto h-full flex-1'
+              : 'overflow-y-visible overflow-x-auto h-auto w-full'
+          }
         >
           <Table
             className="bg-white"
@@ -1281,9 +1299,9 @@ export function CustomTable<TData>({
                       <TableRow
                         data-state={
                           finalActiveRowId &&
-                          (getRowId
-                            ? getRowId(row.original) === finalActiveRowId
-                            : (row.original as Record<string, unknown>)?.id === finalActiveRowId ||
+                            (getRowId
+                              ? getRowId(row.original) === finalActiveRowId
+                              : (row.original as Record<string, unknown>)?.id === finalActiveRowId ||
                               row.id === finalActiveRowId)
                             ? 'active'
                             : enableRowSelection && row?.getIsSelected()
@@ -1357,6 +1375,7 @@ export function CustomTable<TData>({
               style={{ left: resizeLine.left }}
             />
           )}
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         {shouldEnablePagination && (

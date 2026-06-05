@@ -33,11 +33,13 @@ import type {
   ChecklistPermissions,
   ChecklistSubTab,
   ChecklistViewCategory,
+  HistoryDateGroup,
 } from './checklist-view.types';
 import { isItemLate, formatCheckedAt } from '../checklist-utils';
 import { cn } from '../../../../share/lib/utils';
 import type { ChecklistItem } from '../../../types/checklist.types';
 import { resolveChecklistIcon } from '../checklist-meta';
+import HistoryDateGroupCard from './history-date-group';
 
 const parseTimeToDate = (timeStr: string) => {
   if (!timeStr) return undefined;
@@ -1001,6 +1003,7 @@ interface ChecklistContentAreaProps {
   };
   roleOptions: Array<{ code: string; name: string }>;
   onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  historyDateGroups?: HistoryDateGroup[];
 }
 
 const ChecklistContentArea = React.memo(function ChecklistContentArea({
@@ -1020,11 +1023,43 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   kpiStats,
   roleOptions,
   onUpdateChecklistItem,
+  historyDateGroups = [],
 }: ChecklistContentAreaProps) {
-  // States for delete confirmation
   const [deleteCategoryTarget, setDeleteCategoryTarget] = React.useState<{ id: string; title: string } | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string } | null>(null);
   const [activeDetailItem, setActiveDetailItem] = React.useState<ChecklistItem | null>(null);
+
+  // State for expanded date groups in history view (default: all expanded)
+  const [expandedDates, setExpandedDates] = React.useState<Set<string>>(() => {
+    return new Set(historyDateGroups.map((g) => g.dateKey));
+  });
+
+  // Sync expandedDates when historyDateGroups changes (new dates arrive)
+  React.useEffect(() => {
+    if (historyDateGroups.length > 0) {
+      setExpandedDates((prev) => {
+        const next = new Set(prev);
+        for (const g of historyDateGroups) {
+          if (!prev.has(g.dateKey)) {
+            next.add(g.dateKey);
+          }
+        }
+        return next;
+      });
+    }
+  }, [historyDateGroups]);
+
+  const handleToggleDateGroup = React.useCallback((dateKey: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(dateKey)) {
+        next.delete(dateKey);
+      } else {
+        next.add(dateKey);
+      }
+      return next;
+    });
+  }, []);
 
   const handleConfirmDeleteCategory = React.useCallback((id: string, title: string) => {
     setDeleteCategoryTarget({ id, title });
@@ -1085,6 +1120,33 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                 Đặt lại bộ lọc
               </Button>
             </Card>
+          ) : subTab === 'history' && historyDateGroups.length > 0 ? (
+            historyDateGroups.map((group) => (
+              <HistoryDateGroupCard
+                key={group.dateKey}
+                group={group}
+                isExpanded={expandedDates.has(group.dateKey)}
+                onToggle={handleToggleDateGroup}
+              >
+                {group.categories.map((cat) => (
+                  <ChecklistCategoryCard
+                    key={cat.id}
+                    cat={cat}
+                    isExpanded={expandedCategoryId === cat.id}
+                    subTab={subTab}
+                    permissions={permissions}
+                    onToggleExpand={onToggleExpand}
+                    onToggleItem={onToggleItem}
+                    onConfirmDeleteCategory={handleConfirmDeleteCategory}
+                    onOpenEditCategoryDialog={onOpenEditCategoryDialog}
+                    editState={editState}
+                    onConfirmDeleteItem={handleConfirmDeleteItem}
+                    onAddInlineItem={onAddInlineItem}
+                    onOpenDetail={setActiveDetailItem}
+                  />
+                ))}
+              </HistoryDateGroupCard>
+            ))
           ) : (
             filteredCategories.map((cat) => (
               <ChecklistCategoryCard

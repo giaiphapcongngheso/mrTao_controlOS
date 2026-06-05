@@ -55,19 +55,17 @@ export function useChecklistData({
   const filterState = useCallback((state: ChecklistDataState): ChecklistDataState => ({
     templates: state.templates.filter((template) =>
       template.storeId === activeStoreId &&
-      normalizeAccessCode(template.roleCode) === currentRoleCode &&
       !template.deletedAt,
     ),
     snapshots: state.snapshots.filter((snapshot) =>
       snapshot.storeId === activeStoreId &&
-      normalizeAccessCode(snapshot.roleCode) === currentRoleCode &&
       !snapshot.deletedAt,
     ),
     processes: state.processes.filter((processDoc) =>
       processDoc.storeId === activeStoreId &&
       !processDoc.deletedAt,
     ),
-  }), [activeStoreId, currentRoleCode]);
+  }), [activeStoreId]);
 
   const replaceLocalState = useCallback((nextState: ChecklistDataState) => {
     dataStateRef.current = nextState;
@@ -88,23 +86,38 @@ export function useChecklistData({
   const derivedState = useMemo(() => deriveChecklistState(dataState), [dataState]);
 
   useEffect(() => {
+    const currentRoleTodayItems = derivedState.todayItems.filter(
+      (item) => normalizeAccessCode(item.roleCode) === currentRoleCode,
+    );
+    const completedCount = currentRoleTodayItems.filter((item) => item.isCompleted).length;
+    const checklistCompletion = currentRoleTodayItems.length > 0
+      ? Math.round((completedCount / currentRoleTodayItems.length) * 100)
+      : 0;
+
     onMetricsChange?.({
-      items: derivedState.todayItems,
-      checklistCompletion: derivedState.completion,
+      items: currentRoleTodayItems,
+      checklistCompletion,
     });
-  }, [derivedState.completion, derivedState.todayItems, onMetricsChange]);
+  }, [currentRoleCode, derivedState.todayItems, onMetricsChange]);
 
   // Phase 2: Background snapshot creation - does NOT block UI
   const ensureMissingSnapshotsInBackground = useCallback((
     filteredState: ChecklistDataState,
     todayKey: string,
   ) => {
-    if (filteredState.templates.length === 0) {
+    const currentRoleTemplates = filteredState.templates.filter(
+      (template) => normalizeAccessCode(template.roleCode) === currentRoleCode,
+    );
+    const currentRoleSnapshots = filteredState.snapshots.filter(
+      (snapshot) => normalizeAccessCode(snapshot.roleCode) === currentRoleCode,
+    );
+
+    if (currentRoleTemplates.length === 0) {
       return;
     }
 
     const dailySnapshotId = generateDailySnapshotId(todayKey, currentRoleCode);
-    const existingSnapshot = filteredState.snapshots.find(
+    const existingSnapshot = currentRoleSnapshots.find(
       (snapshot) => snapshot.id === dailySnapshotId && snapshot.dateKey === todayKey && !snapshot.deletedAt
     );
 
@@ -113,7 +126,7 @@ export function useChecklistData({
     if (!existingSnapshot) {
       // 1. Snapshot chưa tồn tại: Tạo mới snapshot doc chứa toàn bộ task của tất cả template
       updatedSnapshot = buildDailySnapshot(
-        filteredState.templates,
+        currentRoleTemplates,
         activeStoreId,
         currentRoleCode,
         todayKey
@@ -126,7 +139,7 @@ export function useChecklistData({
           .filter((id): id is string => Boolean(id))
       );
 
-      const missingTemplates = filteredState.templates.filter(
+      const missingTemplates = currentRoleTemplates.filter(
         (template) => !existingTemplateIdsInSnapshot.has(template.id)
       );
 
@@ -178,10 +191,11 @@ export function useChecklistData({
   }, [activeStoreId, currentRoleCode, replaceLocalState]);
 
   // Fetch history by date range
-  const fetchHistoryByDateRange = useCallback(async (from: string, to: string) => {
+  const fetchHistoryByDateRange = useCallback(async (from: string, to: string, roleCode: string) => {
     setHistoryLoading(true);
     try {
-      const snapshots = await getChecklistsByDateRange(activeStoreId, currentRoleCode, from, to);
+      const normalizedRoleCode = normalizeAccessCode(roleCode || currentRoleCode);
+      const snapshots = await getChecklistsByDateRange(activeStoreId, normalizedRoleCode, from, to);
       setHistorySnapshots(snapshots || []);
     } catch (error) {
       console.error('Khong the tai lich su checklist:', error);

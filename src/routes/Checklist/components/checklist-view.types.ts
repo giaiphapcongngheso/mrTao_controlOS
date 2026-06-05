@@ -22,3 +22,13 @@ export type ChecklistViewCategory = ChecklistCategory & {
   meta: CategoryMeta;
   tasks: ChecklistItem[];
 };
+
+/** Represents a group of categories for a single date in history view */
+export type HistoryDateGroup = {
+  dateKey: string;
+  dayLabel: string;
+  isToday: boolean;
+  categories: ChecklistViewCategory[];
+  totalTasks: number;
+  completedTasks: number;
+};

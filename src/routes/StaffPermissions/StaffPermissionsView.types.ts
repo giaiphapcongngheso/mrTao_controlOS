@@ -13,13 +13,14 @@ export type ActiveTab = 'staff' | 'permissions' | 'logs';
 export type { SystemLog, SystemLogActionType } from '../../types/system-log.types';
 
 export interface StaffFormState {
+  id?: string;
   fullName: string;
   username: string;
   role: string;
   phone: string;
   status: 'active' | 'inactive';
   email: string;
-  password: string;
+  password?: string;
 }
 
 export interface PermissionFormState {

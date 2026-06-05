@@ -110,3 +110,25 @@ export function getWeekDates(): Array<{ dateStr: string; label: string; dateKey:
   }
   return week;
 }
+
+/**
+ * Formats a dateKey (YYYY-MM-DD) to Vietnamese readable format.
+ * e.g. "2026-06-05" → "Thứ 5, 05/06/2026"
+ * If dateKey is today, returns "Hôm nay - Thứ 5, 05/06/2026"
+ */
+export function formatDateKeyToVietnamese(dateKey: string): string {
+  const date = new Date(dateKey + 'T00:00:00');
+  if (Number.isNaN(date.getTime())) return dateKey;
+
+  const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  const dayName = dayNames[date.getDay()];
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const formatted = `${dayName}, ${dd}/${mm}/${yyyy}`;
+
+  if (dateKey === getTodayKey()) {
+    return `Hôm nay - ${formatted}`;
+  }
+  return formatted;
+}

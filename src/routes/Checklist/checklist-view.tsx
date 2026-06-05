@@ -27,7 +27,7 @@ interface ChecklistViewProps {
   items: ChecklistItem[];
   historySnapshots?: ChecklistDocument[];
   historyLoading?: boolean;
-  onFetchHistory?: (from: string, to: string) => Promise<void>;
+  onFetchHistory?: (from: string, to: string, roleCode: string) => Promise<void>;
   onToggleItem: (itemId: string) => void;
   roleOptions: Array<{ code: string; name: string }>;
   defaultRoleCode: string;
@@ -161,15 +161,6 @@ export default function ChecklistView({
   const [processDialogEditId, setProcessDialogEditId] = useState<string | null>(null);
   const [isSubmittingProcessDialog, setIsSubmittingProcessDialog] = useState(false);
 
-  // Fetch history when tab is 'history' or when dateRange changes
-  useEffect(() => {
-    if (subTab === 'history' && dateRange?.from && dateRange?.to && onFetchHistory) {
-      const fromStr = toLocalDateKey(dateRange.from);
-      const toStr = toLocalDateKey(dateRange.to);
-      void onFetchHistory(fromStr, toStr);
-    }
-  }, [subTab, dateRange, onFetchHistory]);
-
   const toggleExpand = useCallback((catId: string) => {
     setExpandedCategoryId((prev) => prev === catId ? null : catId);
   }, []);
@@ -191,10 +182,21 @@ export default function ChecklistView({
     onSaveCategoryBatch,
     onRequestEditCategory,
   });
+  const selectedRoleCode = dialogRoleCode || defaultRoleCode;
+
+  // Fetch history when tab, date range, or selected role changes.
+  useEffect(() => {
+    if (subTab === 'history' && dateRange?.from && dateRange?.to && onFetchHistory) {
+      const fromStr = toLocalDateKey(dateRange.from);
+      const toStr = toLocalDateKey(dateRange.to);
+      void onFetchHistory(fromStr, toStr, selectedRoleCode);
+    }
+  }, [dateRange, onFetchHistory, selectedRoleCode, subTab]);
 
   const {
     filteredCategories,
     filteredProcesses,
+    historyDateGroups,
   } = useFilteredCategories({
     todayCategories,
     processes,
@@ -202,12 +204,18 @@ export default function ChecklistView({
     historySnapshots,
     subTab,
     searchTerm,
-    selectedRoleCode: dialogRoleCode,
+    selectedRoleCode,
     completedViewMode: 'day', // fallback/legacy
     selectedWeekDayKey: getTodayKey(), // fallback/legacy
   });
 
-  const kpiStats = useKpiStats(items);
+  const selectedRoleItems = useMemo(
+    () => items.filter(
+      (item) => item.roleCode?.trim().toUpperCase() === selectedRoleCode.trim().toUpperCase(),
+    ),
+    [items, selectedRoleCode],
+  );
+  const kpiStats = useKpiStats(selectedRoleItems);
 
   const {
     editingItemId,
@@ -269,7 +277,7 @@ export default function ChecklistView({
     title: string,
     timeLimit?: string,
   ) => {
-    const roleCode = dialogRoleCode || defaultRoleCode;
+    const roleCode = selectedRoleCode;
     if (onCreateTodayChecklistBatch) {
       // For adding inline to a history category or today
       // Extract original template ID if it is a history ID (which is in format dateKey_templateId)
@@ -282,7 +290,7 @@ export default function ChecklistView({
     }
 
     await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
-  }, [defaultRoleCode, dialogRoleCode, onCreateRoleChecklist, onCreateTodayChecklistBatch]);
+  }, [onCreateRoleChecklist, onCreateTodayChecklistBatch, selectedRoleCode]);
 
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
@@ -347,7 +355,7 @@ export default function ChecklistView({
         setSubTab={setSubTab}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        selectedRoleCode={dialogRoleCode}
+        selectedRoleCode={selectedRoleCode}
         setSelectedRoleCode={setDialogRoleCode}
         roleOptions={roleOptions}
       />
@@ -390,6 +398,7 @@ export default function ChecklistView({
           isLoading={isLoading || historyLoading}
           roleOptions={roleOptions}
           onUpdateChecklistItem={onUpdateChecklistItem}
+          historyDateGroups={historyDateGroups}
         />
       )}
 

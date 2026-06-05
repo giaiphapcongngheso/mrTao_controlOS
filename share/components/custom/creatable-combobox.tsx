@@ -11,7 +11,7 @@ import {
 } from '../../ui';
 import { Plus, Check, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { useTranslation } from 'react-i18next';
+
 
 export type CreatableComboboxProps = {
   value: string;
@@ -40,7 +40,7 @@ export function CreatableCombobox({
   className,
   containerClassName,
 }: CreatableComboboxProps) {
-  const { t } = useTranslation(['common', 'action']);
+
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,7 +115,7 @@ export function CreatableCombobox({
             onFocus={() => {
               if (!disabled) setOpen(true);
             }}
-            placeholder={placeholder ?? t('common:component.placeholder.enter', 'Nhập giá trị...')}
+            placeholder={placeholder ?? 'Nhập giá trị...'}
             disabled={disabled}
             className={cn(
               'h-8 border-0 bg-transparent ring-0 focus-visible:ring-0 text-sm',
@@ -169,7 +169,7 @@ export function CreatableCombobox({
                         void onDeleteOption(s);
                       }}
                       className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-rose-50 hover:text-rose-600 rounded transition-all text-slate-400 shrink-0"
-                      title={t('action:delete', 'Xóa')}
+                      title="Xóa"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -182,7 +182,7 @@ export function CreatableCombobox({
             <div className="border-t border-border/40 bg-muted/20">
               {!inputValue && (
                 <div className="px-3 py-2 text-xs text-muted-foreground text-center">
-                  {emptyHint ?? t('common:message.typeToCreate', 'Nhập để tạo mới nếu chưa có')}
+                  {emptyHint ?? 'Nhập để tạo mới nếu chưa có'}
                 </div>
               )}
               {!isValueInSuggestions && inputValue && onAddNew && (
@@ -193,7 +193,7 @@ export function CreatableCombobox({
                     className="text-primary font-medium"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    {addNewText ?? t('action:add-new', 'Thêm mới')}: "{inputValue}"
+                    {addNewText ?? 'Thêm mới'}: "{inputValue}"
                   </CommandItem>
                 </CommandGroup>
               )}

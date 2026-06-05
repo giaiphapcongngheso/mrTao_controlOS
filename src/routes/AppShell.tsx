@@ -24,6 +24,8 @@ import HeaderProfilePopover from './_components/HeaderProfilePopover';
 import { NotificationsBellPopover } from './Notifications/NotificationsView';
 import { AppShellStateProvider, TAB_ROUTE_MAP, getTabFromPath } from './app-shell-state';
 import { ROUTE_PRELOAD_MAP } from './route-preload';
+import { ensureAllRoleDailySnapshots } from '../services/ensure-daily-snapshots';
+import { DEFAULT_STORE_ID } from '../data';
 
 const LazyLoginView = lazy(() => import('./Login/LoginView'));
 
@@ -90,6 +92,7 @@ export default function AppShell() {
   const sessionExpiryHandledRef = useRef(false);
   const isOwner = isOwnerUser(currentUser);
   const { allowedModules, isLoading: isLoadingModules } = useAllowedModules(currentUser, isOwner);
+  const snapshotTriggeredRef = useRef(false);
 
   const handleSelectTab = useCallback(
     (tab: TabType) => {
@@ -234,6 +237,14 @@ export default function AppShell() {
 
     return () => window.clearTimeout(toastTimer);
   }, [sessionExpiredMessage]);
+
+  // ── Background: Create daily checklist snapshots for ALL roles after login ──
+  useEffect(() => {
+    if (!currentUser || snapshotTriggeredRef.current) return;
+    snapshotTriggeredRef.current = true;
+
+    void ensureAllRoleDailySnapshots(DEFAULT_STORE_ID);
+  }, [currentUser]);
 
   const allowedModuleSet = useMemo(() => new Set(allowedModules), [allowedModules]);
 

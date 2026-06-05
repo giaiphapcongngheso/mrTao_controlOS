@@ -301,11 +301,12 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
         </div>
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-150 w-full max-w-full overflow-hidden min-w-0">
+      <div className="p-4 bg-white border-t border-slate-150 w-full max-w-full min-w-0">
         <CustomTable<SystemLog>
           columns={columns}
           data={filteredLogs}
           enablePagination={true}
+          enableInternalVerticalScroll={false}
           pageSizeOptions={[10, 20, 50, 100]}
           enableSorting={false}
           enableFiltering={false}

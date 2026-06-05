@@ -2,15 +2,19 @@ import React, { useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Shield, X } from 'lucide-react';
+import { CheckCheck, Shield, X } from 'lucide-react';
 
 import {
+  Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
+  Label,
 } from '../../../../share/ui';
 import { CustomTable } from '../../../../share/components/custom-table';
 import { PRESET_MODULES, getModuleMeta } from '../../../constants';
@@ -80,36 +84,7 @@ function buildInitialPermissions(
   });
 }
 
-// ============================================================================
-// Sub-component: Permission Toggle Button (memoized)
-// ============================================================================
 
-interface PermissionToggleProps {
-  readonly enabled: boolean;
-  readonly disabled: boolean;
-  readonly onToggle: () => void;
-}
-
-const PermissionToggle = React.memo(function PermissionToggle({
-  enabled,
-  disabled,
-  onToggle,
-}: PermissionToggleProps) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onToggle}
-      className={`min-w-[68px] rounded-2xl px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.12em] transition ${
-        enabled
-          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-          : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-      } disabled:cursor-not-allowed disabled:opacity-50`}
-    >
-      {enabled ? 'Bật' : 'Tắt'}
-    </button>
-  );
-});
 
 // ============================================================================
 // Main Dialog Component
@@ -171,13 +146,32 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
     [permissions, setValue],
   );
 
+  // ---- Set all permissions handler ----
+  const handleSetAll = useCallback(
+    (moduleIndex: number, value: boolean) => {
+      const current = permissions[moduleIndex];
+      if (!current) return;
+      const updated = [...permissions];
+      updated[moduleIndex] = {
+        ...current,
+        canView: value,
+        canCreate: value,
+        canUpdate: value,
+        canDelete: value,
+        canApprove: value,
+      };
+      setValue('permissions', updated, { shouldDirty: true });
+    },
+    [permissions, setValue],
+  );
+
   // ---- Table columns ----
   const columns = useMemo<ColumnDef<PermissionRowFormValues>[]>(() => {
     const cols: ColumnDef<PermissionRowFormValues>[] = [
       {
         id: 'module',
         accessorKey: 'module',
-        header: 'Module',
+        header: () => <div className="text-center w-full">Module</div>,
         size: 260,
         enableSorting: false,
         enableColumnFilter: false,
@@ -185,12 +179,9 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
         cell: ({ row }) => {
           const meta = getModuleMeta(row.original.module);
           return (
-            <div className="space-y-0.5 text-left py-1">
+            <div className="text-left py-1">
               <div className="text-sm font-bold text-slate-900">
                 {meta.icon} {meta.name}
-              </div>
-              <div className="max-w-[240px] whitespace-normal text-[11px] leading-4 font-medium text-slate-400">
-                {meta.desc}
               </div>
             </div>
           );
@@ -203,7 +194,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
       cols.push({
         id: field.key,
         accessorKey: field.key,
-        header: field.label,
+        header: () => <div className="text-center w-full">{field.label}</div>,
         size: 80,
         enableSorting: false,
         enableColumnFilter: false,
@@ -213,10 +204,10 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
           if (moduleIndex === -1) return null;
           return (
             <div className="flex justify-center">
-              <PermissionToggle
-                enabled={row.original[field.key]}
+              <Checkbox
+                checked={row.original[field.key]}
                 disabled={!isOwner}
-                onToggle={() => handleToggle(moduleIndex, field.key)}
+                onCheckedChange={() => handleToggle(moduleIndex, field.key)}
               />
             </div>
           );
@@ -224,34 +215,44 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
       });
     });
 
-    // Status column
+    // Quick assign column
     cols.push({
-      id: 'permStatus',
-      header: 'Trạng thái',
+      id: 'quickAssign',
+      header: () => <div className="text-center w-full">Nhanh</div>,
       size: 100,
       enableSorting: false,
       enableColumnFilter: false,
       enableResizing: false,
       cell: ({ row }) => {
-        const hasAny = PERMISSION_FIELDS.some((f) => row.original[f.key]);
+        const moduleIndex = permissions.findIndex((p) => p.module === row.original.module);
+        if (moduleIndex === -1) return null;
         return (
-          <div className="flex justify-center">
-            <span
-              className={`inline-flex min-w-[72px] justify-center rounded-2xl px-2.5 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] ${
-                hasAny
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : 'border border-dashed border-slate-200 text-slate-400'
-              }`}
+          <div className="flex justify-center gap-2">
+            <button
+              type="button"
+              disabled={!isOwner}
+              onClick={() => handleSetAll(moduleIndex, true)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title="Bật tất cả quyền"
             >
-              {hasAny ? 'Đã cấp' : 'Chưa cấp'}
-            </span>
+              <CheckCheck className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={!isOwner}
+              onClick={() => handleSetAll(moduleIndex, false)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              title="Tắt tất cả quyền"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         );
       },
     });
 
     return cols;
-  }, [permissions, isOwner, handleToggle]);
+  }, [permissions, isOwner, handleToggle, handleSetAll]);
 
   // ---- Submit ----
   const onSubmit = useCallback(
@@ -322,37 +323,36 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
         >
           {/* ---- Role Info ---- */}
           <div className="shrink-0 grid gap-3 sm:grid-cols-3">
-            <label className="space-y-1.5 text-left sm:col-span-2">
-              <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+            <div className="space-y-1.5 text-left sm:col-span-2">
+              <Label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
                 Tên vai trò <span className="text-rose-500">*</span>
-              </span>
-              <input
+              </Label>
+              <Input
                 {...register('name')}
                 placeholder="Quản lý chi nhánh"
-                className={`h-11 w-full rounded-2xl border px-4 text-sm font-semibold text-slate-700 outline-none transition bg-white
-                  ${errors.name ? 'border-rose-400 ring-2 ring-rose-100' : 'border-slate-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100'}`}
+                size="lg"
+                className={errors.name ? 'border-rose-400 ring-2 ring-rose-100 rounded-2xl font-semibold' : 'border-slate-200 focus-visible:border-sky-400 focus-visible:ring-sky-100 rounded-2xl font-semibold'}
               />
               {errors.name && (
                 <p className="text-xs font-semibold text-rose-500">{errors.name.message}</p>
               )}
-            </label>
+            </div>
 
-            <label className="space-y-1.5 text-left">
-              <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+            <div className="space-y-1.5 text-left">
+              <Label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
                 Mã vai trò
-              </span>
-              <input
+              </Label>
+              <Input
                 {...register('code')}
                 disabled={isEditMode}
                 placeholder="Tự tạo nếu trống"
-                className={`h-11 w-full rounded-2xl border px-4 text-sm font-semibold text-slate-700 outline-none transition
-                  ${errors.code ? 'border-rose-400 ring-2 ring-rose-100' : 'border-slate-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100'}
-                  ${isEditMode ? 'bg-slate-50 cursor-not-allowed opacity-70' : 'bg-white'}`}
+                size="lg"
+                className={errors.code ? 'border-rose-400 ring-2 ring-rose-100 rounded-2xl font-semibold' : 'border-slate-200 focus-visible:border-sky-400 focus-visible:ring-sky-100 rounded-2xl font-semibold'}
               />
               {errors.code && (
                 <p className="text-xs font-semibold text-rose-500">{errors.code.message}</p>
               )}
-            </label>
+            </div>
           </div>
 
           {/* ---- Permissions Table ---- */}
@@ -371,25 +371,27 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
               showFilterRow={false}
               emptyMessage="Không có module nào."
               tableMinWidth={680}
+              className="flex-1 min-h-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
             />
           </div>
 
           {/* ---- Footer ---- */}
           <DialogFooter className="shrink-0 border-t border-slate-100 pt-3">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => onOpenChange(false)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
             >
               Hủy
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={isSubmitting || !isOwner}
-              className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-black text-white hover:bg-sky-700"
             >
               {isSubmitting ? 'Đang lưu…' : 'Lưu'}
-            </button>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

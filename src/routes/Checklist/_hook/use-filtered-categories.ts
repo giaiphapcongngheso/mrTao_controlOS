@@ -1,8 +1,8 @@
 import { useMemo, useRef } from 'react';
 import { ChecklistCategory, ChecklistItem, ProcessDocument, ChecklistDocument } from '../../../types/checklist.types';
-import type { ChecklistViewCategory } from '../components/checklist-view.types';
+import type { ChecklistViewCategory, HistoryDateGroup } from '../components/checklist-view.types';
 import type { CategoryMeta } from '../components/checklist-view.types';
-import { getCategoryMeta, getTodayKey } from '../checklist-utils';
+import { getCategoryMeta, getTodayKey, formatDateKeyToVietnamese } from '../checklist-utils';
 
 interface UseFilteredCategoriesProps {
   todayCategories: ChecklistCategory[];
@@ -90,14 +90,16 @@ export function useFilteredCategories({
     // 2. History items (subTab === 'history')
     if (subTab === 'history') {
       const templateLookup = new Map(todayCategories.map((t) => [t.id, t] as const));
-      const categoriesMap = new Map<string, ChecklistViewCategory>();
+      const todayKey = getTodayKey();
 
       // Filter snapshots by role if active
       const targetedSnapshots = hasRoleFilter
         ? historySnapshots.filter((s) => matchesSelectedRole(s.roleCode))
         : historySnapshots;
 
-      // Group tasks by date and templateId
+      // Intermediate: collect categories per dateKey
+      const dateGroupMap = new Map<string, ChecklistViewCategory[]>();
+
       for (const doc of targetedSnapshots) {
         const dateKey = doc.dateKey;
         const tasks = (doc.tasks || []).filter((task) => !task.deletedAt);
@@ -110,11 +112,14 @@ export function useFilteredCategories({
           tasksByTemplate.set(tId, list);
         }
 
-        let index = 0;
+        const existingCats = dateGroupMap.get(dateKey) || [];
+        let index = existingCats.length;
+
         for (const [templateId, templateTasks] of tasksByTemplate.entries()) {
           const template = templateLookup.get(templateId);
           const templateTitle = template?.title || 'Công việc phát sinh';
-          const title = `${templateTitle} (${dateKey})`;
+          // Title without dateKey — date is shown in the group header
+          const title = templateTitle;
           const id = `${dateKey}_${templateId}`;
           const colorKey = template?.colorKey || 'gray';
           const iconName = template?.iconName || 'ClipboardList';
@@ -152,7 +157,7 @@ export function useFilteredCategories({
           const doneCount = flatTasks.filter((it) => it.isCompleted).length;
           const meta = getStableMeta(title, index++, colorKey);
 
-          categoriesMap.set(id, {
+          existingCats.push({
             id,
             storeId: doc.storeId,
             roleCode: doc.roleCode,
@@ -166,17 +171,35 @@ export function useFilteredCategories({
             tasks: filteredTasks,
           });
         }
+
+        if (existingCats.length > 0) {
+          dateGroupMap.set(dateKey, existingCats);
+        }
       }
 
-      const sortedCategories = Array.from(categoriesMap.values()).sort((a, b) => {
-        const dateA = a.id.split('_')[0];
-        const dateB = b.id.split('_')[0];
-        return dateB.localeCompare(dateA);
-      });
+      // Build HistoryDateGroup[] sorted by date descending
+      const historyDateGroups: HistoryDateGroup[] = Array.from(dateGroupMap.entries())
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([dateKey, categories]) => {
+          const totalTasks = categories.reduce((sum, cat) => sum + cat.countTotal, 0);
+          const completedTasks = categories.reduce((sum, cat) => sum + cat.countDone, 0);
+          return {
+            dateKey,
+            dayLabel: formatDateKeyToVietnamese(dateKey),
+            isToday: dateKey === todayKey,
+            categories,
+            totalTasks,
+            completedTasks,
+          };
+        });
+
+      // Flatten for backward compat (filteredCategories)
+      const allCategories = historyDateGroups.flatMap((g) => g.categories);
 
       return {
-        filteredCategories: sortedCategories,
+        filteredCategories: allCategories,
         filteredProcesses,
+        historyDateGroups,
       };
     }
 
@@ -184,6 +207,7 @@ export function useFilteredCategories({
       return {
         filteredCategories: [] as ChecklistViewCategory[],
         filteredProcesses,
+        historyDateGroups: [] as HistoryDateGroup[],
       };
     }
 
@@ -221,6 +245,7 @@ export function useFilteredCategories({
     return {
       filteredCategories,
       filteredProcesses,
+      historyDateGroups: [] as HistoryDateGroup[],
     };
   }, [
     todayCategories,
