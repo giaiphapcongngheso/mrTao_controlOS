@@ -188,7 +188,7 @@ export function useChecklistMutations({
     const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRole);
 
     let targetSnapshot = dataStateRef.current.snapshots.find(
-      (doc) => doc.id === dailySnapshotId && !doc.deletedAt,
+      (doc) => doc.id === dailySnapshotId && doc.dateKey === todayKey && !doc.deletedAt,
     );
 
     if (!targetSnapshot) {
@@ -397,7 +397,7 @@ export function useChecklistMutations({
 
       const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRoleCode);
       const todaySnapshot = dataStateRef.current.snapshots.find(
-        (doc) => doc.id === dailySnapshotId && !doc.deletedAt,
+        (doc) => doc.id === dailySnapshotId && doc.dateKey === todayKey && !doc.deletedAt,
       );
       if (todaySnapshot) {
         setPendingTemplateSync({
@@ -465,7 +465,7 @@ export function useChecklistMutations({
     try {
       const dailySnapshotId = generateDailySnapshotId(todayKey, normalizedRoleCode);
       const existingSnapshot = dataStateRef.current.snapshots.find(
-        (s) => s.id === dailySnapshotId && !s.deletedAt
+        (s) => s.id === dailySnapshotId && s.dateKey === todayKey && !s.deletedAt
       );
 
       let updatedSnapshot: ChecklistDocument;

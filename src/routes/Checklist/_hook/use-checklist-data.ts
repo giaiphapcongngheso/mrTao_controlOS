@@ -105,7 +105,7 @@ export function useChecklistData({
 
     const dailySnapshotId = generateDailySnapshotId(todayKey, currentRoleCode);
     const existingSnapshot = filteredState.snapshots.find(
-      (snapshot) => snapshot.id === dailySnapshotId && !snapshot.deletedAt
+      (snapshot) => snapshot.id === dailySnapshotId && snapshot.dateKey === todayKey && !snapshot.deletedAt
     );
 
     let updatedSnapshot: ChecklistDocument;

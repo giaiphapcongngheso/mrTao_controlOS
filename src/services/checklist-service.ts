@@ -64,7 +64,7 @@ export async function createChecklistSnapshotOnce(
     const targetSnap = await tx.get(targetRef);
     if (targetSnap.exists()) {
       const existingData = targetSnap.data() as ChecklistDocument;
-      if (!existingData.deletedAt) {
+      if (!existingData.deletedAt && existingData.dateKey === snapshot.dateKey) {
         // Update guard to point to existing doc
         tx.set(guardRef, {
           snapshotId: snapshot.id,
