@@ -16,6 +16,9 @@ import type { TaskItem, TaskStatus } from '../../../types/tasks.types';
 import type { UserSession } from '../../../stores/app-store';
 import { Button } from '@shared/ui';
 import { cn } from '@shared/lib/utils';
+import { CustomMultiSelect } from '../../../../share/components/custom/custom-multi-select';
+import type { StaffMember } from '../../../types/staff.types';
+import { getRoleFriendlyName } from '../../../constants';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -25,6 +28,8 @@ interface TaskDetailModalProps {
   canUpdate?: boolean;
   onUpdateStatus: (taskId: string, status: TaskStatus) => void | Promise<void>;
   isSaving?: boolean;
+  staffMembers?: StaffMember[];
+  onUpdateHelpers?: (taskId: string, helpers: string[]) => void | Promise<void>;
 }
 
 const statusMeta = {
@@ -74,8 +79,17 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
   canUpdate = false,
   onUpdateStatus,
   isSaving = false,
+  staffMembers = [],
+  onUpdateHelpers,
 }: TaskDetailModalProps) {
   if (!isOpen || !task) return null;
+
+  const staffOptions = React.useMemo(() => {
+    return (staffMembers || []).map((staff) => ({
+      value: staff.fullName,
+      label: `${staff.fullName} (${staff.position || getRoleFriendlyName(staff.role)})`,
+    }));
+  }, [staffMembers]);
 
   const isAssignee = task.assignee === currentUser?.fullName;
   const isHelper = (task.helpers || []).includes(currentUser?.fullName || '');
@@ -91,7 +105,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden transition-all duration-300 ease-in-out">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-5xl max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden transition-all duration-300 ease-in-out">
         {/* Header */}
         <div className="flex justify-between items-center pb-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -191,18 +205,28 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
                 <Users className="w-3.5 h-3.5 text-slate-400" />
                 Người phụ giúp (Helpers)
               </span>
-              <div className="bg-slate-50 border border-slate-150 p-2 rounded-xl text-slate-800 font-bold text-xs min-h-11 flex flex-wrap items-center gap-1.5">
-                {task.helpers && task.helpers.length > 0 ? (
-                  task.helpers.map((helper, idx) => (
-                    <span key={idx} className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-slate-700 text-[10px] font-bold shadow-3xs flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                      {helper}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-400 font-normal italic pl-1.5">Không có người phụ giúp</span>
-                )}
-              </div>
+              {isAuthorizedToUpdate && onUpdateHelpers ? (
+                <CustomMultiSelect
+                  options={staffOptions}
+                  selected={task.helpers || []}
+                  onChange={(selectedHelpers) => onUpdateHelpers(task.id, selectedHelpers)}
+                  placeholder="Chọn người phụ giúp"
+                  searchPlaceholder="Tìm nhân sự..."
+                />
+              ) : (
+                <div className="bg-slate-50 border border-slate-150 p-2 rounded-xl text-slate-800 font-bold text-xs min-h-11 flex flex-wrap items-center gap-1.5">
+                  {task.helpers && task.helpers.length > 0 ? (
+                    task.helpers.map((helper, idx) => (
+                      <span key={idx} className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-slate-700 text-[10px] font-bold shadow-3xs flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                        {helper}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-400 font-normal italic pl-1.5">Không có người phụ giúp</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -212,7 +236,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
               Hướng dẫn & Ghi chú
             </span>
             <div
-              className="p-4 bg-slate-50 border border-slate-150 rounded-xl overflow-y-auto max-h-[300px] leading-relaxed text-slate-800 text-xs font-semibold
+              className="p-4 bg-slate-50 border border-slate-150 rounded-xl overflow-y-auto max-h-[500px] leading-relaxed text-slate-800 text-xs font-semibold
                         [&_img]:max-w-full [&_img]:rounded-xl [&_img]:shadow-md [&_img]:mx-auto [&_img]:my-3 [&_img]:block
                         [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
                         [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-200 [&_h3]:pb-1 [&_h3]:uppercase

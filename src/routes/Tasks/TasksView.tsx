@@ -754,6 +754,18 @@ export default function TasksView({
         onClose={() => setViewingTask(null)}
         currentUser={currentUser}
         canUpdate={canUpdate}
+        staffMembers={staffMembers}
+        onUpdateHelpers={async (taskId, helpers) => {
+          try {
+            await onUpdateTask(taskId, { helpers });
+            if (viewingTask && viewingTask.id === taskId) {
+              setViewingTask(prev => prev ? { ...prev, helpers } : null);
+            }
+            showToast("👥 Đã cập nhật danh sách người phụ giúp!");
+          } catch {
+            showToast("Không thể cập nhật người phụ giúp. Vui lòng thử lại.");
+          }
+        }}
         onUpdateStatus={async (taskId, status) => {
           try {
             await onUpdateTaskStatus(taskId, status);
