@@ -44,30 +44,30 @@ const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
 };
 
 const DESKTOP_TITLE_MAP: Record<TabType, string> = {
-  Today: 'Tổng quan Hôm nay',
-  Checklist: 'Hồ sơ Checklist ca trực',
-  Tasks: 'Giao phó công việc',
+  Today: 'Tổng quan',
+  Checklist: 'Hồ sơ Quy trình ca trực',
+  Tasks: 'Công việc',
   KPI: 'Chỉ số hiệu kỳ (KPI)',
-  SOP: 'Ngoại lệ & Lỗi SOP',
+  SOP: 'Cải tiến',
   Reports: 'Báo cáo tổng kết ca',
   Handbook: 'Sổ tay Vận hành chuẩn (SOP)',
   Marketing: 'Marketing & Truyền thông',
   Warehouse: 'Quản lý Kho hàng',
-  Staff: 'Phân quyền cộng tác viên',
+  Staff: 'Nhân sự',
   Notifications: 'Thông báo Phê duyệt',
 };
 
 const SIDEBAR_LINKS: AppFrameLayoutLink[] = [
-  { key: 'Today', label: 'Hôm nay', icon: Home },
-  { key: 'Checklist', label: 'Checklist', icon: CheckSquare },
-  { key: 'Tasks', label: 'Giao việc', icon: ListTodo },
+  { key: 'Today', label: 'Tổng quan', icon: Home },
+  { key: 'Checklist', label: 'Quy trình', icon: CheckSquare },
+  { key: 'Tasks', label: 'Công việc', icon: ListTodo },
   { key: 'KPI', label: 'KPI', icon: Award },
-  { key: 'SOP', label: 'Lỗi SOP / Ngoại lệ', icon: AlertTriangle },
+  { key: 'SOP', label: 'Cải tiến', icon: AlertTriangle },
   { key: 'Reports', label: 'Báo cáo', icon: BarChart4 },
   { key: 'Handbook', label: 'Sổ tay chuẩn', icon: BookMarked },
   { key: 'Marketing', label: 'Marketing', icon: Megaphone },
   { key: 'Warehouse', label: 'Kho', icon: Package },
-  { key: 'Staff', label: 'Tài khoản', icon: Users },
+  { key: 'Staff', label: 'Nhân sự', icon: Users },
 ];
 
 
