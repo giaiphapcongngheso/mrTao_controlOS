@@ -426,7 +426,10 @@ const IssueCard = React.memo(function IssueCard({
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block select-none mb-1">
               {descLabel}
             </span>
-            <p className="text-slate-600 font-medium flex-1">{issue.description}</p>
+            <div 
+              className="text-slate-600 font-medium flex-1 [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2"
+              dangerouslySetInnerHTML={{ __html: issue.description }}
+            />
           </div>
         )}
 
