@@ -11,6 +11,7 @@ interface ChecklistTabBarProps {
   selectedRoleCode: string;
   setSelectedRoleCode: (role: string) => void;
   roleOptions: Array<{ code: string; name: string }>;
+  showHistory?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   selectedRoleCode,
   setSelectedRoleCode,
   roleOptions,
+  showHistory = false,
 }: ChecklistTabBarProps) {
   const handleTabChange = React.useCallback((value: string) => {
     setSubTab(value as 'today' | 'process' | 'history');
@@ -55,16 +57,18 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
               </span>
             </TabsTrigger>
 
-            <TabsTrigger
-              value="history"
-              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent data-[state=active]:border-[#C21A1A] data-[state=active]:bg-white data-[state=active]:text-[#C21A1A] data-[state=active]:shadow-xs hover:data-[state=active]:bg-white"
-            >
-              <History className="w-3.5 h-3.5 hidden sm:inline-block" />
-              <span>
-                <span className="hidden sm:inline">Lịch sử checklist</span>
-                <span className="sm:hidden inline">Lịch sử</span>
-              </span>
-            </TabsTrigger>
+            {showHistory && (
+              <TabsTrigger
+                value="history"
+                className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-black rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent data-[state=active]:border-[#C21A1A] data-[state=active]:bg-white data-[state=active]:text-[#C21A1A] data-[state=active]:shadow-xs hover:data-[state=active]:bg-white"
+              >
+                <History className="w-3.5 h-3.5 hidden sm:inline-block" />
+                <span>
+                  <span className="hidden sm:inline">Lịch sử checklist</span>
+                  <span className="sm:hidden inline">Lịch sử</span>
+                </span>
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
         {/* Role Select */}

@@ -79,6 +79,7 @@ export default function ChecklistContainer({
       onDeleteProcess={handleDeleteProcess}
       permissions={permissions}
       isLoading={isLoading}
+      isOwner={isOwner}
     />
   );
 }

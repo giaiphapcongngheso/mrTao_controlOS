@@ -78,6 +78,7 @@ interface ChecklistViewProps {
   isLoading?: boolean;
   errorMessage?: string | null;
   onDismissError?: () => void;
+  isOwner?: boolean;
 }
 
 function createProcessDialogDefaults(roleCode: string): ProcessDialogValues {
@@ -143,6 +144,7 @@ export default function ChecklistView({
   isLoading = false,
   errorMessage,
   onDismissError,
+  isOwner = false,
 }: ChecklistViewProps) {
   const [subTab, setSubTab] = useState<'today' | 'process' | 'history'>('today');
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
@@ -153,6 +155,13 @@ export default function ChecklistView({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
+
+  // Redirect non-owners away from history tab if they somehow access it
+  useEffect(() => {
+    if (!isOwner && subTab === 'history') {
+      setSubTab('today');
+    }
+  }, [isOwner, subTab]);
 
   // Process dialog states
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
@@ -358,6 +367,7 @@ export default function ChecklistView({
         selectedRoleCode={selectedRoleCode}
         setSelectedRoleCode={setDialogRoleCode}
         roleOptions={roleOptions}
+        showHistory={isOwner}
       />
 
       <ChecklistConfigBar
