@@ -623,9 +623,9 @@ function TableCellWithTooltip<TData>({
       className={cn(
         wrapText ? 'whitespace-pre-wrap break-words' : 'truncate',
         isSelectOrExpander && '!w-[40px] !min-w-[40px] !max-w-[40px] !px-2',
-        sticky && 'bg-background group-hover:bg-muted group-data-[state=selected]:bg-muted z-10',
-        sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.1)]',
-        sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)]',
+        sticky && 'bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted z-30',
+        sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]',
+        sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]',
       )}
       title={textContent}
     >

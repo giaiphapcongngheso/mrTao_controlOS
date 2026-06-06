@@ -59,7 +59,7 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot="table-row"
       className={cn(
-        'hover:bg-muted/50 data-[state=selected]:bg-muted [&[data-state=selected]>td]:!bg-muted data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&[data-state=active]>td]:!bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&>td]:transition-colors [&>td]:duration-300 border-b [&>td]:border-b [&>td]:border-border transition-colors',
+        'group hover:bg-muted/50 data-[state=selected]:bg-muted [&[data-state=selected]>td]:!bg-muted data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&[data-state=active]>td]:!bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&>td]:transition-colors [&>td]:duration-300 border-b [&>td]:border-b [&>td]:border-border transition-colors',
         className,
       )}
       {...props}
@@ -86,12 +86,12 @@ function TableHead({ className, sticky, tooltip, children, ...props }: TableHead
       data-slot="table-head"
       className={cn(
         'relative bg-primary text-primary-foreground h-11 px-4 text-left align-middle font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md',
-        className,
         {
           // darker, more neutral shadow so it stands out from table shadow
-          'sticky left-0 z-30 bg-primary shadow-[4px_0_8px_rgba(0,0,0,0.28)]': sticky === 'left',
-          'sticky right-0 z-30 bg-primary shadow-[-4px_0_8px_rgba(0,0,0,0.28)]': sticky === 'right',
+          'sticky left-0 z-30 bg-primary shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'left',
+          'sticky right-0 z-30 bg-primary shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'right',
         },
+        className,
       )}
       {...props}
     >
@@ -131,12 +131,16 @@ function TableFilterCell({ className, sticky, tooltip, children, ...props }: Tab
   return (
     <th
       data-slot="table-filter-cell"
-      className={cn('px-4 justify-start py-2 [&:has([role=checkbox])]:pr-0', className, {
-        'sticky left-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[4px_0_8px_rgba(0,0,0,0.28)]':
-          sticky === 'left',
-        'sticky right-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[-4px_0_8px_rgba(0,0,0,0.28)]':
-          sticky === 'right',
-      })}
+      className={cn(
+        'px-4 justify-start py-2 [&:has([role=checkbox])]:pr-0',
+        {
+          'sticky left-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]':
+            sticky === 'left',
+          'sticky right-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]':
+            sticky === 'right',
+        },
+        className,
+      )}
       {...props}
     >
       {content}
@@ -162,12 +166,12 @@ function TableCell({ className, sticky, tooltip, children, ...props }: TableCell
     <td
       data-slot="table-cell"
       className={cn(
-        'bg-[#fff] px-4 py-2.5 align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
-        className,
+        'bg-background px-4 py-2.5 align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] transition-colors duration-200',
         {
-          'sticky left-0 z-30 bg-muted shadow-[4px_0_8px_rgba(0,0,0,0.28)]': sticky === 'left',
-          'sticky right-0 z-30 bg-muted shadow-[-4px_0_8px_rgba(0,0,0,0.28)]': sticky === 'right',
+          'sticky left-0 z-30 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'left',
+          'sticky right-0 z-30 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'right',
         },
+        className,
       )}
       {...props}
     >

@@ -782,7 +782,7 @@ const IssuesView = React.memo(function IssuesView({
         getRowId={(row) => row.id}
         emptyMessage="Không tìm thấy tài liệu phù hợp. Thử tìm kiếm với nội dung khác, hoặc chọn 'Tất cả loại phiếu' bằng bộ lọc ở phía bên trên để xem dữ liệu đầy đủ."
         onRowClick={(row) => handleEditIssue(row.original)}
-        className="bg-white rounded-xl shadow-2xs border border-slate-100"
+        className="flex-1 min-h-0 bg-white rounded-xl shadow-2xs border border-slate-100"
         enableRowSelection={permissions.canDelete}
         bulkSelectionActions={(table) => {
           const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -817,7 +817,7 @@ const IssuesView = React.memo(function IssuesView({
   ]);
 
   return (
-    <div className="space-y-6 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-auto md:pb-0 md:pr-0 min-w-0 w-full overflow-x-hidden">
+    <div className="space-y-6 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:flex md:flex-col md:overflow-hidden md:pb-0 md:pr-0 min-w-0 w-full overflow-x-hidden">
       <IssuesHeader canCreate={permissions.canCreate} onOpenAddModal={handleOpenAddModal} />
 
       {errorMessage && (
@@ -882,15 +882,13 @@ const IssuesView = React.memo(function IssuesView({
         onClearFilters={handleClearAllFilters}
       />
 
-      <div ref={scrollContainerRef}>
-        {/* On mobile: render grid directly to avoid Base UI ScrollArea touch conflicts. On desktop: wrap in ScrollArea for independent scroll */}
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col">
+        {/* On mobile: render table directly to scroll with page. On desktop: enable flex display to allow internal table scroll */}
         <div className="block md:hidden">
           {renderedCardList}
         </div>
-        <div className="hidden md:block">
-          <ScrollArea className="md:h-[calc(100vh-420px)]" viewportClassName="md:h-full">
-            {renderedCardList}
-          </ScrollArea>
+        <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0">
+          {renderedCardList}
         </div>
       </div>
 

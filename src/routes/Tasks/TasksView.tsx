@@ -628,7 +628,7 @@ export default function TasksView({
   }, []);
 
   return (
-    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 md:pr-1 font-sans text-sm text-slate-650 min-w-0 w-full overflow-x-hidden">
+    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:flex md:flex-col md:overflow-hidden md:pb-0 md:pr-0 font-sans text-sm text-slate-650 min-w-0 w-full overflow-x-hidden">
 
       {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
       {toastMessage && (
@@ -764,7 +764,7 @@ export default function TasksView({
         tableMinWidth={1500}
         emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
         onRowClick={(row) => setViewingTask(row.original)}
-        className="bg-white rounded-xl shadow-2xs border border-slate-200"
+        className="flex-1 min-h-0 bg-white rounded-xl shadow-2xs border border-slate-200"
         enableRowSelection={true}
         bulkSelectionActions={(table) => {
           const selectedRows = table.getFilteredSelectedRowModel().rows;
