@@ -8,7 +8,7 @@ import { getChecklistColorMeta } from './checklist-meta';
 export function getCategoryMeta(categoryTitle: string, index: number, colorKey?: string): CategoryMeta {
   const palette = getChecklistColorMeta(colorKey);
   return {
-    label: `${index + 1}. ${categoryTitle}`,
+    label: categoryTitle,
     themeColor: palette.themeColor,
     barColor: palette.barColor,
     iconBg: palette.iconBg,
