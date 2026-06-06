@@ -374,7 +374,7 @@ const IssueModal = React.memo(function IssueModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="p-0 border-none bg-transparent shadow-none max-w-3xl w-full max-h-[92vh] flex flex-col focus:outline-none"
+        className="p-0 border-none bg-transparent shadow-none sm:max-w-5xl w-full max-h-[95vh] flex flex-col focus:outline-none"
       >
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-0 w-full shadow-2xl flex flex-col border border-slate-200/80 dark:border-slate-800 relative overflow-hidden text-left animate-in zoom-in-95 duration-200">
           {/* Header */}
@@ -763,7 +763,7 @@ const IssueModal = React.memo(function IssueModal({
                               suppressContentEditableWarning
                               onInput={handleEditorInput}
                               onBlur={handleEditorInput}
-                              className="min-h-[220px] max-h-[380px] p-4 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-250 text-xs font-medium focus:outline-none overflow-y-auto leading-relaxed text-left select-text rounded-b-xl
+                              className="min-h-[300px] max-h-[450px] p-4 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-250 text-xs font-medium focus:outline-none overflow-y-auto leading-relaxed text-left select-text rounded-b-xl
                                         [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-slate-900 dark:[&_h2]:text-white [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:uppercase [&_h2]:tracking-wider
                                         [&_h3]:text-[13px] [&_h3]:font-bold [&_h3]:text-slate-800 dark:[&_h3]:text-slate-200 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-100 dark:[&_h3]:border-slate-800 [&_h3]:pb-1 [&_h3]:uppercase [&_h3]:tracking-wide
                                         [&_h4]:text-xs [&_h4]:font-bold [&_h4]:text-[#C21A1A] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:uppercase
