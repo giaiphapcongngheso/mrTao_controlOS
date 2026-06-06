@@ -372,7 +372,7 @@ const IssuesView = React.memo(function IssuesView({
             sop_error: '⚠️ Lỗi SOP',
           };
           return (
-            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", badgeStyles[category] || badgeStyles.sop_error)}>
+            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", badgeStyles[category] || badgeStyles.sop_error)}>
               {badgeTexts[category] || '⚠️ Lỗi SOP'}
             </span>
           );
@@ -384,7 +384,7 @@ const IssuesView = React.memo(function IssuesView({
               <select
                 value={val}
                 onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
               >
                 <option value="all">Tất cả</option>
                 <option value="sop_error">Lỗi SOP</option>
@@ -405,21 +405,21 @@ const IssuesView = React.memo(function IssuesView({
           switch (sev) {
             case 'High':
               return (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2 py-0.5 shrink-0">
+                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2 py-0.5 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                   Cao
                 </span>
               );
             case 'Medium':
               return (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2 py-0.5 shrink-0">
+                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2 py-0.5 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-550" />
                   Trung bình
                 </span>
               );
             case 'Low':
               return (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2 py-0.5 shrink-0">
+                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2 py-0.5 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                   Thấp
                 </span>
@@ -435,7 +435,7 @@ const IssuesView = React.memo(function IssuesView({
               <select
                 value={val}
                 onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
               >
                 <option value="all">Tất cả</option>
                 <option value="High">Cao</option>
@@ -451,7 +451,7 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Tên phiếu',
         size: 200,
         cell: ({ row }) => (
-          <div id={`issue-card-${row.original.id}`} className="font-extrabold text-slate-900 text-left text-xs leading-snug break-words">
+          <div id={`issue-card-${row.original.id}`} className="font-extrabold text-slate-900 text-left text-sm leading-snug break-words">
             {row.original.title}
           </div>
         ),
@@ -462,7 +462,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc tên..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -476,10 +476,10 @@ const IssuesView = React.memo(function IssuesView({
           const cleanText = desc ? desc.replace(/<\/?[^>]+(>|$)/g, "") : '';
           const isImg = desc && desc.includes('<img');
           return (
-            <div className="text-slate-650 font-medium text-xs text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
+            <div className="text-slate-650 font-medium text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
               {cleanText || <span className="text-slate-350 italic">Không có mô tả...</span>}
               {isImg && (
-                <span className="inline-flex items-center gap-1 ml-1 text-[9px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
+                <span className="inline-flex items-center gap-1 ml-1 text-sm font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
                   🖼️ Ảnh
                 </span>
               )}
@@ -493,7 +493,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc mô tả..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -503,7 +503,7 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Bên liên quan',
         size: 150,
         cell: ({ row }) => (
-          <div className="text-slate-700 font-bold text-xs truncate text-left">
+          <div className="text-slate-700 font-bold text-sm truncate text-left">
             {row.original.actor || 'Hệ thống ca trực'}
           </div>
         ),
@@ -514,7 +514,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc bên liên quan..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -524,8 +524,8 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Quy trình',
         size: 150,
         cell: ({ row }) => (
-          <div className="text-slate-700 font-bold text-xs truncate text-left">
-            {row.original.process || 'Vận hành chung'}
+          <div className="text-slate-700 font-bold text-sm truncate text-left">
+            {row.original.process || 'Quy trình vận hành'}
           </div>
         ),
         meta: {
@@ -535,7 +535,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc quy trình..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -548,10 +548,10 @@ const IssuesView = React.memo(function IssuesView({
           const assignee = row.original.assignee;
           return (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
                 {assignee?.charAt(0) || 'U'}
               </div>
-              <span className="text-slate-700 font-bold truncate text-xs">{assignee || 'Quản lý cửa hàng'}</span>
+              <span className="text-slate-700 font-bold truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
             </div>
           );
         },
@@ -562,7 +562,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc người xử lý..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -574,12 +574,12 @@ const IssuesView = React.memo(function IssuesView({
         cell: ({ row }) => {
           const issue = row.original;
           return (
-            <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded shrink-0">
+            <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
+              <span className="inline-flex items-center gap-1 text-sm font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded shrink-0">
                 {issue.occurrence || 1} lần
               </span>
               <span className="text-slate-300 font-normal">|</span>
-              <span className="text-slate-500 font-medium text-[11px] shrink-0">{issue.date}</span>
+              <span className="text-slate-500 font-medium text-sm shrink-0">{issue.date}</span>
             </div>
           );
         },
@@ -590,7 +590,7 @@ const IssuesView = React.memo(function IssuesView({
               placeholder="Lọc ngày..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -627,7 +627,7 @@ const IssuesView = React.memo(function IssuesView({
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "font-bold uppercase tracking-wider rounded-lg border shadow-none px-2 h-7 text-[10px] flex items-center gap-1.5",
+                      "font-bold uppercase tracking-wider rounded-lg border shadow-none px-2 h-7 text-sm flex items-center gap-1.5",
                       canUpdate 
                         ? badgeStyle 
                         : 'opacity-50 border border-slate-200 text-slate-400 bg-slate-50'
@@ -638,7 +638,7 @@ const IssuesView = React.memo(function IssuesView({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200/80 rounded-xl shadow-lg p-1.5 z-40 text-slate-800">
-                  <DropdownMenuLabel className="px-2.5 py-1.5 font-bold text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-50 mb-1">
+                  <DropdownMenuLabel className="px-2.5 py-1.5 font-bold text-slate-400 text-sm uppercase tracking-wider border-b border-slate-50 mb-1">
                     Cập nhật xử lý
                   </DropdownMenuLabel>
                   {statusConfigs.map((cfg) => {
@@ -648,7 +648,7 @@ const IssuesView = React.memo(function IssuesView({
                         key={cfg.status}
                         onClick={() => onUpdateIssueStatus(issue.id, cfg.status)}
                         className={cn(
-                          "px-2.5 py-1.5 rounded-md flex items-center justify-between font-bold text-xs cursor-pointer hover:bg-slate-50",
+                          "px-2.5 py-1.5 rounded-md flex items-center justify-between font-bold text-sm cursor-pointer hover:bg-slate-50",
                           cfg.colorClass
                         )}
                       >
@@ -663,7 +663,7 @@ const IssuesView = React.memo(function IssuesView({
                   <DropdownMenuSeparator className="bg-slate-100 my-1" />
                   <DropdownMenuItem
                     onClick={() => onConfirmIssueRead(issue.id)}
-                    className="px-2.5 py-1.5 hover:bg-emerald-50 rounded-md flex items-center justify-between text-emerald-600 font-bold text-xs cursor-pointer"
+                    className="px-2.5 py-1.5 hover:bg-emerald-50 rounded-md flex items-center justify-between text-emerald-600 font-bold text-sm cursor-pointer"
                   >
                     <div className="flex items-center gap-1.5">
                       <BookOpen className="size-3.5" />
@@ -683,7 +683,7 @@ const IssuesView = React.memo(function IssuesView({
               <select
                 value={val}
                 onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
               >
                 <option value="all">Tất cả</option>
                 <option value="Xử lý ngay">Xử lý ngay</option>
@@ -708,7 +708,7 @@ const IssuesView = React.memo(function IssuesView({
                   size="sm"
                   type="button"
                   variant="outline"
-                  className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  className="h-7 text-sm px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                   onClick={() => handleEditIssue(issue)}
                 >
                   <Pencil className="w-3 h-3 text-slate-500" />
@@ -720,7 +720,7 @@ const IssuesView = React.memo(function IssuesView({
                   size="sm"
                   type="button"
                   variant="ghost"
-                  className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  className="h-7 text-sm px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                   onClick={() => {
                     if (window.confirm(`Bạn có chắc chắn muốn xóa phiếu "${issue.title}"?`)) {
                       onDeleteIssue(issue.id);
@@ -770,7 +770,7 @@ const IssuesView = React.memo(function IssuesView({
         <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-200 shadow-2xs">
           <div className="flex items-start gap-2.5 text-rose-700">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <p className="text-xs font-bold leading-relaxed">{errorMessage}</p>
+            <p className="text-sm font-bold leading-relaxed">{errorMessage}</p>
           </div>
           <Button
             type="button"
@@ -789,7 +789,7 @@ const IssuesView = React.memo(function IssuesView({
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-200 shadow-2xs">
           <div className="flex items-start gap-2.5 text-emerald-700">
             <Check className="w-4 h-4 mt-0.5 shrink-0" />
-            <p className="text-xs font-bold leading-relaxed">{successMessage}</p>
+            <p className="text-sm font-bold leading-relaxed">{successMessage}</p>
           </div>
           <Button
             type="button"

@@ -31,7 +31,7 @@ const CategoryFilterButton = React.memo(function CategoryFilterButton({
       onClick={handleClick}
       variant="ghost"
       className={cn(
-        "px-4 py-2 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-initial h-8 border border-transparent shadow-none",
+        "px-4 py-2 rounded-lg text-sm font-extrabold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-initial h-8 border border-transparent shadow-none",
         isActive
           ? "bg-white text-[#C21A1A] border-slate-200/60 shadow-2xs font-black hover:bg-white"
           : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
@@ -99,7 +99,7 @@ const SearchFilterSection = React.memo(function SearchFilterSection({
       <div className="flex flex-row items-center justify-between sm:justify-end gap-2 flex-1 w-full">
         {/* Record count indicator and Clear filters button */}
         <div className="flex items-center gap-2 shrink-0 justify-start sm:justify-center">
-          <span className="text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200/60 px-3 py-1.5 rounded-lg select-none">
+          <span className="text-sm font-bold text-slate-400 bg-slate-50 border border-slate-200/60 px-3 py-1.5 rounded-lg select-none">
             Hiển thị {filteredCount}/{totalCount}
           </span>
           {(selectedFilter !== 'all' || selectedStatus !== 'all' || searchTerm) && (
@@ -107,7 +107,7 @@ const SearchFilterSection = React.memo(function SearchFilterSection({
               variant="outline"
               size="sm"
               onClick={onClearFilters}
-              className="text-[11px] font-bold text-[#C21A1A] border-rose-100 hover:bg-rose-50/50 h-8 rounded-lg cursor-pointer shadow-none"
+              className="text-sm font-bold text-[#C21A1A] border-rose-100 hover:bg-rose-50/50 h-8 rounded-lg cursor-pointer shadow-none"
             >
               Xóa bộ lọc
             </Button>

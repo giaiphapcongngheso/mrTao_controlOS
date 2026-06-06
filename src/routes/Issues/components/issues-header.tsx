@@ -21,7 +21,7 @@ const IssuesHeader = React.memo(function IssuesHeader({
           <h1 className="text-[16px] font-bold text-slate-800 leading-none">
             Kiểm soát lỗi SOP &amp; Ngoại lệ
           </h1>
-          <p className="text-xs text-slate-400 mt-1.5 font-medium font-sans leading-relaxed">
+          <p className="text-sm text-slate-400 mt-1.5 font-medium font-sans leading-relaxed">
             Ghi nhận – theo dõi – xử lý – đóng vòng cải tiến sai lệch showroom định kỳ.
           </p>
         </div>

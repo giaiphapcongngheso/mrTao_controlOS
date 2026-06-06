@@ -61,8 +61,8 @@ const MetricStatusCard = React.memo(function MetricStatusCard({
           <IconComponent className="w-5 h-5 stroke-[2.5]" />
         </span>
         <div className="space-y-0.5 min-w-0">
-          <h4 className="font-extrabold text-slate-800 text-[13px] leading-tight truncate">{card.title}</h4>
-          <span className="text-[10px] text-slate-450 font-bold block truncate">{card.subtitle}</span>
+          <h4 className="font-extrabold text-slate-800 text-sm leading-tight truncate">{card.title}</h4>
+          <span className="text-sm text-slate-450 font-bold block truncate">{card.subtitle}</span>
         </div>
       </div>
       <span className={cn("text-2xl font-black tracking-tight tabular-nums shrink-0", card.countColor)}>{card.count}</span>

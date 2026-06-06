@@ -195,16 +195,16 @@ export default function TasksView({
       const datePart = parts[0];
       const timePart = parts.slice(1).join(' ');
       return (
-        <div className="flex items-center gap-1.5 font-bold text-xs justify-start">
+        <div className="flex items-center gap-1.5 font-bold text-sm justify-start">
           <span className="text-slate-700">{datePart}</span>
-          <span className="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+          <span className="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-sm">
             <Clock className="w-3 h-3 text-slate-400" />
             {timePart}
           </span>
         </div>
       );
     }
-    return <span className="text-slate-700 font-bold text-xs">{deadline}</span>;
+    return <span className="text-slate-700 font-bold text-sm">{deadline}</span>;
   }, []);
 
   const columns = useMemo<ColumnDef<TaskItem>[]>(
@@ -214,7 +214,7 @@ export default function TasksView({
         header: 'Mã công việc',
         size: 155,
         cell: ({ row }) => (
-          <div className="text-[11px] text-slate-500 font-mono font-bold tracking-wider text-left">
+          <div className="text-sm text-slate-500 font-mono font-bold tracking-wider text-left">
             {generateTaskCode(row.original)}
           </div>
         ),
@@ -225,7 +225,7 @@ export default function TasksView({
               placeholder="Lọc mã..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -235,7 +235,7 @@ export default function TasksView({
         header: 'Tên công việc',
         size: 220,
         cell: ({ row }) => (
-          <div className="font-extrabold text-slate-900 text-left text-xs leading-snug break-words">
+          <div className="font-extrabold text-slate-900 text-left text-sm leading-snug break-words">
             {row.original.title}
           </div>
         ),
@@ -246,7 +246,7 @@ export default function TasksView({
               placeholder="Lọc tên..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -256,7 +256,7 @@ export default function TasksView({
         header: 'Mô tả chi tiết',
         size: 260,
         cell: ({ row }) => (
-          <div className="text-slate-650 font-medium text-xs text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed">
+          <div className="text-slate-650 font-medium text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed">
             {stripHtmlAndTruncate(row.original.notes, 150) || <span className="text-slate-300 italic">Không có mô tả...</span>}
           </div>
         ),
@@ -267,7 +267,7 @@ export default function TasksView({
               placeholder="Lọc mô tả..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -279,8 +279,8 @@ export default function TasksView({
         cell: ({ row }) => {
           const priorityInfo = priorityMeta[row.original.priority] || priorityMeta.medium;
           return (
-            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", priorityInfo.bg)}>
-              <span className="w-1 h-1 rounded-full bg-current"></span>
+            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", priorityInfo.bg)}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
               {priorityInfo.text}
             </span>
           );
@@ -292,7 +292,7 @@ export default function TasksView({
               <select
                 value={val}
                 onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
               >
                 <option value="all">Tất cả</option>
                 <option value="high">Cao</option>
@@ -310,7 +310,7 @@ export default function TasksView({
         cell: ({ row }) => {
           const statusInfo = statusMeta[row.original.status] || statusMeta.not_started;
           return (
-            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-normal", statusInfo.bg)}>
+            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-normal", statusInfo.bg)}>
               {statusInfo.icon && (
                 <statusInfo.icon className={cn("w-2.5 h-2.5 shrink-0", statusInfo.iconColor)} />
               )}
@@ -325,7 +325,7 @@ export default function TasksView({
               <select
                 value={val}
                 onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
               >
                 <option value="all">Tất cả</option>
                 <option value="not_started">Chưa làm</option>
@@ -345,10 +345,10 @@ export default function TasksView({
           const assigneeVal = row.original.assignee;
           return (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
                 {assigneeVal?.charAt(0) || 'U'}
               </div>
-              <span className="text-slate-700 font-bold truncate text-xs">{assigneeVal || 'Chưa phân công'}</span>
+              <span className="text-slate-700 font-bold truncate text-sm">{assigneeVal || 'Chưa phân công'}</span>
             </div>
           );
         },
@@ -359,7 +359,7 @@ export default function TasksView({
               placeholder="Lọc người phụ trách..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -369,7 +369,7 @@ export default function TasksView({
         header: 'Bộ phận',
         size: 130,
         cell: ({ row }) => (
-          <div className="text-slate-700 font-bold text-xs truncate text-left">
+          <div className="text-slate-700 font-bold text-sm truncate text-left">
             {row.original.department}
           </div>
         ),
@@ -380,7 +380,7 @@ export default function TasksView({
               placeholder="Lọc bộ phận..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -397,7 +397,7 @@ export default function TasksView({
               placeholder="Lọc hạn..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
             />
           ),
         },
@@ -414,7 +414,7 @@ export default function TasksView({
                 size="sm"
                 type="button"
                 variant="outline"
-                className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                className="h-7 text-sm px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                 onClick={() => setEditingTask(task)}
               >
                 <Pencil className="w-3 h-3 text-slate-500" />
@@ -424,7 +424,7 @@ export default function TasksView({
                 size="sm"
                 type="button"
                 variant="ghost"
-                className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                className="h-7 text-sm px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                 onClick={() => setTaskToDelete(task)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -586,7 +586,7 @@ export default function TasksView({
     {
       value: 'create',
       label: (
-        <div className="flex items-center gap-2.5 text-xs text-slate-800 font-bold w-full">
+        <div className="flex items-center gap-2.5 text-sm text-slate-800 font-bold w-full">
           <Plus className="w-4 h-4 text-emerald-600 stroke-[3]" />
           <span>Tạo việc mới</span>
         </div>
@@ -595,7 +595,7 @@ export default function TasksView({
     {
       value: 'quick',
       label: (
-        <div className="flex items-center gap-2.5 text-xs text-slate-800 font-bold w-full">
+        <div className="flex items-center gap-2.5 text-sm text-slate-800 font-bold w-full">
           <Send className="w-4 h-4 text-[#C21A1A]" />
           <span>Giao nhanh</span>
         </div>
@@ -604,7 +604,7 @@ export default function TasksView({
   ], []);
 
   const selectPlaceholder = useMemo(() => (
-    <div className="flex items-center gap-2 text-white font-extrabold text-[11px] uppercase tracking-wider">
+    <div className="flex items-center gap-2 text-white font-extrabold text-sm uppercase tracking-wider">
       <Zap className="w-4 h-4 fill-white text-white animate-none" />
       <span>Thao tác nhanh</span>
     </div>
@@ -623,7 +623,7 @@ export default function TasksView({
 
       {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
       {toastMessage && (
-        <div className="fixed bottom-5 left-5 z-55 flex items-center gap-2.5 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-xl text-xs font-bold font-sans max-w-sm transition-all animate-bounce">
+        <div className="fixed bottom-5 left-5 z-55 flex items-center gap-2.5 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-xl text-sm font-bold font-sans max-w-sm transition-all animate-bounce">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -640,14 +640,14 @@ export default function TasksView({
               <Button
                 type="button"
                 onClick={() => setIsAddingTask(true)}
-                className="h-10 rounded-xl bg-[#C21A1A] px-3 text-[10px] font-black uppercase tracking-wide text-white shadow-sm hover:bg-[#A81515]"
+                className="h-10 rounded-xl bg-[#C21A1A] px-3 text-sm font-black uppercase tracking-wide text-white shadow-sm hover:bg-[#A81515]"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5 stroke-[3]" /> Tạo việc
               </Button>
               <Button
                 type="button"
                 onClick={() => setQuickDelegateOpen(true)}
-                className="h-10 rounded-xl bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#C21A1A] shadow-sm ring-1 ring-[#C21A1A]/20 hover:bg-rose-50"
+                className="h-10 rounded-xl bg-white px-3 text-sm font-black uppercase tracking-wide text-[#C21A1A] shadow-sm ring-1 ring-[#C21A1A]/20 hover:bg-rose-50"
               >
                 <Send className="mr-1.5 h-3.5 w-3.5" /> Giao nhanh
               </Button>
@@ -659,7 +659,7 @@ export default function TasksView({
                 onChangeValue={handleActionChange}
                 placeholder={selectPlaceholder}
                 clearable={false}
-                className="!bg-[#C21A1A] hover:!bg-[#A81515] !text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl border-none shadow-sm flex items-center justify-between px-4 py-2.5 h-10 w-full"
+                className="!bg-[#C21A1A] hover:!bg-[#A81515] !text-white font-extrabold text-sm uppercase tracking-wider rounded-xl border-none shadow-sm flex items-center justify-between px-4 py-2.5 h-10 w-full"
                 containerClassName="w-full"
                 iconClassName="!text-white opacity-100 right-4"
               />
@@ -669,7 +669,7 @@ export default function TasksView({
       </ModuleHeader>
 
       {errorMessage && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
@@ -679,7 +679,7 @@ export default function TasksView({
               type="button"
               variant="ghost"
               onClick={onRefresh}
-              className="h-auto rounded-lg px-3 py-1.5 text-[11px] font-black text-rose-700 hover:bg-rose-100"
+              className="h-auto rounded-lg px-3 py-1.5 text-sm font-black text-rose-700 hover:bg-rose-100"
             >
               Thử lại
             </Button>
@@ -691,7 +691,7 @@ export default function TasksView({
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {stats.map((stat) => (
           <div key={stat.label} className={cn('p-4 rounded-xl border', stat.wrapperClass)}>
-            <p className={cn('text-[10px] font-black uppercase tracking-wider', stat.labelColor)}>{stat.label}</p>
+            <p className={cn('text-sm font-black uppercase tracking-wider', stat.labelColor)}>{stat.label}</p>
             <div className="flex items-center justify-between mt-1.5">
               <span className={cn('text-xl font-black font-sans', stat.countColor)}>{stat.count}</span>
               <span className={cn('w-1.5 h-1.5 rounded-full', stat.dotClass)}></span>
@@ -708,25 +708,25 @@ export default function TasksView({
           <TabsList className="!grid !h-auto !w-full grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 sm:!inline-flex sm:!w-auto sm:flex-row sm:flex-nowrap">
             <TabsTrigger
               value="all"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
               Tất cả ({visibleTasks.length})
             </TabsTrigger>
             <TabsTrigger
               value="mine"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
               Của tôi ({visibleTasks.filter(t => t.assignee === currentUser?.fullName).length})
             </TabsTrigger>
             <TabsTrigger
               value="late"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
             >
               Trễ hạn ({visibleTasks.filter(t => t.status !== 'completed' && (t.deadline.toLowerCase().includes('trễ') || t.deadline.includes('08/05'))).length})
             </TabsTrigger>
             <TabsTrigger
               value="completed"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
               Đã hoàn thành ({visibleTasks.filter(t => t.status === 'completed').length})
             </TabsTrigger>
