@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  Checkbox,
 } from '@shared/ui';
 import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
@@ -353,6 +354,32 @@ const IssuesView = React.memo(function IssuesView({
 
   const columns = useMemo<ColumnDef<SOPIssue>[]>(
     () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        meta: {
+          sticky: 'left',
+        },
+      },
       {
         accessorKey: 'category',
         header: 'Phân loại',
@@ -756,6 +783,28 @@ const IssuesView = React.memo(function IssuesView({
         emptyMessage="Không tìm thấy tài liệu phù hợp. Thử tìm kiếm với nội dung khác, hoặc chọn 'Tất cả loại phiếu' bằng bộ lọc ở phía bên trên để xem dữ liệu đầy đủ."
         onRowClick={(row) => handleEditIssue(row.original)}
         className="bg-white rounded-xl shadow-2xs border border-slate-100"
+        enableRowSelection={permissions.canDelete}
+        bulkSelectionActions={(table) => {
+          const selectedRows = table.getFilteredSelectedRowModel().rows;
+          const count = selectedRows.length;
+          return (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
+              onClick={async () => {
+                if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} phiếu đã chọn không? Hành động này không thể hoàn tác.`)) {
+                  const selectedIds = selectedRows.map((r) => r.original.id);
+                  await Promise.all(selectedIds.map((id) => onDeleteIssue(id)));
+                  table.resetRowSelection();
+                }
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa {count} mục đã chọn</span>
+            </Button>
+          );
+        }}
       />
     );
   }, [
@@ -763,6 +812,8 @@ const IssuesView = React.memo(function IssuesView({
     paginatedIssues,
     highlightedIssueId,
     handleEditIssue,
+    permissions.canDelete,
+    onDeleteIssue,
   ]);
 
   return (

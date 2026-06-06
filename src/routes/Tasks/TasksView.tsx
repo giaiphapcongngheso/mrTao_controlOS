@@ -37,6 +37,7 @@ import {
   Card,
   CardHeader,
   CardContent,
+  Checkbox,
 } from '@shared/ui';
 import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
@@ -209,6 +210,32 @@ export default function TasksView({
 
   const columns = useMemo<ColumnDef<TaskItem>[]>(
     () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        meta: {
+          sticky: 'left',
+        },
+      },
       {
         accessorKey: 'title',
         header: 'Tên công việc',
@@ -727,7 +754,6 @@ export default function TasksView({
 
       </div>
 
-      {/* 5. PRISTINE CARD STREAM OF TASKS / RECOVERED FROM CUSTOMTABLE */}
       <CustomTable<TaskItem>
         columns={columns}
         data={filteredTasks}
@@ -739,6 +765,28 @@ export default function TasksView({
         emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
         onRowClick={(row) => setViewingTask(row.original)}
         className="bg-white rounded-xl shadow-2xs border border-slate-200"
+        enableRowSelection={true}
+        bulkSelectionActions={(table) => {
+          const selectedRows = table.getFilteredSelectedRowModel().rows;
+          const count = selectedRows.length;
+          return (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
+              onClick={async () => {
+                if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không? Hành động này không thể hoàn tác.`)) {
+                  const selectedIds = selectedRows.map((r) => r.original.id);
+                  await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
+                  table.resetRowSelection();
+                }
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa {count} mục đã chọn</span>
+            </Button>
+          );
+        }}
       />
 
       {/* Manual Add/Edit Task Form Modal */}
