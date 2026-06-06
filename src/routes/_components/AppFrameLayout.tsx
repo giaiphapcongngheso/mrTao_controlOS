@@ -197,7 +197,7 @@ function AppFrameLayout({
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 overflow-hidden">
+          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 flex-1 min-h-0 overflow-y-auto">
             {children}
           </div>
         </main>
