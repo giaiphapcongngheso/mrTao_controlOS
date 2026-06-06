@@ -570,16 +570,15 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'date',
         header: 'Lần xảy ra / Ngày',
-        size: 160,
+        size: 120,
         cell: ({ row }) => {
           const issue = row.original;
           return (
-            <div className="flex items-center gap-2 text-slate-800 font-normal text-sm">
-              <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-2 py-0.5 rounded-md shrink-0">
+            <div className="flex flex-col gap-1.5 text-left py-0.5">
+              <span className="text-slate-750 font-normal text-sm shrink-0 leading-none">{issue.date}</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded-md shrink-0 w-fit leading-none">
                 {issue.occurrence || 1} lần
               </span>
-              <span className="text-slate-300 font-normal">|</span>
-              <span className="text-slate-750 font-normal text-sm shrink-0">{issue.date}</span>
             </div>
           );
         },
@@ -748,6 +747,7 @@ const IssuesView = React.memo(function IssuesView({
         enableFiltering={true}
         showFilterRow={true}
         enablePagination={false}
+        tableMinWidth={1200}
         activeRowId={highlightedIssueId || undefined}
         getRowId={(row) => row.id}
         emptyMessage="Không tìm thấy tài liệu phù hợp. Thử tìm kiếm với nội dung khác, hoặc chọn 'Tất cả loại phiếu' bằng bộ lọc ở phía bên trên để xem dữ liệu đầy đủ."

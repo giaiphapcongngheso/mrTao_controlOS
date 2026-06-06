@@ -732,6 +732,7 @@ export default function TasksView({
         enableFiltering={true}
         showFilterRow={true}
         enablePagination={true}
+        tableMinWidth={1100}
         emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
         onRowClick={(row) => setViewingTask(row.original)}
         className="bg-white rounded-xl shadow-2xs border border-slate-200"
