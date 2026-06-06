@@ -60,11 +60,13 @@ export function useWarehouseData() {
     setIsLoadingLogs(true);
 
     try {
-      const allLogs = await warehouseSyncLogsService.getAll();
-      const sortedLogs = [...allLogs].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      );
-      setSyncLogs(sortedLogs);
+      // Sửa lỗi P7: Chỉ lấy 20 log mới nhất thay vì tải toàn bộ và sort client
+      const result = await warehouseSyncLogsService.getPaged({
+        pageSize: 20,
+        orderByField: 'timestamp',
+        orderDirection: 'desc',
+      });
+      setSyncLogs(result.items);
     } catch (err) {
       console.error('Không thể tải lịch sử đồng bộ:', err);
     } finally {
@@ -120,7 +122,8 @@ export function useWarehouseData() {
     setError(null);
 
     try {
-      const data = await syncWarehouseData();
+      // Chỉ tải Preview (previewOnly = true), không ghi Firestore
+      const data = await syncWarehouseData(true);
       setTempSyncedData({
         branches: data.branches,
         products: data.products,
@@ -142,9 +145,37 @@ export function useWarehouseData() {
     setError(null);
 
     try {
-      const log = await saveWarehouseDataWithStats(tempSyncedData.branches, tempSyncedData.products);
-      await loadFromFirestore();
-      await loadSyncLogs();
+      let log: WarehouseSyncLog;
+      const hasGas = !!(import.meta.env.VITE_GAS_WEBAPP_URL ?? '').trim();
+      
+      if (hasGas) {
+        // Giao thức tối ưu hóa: Yêu cầu GAS ghi trực tiếp lên Firestore từ máy chủ của Google
+        // previewOnly = false để thực hiện đồng bộ thật
+        const result = await syncWarehouseData(false);
+        log = {
+          id: `log_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          summary: result.summary || 'Đồng bộ qua GAS thành công.',
+          productsAdded: 0,
+          productsUpdated: result.products.length,
+          branchesAdded: 0,
+          branchesUpdated: result.branches.length,
+        };
+      } else {
+        // Luồng cũ dành cho Firebase Functions
+        log = await saveWarehouseDataWithStats(tempSyncedData.branches, tempSyncedData.products);
+      }
+
+      // Sửa lỗi P3 (Optimistic update): Cập nhật trực tiếp state từ dữ liệu preview đã có
+      setBranches(tempSyncedData.branches);
+      setProducts(tempSyncedData.products);
+      setSyncLogs((prev) => [log, ...prev]);
+
+      // Xóa cache in-memory để các lần gọi sau đọc DB mới
+      warehouseBranchesService.invalidateCache();
+      warehouseProductsService.invalidateCache();
+      warehouseSyncLogsService.invalidateCache();
+
       setTempSyncedData(null);
       return log;
     } catch (saveError) {
@@ -153,7 +184,7 @@ export function useWarehouseData() {
     } finally {
       setIsLoading(false);
     }
-  }, [tempSyncedData, loadFromFirestore, loadSyncLogs]);
+  }, [tempSyncedData]);
 
   const discardTempData = useCallback(() => {
     setTempSyncedData(null);

@@ -256,7 +256,7 @@ export function PermissionsTabContent({
           showFilterRow={false}
           emptyMessage="Chưa có vai trò nào. Bấm nút Vai trò phía trên để tạo vai trò mới."
           tableMinWidth={680}
-          className="w-full min-w-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
+          className="w-full min-w-0 h-[calc(100vh-280px)] min-h-[350px] [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
         />
       </div>
 

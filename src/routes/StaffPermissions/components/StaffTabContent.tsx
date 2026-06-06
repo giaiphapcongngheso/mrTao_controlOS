@@ -450,7 +450,7 @@ export function StaffTabContent({
           showFilterRow={false}
           emptyMessage="Không có dữ liệu phù hợp. Thử đổi bộ lọc vai trò hoặc từ khóa tìm kiếm."
           tableMinWidth={880}
-          className="w-full min-w-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
+          className="w-full min-w-0 h-[calc(100vh-320px)] min-h-[350px] [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
         />
       </div>
     </div>

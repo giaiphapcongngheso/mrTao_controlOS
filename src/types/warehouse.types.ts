@@ -39,6 +39,7 @@ export interface WarehouseProductCreateInput {
 export interface WarehouseSyncResponse {
   branches: Branch[];
   products: WarehouseProduct[];
+  summary?: string;
 }
 
 export interface WarehouseFilters {

@@ -91,10 +91,10 @@ async function parseResponseBody(response: Response): Promise<{
   return { contentType, body: rawText };
 }
 
-async function fetchWarehouseSyncPayload(): Promise<WarehouseSyncResponse> {
+async function fetchWarehouseSyncPayload(previewOnly = false): Promise<WarehouseSyncResponse> {
   const gasUrl = GAS_WEBAPP_URL.trim();
   if (gasUrl) {
-    const url = `${gasUrl}${gasUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(GAS_SYNC_TOKEN)}`;
+    const url = `${gasUrl}${gasUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(GAS_SYNC_TOKEN)}&preview=${previewOnly}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -124,6 +124,7 @@ async function fetchWarehouseSyncPayload(): Promise<WarehouseSyncResponse> {
             source: 'synced',
           }))
         : [],
+      summary: typeof body.summary === 'string' ? body.summary : undefined,
     };
   }
 
@@ -180,9 +181,9 @@ async function fetchWarehouseSyncPayload(): Promise<WarehouseSyncResponse> {
   };
 }
 
-export async function syncWarehouseData(): Promise<WarehouseSyncResponse> {
+export async function syncWarehouseData(previewOnly = false): Promise<WarehouseSyncResponse> {
   try {
-    return await fetchWarehouseSyncPayload();
+    return await fetchWarehouseSyncPayload(previewOnly);
   } catch (error) {
     throw new Error(normalizeSyncError(error));
   }
@@ -257,16 +258,19 @@ export function filterWarehouseProducts(
 export const warehouseBranchesService = createBaseService<Branch, Partial<Branch>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_BRANCHES,
+  cacheTtlMs: 5 * 60 * 1000, // Cache branches in 5 minutes
 });
 
 export const warehouseProductsService = createBaseService<WarehouseProduct, Partial<WarehouseProduct>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_PRODUCTS,
+  cacheTtlMs: 5 * 60 * 1000, // Cache products in 5 minutes
 });
 
 export const warehouseSyncLogsService = createBaseService<WarehouseSyncLog, Partial<WarehouseSyncLog>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_SYNC_LOGS,
+  cacheTtlMs: 2 * 60 * 1000, // Cache sync logs in 2 minutes
 });
 
 export async function saveWarehouseDataWithStats(
@@ -275,8 +279,11 @@ export async function saveWarehouseDataWithStats(
 ): Promise<WarehouseSyncLog> {
   const db = getFirestoreDb();
 
-  const existingBranches = await warehouseBranchesService.getAll();
-  const existingProducts = await warehouseProductsService.getAll();
+  // Parallelize the retrieval of existing branches and products
+  const [existingBranches, existingProducts] = await Promise.all([
+    warehouseBranchesService.getAll(),
+    warehouseProductsService.getAll(),
+  ]);
 
   const existingBranchIds = new Set(existingBranches.map((branch) => String(branch.id)));
   const existingProductIds = new Set(existingProducts.map((product) => String(product.id)));
@@ -316,15 +323,20 @@ export async function saveWarehouseDataWithStats(
     });
   });
 
+  // Parallelize write batches to Firestore REST/SDK endpoints
   const CHUNK_SIZE = 500;
+  const batchPromises: Promise<void>[] = [];
+  
   for (let index = 0; index < operations.length; index += CHUNK_SIZE) {
     const chunk = operations.slice(index, index + CHUNK_SIZE);
     const batch = writeBatch(db);
     chunk.forEach((operation) => {
       batch.set(operation.ref, operation.data, { merge: true });
     });
-    await batch.commit();
+    batchPromises.push(batch.commit());
   }
+  
+  await Promise.all(batchPromises);
 
   const logId = `log_${Date.now()}`;
   const timestamp = new Date().toISOString();
