@@ -379,9 +379,9 @@ function TableHeaderCell<TData>({
       style={finalStyle}
       className={cn(
         isSelectOrExpander && '!w-[40px] !min-w-[40px] !max-w-[40px] !px-2',
-        sticky && 'bg-inherit z-20',
-        sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.1)]',
-        sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)]',
+        sticky && 'bg-primary z-30',
+        sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]',
+        sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]',
       )}
       sticky={sticky}
     >
@@ -506,9 +506,9 @@ function TableFilterRow<TData>({
   const getStickyClass = (header: Header<TData, unknown>) => {
     const sticky = header.column.columnDef.meta?.sticky;
     return cn(
-      sticky && 'bg-inherit z-10',
-      sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.1)]',
-      sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)]',
+      sticky && 'bg-[#eaf5ff] dark:bg-primary/80 z-30',
+      sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]',
+      sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]',
     );
   };
 
