@@ -287,7 +287,7 @@ function renderFormattedContent(
           <img
             src={imgMatch[2]}
             alt={imgMatch[1] || 'Embedded Image'}
-            className="!h-auto !w-auto !max-h-[70vh] !max-w-full cursor-zoom-in rounded-xl border border-slate-200 object-contain shadow-xs transition-all duration-200 hover:shadow-md"
+            className="!h-auto !w-auto max-h-[320px] md:max-h-[420px] lg:!max-h-[55vh] !max-w-full cursor-zoom-in rounded-xl border border-slate-200 object-contain shadow-xs transition-all duration-300 hover:shadow-md hover:scale-[1.01]"
             loading="lazy"
             onClick={() => onImageClick?.(imgMatch[2])}
           />
@@ -563,7 +563,7 @@ export default function HandbookView() {
             [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
             [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
             [&_li]:text-xs [&_li]:text-slate-700
-            [&_img]:!block [&_img]:!mx-auto [&_img]:!my-3 [&_img]:!h-auto [&_img]:!w-auto [&_img]:!max-h-[70vh] [&_img]:!max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-150 [&_img]:object-contain [&_img]:shadow-md
+            [&_img]:!block [&_img]:!mx-auto [&_img]:!my-3 [&_img]:!h-auto [&_img]:!w-auto [&_img]:max-h-[320px] md:[&_img]:max-h-[420px] lg:[&_img]:!max-h-[55vh] [&_img]:!max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-150 [&_img]:object-contain [&_img]:shadow-md [&_img]:transition-all [&_img]:duration-300 [&_img:hover]:scale-[1.01] [&_img:hover]:shadow-lg
             [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
             [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
           dangerouslySetInnerHTML={{ __html: content }}
@@ -1271,72 +1271,74 @@ export default function HandbookView() {
           </div>
         </section>
       ) : (
-        <section className="space-y-4 w-full">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-3 shadow-xs">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={handleBackToList}
-              className="rounded-xl border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:border-[#C21A1A] hover:text-[#C21A1A] hover:bg-red-50/30 cursor-pointer"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Quay lại danh sách</span>
-            </Button>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
-                {activeDoc?.category}
-              </span>
-
-              {activeDoc && permissions.canUpdate && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => openEditEditor(activeDoc)}
-                  className="rounded-xl border-slate-200 text-[10px] font-bold text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 cursor-pointer"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                  <span>Chỉnh sửa</span>
-                </Button>
-              )}
-
-              {activeDoc && permissions.canDelete && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => {
-                    void handleDeleteDoc(activeDoc);
-                  }}
-                  className="rounded-xl border-slate-200 text-[10px] font-bold text-slate-700 hover:border-rose-350 hover:bg-rose-50/50 hover:text-rose-600 cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Xóa tài liệu</span>
-                </Button>
-              )}
-
-              {activeDoc && readDocs[activeDoc.id] && (
-                <Badge className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-600">
-                  <Check className="h-3.5 w-3.5 stroke-[3]" />
-                  <span>Đã đọc</span>
-                </Badge>
-              )}
-            </div>
-          </div>
-
+        <section className="space-y-4 w-full animate-in fade-in duration-200">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <Card className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-9 flex flex-col md:h-[calc(100vh-210px)] min-h-[550px] gap-0">
-              <h2 className="mb-4 border-b border-slate-100 pb-3.5 text-sm font-extrabold uppercase tracking-wider text-slate-900 sm:text-base">
-                {activeDoc?.title}
-              </h2>
+            <Card className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm lg:col-span-9 flex flex-col md:h-[calc(100vh-140px)] min-h-[400px] gap-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5 mb-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    size="icon"
+                    onClick={handleBackToList}
+                    className="h-8 w-8 rounded-lg border-slate-200 bg-white text-slate-500 hover:border-[#C21A1A] hover:text-[#C21A1A] hover:bg-red-50/30 cursor-pointer shrink-0 transition-colors"
+                    title="Quay lại danh sách"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 sm:text-base truncate">
+                    {activeDoc?.title}
+                  </h2>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-slate-500 select-none">
+                    {activeDoc?.category}
+                  </span>
+
+                  {activeDoc && permissions.canUpdate && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={() => openEditEditor(activeDoc)}
+                      className="h-8 w-8 rounded-lg border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 cursor-pointer transition-colors"
+                      title="Chỉnh sửa tài liệu"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+
+                  {activeDoc && permissions.canDelete && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={() => {
+                        void handleDeleteDoc(activeDoc);
+                      }}
+                      className="h-8 w-8 rounded-lg border-slate-200 text-slate-500 hover:border-rose-350 hover:bg-rose-50/50 hover:text-rose-600 cursor-pointer transition-colors"
+                      title="Xóa tài liệu"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+
+                  {activeDoc && readDocs[activeDoc.id] && (
+                    <Badge className="inline-flex items-center gap-1 rounded-lg border border-emerald-205 bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-600 select-none">
+                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                      <span>Đã đọc</span>
+                    </Badge>
+                  )}
+                </div>
+              </div>
 
               <ScrollArea className="flex-1 pr-3">
                 <div className="space-y-3 pb-10 text-slate-700 select-text leading-relaxed">{renderedActiveContent}</div>
               </ScrollArea>
             </Card>
 
-            <Card className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-3 md:h-[calc(100vh-210px)] min-h-[550px] gap-0">
+            <Card className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm lg:col-span-3 md:h-[calc(100vh-140px)] min-h-[400px] gap-0">
               <CardHeader className="p-0 mb-4">
                 <div className="flex w-full items-center gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 p-3">
                   <span className="rounded-lg bg-[#C21A1A] p-1.5 text-white">
