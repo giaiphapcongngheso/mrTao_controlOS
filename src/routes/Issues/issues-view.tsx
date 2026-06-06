@@ -451,7 +451,7 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Tên phiếu',
         size: 200,
         cell: ({ row }) => (
-          <div id={`issue-card-${row.original.id}`} className="font-extrabold text-slate-900 text-left text-sm leading-snug break-words">
+          <div id={`issue-card-${row.original.id}`} className="font-normal text-slate-800 text-left text-sm leading-snug break-words">
             {row.original.title}
           </div>
         ),
@@ -476,10 +476,10 @@ const IssuesView = React.memo(function IssuesView({
           const cleanText = desc ? desc.replace(/<\/?[^>]+(>|$)/g, "") : '';
           const isImg = desc && desc.includes('<img');
           return (
-            <div className="text-slate-650 font-medium text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
+            <div className="text-slate-500 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
               {cleanText || <span className="text-slate-350 italic">Không có mô tả...</span>}
               {isImg && (
-                <span className="inline-flex items-center gap-1 ml-1 text-sm font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
+                <span className="inline-flex items-center gap-1 ml-1 text-sm font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
                   🖼️ Ảnh
                 </span>
               )}
@@ -503,7 +503,7 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Bên liên quan',
         size: 150,
         cell: ({ row }) => (
-          <div className="text-slate-700 font-bold text-sm truncate text-left">
+          <div className="text-slate-600 font-normal text-sm truncate text-left">
             {row.original.actor || 'Hệ thống ca trực'}
           </div>
         ),
@@ -524,7 +524,7 @@ const IssuesView = React.memo(function IssuesView({
         header: 'Quy trình',
         size: 150,
         cell: ({ row }) => (
-          <div className="text-slate-700 font-bold text-sm truncate text-left">
+          <div className="text-slate-600 font-normal text-sm truncate text-left">
             {row.original.process || 'Quy trình vận hành'}
           </div>
         ),
@@ -548,10 +548,10 @@ const IssuesView = React.memo(function IssuesView({
           const assignee = row.original.assignee;
           return (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-medium text-slate-500 border border-slate-200/50 uppercase shadow-3xs shrink-0">
                 {assignee?.charAt(0) || 'U'}
               </div>
-              <span className="text-slate-700 font-bold truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
+              <span className="text-slate-600 font-normal truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
             </div>
           );
         },
@@ -574,12 +574,12 @@ const IssuesView = React.memo(function IssuesView({
         cell: ({ row }) => {
           const issue = row.original;
           return (
-            <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
+            <div className="flex items-center gap-2 text-slate-500 font-normal text-sm">
               <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-2 py-0.5 rounded-md shrink-0">
                 {issue.occurrence || 1} lần
               </span>
               <span className="text-slate-300 font-normal">|</span>
-              <span className="text-slate-500 font-medium text-sm shrink-0">{issue.date}</span>
+              <span className="text-slate-500 font-normal text-sm shrink-0">{issue.date}</span>
             </div>
           );
         },
@@ -708,7 +708,7 @@ const IssuesView = React.memo(function IssuesView({
                   size="sm"
                   type="button"
                   variant="outline"
-                  className="h-7 text-sm px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  className="h-7 text-sm px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                   onClick={() => handleEditIssue(issue)}
                 >
                   <Pencil className="w-3 h-3 text-slate-500" />
@@ -720,7 +720,7 @@ const IssuesView = React.memo(function IssuesView({
                   size="sm"
                   type="button"
                   variant="ghost"
-                  className="h-7 text-sm px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  className="h-7 text-sm px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                   onClick={() => {
                     if (window.confirm(`Bạn có chắc chắn muốn xóa phiếu "${issue.title}"?`)) {
                       onDeleteIssue(issue.id);
