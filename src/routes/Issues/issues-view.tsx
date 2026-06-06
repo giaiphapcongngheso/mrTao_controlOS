@@ -763,7 +763,7 @@ const IssuesView = React.memo(function IssuesView({
   ]);
 
   return (
-    <div className="space-y-6 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-auto md:overflow-visible md:pb-0 md:pr-0">
+    <div className="space-y-6 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-auto md:pb-0 md:pr-0 min-w-0 w-full overflow-x-hidden">
       <IssuesHeader canCreate={permissions.canCreate} onOpenAddModal={handleOpenAddModal} />
 
       {errorMessage && (

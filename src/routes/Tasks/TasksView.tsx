@@ -598,7 +598,7 @@ export default function TasksView({
   }, []);
 
   return (
-    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 md:pr-1 font-sans text-sm text-slate-650">
+    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 md:pr-1 font-sans text-sm text-slate-650 min-w-0 w-full overflow-x-hidden">
 
       {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
       {toastMessage && (

@@ -187,7 +187,7 @@ function AppFrameLayout({
           </div>
         )}
 
-        <main className="flex-1 flex flex-col gap-0 min-h-0">
+        <main className="flex-1 flex flex-col gap-0 min-h-0 min-w-0">
           <header className="hidden md:flex items-center justify-between h-14 px-6 bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
             <div className="flex items-center gap-2.5 select-none">
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">MR.TÁO OS</span>
@@ -197,7 +197,7 @@ function AppFrameLayout({
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5 font-sans text-sm text-slate-650">
+          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 overflow-hidden">
             {children}
           </div>
         </main>
