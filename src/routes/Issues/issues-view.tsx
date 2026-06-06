@@ -344,7 +344,10 @@ const IssuesView = React.memo(function IssuesView({
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pb-12">
+      <div 
+        className="grid gap-2 pb-12"
+        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 420px))' }}
+      >
         {paginatedIssues.map((issue) => (
           <IssueCard
             key={issue.id}

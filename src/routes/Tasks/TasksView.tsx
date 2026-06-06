@@ -496,7 +496,10 @@ export default function TasksView({
 
       {/* 5. PRISTINE CARD STREAM OF TASKS / RECOVERED FROM CUSTOMTABLE */}
       <div className="bg-slate-50/30 rounded-2xl border border-slate-200/50 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+        <div 
+          className="grid gap-2"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 420px))' }}
+        >
           {isLoading && filteredTasks.length === 0 ? (
             <div className="col-span-full text-center py-12 text-slate-400 font-semibold text-xs">
               Đang tải danh sách công việc...
