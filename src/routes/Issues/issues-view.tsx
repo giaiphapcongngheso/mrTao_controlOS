@@ -1,5 +1,20 @@
 import React, { useState, useMemo, useCallback, useDeferredValue, useRef, useEffect } from 'react';
-import { AlertTriangle, Check, FileCheck, Plus, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  FileCheck,
+  Plus,
+  X,
+  Pencil,
+  Trash2,
+  AlertOctagon,
+  HelpCircle,
+  Clock,
+  CheckCircle,
+  BookOpen,
+  ChevronDown,
+} from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
 import type {
   SOPIssue,
   SOPIssueCategory,
@@ -15,7 +30,14 @@ import {
   ScrollArea,
   Button,
   PaginationBar,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@shared/ui';
+import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { useAppStore } from '../../stores/app-store';
 
@@ -66,6 +88,8 @@ const IssuesView = React.memo(function IssuesView({
   const pendingNotificationFocusIdRef = useRef<string | null>(null);
   const notificationFocus = useAppStore((state) => state.notificationFocus);
   const setNotificationFocus = useAppStore((state) => state.setNotificationFocus);
+
+
 
   // Use React 19 deferred value for built-in performant debouncing
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -327,56 +351,415 @@ const IssuesView = React.memo(function IssuesView({
     setCurrentPage(1);
   }, []);
 
-  const renderedCardList = useMemo(() => {
-    if (filteredIssues.length === 0) {
-      return (
-        <div className="bg-white rounded-2xl p-16 text-center border border-slate-200/80 col-span-full">
-          <FileCheck className="w-14 h-14 text-slate-200 mx-auto mb-3" />
-          <h4 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">
-            Không tìm thấy tài liệu phù hợp
-          </h4>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
-            Thử tìm kiếm với nội dung khác, hoặc chọn "Tất cả loại phiếu" bằng bộ lọc ở phía
-            bên trên để xem dữ liệu đầy đủ.
-          </p>
-        </div>
-      );
-    }
+  const columns = useMemo<ColumnDef<SOPIssue>[]>(
+    () => [
+      {
+        accessorKey: 'category',
+        header: 'Phân loại',
+        size: 130,
+        cell: ({ row }) => {
+          const category = row.original.category;
+          const badgeStyles = {
+            exception: 'bg-amber-50 border-amber-100 text-amber-700',
+            risk: 'bg-purple-50 border-purple-100 text-purple-700',
+            improvement: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+            sop_error: 'bg-rose-50 border-rose-100 text-[#C21A1A]',
+          };
+          const badgeTexts = {
+            exception: '📋 Ngoại lệ',
+            risk: '🛡️ Rủi ro',
+            improvement: '📈 Cải tiến',
+            sop_error: '⚠️ Lỗi SOP',
+          };
+          return (
+            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", badgeStyles[category] || badgeStyles.sop_error)}>
+              {badgeTexts[category] || '⚠️ Lỗi SOP'}
+            </span>
+          );
+        },
+        meta: {
+          filterElement: (column) => {
+            const val = (column.getFilterValue() as string) ?? 'all';
+            return (
+              <select
+                value={val}
+                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
+                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              >
+                <option value="all">Tất cả</option>
+                <option value="sop_error">Lỗi SOP</option>
+                <option value="exception">Ngoại lệ</option>
+                <option value="risk">Rủi ro</option>
+                <option value="improvement">Cải tiến</option>
+              </select>
+            );
+          },
+        },
+      },
+      {
+        accessorKey: 'severity',
+        header: 'Độ nghiêm trọng',
+        size: 130,
+        cell: ({ row }) => {
+          const sev = row.original.severity;
+          switch (sev) {
+            case 'High':
+              return (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2 py-0.5 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  Cao
+                </span>
+              );
+            case 'Medium':
+              return (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2 py-0.5 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-550" />
+                  Trung bình
+                </span>
+              );
+            case 'Low':
+              return (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2 py-0.5 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  Thấp
+                </span>
+              );
+            default:
+              return null;
+          }
+        },
+        meta: {
+          filterElement: (column) => {
+            const val = (column.getFilterValue() as string) ?? 'all';
+            return (
+              <select
+                value={val}
+                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
+                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              >
+                <option value="all">Tất cả</option>
+                <option value="High">Cao</option>
+                <option value="Medium">Trung bình</option>
+                <option value="Low">Thấp</option>
+              </select>
+            );
+          },
+        },
+      },
+      {
+        accessorKey: 'title',
+        header: 'Tên phiếu',
+        size: 200,
+        cell: ({ row }) => (
+          <div id={`issue-card-${row.original.id}`} className="font-extrabold text-slate-900 text-left text-xs leading-snug break-words">
+            {row.original.title}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc tên..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'description',
+        header: 'Diễn biến / Mô tả',
+        size: 240,
+        cell: ({ row }) => {
+          const desc = row.original.description;
+          const cleanText = desc ? desc.replace(/<\/?[^>]+(>|$)/g, "") : '';
+          const isImg = desc && desc.includes('<img');
+          return (
+            <div className="text-slate-650 font-medium text-xs text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
+              {cleanText || <span className="text-slate-350 italic">Không có mô tả...</span>}
+              {isImg && (
+                <span className="inline-flex items-center gap-1 ml-1 text-[9px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
+                  🖼️ Ảnh
+                </span>
+              )}
+            </div>
+          );
+        },
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc mô tả..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'actor',
+        header: 'Bên liên quan',
+        size: 150,
+        cell: ({ row }) => (
+          <div className="text-slate-700 font-bold text-xs truncate text-left">
+            {row.original.actor || 'Hệ thống ca trực'}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc bên liên quan..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'process',
+        header: 'Quy trình',
+        size: 150,
+        cell: ({ row }) => (
+          <div className="text-slate-700 font-bold text-xs truncate text-left">
+            {row.original.process || 'Vận hành chung'}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc quy trình..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'assignee',
+        header: 'Người xử lý',
+        size: 160,
+        cell: ({ row }) => {
+          const assignee = row.original.assignee;
+          return (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+                {assignee?.charAt(0) || 'U'}
+              </div>
+              <span className="text-slate-700 font-bold truncate text-xs">{assignee || 'Quản lý cửa hàng'}</span>
+            </div>
+          );
+        },
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc người xử lý..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'date',
+        header: 'Lần xảy ra / Ngày',
+        size: 160,
+        cell: ({ row }) => {
+          const issue = row.original;
+          return (
+            <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded shrink-0">
+                {issue.occurrence || 1} lần
+              </span>
+              <span className="text-slate-300 font-normal">|</span>
+              <span className="text-slate-500 font-medium text-[11px] shrink-0">{issue.date}</span>
+            </div>
+          );
+        },
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc ngày..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'status',
+        header: 'Trạng thái',
+        size: 160,
+        cell: ({ row }) => {
+          const issue = row.original;
+          const canUpdate = permissions.canUpdate;
+          
+          const badgeStyles = {
+            'Xử lý ngay': 'text-[#C21A1A] border-red-200 hover:bg-red-50/60',
+            'Chờ duyệt': 'text-amber-600 border-amber-200 hover:bg-amber-50/50',
+            'Đang triển khai': 'text-emerald-600 border-emerald-200 hover:bg-emerald-50/40',
+            'Đã xử lý': 'text-slate-650 border-slate-200 hover:bg-slate-50',
+          };
+          const badgeStyle = badgeStyles[issue.status] || badgeStyles['Chờ duyệt'];
 
+          const statusConfigs = [
+            { status: 'Xử lý ngay', label: 'Xử lý ngay', colorClass: 'text-[#C21A1A]', icon: AlertOctagon },
+            { status: 'Chờ duyệt', label: 'Chờ duyệt', colorClass: 'text-amber-600', icon: HelpCircle },
+            { status: 'Đang triển khai', label: 'Đang triển khai', colorClass: 'text-emerald-600', icon: Clock },
+            { status: 'Đã xử lý', label: 'Đã xử lý', colorClass: 'text-slate-600', icon: CheckCircle },
+          ] as const;
+
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={!canUpdate}
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "font-bold uppercase tracking-wider rounded-lg border shadow-none px-2 h-7 text-[10px] flex items-center gap-1.5",
+                      canUpdate 
+                        ? badgeStyle 
+                        : 'opacity-50 border border-slate-200 text-slate-400 bg-slate-50'
+                    )}
+                  >
+                    <span>{issue.status}</span>
+                    <ChevronDown className="size-2.5 opacity-80" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200/80 rounded-xl shadow-lg p-1.5 z-40 text-slate-800">
+                  <DropdownMenuLabel className="px-2.5 py-1.5 font-bold text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-50 mb-1">
+                    Cập nhật xử lý
+                  </DropdownMenuLabel>
+                  {statusConfigs.map((cfg) => {
+                    const Icon = cfg.icon;
+                    return (
+                      <DropdownMenuItem
+                        key={cfg.status}
+                        onClick={() => onUpdateIssueStatus(issue.id, cfg.status)}
+                        className={cn(
+                          "px-2.5 py-1.5 rounded-md flex items-center justify-between font-bold text-xs cursor-pointer hover:bg-slate-50",
+                          cfg.colorClass
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Icon className="size-3.5" />
+                          <span>{cfg.label}</span>
+                        </div>
+                        {issue.status === cfg.status && <Check className="size-3.5 stroke-[2.5]" />}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator className="bg-slate-100 my-1" />
+                  <DropdownMenuItem
+                    onClick={() => onConfirmIssueRead(issue.id)}
+                    className="px-2.5 py-1.5 hover:bg-emerald-50 rounded-md flex items-center justify-between text-emerald-600 font-bold text-xs cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="size-3.5" />
+                      <span>Xác nhận đã đọc</span>
+                    </div>
+                    {issue.readConfirmedAt && <Check className="size-3.5 text-emerald-600 stroke-[2.5]" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+        meta: {
+          filterElement: (column) => {
+            const val = (column.getFilterValue() as string) ?? 'all';
+            return (
+              <select
+                value={val}
+                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
+                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              >
+                <option value="all">Tất cả</option>
+                <option value="Xử lý ngay">Xử lý ngay</option>
+                <option value="Chờ duyệt">Chờ duyệt</option>
+                <option value="Đang triển khai">Đang triển khai</option>
+                <option value="Đã xử lý">Đã xử lý</option>
+              </select>
+            );
+          },
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Thao tác',
+        size: 130,
+        cell: ({ row }) => {
+          const issue = row.original;
+          return (
+            <div className="flex items-center gap-1.5 justify-center" onClick={(e) => e.stopPropagation()}>
+              {permissions.canUpdate && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  onClick={() => handleEditIssue(issue)}
+                >
+                  <Pencil className="w-3 h-3 text-slate-500" />
+                  Sửa
+                </Button>
+              )}
+              {permissions.canDelete && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  onClick={() => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa phiếu "${issue.title}"?`)) {
+                      onDeleteIssue(issue.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Xóa
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [permissions, onUpdateIssueStatus, onConfirmIssueRead, handleEditIssue, onDeleteIssue]
+  );
+
+  const renderedCardList = useMemo(() => {
     return (
-      <div 
-        className="grid gap-2 pb-12"
-        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 420px))' }}
-      >
-        {paginatedIssues.map((issue) => (
-          <IssueCard
-            key={issue.id}
-            issue={issue}
-            canUpdate={permissions.canUpdate}
-            canDelete={permissions.canDelete}
-            onEdit={handleEditIssue}
-            onDelete={onDeleteIssue}
-            onUpdateStatus={onUpdateIssueStatus}
-            onConfirmRead={onConfirmIssueRead}
-            isDropdownOpen={dropdownId === issue.id}
-            onToggleDropdown={handleToggleDropdown}
-            isHighlighted={highlightedIssueId === issue.id}
-          />
-        ))}
-      </div>
+      <CustomTable<SOPIssue>
+        columns={columns}
+        data={paginatedIssues}
+        loading={false}
+        enableFiltering={true}
+        showFilterRow={true}
+        enablePagination={false}
+        activeRowId={highlightedIssueId || undefined}
+        getRowId={(row) => row.id}
+        emptyMessage="Không tìm thấy tài liệu phù hợp. Thử tìm kiếm với nội dung khác, hoặc chọn 'Tất cả loại phiếu' bằng bộ lọc ở phía bên trên để xem dữ liệu đầy đủ."
+        onRowClick={(row) => handleEditIssue(row.original)}
+        className="bg-white rounded-xl shadow-2xs border border-slate-100"
+      />
     );
   }, [
-    filteredIssues.length,
+    columns,
     paginatedIssues,
-    permissions.canUpdate,
-    permissions.canDelete,
-    handleEditIssue,
-    onDeleteIssue,
-    onUpdateIssueStatus,
-    onConfirmIssueRead,
-    dropdownId,
-    handleToggleDropdown,
     highlightedIssueId,
+    handleEditIssue,
   ]);
 
   return (
