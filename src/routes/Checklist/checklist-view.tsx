@@ -368,6 +368,7 @@ export default function ChecklistView({
         setSelectedRoleCode={setDialogRoleCode}
         roleOptions={roleOptions}
         showHistory={isOwner}
+        showRoleSelect={isOwner}
       />
 
       <ChecklistConfigBar

@@ -18,6 +18,7 @@ export interface UserSession {
 export const SESSION_STORAGE_KEY = 'mrt_user_session';
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const SESSION_RENEW_BUFFER_MS = 60 * 1000;
+
 function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, unknown>): string {
   const explicitRoleCode =
     (typeof user.roleCode === 'string' ? user.roleCode : undefined) ||
@@ -44,6 +45,7 @@ export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null
 
   const roleMap: Record<string, string> = {
     CHU_CUA_HANG: 'Chủ cửa hàng',
+    QUAN_LY_CUA_HANG: 'Quản lý cửa hàng',
     QUAN_LY: 'Quản lý showroom',
     SALES: 'Nhân viên bán lẻ',
     KHO: 'Kỹ thuật viên',
@@ -146,8 +148,6 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     const currentExpiry = currentUser.sessionExpiresAt ?? 0;
     const newExpiry = now + SESSION_TTL_MS;
 
-    // Chỉ cập nhật nếu thời gian hết hạn mới kéo dài hơn thời gian cũ ít nhất 1 phút
-    // Điều này tránh việc gọi ghi localStorage liên tục khi di chuột/click liên tiếp
     if (currentExpiry <= now) {
       set({ currentUser: null, notificationFocus: null });
       localStorage.removeItem(SESSION_STORAGE_KEY);

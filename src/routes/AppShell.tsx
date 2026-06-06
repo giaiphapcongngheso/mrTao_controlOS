@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { safeLazy as lazy } from '../shared/lib/lazy';
 import {
   AlertTriangle,
   Award,

@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { safeLazy as lazy } from '../shared/lib/lazy';
 import { Navigate, createRootRoute, createRoute, createRouter, Outlet, createHashHistory } from '@tanstack/react-router';
 import AppShell from './AppShell';
 

@@ -1107,7 +1107,8 @@ export function CustomTable<TData>({
   );
 
   const stickyOffsets = React.useMemo(() => {
-    const headers = table.getHeaderGroups()[0]?.headers;
+    // Safely access header groups to prevent crashes when uninitialized
+    const headers = table.getHeaderGroups()?.[0]?.headers;
     if (!headers) return {};
     const offsets: Record<string, number> = {};
     let leftAcc = 0;
@@ -1181,7 +1182,8 @@ export function CustomTable<TData>({
             }}
           >
             <colgroup>
-              {table.getHeaderGroups()[0]?.headers.map((header) => {
+              {/* Safely map headers with fallback array to prevent crashes */}
+              {(table.getHeaderGroups()?.[0]?.headers || []).map((header) => {
                 const columnId = header.column.id;
                 const isSelectOrExpander = columnId === 'select' || columnId === 'expander';
                 const width = isSelectOrExpander

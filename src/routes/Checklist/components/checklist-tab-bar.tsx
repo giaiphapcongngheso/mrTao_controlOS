@@ -12,6 +12,7 @@ interface ChecklistTabBarProps {
   setSelectedRoleCode: (role: string) => void;
   roleOptions: Array<{ code: string; name: string }>;
   showHistory?: boolean;
+  showRoleSelect?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   setSelectedRoleCode,
   roleOptions,
   showHistory = false,
+  showRoleSelect = false,
 }: ChecklistTabBarProps) {
   const handleTabChange = React.useCallback((value: string) => {
     setSubTab(value as 'today' | 'process' | 'history');
@@ -72,7 +74,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
           </TabsList>
         </Tabs>
         {/* Role Select */}
-        {(subTab === 'process' || subTab === 'today' || subTab === 'history') && (
+        {showRoleSelect && (subTab === 'process' || subTab === 'today' || subTab === 'history') && (
           <div className="w-full sm:w-52 shrink-0">
             <CustomSelect
               value={selectedRoleCode}

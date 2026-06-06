@@ -6,6 +6,11 @@ import {
   ensureFirebasePasswordUser,
   FirebaseIdentityToolkitError,
 } from '../../services/firebase-auth-service';
+import {
+  isStaffAuthGasConfigured,
+  StaffAuthGasError,
+  syncStaffAuthViaGas,
+} from '../../services/staff-auth-gas-service';
 import { systemLogService } from '../../services/system-log-service';
 import type { RolePermissionRow, StaffMember, StaffRole } from '../../types/staff.types';
 import { DEFAULT_AVATAR } from '../../constants';
@@ -438,11 +443,38 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       const storeId = staffList[0]?.storeId ?? DEFAULT_STORE_ID;
       const usernameNormalized = normalizeUsername(username);
       const authEmail = (staffForm.email.trim() || `${usernameNormalized}@mrtaocoop.com`).toLowerCase();
+      const currentAuthEmail = (
+        existingStaff?.authEmail ||
+        existingStaff?.email ||
+        `${normalizeUsername(existingStaff?.username || username)}@mrtaocoop.com`
+      ).toLowerCase();
+      const shouldSyncExistingAuth =
+        isEditMode &&
+        Boolean(existingStaff) &&
+        (Boolean(password) || authEmail !== currentAuthEmail);
 
       let firebaseUid = existingStaff?.firebaseUid || '';
 
-      if (password) {
+      if (!isEditMode && password) {
         const authUser = await ensureFirebasePasswordUser(authEmail, password);
+        firebaseUid = authUser.uid;
+      }
+
+      if (shouldSyncExistingAuth) {
+        if (!isStaffAuthGasConfigured()) {
+          toastError(
+            'Chưa cấu hình Apps Script cho cập nhật email hoặc mật khẩu nhân sự. Vui lòng kiểm tra VITE_GAS_STAFF_AUTH_URL.',
+          );
+          return;
+        }
+
+        const authUser = await syncStaffAuthViaGas({
+          authEmail,
+          currentAuthEmail,
+          firebaseUid: existingStaff?.firebaseUid,
+          password: password || undefined,
+          allowCreate: Boolean(password),
+        });
         firebaseUid = authUser.uid;
       }
 
@@ -484,6 +516,11 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       setShowAddStaffForm(false);
     } catch (error) {
       console.error('Failed to create/edit staff:', error);
+
+      if (error instanceof StaffAuthGasError) {
+        toastError(error.message);
+        return;
+      }
 
       if (error instanceof FirebaseIdentityToolkitError) {
         if (error.code.includes('WEAK_PASSWORD')) {

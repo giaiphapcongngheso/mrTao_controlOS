@@ -1,5 +1,5 @@
 import { cn } from '../../lib/utils';
-import { ITreeItem } from '@/types/common/tree.type';
+import { ITreeItem } from '../common/tree.type';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -203,7 +203,7 @@ export function TreeTableVirtual<TData extends ITreeItem<TData>>({
       return headerContent;
     }
 
-    const btnList = [];
+    const btnList: React.ReactNode[] = [];
 
     if (enableSorting && canSort) {
       btnList.push(
@@ -328,9 +328,8 @@ export function TreeTableVirtual<TData extends ITreeItem<TData>>({
             className="bg-primary text-primary-foreground sticky top-0 z-20"
             style={{
               display: 'grid',
-              gridTemplateColumns: table
-                .getHeaderGroups()[0]
-                ?.headers.map((h) => `${h.getSize()}px`)
+              gridTemplateColumns: (table.getHeaderGroups()?.[0]?.headers || [])
+                .map((h) => `${h.getSize()}px`)
                 .join(' '),
             }}
           >
@@ -357,19 +356,18 @@ export function TreeTableVirtual<TData extends ITreeItem<TData>>({
               className="bg-[#eaf5ff] dark:bg-primary/80 sticky top-10 z-10"
               style={{
                 display: 'grid',
-                gridTemplateColumns: table
-                  .getHeaderGroups()[0]
-                  ?.headers.map((h) => `${h.getSize()}px`)
+                gridTemplateColumns: (table.getHeaderGroups()?.[0]?.headers || [])
+                  .map((h) => `${h.getSize()}px`)
                   .join(' '),
               }}
             >
-              {table.getHeaderGroups()[0]?.headers.map((header, index) => (
+              {(table.getHeaderGroups()?.[0]?.headers || []).map((header, index) => (
                 <div
                   key={header.id}
                   className="px-2 py-1 border-b border-r"
                   style={{ width: header.getSize() }}
                 >
-                  {index === table.getHeaderGroups()[0].headers.length - 1 ? (
+                  {index === (table.getHeaderGroups()?.[0]?.headers?.length ?? 0) - 1 ? (
                     <Button onClick={() => setFilterRowVisible(false)} variant="outline" size="sm">
                       <ChevronUp />
                       Ẩn Filter

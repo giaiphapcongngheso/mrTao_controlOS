@@ -63,6 +63,7 @@ export function getModuleMeta(mKey: string): ModuleMetadata {
 // ---------------------------------------------------------------------------
 const ROLE_LABEL_MAP: Record<string, string> = {
   CHU_CUA_HANG: 'Chủ cửa hàng',
+  QUAN_LY_CUA_HANG: 'Quản lý cửa hàng',
   QUAN_LY: 'Quản lý showroom',
   SALES: 'Nhân viên bán lẻ',
   KHO: 'Kỹ thuật viên',
