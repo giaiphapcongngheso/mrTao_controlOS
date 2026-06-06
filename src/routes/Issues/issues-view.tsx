@@ -356,7 +356,7 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'category',
         header: 'Phân loại',
-        size: 130,
+        size: 150,
         cell: ({ row }) => {
           const category = row.original.category;
           const badgeStyles = {
@@ -399,7 +399,7 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'severity',
         header: 'Độ nghiêm trọng',
-        size: 130,
+        size: 150,
         cell: ({ row }) => {
           const sev = row.original.severity;
           switch (sev) {
@@ -449,9 +449,9 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'title',
         header: 'Tên phiếu',
-        size: 200,
+        size: 250,
         cell: ({ row }) => (
-          <div id={`issue-card-${row.original.id}`} className="font-normal text-slate-900 text-left text-sm leading-snug break-words">
+          <div id={`issue-card-${row.original.id}`} className="font-medium text-slate-950 text-left text-sm leading-snug break-words">
             {row.original.title}
           </div>
         ),
@@ -470,13 +470,13 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'description',
         header: 'Diễn biến / Mô tả',
-        size: 240,
+        size: 285,
         cell: ({ row }) => {
           const desc = row.original.description;
           const cleanText = desc ? desc.replace(/<\/?[^>]+(>|$)/g, "") : '';
           const isImg = desc && desc.includes('<img');
           return (
-            <div className="text-slate-700 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
+            <div className="text-slate-800 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
               {cleanText || <span className="text-slate-400 italic">Không có mô tả...</span>}
               {isImg && (
                 <span className="inline-flex items-center gap-1 ml-1 text-sm font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
@@ -501,9 +501,9 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'actor',
         header: 'Bên liên quan',
-        size: 150,
+        size: 180,
         cell: ({ row }) => (
-          <div className="text-slate-800 font-normal text-sm truncate text-left">
+          <div className="text-slate-900 font-normal text-sm truncate text-left">
             {row.original.actor || 'Hệ thống ca trực'}
           </div>
         ),
@@ -522,9 +522,9 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'process',
         header: 'Quy trình',
-        size: 150,
+        size: 180,
         cell: ({ row }) => (
-          <div className="text-slate-800 font-normal text-sm truncate text-left">
+          <div className="text-slate-900 font-normal text-sm truncate text-left">
             {row.original.process || 'Quy trình vận hành'}
           </div>
         ),
@@ -543,7 +543,7 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'assignee',
         header: 'Người xử lý',
-        size: 160,
+        size: 190,
         cell: ({ row }) => {
           const assignee = row.original.assignee;
           return (
@@ -551,7 +551,7 @@ const IssuesView = React.memo(function IssuesView({
               <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-medium text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
                 {assignee?.charAt(0) || 'U'}
               </div>
-              <span className="text-slate-800 font-normal truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
+              <span className="text-slate-900 font-normal truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
             </div>
           );
         },
@@ -570,12 +570,12 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'date',
         header: 'Lần xảy ra / Ngày',
-        size: 120,
+        size: 150,
         cell: ({ row }) => {
           const issue = row.original;
           return (
             <div className="flex flex-col gap-1.5 text-left py-0.5">
-              <span className="text-slate-750 font-normal text-sm shrink-0 leading-none">{issue.date}</span>
+              <span className="text-slate-900 font-normal text-sm shrink-0 leading-none">{issue.date}</span>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded-md shrink-0 w-fit leading-none">
                 {issue.occurrence || 1} lần
               </span>
@@ -597,7 +597,7 @@ const IssuesView = React.memo(function IssuesView({
       {
         accessorKey: 'status',
         header: 'Trạng thái',
-        size: 160,
+        size: 180,
         cell: ({ row }) => {
           const issue = row.original;
           const canUpdate = permissions.canUpdate;
@@ -626,7 +626,7 @@ const IssuesView = React.memo(function IssuesView({
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "font-semibold rounded-md border shadow-none px-2.5 py-0.5 h-7 text-sm flex items-center gap-1.5 w-fit whitespace-nowrap transition-all",
+                       "font-semibold rounded-md border shadow-none px-2.5 py-0.5 h-7 text-sm flex items-center gap-1.5 w-fit whitespace-nowrap transition-all",
                       canUpdate 
                         ? badgeStyle 
                         : 'opacity-50 border border-slate-200 text-slate-400 bg-slate-50'
@@ -697,7 +697,7 @@ const IssuesView = React.memo(function IssuesView({
       {
         id: 'actions',
         header: 'Thao tác',
-        size: 130,
+        size: 150,
         cell: ({ row }) => {
           const issue = row.original;
           return (
@@ -722,7 +722,7 @@ const IssuesView = React.memo(function IssuesView({
                   className="h-7 text-sm px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                   onClick={() => {
                     if (window.confirm(`Bạn có chắc chắn muốn xóa phiếu "${issue.title}"?`)) {
-                      onDeleteIssue(issue.id);
+                       onDeleteIssue(issue.id);
                     }
                   }}
                 >
@@ -747,7 +747,7 @@ const IssuesView = React.memo(function IssuesView({
         enableFiltering={true}
         showFilterRow={true}
         enablePagination={false}
-        tableMinWidth={1200}
+        tableMinWidth={1650}
         activeRowId={highlightedIssueId || undefined}
         getRowId={(row) => row.id}
         emptyMessage="Không tìm thấy tài liệu phù hợp. Thử tìm kiếm với nội dung khác, hoặc chọn 'Tất cả loại phiếu' bằng bộ lọc ở phía bên trên để xem dữ liệu đầy đủ."

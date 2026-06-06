@@ -85,7 +85,7 @@ function TableHead({ className, sticky, tooltip, children, ...props }: TableHead
     <th
       data-slot="table-head"
       className={cn(
-        'relative bg-primary text-primary-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md',
+        'relative bg-primary text-primary-foreground h-11 px-4 text-left align-middle font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md',
         className,
         {
           // darker, more neutral shadow so it stands out from table shadow
@@ -131,7 +131,7 @@ function TableFilterCell({ className, sticky, tooltip, children, ...props }: Tab
   return (
     <th
       data-slot="table-filter-cell"
-      className={cn('px-2 justify-start py-1 [&:has([role=checkbox])]:pr-0', className, {
+      className={cn('px-4 justify-start py-2 [&:has([role=checkbox])]:pr-0', className, {
         'sticky left-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[4px_0_8px_rgba(0,0,0,0.28)]':
           sticky === 'left',
         'sticky right-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[-4px_0_8px_rgba(0,0,0,0.28)]':
@@ -162,7 +162,7 @@ function TableCell({ className, sticky, tooltip, children, ...props }: TableCell
     <td
       data-slot="table-cell"
       className={cn(
-        'bg-[#fff] px-2 py-[6px] align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'bg-[#fff] px-4 py-2.5 align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
         className,
         {
           'sticky left-0 z-30 bg-muted shadow-[4px_0_8px_rgba(0,0,0,0.28)]': sticky === 'left',
