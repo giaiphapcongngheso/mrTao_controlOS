@@ -306,7 +306,6 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
           columns={columns}
           data={filteredLogs}
           enablePagination={true}
-          enableInternalVerticalScroll={false}
           pageSizeOptions={[10, 20, 50, 100]}
           enableSorting={false}
           enableFiltering={false}
@@ -315,7 +314,7 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
           showFilterRow={false}
           emptyMessage="Không có log phù hợp. Đổi bộ lọc hoặc thực hiện thêm thao tác để làm đầy lịch sử hệ thống."
           tableMinWidth={1150}
-          className="w-full min-w-0"
+          className="w-full min-w-0 h-[520px]"
         />
       </div>
 
