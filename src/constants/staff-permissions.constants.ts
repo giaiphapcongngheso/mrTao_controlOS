@@ -45,9 +45,9 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
   [MODULE_CODE.KPI]: { key: 'KPI', name: 'KPI', icon: '📈', desc: 'Xem thống kê doanh số cá nhân, bảng xếp hạng nhân viên, chấm điểm dịch vụ.' },
   [MODULE_CODE.LOI_SOP]: { key: 'LOI_SOP', name: 'Cải tiến', icon: '⚠️', desc: 'Ghi nhận lỗi quy trình, ngoại lệ, bất ngờ phát sinh hoặc kiểm tra ca trực.' },
   [MODULE_CODE.BAO_CAO]: { key: 'BAO_CAO', name: 'Báo cáo', icon: '📊', desc: 'Xuất thống kê doanh số showroom, ước lượng lãi lỗ kinh doanh.' },
-  [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay chuẩn', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
+  [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
   [MODULE_CODE.MARKETING]: { key: 'MARKETING', name: 'Marketing', icon: '📣', desc: 'Quản lý chiến dịch marketing, khuyến mãi, truyền thông thương hiệu.' },
-  [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Kho', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
+  [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Kho hàng', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
 };
 
 /** Fallback metadata for custom/unknown modules. */

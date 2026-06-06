@@ -19,7 +19,7 @@ const translations: TranslationDictionary = {
       kpi: 'KPI chỉ số',
       sop: 'Cải tiến',
       reports: 'Báo cáo ca',
-      handbook: 'Sổ tay SOP',
+      handbook: 'Sổ tay',
       staff: 'Nhân sự',
       notifications: 'Phê duyệt',
       logOut: 'Đăng xuất',
@@ -71,7 +71,7 @@ const translations: TranslationDictionary = {
       titleKPI: 'Chỉ số hiệu kỳ (KPI)',
       titleSOP: 'Cải tiến',
       titleReports: 'Báo cáo tổng kết ca',
-      titleHandbook: 'Sổ tay Vận hành chuẩn (SOP)',
+      titleHandbook: 'Sổ tay',
       titleStaff: 'Nhân sự',
       titleNotifications: 'Thông báo Phê duyệt'
     },

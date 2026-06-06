@@ -19,6 +19,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { TaskItem, TaskRequestType, TaskStatus } from '../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../types/staff.types';
 import type { UserSession } from '../../stores/app-store';
@@ -37,6 +38,7 @@ import {
   CardHeader,
   CardContent,
 } from '@shared/ui';
+import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
@@ -186,6 +188,233 @@ export default function TasksView({
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskItem | null>(null);
+
+  const renderDeadline = useCallback((deadline: string) => {
+    const parts = deadline.split(' ');
+    if (parts.length >= 2) {
+      const datePart = parts[0];
+      const timePart = parts.slice(1).join(' ');
+      return (
+        <div className="flex items-center gap-1.5 font-bold text-xs justify-start">
+          <span className="text-slate-700">{datePart}</span>
+          <span className="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+            <Clock className="w-3 h-3 text-slate-400" />
+            {timePart}
+          </span>
+        </div>
+      );
+    }
+    return <span className="text-slate-700 font-bold text-xs">{deadline}</span>;
+  }, []);
+
+  const columns = useMemo<ColumnDef<TaskItem>[]>(
+    () => [
+      {
+        accessorKey: 'code',
+        header: 'Mã công việc',
+        size: 155,
+        cell: ({ row }) => (
+          <div className="text-[11px] text-slate-500 font-mono font-bold tracking-wider text-left">
+            {generateTaskCode(row.original)}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'title',
+        header: 'Tên công việc',
+        size: 220,
+        cell: ({ row }) => (
+          <div className="font-extrabold text-slate-900 text-left text-xs leading-snug break-words">
+            {row.original.title}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc tên..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'notes',
+        header: 'Mô tả chi tiết',
+        size: 260,
+        cell: ({ row }) => (
+          <div className="text-slate-650 font-medium text-xs text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed">
+            {stripHtmlAndTruncate(row.original.notes, 150) || <span className="text-slate-300 italic">Không có mô tả...</span>}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc mô tả..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'priority',
+        header: 'Độ ưu tiên',
+        size: 110,
+        cell: ({ row }) => {
+          const priorityInfo = priorityMeta[row.original.priority] || priorityMeta.medium;
+          return (
+            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", priorityInfo.bg)}>
+              <span className="w-1 h-1 rounded-full bg-current"></span>
+              {priorityInfo.text}
+            </span>
+          );
+        },
+        meta: {
+          filterElement: (column) => {
+            const val = (column.getFilterValue() as string) ?? 'all';
+            return (
+              <select
+                value={val}
+                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
+                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              >
+                <option value="all">Tất cả</option>
+                <option value="high">Cao</option>
+                <option value="medium">Trung bình</option>
+                <option value="low">Thấp</option>
+              </select>
+            );
+          },
+        },
+      },
+      {
+        accessorKey: 'status',
+        header: 'Trạng thái',
+        size: 140,
+        cell: ({ row }) => {
+          const statusInfo = statusMeta[row.original.status] || statusMeta.not_started;
+          return (
+            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full border tracking-normal", statusInfo.bg)}>
+              {statusInfo.icon && (
+                <statusInfo.icon className={cn("w-2.5 h-2.5 shrink-0", statusInfo.iconColor)} />
+              )}
+              <span>{statusInfo.text}</span>
+            </span>
+          );
+        },
+        meta: {
+          filterElement: (column) => {
+            const val = (column.getFilterValue() as string) ?? 'all';
+            return (
+              <select
+                value={val}
+                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
+                className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              >
+                <option value="all">Tất cả</option>
+                <option value="not_started">Chưa làm</option>
+                <option value="in_progress">Đang làm</option>
+                <option value="waiting">Chờ duyệt</option>
+                <option value="completed">Hoàn thành</option>
+              </select>
+            );
+          },
+        },
+      },
+      {
+        accessorKey: 'assignee',
+        header: 'Người phụ trách',
+        size: 155,
+        cell: ({ row }) => {
+          const assigneeVal = row.original.assignee;
+          return (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+                {assigneeVal?.charAt(0) || 'U'}
+              </div>
+              <span className="text-slate-700 font-bold truncate text-xs">{assigneeVal || 'Chưa phân công'}</span>
+            </div>
+          );
+        },
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc người phụ trách..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'department',
+        header: 'Bộ phận',
+        size: 130,
+        cell: ({ row }) => (
+          <div className="text-slate-700 font-bold text-xs truncate text-left">
+            {row.original.department}
+          </div>
+        ),
+        meta: {
+          filterElement: (column) => (
+            <input
+              type="text"
+              placeholder="Lọc bộ phận..."
+              value={(column.getFilterValue() as string) ?? ''}
+              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+            />
+          ),
+        },
+      },
+      {
+        accessorKey: 'deadline',
+        header: 'Hạn hoàn thành',
+        size: 160,
+        cell: ({ row }) => renderDeadline(row.original.deadline),
+      },
+      {
+        id: 'actions',
+        header: 'Thao tác',
+        size: 130,
+        cell: ({ row }) => {
+          const task = row.original;
+          return (
+            <div className="flex items-center gap-1.5 justify-center" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                onClick={() => setEditingTask(task)}
+              >
+                <Pencil className="w-3 h-3 text-slate-500" />
+                Sửa
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                variant="ghost"
+                className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                onClick={() => setTaskToDelete(task)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Xóa
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [renderDeadline, setEditingTask, setTaskToDelete]
+  );
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);

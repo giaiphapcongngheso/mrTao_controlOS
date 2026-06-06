@@ -64,9 +64,9 @@ const SIDEBAR_LINKS: AppFrameLayoutLink[] = [
   { key: 'KPI', label: 'KPI', icon: Award },
   { key: 'SOP', label: 'Cải tiến', icon: AlertTriangle },
   { key: 'Reports', label: 'Báo cáo', icon: BarChart4 },
-  { key: 'Handbook', label: 'Sổ tay chuẩn', icon: BookMarked },
+  { key: 'Handbook', label: 'Sổ tay', icon: BookMarked },
   { key: 'Marketing', label: 'Marketing', icon: Megaphone },
-  { key: 'Warehouse', label: 'Kho', icon: Package },
+  { key: 'Warehouse', label: 'Kho hàng', icon: Package },
   { key: 'Staff', label: 'Nhân sự', icon: Users },
 ];
 
