@@ -210,27 +210,6 @@ export default function TasksView({
   const columns = useMemo<ColumnDef<TaskItem>[]>(
     () => [
       {
-        accessorKey: 'code',
-        header: 'Mã công việc',
-        size: 155,
-        cell: ({ row }) => (
-          <div className="text-sm text-slate-700 font-mono font-medium tracking-normal text-left">
-            {generateTaskCode(row.original)}
-          </div>
-        ),
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc mã..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
         accessorKey: 'title',
         header: 'Tên công việc',
         size: 220,
@@ -746,19 +725,17 @@ export default function TasksView({
       </div>
 
       {/* 5. PRISTINE CARD STREAM OF TASKS / RECOVERED FROM CUSTOMTABLE */}
-      <div className="bg-slate-50/30 rounded-2xl border border-slate-200/50 p-4">
-        <CustomTable<TaskItem>
-          columns={columns}
-          data={filteredTasks}
-          loading={isLoading}
-          enableFiltering={true}
-          showFilterRow={true}
-          enablePagination={true}
-          emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
-          onRowClick={(row) => setViewingTask(row.original)}
-          className="bg-white rounded-xl shadow-2xs border border-slate-100"
-        />
-      </div>
+      <CustomTable<TaskItem>
+        columns={columns}
+        data={filteredTasks}
+        loading={isLoading}
+        enableFiltering={true}
+        showFilterRow={true}
+        enablePagination={true}
+        emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
+        onRowClick={(row) => setViewingTask(row.original)}
+        className="bg-white rounded-xl shadow-2xs border border-slate-200"
+      />
 
       {/* Manual Add/Edit Task Form Modal */}
       <TaskCreateModal
