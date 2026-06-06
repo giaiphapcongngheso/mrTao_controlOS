@@ -222,7 +222,7 @@ const IssueModal = React.memo(function IssueModal({
             document.execCommand(
               'insertHTML', 
               false, 
-              `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh sự cố" />`
+              `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh sự cố" />`
             );
             handleEditorInput();
           }
@@ -723,7 +723,7 @@ const IssueModal = React.memo(function IssueModal({
                                   const url = prompt("Nhập URL của ảnh:");
                                   if (url) {
                                     if (editorRef.current) editorRef.current.focus();
-                                    document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 dark:border-slate-800 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
+                                    document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 dark:border-slate-800 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
                                     handleEditorInput();
                                   }
                                 }}
@@ -771,7 +771,7 @@ const IssueModal = React.memo(function IssueModal({
                                         [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
                                         [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
                                         [&_li]:text-xs [&_li]:text-slate-750 dark:[&_li]:text-slate-350
-                                        [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150 dark:[&_img]:border-slate-800
+                                        [&_img]:max-w-full [&_img]:max-h-[300px] [&_img]:h-auto [&_img]:object-contain [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150 dark:[&_img]:border-slate-800
                                         [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
                                         [&_a]:text-[#C21A1A] dark:[&_a]:text-red-400 [&_a]:underline [&_a]:font-semibold [&_a:hover]:text-red-800 dark:[&_a:hover]:text-red-300"
                             />

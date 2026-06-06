@@ -193,10 +193,10 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
             editorRef.current.focus();
             
             // Insert base64 image with proper premium design style
-            document.execCommand(
+             document.execCommand(
               'insertHTML', 
               false, 
-              `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh tài liệu" />`
+              `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh tài liệu" />`
             );
             handleEditorInput();
           }
@@ -608,7 +608,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                               const url = prompt("Nhập URL của ảnh:");
                               if (url) {
                                 if (editorRef.current) editorRef.current.focus();
-                                document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
+                                 document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
                                 handleEditorInput();
                               }
                             }}
@@ -656,7 +656,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                                     [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
                                     [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
                                     [&_li]:text-xs [&_li]:text-slate-700
-                                    [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
+                                    [&_img]:max-w-full [&_img]:max-h-[300px] [&_img]:h-auto [&_img]:object-contain [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
                                     [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-506 [&_blockquote]:my-3
                                     [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
                           placeholder="Mô tả công việc chi tiết. Định dạng Word có thể đổi màu, chèn danh sách và hình ảnh trực quan..."

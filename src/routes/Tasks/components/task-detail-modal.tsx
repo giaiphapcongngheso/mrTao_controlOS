@@ -237,7 +237,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
             </span>
             <div
               className="p-4 bg-slate-50 border border-slate-150 rounded-xl overflow-y-auto max-h-[500px] leading-relaxed text-slate-800 text-xs font-semibold
-                        [&_img]:max-w-full [&_img]:rounded-xl [&_img]:shadow-md [&_img]:mx-auto [&_img]:my-3 [&_img]:block
+                        [&_img]:max-w-full [&_img]:max-h-[300px] [&_img]:h-auto [&_img]:object-contain [&_img]:rounded-xl [&_img]:shadow-md [&_img]:mx-auto [&_img]:my-3 [&_img]:block
                         [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
                         [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-200 [&_h3]:pb-1 [&_h3]:uppercase
                         [&_h4]:text-xs [&_h4]:font-black [&_h4]:text-[#C21A1A] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:uppercase
