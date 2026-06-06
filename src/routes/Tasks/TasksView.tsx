@@ -412,6 +412,9 @@ export default function TasksView({
             </div>
           );
         },
+        meta: {
+          sticky: 'right',
+        },
       },
     ],
     [renderDeadline, setEditingTask, setTaskToDelete]

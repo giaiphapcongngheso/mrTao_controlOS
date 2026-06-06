@@ -733,6 +733,9 @@ const IssuesView = React.memo(function IssuesView({
             </div>
           );
         },
+        meta: {
+          sticky: 'right',
+        },
       },
     ],
     [permissions, onUpdateIssueStatus, onConfirmIssueRead, handleEditIssue, onDeleteIssue]
