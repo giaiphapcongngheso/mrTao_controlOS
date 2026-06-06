@@ -279,8 +279,8 @@ export default function TasksView({
         cell: ({ row }) => {
           const priorityInfo = priorityMeta[row.original.priority] || priorityMeta.medium;
           return (
-            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", priorityInfo.bg)}>
-              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+            <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-0.5 rounded-md border tracking-normal w-fit whitespace-nowrap", priorityInfo.bg)}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
               {priorityInfo.text}
             </span>
           );
@@ -310,9 +310,9 @@ export default function TasksView({
         cell: ({ row }) => {
           const statusInfo = statusMeta[row.original.status] || statusMeta.not_started;
           return (
-            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-normal", statusInfo.bg)}>
+            <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-0.5 rounded-md border tracking-normal w-fit whitespace-nowrap", statusInfo.bg)}>
               {statusInfo.icon && (
-                <statusInfo.icon className={cn("w-2.5 h-2.5 shrink-0", statusInfo.iconColor)} />
+                <statusInfo.icon className={cn("w-3 h-3 shrink-0", statusInfo.iconColor)} />
               )}
               <span>{statusInfo.text}</span>
             </span>

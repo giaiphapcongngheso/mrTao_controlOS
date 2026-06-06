@@ -372,7 +372,7 @@ const IssuesView = React.memo(function IssuesView({
             sop_error: '⚠️ Lỗi SOP',
           };
           return (
-            <span className={cn("inline-flex items-center gap-1 text-sm font-black uppercase px-2 py-0.5 rounded-full border tracking-wide", badgeStyles[category] || badgeStyles.sop_error)}>
+            <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-0.5 rounded-md border tracking-normal w-fit whitespace-nowrap", badgeStyles[category] || badgeStyles.sop_error)}>
               {badgeTexts[category] || '⚠️ Lỗi SOP'}
             </span>
           );
@@ -405,22 +405,22 @@ const IssuesView = React.memo(function IssuesView({
           switch (sev) {
             case 'High':
               return (
-                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2 py-0.5 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
                   Cao
                 </span>
               );
             case 'Medium':
               return (
-                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2 py-0.5 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-550" />
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                   Trung bình
                 </span>
               );
             case 'Low':
               return (
-                <span className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2 py-0.5 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
                   Thấp
                 </span>
               );
@@ -575,7 +575,7 @@ const IssuesView = React.memo(function IssuesView({
           const issue = row.original;
           return (
             <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
-              <span className="inline-flex items-center gap-1 text-sm font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded shrink-0">
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-2 py-0.5 rounded-md shrink-0">
                 {issue.occurrence || 1} lần
               </span>
               <span className="text-slate-300 font-normal">|</span>
@@ -627,7 +627,7 @@ const IssuesView = React.memo(function IssuesView({
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "font-bold uppercase tracking-wider rounded-lg border shadow-none px-2 h-7 text-sm flex items-center gap-1.5",
+                      "font-semibold rounded-md border shadow-none px-2.5 py-0.5 h-7 text-sm flex items-center gap-1.5 w-fit whitespace-nowrap transition-all",
                       canUpdate 
                         ? badgeStyle 
                         : 'opacity-50 border border-slate-200 text-slate-400 bg-slate-50'
