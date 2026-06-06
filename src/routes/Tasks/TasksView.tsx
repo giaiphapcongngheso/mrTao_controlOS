@@ -450,7 +450,7 @@ export default function TasksView({
       </div>
 
       {/* 4. FILTER CONTROLS & SEARCH BAR */}
-      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
 
         {/* Switch Filter Tab Segment */}
         <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full min-w-0 md:w-fit">
@@ -488,7 +488,7 @@ export default function TasksView({
             placeholder="Tìm kiếm theo công việc, vai trò..."
             value={searchTerm}
             onChange={setSearchTerm}
-            className="bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500 font-semibold"
+            className="font-semibold"
           />
         </div>
 
@@ -496,7 +496,7 @@ export default function TasksView({
 
       {/* 5. PRISTINE CARD STREAM OF TASKS / RECOVERED FROM CUSTOMTABLE */}
       <div className="bg-slate-50/30 rounded-2xl border border-slate-200/50 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
           {isLoading && filteredTasks.length === 0 ? (
             <div className="col-span-full text-center py-12 text-slate-400 font-semibold text-xs">
               Đang tải danh sách công việc...

@@ -344,7 +344,7 @@ const IssuesView = React.memo(function IssuesView({
     }
 
     return (
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-12">
         {paginatedIssues.map((issue) => (
           <IssueCard
             key={issue.id}

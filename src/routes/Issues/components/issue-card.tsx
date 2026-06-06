@@ -11,7 +11,11 @@ import {
   HelpCircle,
   Clock,
   BookOpen,
-  CornerDownRight
+  CornerDownRight,
+  AlignLeft,
+  Building,
+  AlertOctagon,
+  Sparkles,
 } from 'lucide-react';
 import type { SOPIssue, SOPIssueStatus } from '../../../types/issues.types';
 import { 
@@ -291,6 +295,12 @@ const StatusDropdown = React.memo(function StatusDropdown({
   );
 });
 
+const stripHtmlAndTruncate = (html: string = '', maxLength: number = 100) => {
+  const cleanText = html.replace(/<\/?[^>]+(>|$)/g, "");
+  if (cleanText.length <= maxLength) return cleanText;
+  return cleanText.substring(0, maxLength) + '...';
+};
+
 const IssueCard = React.memo(function IssueCard({
   issue,
   canUpdate,
@@ -303,12 +313,8 @@ const IssueCard = React.memo(function IssueCard({
   onToggleDropdown,
   isHighlighted = false,
 }: IssueCardProps) {
-  const { badgeLayoutColor, badgeEmblemText, assigneeLabel } = React.useMemo(() => {
+  const { badgeLayoutColor, badgeEmblemText } = React.useMemo(() => {
     return getBadgeStyles(issue.category);
-  }, [issue.category]);
-
-  const descLabel = React.useMemo(() => {
-    return getCategoryDescLabel(issue.category);
   }, [issue.category]);
 
   const handleEdit = React.useCallback(() => {
@@ -334,108 +340,126 @@ const IssueCard = React.memo(function IssueCard({
     <Card
       id={`issue-card-${issue.id}`}
       className={cn(
-        "bg-white rounded-xl border p-5 shadow-[0_5px_22px_-4px_rgba(148,163,184,0.14),0_2px_4px_-2px_rgba(148,163,184,0.06)] hover:shadow-[0_16px_36px_-8px_rgba(148,163,184,0.28),0_4px_12px_-4px_rgba(148,163,184,0.16)] hover:border-slate-350 hover:-translate-y-1 transition-all duration-300 ease-out relative flex flex-col justify-between text-left gap-0",
-        isHighlighted ? 'border-[#C21A1A] ring-2 ring-[#C21A1A]/15' : 'border-slate-200/90'
+        "bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between gap-3.5 transition-all duration-300 relative hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:border-slate-200/80 hover:-translate-y-[2px] w-full max-w-[420px] mx-auto md:mx-0 cursor-pointer",
+        isHighlighted ? 'border-[#C21A1A] ring-2 ring-[#C21A1A]/15' : 'border-slate-100'
       )}
+      onClick={handleEdit}
     >
       <div>
-        {/* Top Header Row: Assignee, Badges, Actions (Edit/Delete/Status) */}
-        <div className="flex flex-col gap-2.5 pb-3 border-b border-slate-100/60 mb-3.5">
-          {/* Row 1: Assignee Info (Left) & Actions (Right) */}
-          <div className="flex items-center justify-between gap-3 w-full">
-            {/* Left: Assignee Info */}
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Avatar className="size-8 border border-slate-200 shadow-2xs shrink-0">
-                <AvatarFallback className="bg-gradient-to-tr from-slate-50 to-slate-100 text-slate-600 font-bold text-[11px]">
-                  {issue.assignee ? issue.assignee.charAt(0).toUpperCase() : <User className="size-3.5 text-slate-400" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">{assigneeLabel}</span>
-                <span className="text-xs font-bold text-slate-700 mt-1 leading-none truncate max-w-[120px] sm:max-w-[155px]" title={issue.assignee || 'Trọng tâm cửa hàng'}>
-                  {issue.assignee || 'Trọng tâm cửa hàng'}
-                </span>
-              </div>
+        {/* Top Header Row: Category Badge & Status Dropdown */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap pr-2">
+            {/* Category icon with soft bg */}
+            <div className={cn("p-1 rounded-lg shrink-0", 
+              issue.category === 'sop_error' ? 'bg-rose-50 text-[#C21A1A]' :
+              issue.category === 'exception' ? 'bg-amber-50 text-amber-600' :
+              issue.category === 'risk' ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600'
+            )}>
+              {issue.category === 'sop_error' ? <AlertOctagon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
             </div>
 
-            {/* Right: Operational actions (Edit/Delete/Desktop Status) */}
-            <div className="relative shrink-0 flex items-center gap-1.5">
-              {canUpdate && (
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={handleEdit}
-                  className="rounded-lg text-slate-500 hover:text-slate-800 border-slate-200/80 hover:bg-slate-50"
-                  title="Chỉnh sửa phiếu"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              )}
+            {/* Category Pill */}
+            <span className={cn("inline-flex items-center gap-1 text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full border tracking-wide shrink-0", 
+              issue.category === 'sop_error' ? 'bg-rose-50 border-rose-100 text-[#C21A1A]' :
+              issue.category === 'exception' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+              issue.category === 'risk' ? 'bg-purple-50 border-purple-100 text-purple-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+            )}>
+              {badgeEmblemText}
+            </span>
 
-              {canDelete && (
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={handleDelete}
-                  className="rounded-lg text-slate-500 hover:text-rose-600 border-slate-200/80 hover:bg-rose-50/50 hover:border-rose-200"
-                  title="Xóa phiếu"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
-
-              {/* Status Dropdown on Desktop only */}
-              <div className="hidden sm:block">
-                <StatusDropdown
-                  {...statusDropdownProps}
-                  triggerClassName="px-2.5 h-8 text-[10px] sm:text-[11px]"
-                />
-              </div>
-            </div>
+            {/* Priority Badge */}
+            {getSeverityPill(issue.severity)}
           </div>
 
-          {/* Row 2: Badges aligned under name & Status Dropdown on Mobile */}
-          <div className="flex items-center justify-between gap-1.5 w-full pl-[42px]">
-            {/* Badges list */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border", badgeLayoutColor)}>
-                {badgeEmblemText}
-              </Badge>
-              {getSeverityPill(issue.severity)}
-            </div>
-
-            {/* Status Dropdown on Mobile only */}
-            <div className="sm:hidden shrink-0">
-              <StatusDropdown
-                {...statusDropdownProps}
-                triggerClassName="px-2 h-7 text-[9px] sm:text-[10px]"
-              />
-            </div>
+          {/* Quick status dropdown on right */}
+          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+            <StatusDropdown
+              {...statusDropdownProps}
+              triggerClassName="px-2 h-7.5 text-[9px] sm:text-[10px]"
+            />
           </div>
         </div>
 
         {/* Title of the issue card */}
-        <h4 className="font-bold text-[15px] md:text-base text-slate-800 tracking-tight leading-snug group-hover:text-[#C21A1A] transition-colors duration-150">
-          <span className="text-slate-400 font-medium mr-1 select-none">Tên phiếu:</span>
-          {issue.title}
-        </h4>
+        <div className="space-y-1 mt-2 text-left">
+          <h4 className="font-extrabold text-slate-900 text-[15px] sm:text-[16px] leading-snug tracking-tight hover:text-slate-950 transition-colors break-words">
+            <span className="text-slate-400 font-medium mr-1 select-none">Tên phiếu:</span>
+            {issue.title}
+          </h4>
+        </div>
 
-        {/* Description flat block with clean vertical border design */}
-        {issue.description && (
-          <div className="mt-2.5 pl-3.5 border-l-2 border-slate-200/80 text-xs md:text-sm text-slate-550 leading-relaxed font-normal flex flex-col gap-0.5">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block select-none mb-1">
-              {descLabel}
+        {/* Divider */}
+        <div className="border-t border-slate-100/80 my-1.5" />
+
+        {/* Card Details (Grid key-value list with icons) */}
+        <div className="flex-1 flex flex-col gap-2.5 text-sm text-left">
+          {/* Description */}
+          <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-start py-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
+              <AlignLeft className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              Diễn biến / Mô tả
             </span>
-            <div 
-              className="text-slate-600 font-medium flex-1 [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2"
-              dangerouslySetInnerHTML={{ __html: issue.description }}
-            />
+            <span className="text-slate-700 font-medium whitespace-pre-line leading-relaxed break-words line-clamp-3 overflow-hidden font-sans">
+              {stripHtmlAndTruncate(issue.description, 100) || <span className="text-slate-350 italic">Không có mô tả...</span>}
+              {issue.description && issue.description.includes('<img') && (
+                <span className="inline-flex items-center gap-1 ml-1 text-[9px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
+                  🖼️ Có ảnh đính kèm
+                </span>
+              )}
+            </span>
           </div>
-        )}
+
+          {/* Actor */}
+          <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
+              <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              Bên liên quan
+            </span>
+            <span className="text-slate-700 font-bold truncate">{issue.actor || 'Hệ thống ca trực'}</span>
+          </div>
+
+          {/* Process */}
+          <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
+              <CornerDownRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              Quy trình
+            </span>
+            <span className="text-slate-700 font-bold truncate">{issue.process || 'Vận hành chung'}</span>
+          </div>
+
+          {/* Assignee */}
+          <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
+              <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              Người xử lý
+            </span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-[9px] flex items-center justify-center font-black text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+                {issue.assignee?.charAt(0) || 'U'}
+              </div>
+              <span className="text-slate-700 font-bold truncate">{issue.assignee || 'Quản lý cửa hàng'}</span>
+            </div>
+          </div>
+
+          {/* Occurrence & Date */}
+          <div className="grid grid-cols-[105px_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-2 items-center py-0.5">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0">
+              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              Lần xảy ra / Ngày
+            </span>
+            <div className="flex items-center gap-2 flex-wrap text-slate-700 font-bold text-xs">
+              <Badge variant="outline" className="font-bold text-[#C21A1A] bg-rose-50/70 border-rose-100 px-1.5 py-0.2 rounded text-[10px] shrink-0">
+                {issue.occurrence || 1} lần
+              </Badge>
+              <span className="text-slate-300 font-normal">|</span>
+              <span className="text-slate-500 font-medium text-[11px] shrink-0">{issue.date}</span>
+            </div>
+          </div>
+        </div>
 
         {/* Read confirmation */}
         {issue.readConfirmedAt && (
-          <div className="mt-3 text-[10px] md:text-xs font-semibold text-emerald-700 bg-emerald-50/60 border border-emerald-100/50 rounded-lg px-2.5 py-1 inline-flex items-center gap-1.5 w-fit">
+          <div className="mt-3 text-[10px] md:text-xs font-semibold text-emerald-700 bg-emerald-50/60 border border-emerald-100/50 rounded-lg px-2.5 py-1 inline-flex items-center gap-1.5 w-fit select-none">
             <CheckCircle className="size-3.5 text-emerald-600" />
             <span>
               Đã đọc lúc {formatReadConfirmedAt(issue.readConfirmedAt)}
@@ -444,38 +468,38 @@ const IssueCard = React.memo(function IssueCard({
           </div>
         )}
 
-        {/* Sub Metadata Row: Clean line separation with explicit labels */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-dashed border-slate-200/60 text-xs text-slate-500">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400 font-medium">Bên liên quan:</span>
-              <span className="font-bold text-slate-700">{issue.actor}</span>
+        {/* Action Buttons (Edit/Delete) */}
+        {(canUpdate || canDelete) && (
+          <>
+            <div className="border-t border-slate-100 my-2" />
+            <div className="flex items-center justify-end gap-1.5 mt-0.5" onClick={(e) => e.stopPropagation()}>
+              {canUpdate && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  onClick={handleEdit}
+                >
+                  <Pencil className="w-3 h-3 text-slate-500" />
+                  Sửa
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Xóa
+                </Button>
+              )}
             </div>
-            
-            <span className="text-slate-200 select-none">•</span>
-            
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400 font-medium">Quy trình:</span>
-              <span className="font-bold text-slate-700 truncate max-w-[130px]" title={issue.process}>
-                {issue.process || 'Chưa quy định'}
-              </span>
-            </div>
-
-            <span className="text-slate-200 select-none">•</span>
-
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400 font-medium">Lần xảy ra:</span>
-              <Badge variant="outline" className="font-bold font-sans text-[#C21A1A] bg-rose-50/70 border-rose-100 px-2 py-0.5 rounded text-[10px]">
-                {issue.occurrence || 1}
-              </Badge>
-            </div>
-          </div>
-
-          <span className="text-[11px] text-slate-400 font-medium tracking-wide flex items-center gap-1 select-none shrink-0">
-            <Calendar className="size-3.5 opacity-60 text-slate-500" />
-            {issue.date}
-          </span>
-        </div>
+          </>
+        )}
       </div>
     </Card>
   );
