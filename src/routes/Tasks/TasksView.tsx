@@ -196,15 +196,15 @@ export default function TasksView({
       const timePart = parts.slice(1).join(' ');
       return (
         <div className="flex items-center gap-1.5 font-normal text-sm justify-start">
-          <span className="text-slate-700">{datePart}</span>
-          <span className="flex items-center gap-1 text-slate-500 font-normal bg-slate-100 px-1.5 py-0.5 rounded text-sm">
+          <span className="text-slate-800">{datePart}</span>
+          <span className="flex items-center gap-1 text-slate-700 font-normal bg-slate-100 px-1.5 py-0.5 rounded text-sm">
             <Clock className="w-3 h-3 text-slate-400" />
             {timePart}
           </span>
         </div>
       );
     }
-    return <span className="text-slate-700 font-normal text-sm">{deadline}</span>;
+    return <span className="text-slate-800 font-normal text-sm">{deadline}</span>;
   }, []);
 
   const columns = useMemo<ColumnDef<TaskItem>[]>(
@@ -214,7 +214,7 @@ export default function TasksView({
         header: 'Mã công việc',
         size: 155,
         cell: ({ row }) => (
-          <div className="text-sm text-slate-500 font-mono font-medium tracking-normal text-left">
+          <div className="text-sm text-slate-700 font-mono font-medium tracking-normal text-left">
             {generateTaskCode(row.original)}
           </div>
         ),
@@ -235,7 +235,7 @@ export default function TasksView({
         header: 'Tên công việc',
         size: 220,
         cell: ({ row }) => (
-          <div className="font-normal text-slate-800 text-left text-sm leading-snug break-words">
+          <div className="font-normal text-slate-900 text-left text-sm leading-snug break-words">
             {row.original.title}
           </div>
         ),
@@ -256,8 +256,8 @@ export default function TasksView({
         header: 'Mô tả chi tiết',
         size: 260,
         cell: ({ row }) => (
-          <div className="text-slate-500 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed">
-            {stripHtmlAndTruncate(row.original.notes, 150) || <span className="text-slate-350 italic">Không có mô tả...</span>}
+          <div className="text-slate-700 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed">
+            {stripHtmlAndTruncate(row.original.notes, 150) || <span className="text-slate-400 italic">Không có mô tả...</span>}
           </div>
         ),
         meta: {
@@ -345,10 +345,10 @@ export default function TasksView({
           const assigneeVal = row.original.assignee;
           return (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-medium text-slate-500 border border-slate-200/50 uppercase shadow-3xs shrink-0">
+              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-medium text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
                 {assigneeVal?.charAt(0) || 'U'}
               </div>
-              <span className="text-slate-600 font-normal truncate text-sm">{assigneeVal || 'Chưa phân công'}</span>
+              <span className="text-slate-800 font-normal truncate text-sm">{assigneeVal || 'Chưa phân công'}</span>
             </div>
           );
         },
@@ -369,7 +369,7 @@ export default function TasksView({
         header: 'Bộ phận',
         size: 130,
         cell: ({ row }) => (
-          <div className="text-slate-600 font-normal text-sm truncate text-left">
+          <div className="text-slate-800 font-normal text-sm truncate text-left">
             {row.original.department}
           </div>
         ),
