@@ -431,7 +431,7 @@ export function TreeTable<TData extends ITreeItem<TData>>({
         style={enableVirtualization ? { height: virtualScrollHeight } : undefined}
       >
         <Table className="w-full">
-          <TableHeader className="sticky top-0 w-full z-50">
+          <TableHeader className="sticky top-0 w-full z-20">
             {table.getHeaderGroups().map((headerGroup) => (
               <React.Fragment key={headerGroup.id}>
                 <TableRow className="!border-b-0">

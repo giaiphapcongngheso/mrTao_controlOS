@@ -379,7 +379,7 @@ function TableHeaderCell<TData>({
       style={finalStyle}
       className={cn(
         isSelectOrExpander && '!w-[40px] !min-w-[40px] !max-w-[40px] !px-2',
-        sticky && 'bg-primary z-30',
+        sticky && 'bg-primary z-10',
         sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]',
         sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]',
       )}
@@ -506,7 +506,7 @@ function TableFilterRow<TData>({
   const getStickyClass = (header: Header<TData, unknown>) => {
     const sticky = header.column.columnDef.meta?.sticky;
     return cn(
-      sticky && 'bg-[#eaf5ff] dark:bg-primary/80 z-30',
+      sticky && 'bg-[#eaf5ff] dark:bg-primary/80 z-10',
       sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]',
       sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]',
     );
@@ -623,7 +623,7 @@ function TableCellWithTooltip<TData>({
       className={cn(
         wrapText ? 'whitespace-pre-wrap break-words' : 'truncate',
         isSelectOrExpander && '!w-[40px] !min-w-[40px] !max-w-[40px] !px-2',
-        sticky && 'bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted z-30',
+        sticky && 'bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted z-10',
         sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]',
         sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]',
       )}
@@ -1207,7 +1207,7 @@ export function CustomTable<TData>({
                 );
               })}
             </colgroup>
-            <TableHeader className="sticky top-0 w-full z-50">
+            <TableHeader className="sticky top-0 w-full z-20">
               {table.getHeaderGroups().map((headerGroup) => (
                 <React.Fragment key={headerGroup.id}>
                   <TableRow className="!border-b-0">
@@ -1371,7 +1371,7 @@ export function CustomTable<TData>({
 
           {resizeLine.visible && (
             <div
-              className="absolute top-0 bottom-0 w-[2px] bg-primary/70 z-50 pointer-events-none"
+              className="absolute top-0 bottom-0 w-[2px] bg-primary/70 z-30 pointer-events-none"
               style={{ left: resizeLine.left }}
             />
           )}

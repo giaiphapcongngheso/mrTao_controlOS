@@ -88,8 +88,8 @@ function TableHead({ className, sticky, tooltip, children, ...props }: TableHead
         'relative bg-primary text-primary-foreground h-11 px-4 text-left align-middle font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md',
         {
           // darker, more neutral shadow so it stands out from table shadow
-          'sticky left-0 z-30 bg-primary shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'left',
-          'sticky right-0 z-30 bg-primary shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'right',
+          'sticky left-0 z-10 bg-primary shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'left',
+          'sticky right-0 z-10 bg-primary shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'right',
         },
         className,
       )}
@@ -134,9 +134,9 @@ function TableFilterCell({ className, sticky, tooltip, children, ...props }: Tab
       className={cn(
         'px-4 justify-start py-2 [&:has([role=checkbox])]:pr-0',
         {
-          'sticky left-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]':
+          'sticky left-0 z-10 bg-[#eaf5ff] dark:bg-primary/80 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)]':
             sticky === 'left',
-          'sticky right-0 z-30 bg-[#eaf5ff] dark:bg-primary/80 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]':
+          'sticky right-0 z-10 bg-[#eaf5ff] dark:bg-primary/80 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]':
             sticky === 'right',
         },
         className,
@@ -168,8 +168,8 @@ function TableCell({ className, sticky, tooltip, children, ...props }: TableCell
       className={cn(
         'bg-background px-4 py-2.5 align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] transition-colors duration-200',
         {
-          'sticky left-0 z-30 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'left',
-          'sticky right-0 z-30 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'right',
+          'sticky left-0 z-10 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'left',
+          'sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'right',
         },
         className,
       )}
