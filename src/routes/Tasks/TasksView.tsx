@@ -42,6 +42,7 @@ import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
 import { TaskCreateModal } from './components/task-create-modal';
 import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
+import { TaskDetailModal } from './components/task-detail-modal';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 
 interface TasksViewProps {
@@ -147,6 +148,19 @@ const generateTaskCode = (task: TaskItem) => {
   return `CV-${deptCode}-${dateStr}-${indexStr}`;
 };
 
+const stripHtmlAndTruncate = (htmlStr?: string, maxLen: number = 100) => {
+  if (!htmlStr) return '';
+  const cleanText = htmlStr
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+  if (cleanText.length <= maxLen) return cleanText;
+  return cleanText.substring(0, maxLen) + '...';
+};
+
 export default function TasksView({
   tasks,
   staffMembers = [],
@@ -170,13 +184,21 @@ export default function TasksView({
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [quickDelegateOpen, setQuickDelegateOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskItem | null>(null);
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-
-
+  // Filter tasks based on current user roles & permissions
+  const visibleTasks = useMemo(() => {
+    const isManager = canUpdate || canCreate;
+    if (isManager || !currentUser) return tasks;
+    return tasks.filter(task => 
+      task.assignee === currentUser.fullName || 
+      (task.helpers || []).includes(currentUser.fullName)
+    );
+  }, [tasks, canUpdate, canCreate, currentUser]);
 
   // Auto disappear toast notifications
   useEffect(() => {
@@ -214,7 +236,7 @@ export default function TasksView({
 
 
   // Filter computation
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = visibleTasks.filter(task => {
     const titleMatch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
     const deptMatch = task.department.toLowerCase().includes(searchTerm.toLowerCase());
     const assigneeMatch = task.assignee?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
@@ -251,11 +273,11 @@ export default function TasksView({
   };
 
   const stats = useMemo(() => {
-    const notStarted = tasks.filter((t) => t.status === 'not_started').length;
-    const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-    const waiting = tasks.filter((t) => t.status === 'waiting').length;
-    const completed = tasks.filter((t) => t.status === 'completed').length;
-    const overdue = tasks.filter(
+    const notStarted = visibleTasks.filter((t) => t.status === 'not_started').length;
+    const inProgress = visibleTasks.filter((t) => t.status === 'in_progress').length;
+    const waiting = visibleTasks.filter((t) => t.status === 'waiting').length;
+    const completed = visibleTasks.filter((t) => t.status === 'completed').length;
+    const overdue = visibleTasks.filter(
       (t) =>
         t.status !== 'completed' &&
         (t.deadline.toLowerCase().includes('trễ') ||
@@ -305,7 +327,7 @@ export default function TasksView({
         dotClass: 'bg-rose-600',
       },
     ];
-  }, [tasks]);
+  }, [visibleTasks]);
 
 
 
@@ -437,25 +459,25 @@ export default function TasksView({
               value="all"
               className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
-              Tất cả ({tasks.length})
+              Tất cả ({visibleTasks.length})
             </TabsTrigger>
             <TabsTrigger
               value="mine"
               className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
-              Của tôi ({tasks.filter(t => t.assignee === currentUser?.fullName).length})
+              Của tôi ({visibleTasks.filter(t => t.assignee === currentUser?.fullName).length})
             </TabsTrigger>
             <TabsTrigger
               value="late"
               className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
             >
-              Trễ hạn ({tasks.filter(t => t.status !== 'completed' && (t.deadline.toLowerCase().includes('trễ') || t.deadline.includes('08/05'))).length})
+              Trễ hạn ({visibleTasks.filter(t => t.status !== 'completed' && (t.deadline.toLowerCase().includes('trễ') || t.deadline.includes('08/05'))).length})
             </TabsTrigger>
             <TabsTrigger
               value="completed"
               className="min-w-0 w-full px-2 sm:px-4 py-2 text-[11px] font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
             >
-              Đã hoàn thành ({tasks.filter(t => t.status === 'completed').length})
+              Đã hoàn thành ({visibleTasks.filter(t => t.status === 'completed').length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -513,9 +535,10 @@ export default function TasksView({
                 <Card
                   key={task.id}
                   className={cn(
-                    "bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 flex flex-col justify-between gap-3.5 transition-all duration-300 relative hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:border-slate-200/80 hover:-translate-y-[2px] w-full max-w-[420px] mx-auto md:mx-0",
+                    "bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 flex flex-col justify-between gap-3.5 transition-all duration-300 relative hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:border-slate-200/80 hover:-translate-y-[2px] w-full max-w-[420px] mx-auto md:mx-0 cursor-pointer",
                     statusTheme.border
                   )}
+                  onClick={() => setViewingTask(task)}
                 >
                   {/* Card Header: Clipboard Icon & Badges */}
                   <div className="flex items-center justify-between gap-2">
@@ -541,11 +564,12 @@ export default function TasksView({
                     </div>
 
                     {/* 3-dots Menu for quick status change */}
-                    {canUpdate && task.status !== 'completed' && (
+                    {(canUpdate || (currentUser && (task.assignee === currentUser.fullName || (task.helpers || []).includes(currentUser.fullName)))) && task.status !== 'completed' && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
+                            onClick={(e) => e.stopPropagation()}
                             className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer w-6 h-6 flex items-center justify-center focus-visible:outline-hidden shrink-0"
                           >
                             <MoreVertical className="w-3.5 h-3.5" />
@@ -560,7 +584,8 @@ export default function TasksView({
                             return (
                               <DropdownMenuItem
                                 key={st}
-                                onClick={async () => {
+                                onClick={async (e) => {
+                                  e.stopPropagation();
                                   try {
                                     await onUpdateTaskStatus(task.id, st);
                                     showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[st].text}"`);
@@ -606,7 +631,7 @@ export default function TasksView({
                         Mô tả
                       </span>
                       <span className="text-slate-700 font-medium whitespace-pre-line leading-relaxed break-words line-clamp-3 overflow-hidden">
-                        {task.notes || <span className="text-slate-350 italic">Không có ghi chú...</span>}
+                        {stripHtmlAndTruncate(task.notes, 100) || <span className="text-slate-350 italic">Không có ghi chú...</span>}
                       </span>
                     </div>
 
@@ -656,7 +681,10 @@ export default function TasksView({
                             type="button"
                             variant="outline"
                             className="h-7 text-[10px] px-2 rounded-lg font-bold hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                            onClick={() => setEditingTask(task)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTask(task);
+                            }}
                           >
                             <Pencil className="w-3 h-3 text-slate-500" />
                             Sửa
@@ -666,7 +694,10 @@ export default function TasksView({
                             type="button"
                             variant="ghost"
                             className="h-7 text-[10px] px-2 rounded-lg font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                            onClick={() => setTaskToDelete(task)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTaskToDelete(task);
+                            }}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Xóa
@@ -713,7 +744,29 @@ export default function TasksView({
         onClose={() => setQuickDelegateOpen(false)}
         onSubmit={handleQuickDelegate}
         staffMembers={staffMembers}
-        tasks={tasks}
+        tasks={visibleTasks}
+      />
+
+      {/* Detail Task Modal */}
+      <TaskDetailModal
+        isOpen={viewingTask !== null}
+        task={viewingTask}
+        onClose={() => setViewingTask(null)}
+        currentUser={currentUser}
+        canUpdate={canUpdate}
+        onUpdateStatus={async (taskId, status) => {
+          try {
+            await onUpdateTaskStatus(taskId, status);
+            // Refresh viewing task in state to show new status
+            if (viewingTask && viewingTask.id === taskId) {
+              setViewingTask(prev => prev ? { ...prev, status } : null);
+            }
+            showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[status].text}"`);
+          } catch {
+            showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+          }
+        }}
+        isSaving={isSaving}
       />
 
       {/* Delete Confirmation Dialog */}

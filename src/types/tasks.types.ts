@@ -13,6 +13,9 @@ export interface TaskItem {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  startDate?: string;
+  helpers?: string[];
+  link?: string;
 }
 
 export type TaskRequestType = Pick<
@@ -27,4 +30,7 @@ export type TaskRequestType = Pick<
   | 'notes'
   | 'createdAt'
   | 'updatedAt'
+  | 'startDate'
+  | 'helpers'
+  | 'link'
 >;

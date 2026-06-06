@@ -50,9 +50,11 @@ jobs:
       - name: Validate KiotViet sync env
         env:
           VITE_KIOT_SYNC_FUNCTION_URL: ${{ secrets.VITE_KIOT_SYNC_FUNCTION_URL || vars.VITE_KIOT_SYNC_FUNCTION_URL }}
+          VITE_GAS_WEBAPP_URL: ${{ secrets.VITE_GAS_WEBAPP_URL || vars.VITE_GAS_WEBAPP_URL }}
+          VITE_GAS_SYNC_TOKEN: ${{ secrets.VITE_GAS_SYNC_TOKEN || vars.VITE_GAS_SYNC_TOKEN }}
         run: |
-          if [ -z "$VITE_KIOT_SYNC_FUNCTION_URL" ]; then
-            echo "::warning::Missing VITE_KIOT_SYNC_FUNCTION_URL. KiotViet warehouse sync will not work on production until the Firebase Function URL is set in GitHub Secrets or Variables."
+          if [ -z "$VITE_KIOT_SYNC_FUNCTION_URL" ] && [ -z "$VITE_GAS_WEBAPP_URL" ]; then
+            echo "::warning::Missing both VITE_KIOT_SYNC_FUNCTION_URL and VITE_GAS_WEBAPP_URL. KiotViet warehouse sync will not work on production."
           fi
 
       - name: Auto bump patch version
@@ -80,6 +82,8 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || vars.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || vars.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_KIOT_SYNC_FUNCTION_URL: ${{ secrets.VITE_KIOT_SYNC_FUNCTION_URL || vars.VITE_KIOT_SYNC_FUNCTION_URL }}
+          VITE_GAS_WEBAPP_URL: ${{ secrets.VITE_GAS_WEBAPP_URL || vars.VITE_GAS_WEBAPP_URL }}
+          VITE_GAS_SYNC_TOKEN: ${{ secrets.VITE_GAS_SYNC_TOKEN || vars.VITE_GAS_SYNC_TOKEN }}
         run: npm run build
 
       - name: Create SPA fallback

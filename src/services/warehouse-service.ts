@@ -14,6 +14,8 @@ import { RESOURCE_PATH } from '../constants/resource-paths';
 import { getCurrentFirebaseIdToken } from './firebase-auth-service';
 
 const KIOT_SYNC_FUNCTION_URL = import.meta.env.VITE_KIOT_SYNC_FUNCTION_URL ?? '';
+const GAS_WEBAPP_URL = import.meta.env.VITE_GAS_WEBAPP_URL ?? '';
+const GAS_SYNC_TOKEN = import.meta.env.VITE_GAS_SYNC_TOKEN ?? '';
 
 class WarehouseSyncRequestError extends Error {
   constructor(
@@ -90,6 +92,41 @@ async function parseResponseBody(response: Response): Promise<{
 }
 
 async function fetchWarehouseSyncPayload(): Promise<WarehouseSyncResponse> {
+  const gasUrl = GAS_WEBAPP_URL.trim();
+  if (gasUrl) {
+    const url = `${gasUrl}${gasUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(GAS_SYNC_TOKEN)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new WarehouseSyncRequestError(response.status, `Không thể kết nối với GAS Web App (${response.status})`);
+    }
+
+    const body = (await response.json()) as Record<string, unknown>;
+    if (body.success === false) {
+      throw new WarehouseSyncRequestError(502, String(body.error || 'Lỗi không xác định từ Google Apps Script.'));
+    }
+
+    return {
+      branches: Array.isArray(body.branches)
+        ? body.branches.map((branch) => ({
+            ...(branch as Branch),
+            source: 'synced',
+          }))
+        : [],
+      products: Array.isArray(body.products)
+        ? body.products.map((product) => ({
+            ...(product as WarehouseProduct),
+            source: 'synced',
+          }))
+        : [],
+    };
+  }
+
   const idToken = await getCurrentFirebaseIdToken();
   if (!idToken) {
     throw new WarehouseSyncRequestError(

@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
   readonly VITE_KIOT_SYNC_FUNCTION_URL?: string;
+  readonly VITE_GAS_WEBAPP_URL?: string;
+  readonly VITE_GAS_SYNC_TOKEN?: string;
   // Legacy direct KiotViet client envs kept for unused integrations; warehouse sync now uses Firebase Functions.
   readonly VITE_KIOT_CLIENT_ID?: string;
   readonly VITE_KIOT_CLIENT_SECRET?: string;

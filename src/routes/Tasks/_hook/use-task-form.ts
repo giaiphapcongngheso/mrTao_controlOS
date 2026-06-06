@@ -11,6 +11,9 @@ export const taskFormSchema = z.object({
   }),
   assignee: z.string().trim().min(1, 'Vui lòng chọn người phụ trách'),
   notes: z.string().optional(),
+  startDate: z.date().optional(),
+  helpers: z.array(z.string()).optional(),
+  link: z.string().trim().optional(),
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -30,6 +33,9 @@ export const DEFAULT_TASK_FORM_VALUES: TaskFormValues = {
   deadline: new Date(),
   assignee: '',
   notes: '',
+  startDate: undefined,
+  helpers: [],
+  link: '',
 };
 
 export const DEFAULT_QUICK_DELEGATE_FORM_VALUES: TaskQuickDelegateFormValues = {
@@ -47,6 +53,9 @@ export function taskFormToRequest(values: TaskFormValues): TaskRequestType {
     deadline: format(values.deadline, 'dd/MM/yyyy'),
     assignee: values.assignee.trim(),
     notes: values.notes?.trim() ?? '',
+    startDate: values.startDate ? format(values.startDate, 'dd/MM/yyyy') : undefined,
+    helpers: values.helpers,
+    link: values.link,
   };
 }
 
