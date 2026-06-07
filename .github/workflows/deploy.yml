@@ -52,9 +52,14 @@ jobs:
           VITE_KIOT_SYNC_FUNCTION_URL: ${{ secrets.VITE_KIOT_SYNC_FUNCTION_URL || vars.VITE_KIOT_SYNC_FUNCTION_URL }}
           VITE_GAS_WEBAPP_URL: ${{ secrets.VITE_GAS_WEBAPP_URL || vars.VITE_GAS_WEBAPP_URL }}
           VITE_GAS_SYNC_TOKEN: ${{ secrets.VITE_GAS_SYNC_TOKEN || vars.VITE_GAS_SYNC_TOKEN }}
+          VITE_GAS_STAFF_AUTH_URL: ${{ secrets.VITE_GAS_STAFF_AUTH_URL || vars.VITE_GAS_STAFF_AUTH_URL }}
+          VITE_GAS_STAFF_AUTH_TOKEN: ${{ secrets.VITE_GAS_STAFF_AUTH_TOKEN || vars.VITE_GAS_STAFF_AUTH_TOKEN }}
         run: |
           if [ -z "$VITE_KIOT_SYNC_FUNCTION_URL" ] && [ -z "$VITE_GAS_WEBAPP_URL" ]; then
             echo "::warning::Missing both VITE_KIOT_SYNC_FUNCTION_URL and VITE_GAS_WEBAPP_URL. KiotViet warehouse sync will not work on production."
+          fi
+          if [ -z "$VITE_GAS_STAFF_AUTH_URL" ] && [ -z "$VITE_GAS_WEBAPP_URL" ]; then
+            echo "::warning::Missing both VITE_GAS_STAFF_AUTH_URL and VITE_GAS_WEBAPP_URL. Staff auth sync via Apps Script will not work on production."
           fi
 
       - name: Auto bump patch version
@@ -84,6 +89,8 @@ jobs:
           VITE_KIOT_SYNC_FUNCTION_URL: ${{ secrets.VITE_KIOT_SYNC_FUNCTION_URL || vars.VITE_KIOT_SYNC_FUNCTION_URL }}
           VITE_GAS_WEBAPP_URL: ${{ secrets.VITE_GAS_WEBAPP_URL || vars.VITE_GAS_WEBAPP_URL }}
           VITE_GAS_SYNC_TOKEN: ${{ secrets.VITE_GAS_SYNC_TOKEN || vars.VITE_GAS_SYNC_TOKEN }}
+          VITE_GAS_STAFF_AUTH_URL: ${{ secrets.VITE_GAS_STAFF_AUTH_URL || vars.VITE_GAS_STAFF_AUTH_URL }}
+          VITE_GAS_STAFF_AUTH_TOKEN: ${{ secrets.VITE_GAS_STAFF_AUTH_TOKEN || vars.VITE_GAS_STAFF_AUTH_TOKEN }}
         run: npm run build
 
       - name: Create SPA fallback
