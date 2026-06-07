@@ -48,17 +48,29 @@ export async function syncStaffAuthViaGas(
     );
   }
 
+  const formBody = new URLSearchParams();
+  formBody.set('action', 'staffAuthUpdate');
+  formBody.set('token', STAFF_AUTH_GAS_TOKEN);
+  formBody.set('authEmail', input.authEmail);
+  if (input.currentAuthEmail) {
+    formBody.set('currentAuthEmail', input.currentAuthEmail);
+  }
+  if (input.firebaseUid) {
+    formBody.set('firebaseUid', input.firebaseUid);
+  }
+  if (input.password) {
+    formBody.set('password', input.password);
+  }
+  if (input.allowCreate !== undefined) {
+    formBody.set('allowCreate', String(input.allowCreate));
+  }
+
   const response = await fetch(gasUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
     },
-    body: JSON.stringify({
-      action: 'staffAuthUpdate' as StaffAuthGasAction,
-      token: STAFF_AUTH_GAS_TOKEN,
-      ...input,
-    }),
+    body: formBody.toString(),
   });
 
   const payload = (await response.json().catch(() => ({}))) as StaffAuthGasResponse;
