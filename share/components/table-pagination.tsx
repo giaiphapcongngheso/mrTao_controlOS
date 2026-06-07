@@ -98,7 +98,7 @@ export function TablePagination<TData>({
   const displayTotal = totalCount ?? table.getFilteredRowModel().rows.length;
 
   return (
-    <div className="px-3 py-2 flex items-center bg-transparent justify-between py-1">
+    <div className="px-4 py-2.5 flex items-center bg-slate-50/80 border-t border-slate-150 justify-between relative z-10 backdrop-blur-xs">
       {/* Total count */}
       <div className="text-sm text-muted-foreground">
         Tổng: <span className="font-medium text-foreground">{displayTotal.toLocaleString()}</span>

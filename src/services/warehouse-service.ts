@@ -208,6 +208,7 @@ export function createWarehouseProduct(
     name: input.name,
     categoryName: input.categoryName,
     basePrice: input.basePrice,
+    cost: input.cost,
     inventories: [
       {
         branchId: branch.id,

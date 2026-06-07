@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { AlertTriangle, Building, Check, Coins, Copy, Edit2, History, Layers, Plus, RefreshCw, Search, Tag, Trash2, X } from 'lucide-react';
+import { Alert, AlertDescription, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Card, CardContent } from '@shared/ui';
+import { Layers, Coins, AlertTriangle, RefreshCw, Plus, Search, Building, Tag, Filter, Check, History, Edit2, Trash2, X, Copy } from 'lucide-react';
 import WarehouseCreateForm from './components/warehouse-create-form';
 import WarehouseSyncHistoryDrawer from './components/warehouse-sync-history-drawer';
 import { useWarehouseData } from './hooks/use-warehouse-data';
@@ -152,10 +152,11 @@ export default function WarehouseView() {
           return (
             <div className="flex justify-start font-sans text-sm">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-sm font-semibold border border-solid ${isSynced
-                  ? 'bg-blue-50/70 border-blue-200 text-blue-700'
-                  : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
-                  }`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-sm font-semibold border border-solid ${
+                  isSynced
+                    ? 'bg-blue-50/70 border-blue-200 text-blue-700'
+                    : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
+                }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${isSynced ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                 {isSynced ? 'KiotViet' : 'Tự tạo'}
@@ -233,10 +234,11 @@ export default function WarehouseView() {
           return (
             <div className="flex items-center justify-start font-sans text-sm">
               <span
-                className={`inline-flex items-center rounded-md px-2 py-0.5 font-bold uppercase tracking-wider border border-solid ${isLow
-                  ? 'bg-rose-50 border-rose-100 text-rose-700'
-                  : 'bg-slate-100 border-slate-200 text-slate-700'
-                  }`}
+                className={`inline-flex items-center rounded-md px-2 py-0.5 font-bold uppercase tracking-wider border border-solid ${
+                  isLow
+                    ? 'bg-rose-50 border-rose-100 text-rose-700'
+                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                }`}
               >
                 {onHand.toLocaleString('vi-VN')}
               </span>
@@ -266,10 +268,7 @@ export default function WarehouseView() {
                       variant="ghost"
                       size="sm"
                       className="h-8 px-2.5 text-slate-700 hover:text-indigo-650 hover:bg-indigo-50/60 rounded-xl font-bold text-sm transition-all flex items-center gap-1 cursor-pointer"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setEditingProduct(product);
-                      }}
+                      onClick={() => setEditingProduct(product)}
                     >
                       <Edit2 className="h-3.5 w-3.5 text-slate-500" />
                       Sửa
@@ -282,13 +281,13 @@ export default function WarehouseView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`h-8 px-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1 ${isManual
-                        ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
-                        : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
-                        }`}
+                      className={`h-8 px-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1 ${
+                        isManual
+                          ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
+                          : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
+                      }`}
                       disabled={!isManual}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      onClick={() => {
                         if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
                           void deleteProduct(product.id);
                         }
@@ -307,47 +306,7 @@ export default function WarehouseView() {
     }
 
     return baseCols;
-  }, [activeProduct, branches, deleteProduct, filters.branchId]);
-
-  const statCardsData = [
-    {
-      label: 'Tổng tồn kho:',
-      value: totalOnHand.toLocaleString('vi-VN'),
-      icon: <Layers className="h-3.5 w-3.5" />,
-      iconBg: 'bg-indigo-50',
-      iconColor: 'text-indigo-500',
-      hoverBorder: 'hover:border-indigo-150',
-      valueColor: 'text-slate-850',
-    },
-    {
-      label: 'Giá trị bán:',
-      value: CURRENCY_FORMATTER.format(totalValue),
-      icon: <Coins className="h-3.5 w-3.5" />,
-      iconBg: 'bg-emerald-50',
-      iconColor: 'text-emerald-500',
-      hoverBorder: 'hover:border-emerald-150',
-      valueColor: 'text-emerald-650',
-    },
-    {
-      label: 'Giá trị gốc:',
-      value: CURRENCY_FORMATTER.format(totalCostValue),
-      icon: <Coins className="h-3.5 w-3.5" />,
-      iconBg: 'bg-slate-100/80',
-      iconColor: 'text-slate-450',
-      hoverBorder: 'hover:border-slate-300',
-      valueColor: 'text-slate-700',
-    },
-    {
-      label: 'Sắp hết hàng (≤ 5):',
-      value: lowStockCount,
-      icon: <AlertTriangle className={`h-3.5 w-3.5 ${lowStockCount > 0 ? 'animate-pulse' : ''}`} />,
-      iconBg: lowStockCount > 0 ? 'bg-rose-100' : 'bg-slate-100',
-      iconColor: lowStockCount > 0 ? 'text-rose-500' : 'text-slate-450',
-      hoverBorder: lowStockCount > 0 ? 'hover:border-rose-300' : 'hover:border-rose-100',
-      cardBgBorder: lowStockCount > 0 ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200/80 bg-white',
-      valueColor: lowStockCount > 0 ? 'text-rose-600' : 'text-slate-800',
-    },
-  ];
+  }, [activeProduct, filters.branchId, branches]);
 
   return (
     <div className="space-y-3 font-sans text-sm">
@@ -389,25 +348,49 @@ export default function WarehouseView() {
 
       {/* 📊 Thống kê Số liệu siêu tinh gọn */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {statCardsData.map((card, idx) => (
-          <Card
-            key={idx}
-            className={`p-2 rounded-xl border shadow-3xs transition-all duration-300 group overflow-hidden relative ${card.cardBgBorder || 'border-slate-200/80 bg-white'
-              } ${card.hoverBorder}`}
-          >
-            <CardContent className="p-2 px-3.5 flex items-center justify-between gap-2.5 w-full min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={`p-1.5 rounded-lg shrink-0 group-hover:scale-105 transition-transform duration-200 ${card.iconBg} ${card.iconColor}`}>
-                  {card.icon}
-                </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">{card.label}</span>
-              </div>
-              <span className={`text-sm font-bold shrink-0 font-sans ${card.valueColor}`}>
-                {card.value}
-              </span>
-            </CardContent>
-          </Card>
-        ))}
+        {/* Card 1: Tổng tồn kho */}
+        <Card className="rounded-xl border border-slate-200/85 shadow-3xs py-2 px-3.5 bg-white flex items-center justify-between gap-2 hover:shadow-2xs transition-shadow duration-200">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Layers className="h-4 w-4 text-indigo-500 shrink-0" />
+            <span className="text-xs font-semibold text-slate-500 truncate">Tổng tồn kho:</span>
+          </div>
+          <span className="text-sm font-bold text-slate-800 shrink-0">
+            {totalOnHand.toLocaleString('vi-VN')}
+          </span>
+        </Card>
+
+        {/* Card 2: Giá trị bán */}
+        <Card className="rounded-xl border border-slate-200/85 shadow-3xs py-2 px-3.5 bg-white flex items-center justify-between gap-2 hover:shadow-2xs transition-shadow duration-200">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Coins className="h-4 w-4 text-emerald-500 shrink-0" />
+            <span className="text-xs font-semibold text-slate-500 truncate">Giá trị bán:</span>
+          </div>
+          <span className="text-sm font-bold text-emerald-650 shrink-0">
+            {CURRENCY_FORMATTER.format(totalValue / 2)}
+          </span>
+        </Card>
+
+        {/* Card 3: Giá trị gốc */}
+        <Card className="rounded-xl border border-slate-200/85 shadow-3xs py-2 px-3.5 bg-white flex items-center justify-between gap-2 hover:shadow-2xs transition-shadow duration-200">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Coins className="h-4 w-4 text-slate-400 shrink-0" />
+            <span className="text-xs font-semibold text-slate-500 truncate">Giá trị gốc:</span>
+          </div>
+          <span className="text-sm font-bold text-slate-700 shrink-0">
+            {CURRENCY_FORMATTER.format(totalCostValue / 2)}
+          </span>
+        </Card>
+
+        {/* Card 4: Sắp hết hàng */}
+        <Card className={`rounded-xl border shadow-3xs py-2 px-3.5 bg-white flex items-center justify-between gap-2 hover:shadow-2xs transition-shadow duration-200 ${lowStockCount > 0 ? 'border-rose-200/80 bg-rose-50/10' : 'border-slate-200/85'}`}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <AlertTriangle className={`h-4 w-4 shrink-0 ${lowStockCount > 0 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />
+            <span className="text-xs font-semibold text-slate-500 truncate">Sắp hết hàng (≤ 5):</span>
+          </div>
+          <span className={`text-sm font-bold shrink-0 ${lowStockCount > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+            {lowStockCount}
+          </span>
+        </Card>
       </div>
 
       {syncTime && (
@@ -424,50 +407,46 @@ export default function WarehouseView() {
 
       {/* ⚠️ Banner thông báo chờ lưu đồng bộ */}
       {tempSyncedData && (
-        <Card className="p-0 border-amber-200 bg-amber-50 rounded-2xl text-amber-900 shadow-3xs animate-fade-in">
-          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 w-full min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-100/80 text-amber-700 shrink-0">
-                <AlertTriangle className="h-5 w-5 animate-pulse" />
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-sm">Chế độ xem trước đồng bộ KiotViet</div>
-                <div className="text-sm text-amber-700/90 mt-0.5">
-                  Hệ thống đang hiển thị dữ liệu mới từ KiotViet (xem trước). Vui lòng nhấn{' '}
-                  <span className="font-bold">"Lưu vào hệ thống"</span> để áp dụng hoặc{' '}
-                  <span className="font-bold">"Hủy bỏ"</span> để giữ nguyên dữ liệu hiện tại.
-                </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-50 border border-amber-200/80 rounded-2xl p-4 text-amber-900 font-sans shadow-3xs animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100/80 text-amber-700 shrink-0">
+              <AlertTriangle className="h-5 w-5 animate-pulse" />
+            </div>
+            <div className="text-left">
+              <div className="font-bold text-sm">Chế độ xem trước đồng bộ KiotViet</div>
+              <div className="text-sm text-amber-700/90 mt-0.5">
+                Hệ thống đang hiển thị dữ liệu mới từ KiotViet (xem trước). Vui lòng nhấn **"Lưu vào hệ thống"** để áp dụng hoặc **"Hủy bỏ"** để giữ nguyên dữ liệu hiện tại.
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-              <Button
-                variant="outline"
-                className="rounded-xl h-9 text-sm font-bold border-amber-250 hover:bg-amber-100/40 text-amber-800 bg-transparent"
-                onClick={discardTempData}
-                disabled={isLoading}
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                className="rounded-xl h-9 text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-3xs border-none"
-                onClick={async () => {
-                  try {
-                    const log = await saveTempDataToSystem();
-                    if (log) {
-                      setSyncSummary(log);
-                      setShowSummaryDialog(true);
-                    }
-                  } catch (err) {
-                    // Error is already logged and stored in hook state
+          </div>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+            <Button
+              variant="outline"
+              className="rounded-xl h-9 text-sm font-bold border-amber-250 hover:bg-amber-100/40 text-amber-800 bg-transparent"
+              onClick={discardTempData}
+              disabled={isLoading}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              className="rounded-xl h-9 text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-3xs border-none"
+              onClick={async () => {
+                try {
+                  const log = await saveTempDataToSystem();
+                  if (log) {
+                    setSyncSummary(log);
+                    setShowSummaryDialog(true);
                   }
-                }}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Đang lưu...' : 'Lưu vào hệ thống'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                } catch (err) {
+                  // Error is already logged and stored in hook state
+                }
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Đang lưu...' : 'Lưu vào hệ thống'}
+            </Button>
+          </div>
+        </div>
       )}
 
 
@@ -508,7 +487,7 @@ export default function WarehouseView() {
         <DialogContent className="sm:max-w-md rounded-3xl font-sans text-center border-none shadow-2xl p-6 bg-white overflow-hidden">
           {/* Decorative Top Accent Gradient Bar */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-blue-500" />
-
+          
           <div className="flex flex-col items-center pt-2">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 border-4 border-emerald-100/80 text-emerald-600 shadow-sm mb-3">
               <Check className="h-7 w-7 stroke-[3px]" />
@@ -524,53 +503,47 @@ export default function WarehouseView() {
           <div className="mt-5 space-y-4 font-sans text-slate-600">
             <div className="grid grid-cols-2 gap-3.5">
               {/* Chi nhánh */}
-              <Card className="p-0 border-emerald-100/60 bg-emerald-50/15 rounded-2xl relative overflow-hidden transition-all duration-300 hover:bg-emerald-50/25">
-                <CardContent className="p-4 text-left">
-                  <div className="absolute -top-1 -right-1 text-emerald-100/30">
-                    <Building className="h-10 w-10 stroke-[1.5px]" />
+              <div className="relative overflow-hidden bg-emerald-50/15 border border-emerald-100/60 rounded-2xl p-4 text-left transition-all hover:bg-emerald-50/25">
+                <div className="absolute -top-1 -right-1 text-emerald-100/30">
+                  <Building className="h-10 w-10 stroke-[1.5px]" />
+                </div>
+                <div className="text-sm text-emerald-800 font-extrabold uppercase tracking-wider">Chi nhánh</div>
+                <div className="mt-3.5 space-y-2 text-sm font-semibold text-slate-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-400 font-medium">Thêm mới</span>
+                    <span className="text-sm font-extrabold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-lg">+{syncSummary?.branchesAdded}</span>
                   </div>
-                  <div className="text-sm text-emerald-800 font-extrabold uppercase tracking-wider">Chi nhánh</div>
-                  <div className="mt-3.5 space-y-2 text-sm font-semibold text-slate-700">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400 font-medium">Thêm mới</span>
-                      <span className="text-sm font-extrabold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-lg">+{syncSummary?.branchesAdded}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400 font-medium">Cập nhật</span>
-                      <span className="text-sm font-extrabold text-slate-650 bg-slate-100 px-2 py-0.5 rounded-lg">+{syncSummary?.branchesUpdated}</span>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-400 font-medium">Cập nhật</span>
+                    <span className="text-sm font-extrabold text-slate-650 bg-slate-100 px-2 py-0.5 rounded-lg">+{syncSummary?.branchesUpdated}</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Sản phẩm */}
-              <Card className="p-0 border-blue-100/60 bg-blue-50/15 rounded-2xl relative overflow-hidden transition-all duration-300 hover:bg-blue-50/25">
-                <CardContent className="p-4 text-left">
-                  <div className="absolute -top-1 -right-1 text-blue-100/30">
-                    <Layers className="h-10 w-10 stroke-[1.5px]" />
+              <div className="relative overflow-hidden bg-blue-50/15 border border-blue-100/60 rounded-2xl p-4 text-left transition-all hover:bg-blue-50/25">
+                <div className="absolute -top-1 -right-1 text-blue-100/30">
+                  <Layers className="h-10 w-10 stroke-[1.5px]" />
+                </div>
+                <div className="text-sm text-blue-800 font-extrabold uppercase tracking-wider">Sản phẩm</div>
+                <div className="mt-3.5 space-y-2 text-sm font-semibold text-slate-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-400 font-medium">Thêm mới</span>
+                    <span className="text-sm font-extrabold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-lg">+{syncSummary?.productsAdded}</span>
                   </div>
-                  <div className="text-sm text-blue-800 font-extrabold uppercase tracking-wider">Sản phẩm</div>
-                  <div className="mt-3.5 space-y-2 text-sm font-semibold text-slate-700">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400 font-medium">Thêm mới</span>
-                      <span className="text-sm font-extrabold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-lg">+{syncSummary?.productsAdded}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400 font-medium">Cập nhật</span>
-                      <span className="text-sm font-extrabold text-slate-655 bg-slate-100 px-2 py-0.5 rounded-lg">+{syncSummary?.productsUpdated}</span>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-400 font-medium">Cập nhật</span>
+                    <span className="text-sm font-extrabold text-slate-655 bg-slate-100 px-2 py-0.5 rounded-lg">+{syncSummary?.productsUpdated}</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             {/* Chi tiết Summary */}
-            <Card className="p-0 border-slate-100/80 bg-slate-50/80 rounded-2xl shadow-none">
-              <CardContent className="p-3.5 flex gap-2.5 text-left text-sm text-slate-650 leading-relaxed font-medium">
-                <span className="shrink-0 text-slate-400 text-sm mt-0.5">ℹ</span>
-                <span className="text-sm text-slate-500 font-medium leading-relaxed">{syncSummary?.summary}</span>
-              </CardContent>
-            </Card>
+            <div className="flex gap-2.5 bg-slate-50/80 border border-slate-100/80 p-3.5 rounded-2xl text-left text-sm text-slate-650 leading-relaxed font-medium">
+              <span className="shrink-0 text-slate-400 text-sm mt-0.5">ℹ</span>
+              <span className="text-sm text-slate-500 font-medium leading-relaxed">{syncSummary?.summary}</span>
+            </div>
           </div>
 
           <div className="flex justify-center pt-4">
@@ -666,10 +639,11 @@ export default function WarehouseView() {
                 lowStockOnly: !prev.lowStockOnly,
               }))
             }
-            className={`h-9 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 px-3 ${filters.lowStockOnly
-              ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 hover:text-rose-800'
-              : 'bg-slate-50/40 border-slate-200 text-slate-700'
-              }`}
+            className={`h-9 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 px-3 ${
+              filters.lowStockOnly
+                ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 hover:text-rose-800'
+                : 'bg-slate-50/40 border-slate-200 text-slate-700'
+            }`}
           >
             <AlertTriangle className={`h-3.5 w-3.5 ${filters.lowStockOnly ? 'text-rose-600' : 'text-slate-400'}`} />
             {filters.lowStockOnly ? 'Tồn Kho Thấp' : 'Tồn thấp'}
@@ -801,10 +775,11 @@ function SelectedProductPanel({ product, onClose, onEdit, onDelete }: SelectedPr
           <div>
             <span className="text-[10px] text-slate-400 font-black uppercase block tracking-wider">Nguồn gốc</span>
             <span
-              className={`inline-flex items-center gap-1.5 mt-1 rounded-full px-2 py-0.5 text-xs font-bold border border-solid ${product.source !== 'manual'
-                ? 'bg-blue-50/70 border-blue-200 text-blue-700'
-                : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
-                }`}
+              className={`inline-flex items-center gap-1.5 mt-1 rounded-full px-2 py-0.5 text-xs font-bold border border-solid ${
+                product.source !== 'manual'
+                  ? 'bg-blue-50/70 border-blue-200 text-blue-700'
+                  : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
+              }`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${product.source !== 'manual' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
               {product.source !== 'manual' ? 'KiotViet' : 'Tự tạo'}
@@ -841,7 +816,7 @@ function SelectedProductPanel({ product, onClose, onEdit, onDelete }: SelectedPr
                 const maxStock = Math.max(10, totalStock);
                 const percentage = totalStock > 0 ? Math.min(100, (inv.onHand / maxStock) * 100) : 0;
                 const isLow = inv.onHand <= 5;
-
+                
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between items-center text-xs font-semibold text-slate-700">

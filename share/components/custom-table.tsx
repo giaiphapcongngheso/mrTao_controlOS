@@ -1145,6 +1145,10 @@ export function CustomTable<TData>({
     return offsets;
   }, [table, columnSizing]);
 
+  const hasExternalBorder = React.useMemo(() => {
+    return className?.includes('border') || className?.includes('bg-');
+  }, [className]);
+
   return (
     <div
       className={cn(
@@ -1160,11 +1164,14 @@ export function CustomTable<TData>({
         globalFilterElement={globalFilterElement}
       />
 
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      <div className={cn(
+        'flex-1 flex flex-col min-h-0 min-w-0',
+        !hasExternalBorder && 'rounded-xl border border-slate-200 shadow-3xs bg-white overflow-hidden',
+      )}>
         <ScrollArea
           ref={scrollContainerRef}
           className={cn(
-            'relative rounded-lg border shadow-sm bg-white min-h-0',
+            'relative min-h-0',
             enableInternalVerticalScroll && 'flex flex-col flex-1',
             !enableInternalVerticalScroll && 'overflow-visible',
           )}

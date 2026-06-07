@@ -22,6 +22,7 @@ export interface WarehouseProduct {
   name: string;
   categoryName?: string;
   basePrice: number;
+  cost?: number;
   inventories?: InventoryDetail[];
   source: WarehouseDataSource;
 }
@@ -31,6 +32,7 @@ export interface WarehouseProductCreateInput {
   name: string;
   categoryName?: string;
   basePrice: number;
+  cost?: number;
   onHand: number;
   branchId: number | null;
   branchName: string;

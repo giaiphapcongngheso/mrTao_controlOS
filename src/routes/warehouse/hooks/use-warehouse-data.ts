@@ -117,6 +117,16 @@ export function useWarehouseData() {
     [filteredProducts],
   );
 
+  const totalCostValue = useMemo(
+    () =>
+      filteredProducts.reduce((sum, product) => {
+        const onHand = (product.inventories ?? []).reduce((inner, item) => inner + item.onHand, 0);
+        const costPrice = typeof product.cost === 'number' ? product.cost : 0;
+        return sum + onHand * costPrice;
+      }, 0),
+    [filteredProducts],
+  );
+
   const syncData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -242,6 +252,7 @@ export function useWarehouseData() {
           name: input.name,
           categoryName: input.categoryName,
           basePrice: input.basePrice,
+          cost: input.cost,
           inventories: [
             {
               branchId: targetBranch.id,
@@ -299,6 +310,7 @@ export function useWarehouseData() {
     syncTime,
     totalOnHand,
     totalValue,
+    totalCostValue,
     setFilters,
     createProduct,
     updateProduct,
