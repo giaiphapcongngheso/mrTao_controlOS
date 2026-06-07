@@ -9,4 +9,6 @@ export interface SystemLog {
   actionType: SystemLogActionType;
   target: string;
   details: string;
+  expireAt?: Date;
 }
+

@@ -47,8 +47,8 @@ export default function DateRangeInput({
       <PopoverTrigger asChild>
         <div className="w-full">
           <Input
+            placeholder={inputProps?.placeholder ?? t('common:rangeDate')}
             {...inputProps}
-            placeholder={t('common:rangeDate')}
             className={cn('w-full', inputProps?.className || '')}
             value={
               value?.from && value?.to

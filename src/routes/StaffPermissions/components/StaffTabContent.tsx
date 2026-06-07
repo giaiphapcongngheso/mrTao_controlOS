@@ -1,5 +1,5 @@
 import React, { Dispatch, FormEvent, SetStateAction, useMemo, useCallback } from 'react';
-import { CalendarDays, Lock, Mail, Phone, Search, Trash2, UserCheck, UserX, Users, X, Shield } from 'lucide-react';
+import { CalendarDays, Lock, Mail, Phone, Search, Trash2, UserCheck, UserX, Users, X, Shield, User, UserPlus, Check } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { getRoleFriendlyName } from '../../../constants';
@@ -237,7 +237,7 @@ export function StaffTabContent({
             </button>
             <button
               type="button"
-              disabled={!isOwner}
+              disabled={!isOwner || staff.role?.toLowerCase() === 'admin' || staff.username?.toLowerCase() === 'admin'}
               className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
               onClick={() => onToggleStaffStatus(staff)}
             >
@@ -245,7 +245,7 @@ export function StaffTabContent({
             </button>
             <button
               type="button"
-              disabled={!isOwner}
+              disabled={!isOwner || staff.role?.toLowerCase() === 'admin' || staff.username?.toLowerCase() === 'admin'}
               className="inline-flex items-center gap-1 rounded-2xl border border-rose-200 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
               onClick={() => onDeleteStaff(staff)}
             >
@@ -300,19 +300,21 @@ export function StaffTabContent({
       </div>
 
       {showAddStaffForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl md:p-6" role="dialog" aria-modal="true">
-            <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                  <Users className="h-4 w-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm transition-all duration-300">
+          <div className="w-full max-w-4xl rounded-[32px] border border-slate-100 bg-white shadow-[0_24px_70px_-10px_rgba(15,23,42,0.18)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" role="dialog" aria-modal="true">
+            
+            {/* Header */}
+            <div className="relative overflow-hidden bg-slate-50/50 px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-700 shrink-0">
+                  <Users className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.16em] text-slate-900">
-                    {staffForm.id ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự'}
+                <div className="text-left">
+                  <h3 className="text-base font-black text-slate-900 leading-snug">
+                    {staffForm.id ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới'}
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    {staffForm.id ? 'Chỉnh sửa thông tin tài khoản nhân sự hiện tại.' : 'Nhập đầy đủ thông tin tài khoản và mật khẩu đăng nhập.'}
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {staffForm.id ? 'Cập nhật thông tin tài khoản và vai trò vận hành của nhân sự.' : 'Thiết lập tài khoản đăng nhập và chọn vai trò hoạt động.'}
                   </p>
                 </div>
               </div>
@@ -322,114 +324,146 @@ export function StaffTabContent({
                   setStaffForm(DEFAULT_STAFF_FORM);
                   onCancelAddStaffForm();
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition duration-200 cursor-pointer shadow-xs active:scale-95"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={onSubmitCreateStaff} className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Họ và tên</Label>
-                  <Input
-                    type="text"
-                    value={staffForm.fullName}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                    placeholder="Nguyễn Văn A"
-                    className="h-11 rounded-2xl border-slate-200 focus-visible:border-emerald-400 focus-visible:ring-emerald-100 font-semibold"
-                  />
+            {/* Form Content */}
+            <form onSubmit={onSubmitCreateStaff} className="flex flex-col">
+              <div className="p-6 grid gap-6 md:grid-cols-2 bg-white max-h-[calc(100vh-220px)] overflow-y-auto">
+                
+                {/* Cột 1: Thông tin cá nhân */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mb-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Thông tin cơ bản</h4>
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Họ và tên nhân sự</Label>
+                    <Input
+                      type="text"
+                      value={staffForm.fullName}
+                      onChange={(event) => setStaffForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                      placeholder="Ví dụ: Nguyễn Văn A"
+                      icon={<User className="h-4 w-4 text-slate-400" />}
+                      position="left"
+                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Số điện thoại liên hệ</Label>
+                    <Input
+                      type="text"
+                      value={staffForm.phone}
+                      onChange={(event) => setStaffForm((prev) => ({ ...prev, phone: event.target.value }))}
+                      placeholder="Ví dụ: 0912345678"
+                      icon={<Phone className="h-4 w-4 text-slate-400" />}
+                      position="left"
+                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phân vai trò (Role)</Label>
+                    <CustomSelect
+                      options={roleFormOptions}
+                      value={staffForm.role}
+                      onChangeValue={(val) => setStaffForm((prev) => ({ ...prev, role: String(val) }))}
+                      placeholder="Chọn vai trò cho nhân sự"
+                      clearable={false}
+                      className="h-11 rounded-2xl border-slate-200 text-sm font-semibold text-slate-700 transition duration-200 hover:border-slate-300"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Trạng thái vận hành</Label>
+                    <CustomSelect
+                      options={statusFormOptions}
+                      value={staffForm.status}
+                      onChangeValue={(val) => setStaffForm((prev) => ({ ...prev, status: val as 'active' | 'inactive' }))}
+                      placeholder="Chọn trạng thái"
+                      clearable={false}
+                      className="h-11 rounded-2xl border-slate-200 text-sm font-semibold text-slate-700 transition duration-200 hover:border-slate-300"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Tên đăng nhập</Label>
-                  <Input
-                    type="text"
-                    value={staffForm.username}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, username: event.target.value }))}
-                    placeholder="nguyenvana"
-                    className="h-11 rounded-2xl border-slate-200 focus-visible:border-emerald-400 focus-visible:ring-emerald-100 font-semibold"
-                  />
-                </div>
+                {/* Cột 2: Thông tin tài khoản */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mb-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Tài khoản & Bảo mật</h4>
+                  </div>
 
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Vai trò</Label>
-                  <CustomSelect
-                    options={roleFormOptions}
-                    value={staffForm.role}
-                    onChangeValue={(val) => setStaffForm((prev) => ({ ...prev, role: String(val) }))}
-                    placeholder="Chọn vai trò"
-                    clearable={false}
-                    className="h-11 rounded-2xl border-slate-200 text-sm font-semibold text-slate-700"
-                  />
-                </div>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tên đăng nhập (Username)</Label>
+                    <Input
+                      type="text"
+                      value={staffForm.username}
+                      onChange={(event) => setStaffForm((prev) => ({ ...prev, username: event.target.value }))}
+                      placeholder="Ví dụ: nguyenvana (viết liền, không dấu)"
+                      icon={<UserCheck className="h-4 w-4 text-slate-400" />}
+                      position="left"
+                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
+                    />
+                  </div>
 
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Số điện thoại</Label>
-                  <Input
-                    type="text"
-                    value={staffForm.phone}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="09xxxxxxxx"
-                    className="h-11 rounded-2xl border-slate-200 focus-visible:border-emerald-400 focus-visible:ring-emerald-100 font-semibold"
-                  />
-                </div>
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Email đăng nhập hệ thống</Label>
+                    <Input
+                      type="email"
+                      value={staffForm.email}
+                      onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
+                      placeholder="nguyenvana@mrtaocoop.com"
+                      icon={<Mail className="h-4 w-4 text-slate-400" />}
+                      position="left"
+                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
+                    />
+                  </div>
 
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Email đăng nhập</Label>
-                  <Input
-                    type="email"
-                    value={staffForm.email}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="username@mrtaocoop.com"
-                    className="h-11 rounded-2xl border-slate-200 focus-visible:border-emerald-400 focus-visible:ring-emerald-100 font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1.5 text-left">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Mật khẩu</Label>
-                  <Input
-                    type="password"
-                    value={staffForm.password || ''}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, password: event.target.value }))}
-                    placeholder={staffForm.id ? "Để trống nếu không đổi" : "Tối thiểu 6 ký tự"}
-                    icon={<Lock className="h-4 w-4 text-slate-400" />}
-                    position="left"
-                    className="h-11 rounded-2xl border-slate-200 focus-visible:border-emerald-400 focus-visible:ring-emerald-100 font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1.5 text-left md:col-span-2 xl:col-span-1">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Trạng thái</Label>
-                  <CustomSelect
-                    options={statusFormOptions}
-                    value={staffForm.status}
-                    onChangeValue={(val) => setStaffForm((prev) => ({ ...prev, status: val as 'active' | 'inactive' }))}
-                    placeholder="Chọn trạng thái"
-                    clearable={false}
-                    className="h-11 rounded-2xl border-slate-200 text-sm font-semibold text-slate-700"
-                  />
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mật khẩu tài khoản</Label>
+                    <Input
+                      type="password"
+                      value={staffForm.password || ''}
+                      onChange={(event) => setStaffForm((prev) => ({ ...prev, password: event.target.value }))}
+                      placeholder={staffForm.id ? "Để trống nếu không đổi" : "Tối thiểu 6 ký tự"}
+                      icon={<Lock className="h-4 w-4 text-slate-400" />}
+                      position="left"
+                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
+                    />
+                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
+                      {staffForm.id ? "Chỉ nhập nếu bạn muốn cập nhật mật khẩu mới cho nhân sự này." : "Mật khẩu dùng để đăng nhập vào Mr Tao OS."}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              {/* Footer */}
+              <div className="bg-slate-50/80 border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-2.5 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                  className="h-10 rounded-2xl border border-slate-200/80 bg-white px-4 text-xs font-extrabold text-slate-700 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
                   onClick={() => {
                     setStaffForm(DEFAULT_STAFF_FORM);
                     onCancelAddStaffForm();
                   }}
                 >
-                  Hủy
+                  <X className="h-3.5 w-3.5" />
+                  Hủy bỏ
                 </Button>
                 <Button
                   type="submit"
                   disabled={!isOwner}
-                  className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 cursor-pointer"
+                  className="h-10 rounded-2xl bg-emerald-600 px-5 text-xs font-black text-white hover:bg-emerald-700 transition duration-200 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-95 flex items-center gap-1.5"
                 >
-                  {staffForm.id ? 'Cập nhật nhân sự' : 'Lưu nhân sự'}
+                  {staffForm.id ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                  {staffForm.id ? 'Cập nhật tài khoản' : 'Lưu nhân sự'}
                 </Button>
               </div>
             </form>

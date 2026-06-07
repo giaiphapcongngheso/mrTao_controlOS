@@ -11,4 +11,4 @@ coverage/
 .planning
 src/scripts/seed-admin.ts
 *.md
-finished-good
+.playwright-mcp

@@ -76,9 +76,10 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     [staffList],
   );
 
-
-
   const addLog = async (actionType: SystemLogActionType, target: string, details: string) => {
+    const expireAt = new Date();
+    expireAt.setDate(expireAt.getDate() + 30); // Log expires in 30 days
+
     const newLog: SystemLog = {
       id: `LOG-${Date.now()}`,
       storeId: staffList[0]?.storeId ?? DEFAULT_STORE_ID,
@@ -88,6 +89,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       actionType,
       target,
       details,
+      expireAt,
     };
 
     setLogs((prev: SystemLog[]) => [newLog, ...prev]);
@@ -565,6 +567,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       return;
     }
 
+    if (
+      staff.username?.toLowerCase() === 'admin' ||
+      staff.role?.toLowerCase() === 'admin'
+    ) {
+      toastError('Không thể thay đổi trạng thái tài khoản Admin hệ thống.');
+      return;
+    }
+
     const next: StaffMember = {
       ...staff,
       status: staff.status === 'active' ? 'inactive' : 'active',
@@ -584,6 +594,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
   const handleDeleteStaff = async (staff: StaffMember) => {
     if (!isOwner) {
       toastError('Bạn không có quyền xóa nhân sự.');
+      return;
+    }
+
+    if (
+      staff.username?.toLowerCase() === 'admin' ||
+      staff.role?.toLowerCase() === 'admin'
+    ) {
+      toastError('Không thể xóa tài khoản Admin hệ thống.');
       return;
     }
 

@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Activity, AlertCircle, Clock3, Info, Search, ShieldCheck, Trash2 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '../../../../share/ui/popover';
+import { Activity, AlertCircle, Clock3, Download, Search, ShieldCheck } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import type { DateRange } from 'react-day-picker';
+import DateRangeInput from '../../../../share/components/custom/date-range-input';
 import type { SystemLog } from '../StaffPermissionsView.types';
 import { Button, Input } from '../../../../share/ui';
 import { CustomTable } from '../../../../share/components/custom-table';
@@ -128,10 +130,11 @@ const columns: ColumnDef<SystemLog>[] = [
   },
 ];
 
-export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner, onClearLogs }: LogsTabContentProps) {
+export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner }: LogsTabContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<(typeof actionOptions)[number]>('ALL');
   const [targetFilter, setTargetFilter] = useState('ALL');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const targetOptions = useMemo(() => {
     const uniqueTargets = Array.from(new Set(logs.map((log) => log.target).filter(Boolean)));
@@ -164,10 +167,29 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
     setSearchTerm(event.target.value);
   }, []);
 
+  const handleClearDateFilter = useCallback(() => {
+    setDateRange(undefined);
+  }, []);
+
   const filteredLogs = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return logs.filter((log) => {
+      let matchedDate = true;
+      if (dateRange?.from || dateRange?.to) {
+        const logTime = new Date(log.timestamp);
+        if (dateRange.from) {
+          const fromTime = new Date(dateRange.from);
+          fromTime.setHours(0, 0, 0, 0);
+          if (logTime < fromTime) matchedDate = false;
+        }
+        if (dateRange.to) {
+          const toTime = new Date(dateRange.to);
+          toTime.setHours(23, 59, 59, 999);
+          if (logTime > toTime) matchedDate = false;
+        }
+      }
+
       const matchedAction = actionFilter === 'ALL' || log.actionType === actionFilter;
       const matchedTarget = targetFilter === 'ALL' || log.target === targetFilter;
       const matchedKeyword =
@@ -177,131 +199,183 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
         log.target.toLowerCase().includes(keyword) ||
         log.details.toLowerCase().includes(keyword);
 
-      return matchedAction && matchedTarget && matchedKeyword;
+      return matchedDate && matchedAction && matchedTarget && matchedKeyword;
     });
-  }, [actionFilter, logs, searchTerm, targetFilter]);
+  }, [actionFilter, logs, searchTerm, targetFilter, dateRange]);
+
+  const handleExportExcel = useCallback(() => {
+    if (filteredLogs.length === 0) return;
+
+    const worksheetData = filteredLogs.map((log) => ({
+      'Thời điểm': formatTimestamp(log.timestamp),
+      'Người thao tác': log.actor,
+      'Vai trò': log.role,
+      'Hành động': log.actionType,
+      'Đối tượng': log.target,
+      'Chi tiết': log.details,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Nhật ký hệ thống');
+
+    const maxLengths = worksheetData.reduce((acc, row) => {
+      Object.keys(row).forEach((key) => {
+        const value = String(row[key as keyof typeof row] || '');
+        acc[key] = Math.max(acc[key] || key.length, value.length);
+      });
+      return acc;
+    }, {} as Record<string, number>);
+
+    worksheet['!cols'] = Object.keys(maxLengths).map((key) => ({
+      wch: Math.min(Math.max(maxLengths[key] + 3, 10), 60),
+    }));
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const fileName = `system_logs_${dateStr}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+  }, [filteredLogs]);
+
+  const handleExportText = useCallback(() => {
+    if (filteredLogs.length === 0) return;
+
+    const textContent = filteredLogs
+      .map((log) => {
+        const time = formatTimestamp(log.timestamp);
+        return `[${time}] [${log.actor} - ${log.role}] [${log.actionType}] [${log.target}]: ${log.details}`;
+      })
+      .join('\n');
+
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `system_logs_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [filteredLogs]);
 
   const createCount = logs.filter((log) => log.actionType === 'CREATE').length;
   const updateCount = logs.filter((log) => log.actionType === 'UPDATE').length;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-      <div className="border-b border-slate-150 bg-slate-50/50 p-4 md:p-5">
-        <div className="flex items-center justify-between gap-4 w-full">
-          <div className="max-w-2xl text-left flex items-center gap-2">
-            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">Ghi log hệ thống</h2>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition"
-                  aria-label="Thông tin nhật ký"
-                >
-                  <Info className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4 rounded-xl border border-slate-200 bg-white shadow-lg" align="start">
-                <div className="space-y-1.5 font-sans text-left">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                    <Info className="h-4 w-4 text-indigo-650" />
-                    Thông tin nhật ký
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-medium whitespace-normal">
-                    Nhật ký này bám theo đúng flow trong bản md: theo dõi thao tác nhân sự, phân quyền, đồng bộ và các thay đổi quản trị ngay trên client hiện tại.
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {isOwner && (
-            <Button
-              onClick={onClearLogs}
-              variant="ghost"
-              className="h-8 gap-1.5 px-3 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50/50 border border-transparent hover:border-rose-100 rounded-lg shrink-0 cursor-pointer shadow-none active:scale-95 transition-all"
-              title="Xóa toàn bộ log"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Xóa tất cả log</span>
-              <span className="sm:hidden">Xóa</span>
-            </Button>
-          )}
-        </div>
-
-        {/* Bento Stats Cards - Compact horizontal layout */}
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/45 p-3 flex items-center justify-between">
-            <div className="space-y-0.5 text-left">
-              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Tổng sự kiện</span>
-              <div className="text-2xl font-black text-slate-900 leading-none">{logs.length}</div>
+    <div className="space-y-4">
+      {/* Filters Bar */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs p-3 md:p-3.5">
+        {/* Single Control Row */}
+        <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between w-full">
+          
+          {/* Left Side: Filter Elements */}
+          <div className="flex flex-wrap items-center gap-2 flex-grow min-w-0">
+            <div className="w-full sm:w-[180px] shrink-0">
+              <Input
+                type="text"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="Tìm kiếm log..."
+                icon={<Search className="h-4 w-4 text-slate-400" />}
+                position="left"
+                className="h-9 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 transition focus-visible:border-indigo-400"
+                clearable={true}
+              />
             </div>
-            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600 shrink-0">
-              <Activity className="h-4 w-4" />
-            </span>
-          </div>
 
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/45 p-3 flex items-center justify-between">
-            <div className="space-y-0.5 text-left">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Thêm mới</span>
-              <div className="text-2xl font-black text-slate-900 leading-none">{createCount}</div>
+            <div className="w-full sm:w-[220px] shrink-0">
+              <DateRangeInput
+                value={dateRange}
+                onChange={(range) => setDateRange(range)}
+                inputProps={{
+                  className: "h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-655 bg-white",
+                  placeholder: "Chọn khoảng ngày..."
+                }}
+              />
             </div>
-            <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600 shrink-0">
-              <ShieldCheck className="h-4 w-4" />
-            </span>
-          </div>
 
-          <div className="rounded-xl border border-sky-100 bg-sky-50/45 p-3 flex items-center justify-between">
-            <div className="space-y-0.5 text-left">
-              <span className="text-[10px] font-black uppercase tracking-wider text-sky-700">Cập nhật</span>
-              <div className="text-2xl font-black text-slate-900 leading-none">{updateCount}</div>
-            </div>
-            <span className="p-1.5 rounded-lg bg-sky-100 text-sky-600 shrink-0">
-              <Clock3 className="h-4 w-4" />
-            </span>
-          </div>
-        </div>
-
-        {/* Search & Filters - Compact design */}
-        <div className="mt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full">
-          <div className="flex-1 min-w-0">
-            <Input
-              type="text"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Tìm actor, vai trò, đối tượng hoặc nội dung log"
-              icon={<Search className="h-4 w-4" />}
-              position="left"
-              className="h-9.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 transition focus-visible:border-indigo-400 focus-visible:ring-indigo-50 focus-visible:ring-2"
-              clearable={true}
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0 w-full sm:w-auto">
-            <div className="w-full sm:w-[180px]">
+            <div className="w-full sm:w-[120px] shrink-0">
               <CustomSelect
                 options={actionSelectOptions}
                 value={actionFilter}
                 onChangeValue={handleChangeAction}
-                placeholder="Tất cả hành động"
+                placeholder="Hành động"
                 clearable={false}
-                className="h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-650"
+                className="h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-650"
               />
             </div>
-            <div className="w-full sm:w-[200px]">
+
+            <div className="w-full sm:w-[140px] shrink-0">
               <CustomSelect
                 options={targetSelectOptions}
                 value={targetFilter}
                 onChangeValue={handleChangeTarget}
-                placeholder="Phân loại đối tượng"
+                placeholder="Đối tượng"
                 clearable={false}
-                className="h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-650"
+                className="h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-650"
               />
+            </div>
+
+            {(dateRange?.from || dateRange?.to) && (
+              <Button
+                onClick={handleClearDateFilter}
+                variant="ghost"
+                className="h-8 px-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100/60 shrink-0 cursor-pointer"
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
+
+          {/* Right Side: Stats Badges & Export Buttons */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0 justify-end sm:justify-start">
+            
+            {/* Compact Stats Badges */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex h-6.5 items-center gap-1 rounded-lg bg-indigo-50 border border-indigo-100 px-2 text-[10px] font-black text-indigo-700">
+                <Activity className="h-3 w-3" />
+                Tổng: {logs.length}
+              </span>
+              <span className="inline-flex h-6.5 items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-100 px-2 text-[10px] font-black text-emerald-700">
+                <ShieldCheck className="h-3 w-3" />
+                Tạo: {createCount}
+              </span>
+              <span className="inline-flex h-6.5 items-center gap-1 rounded-lg bg-sky-50 border border-sky-100 px-2 text-[10px] font-black text-sky-700">
+                <Clock3 className="h-3 w-3" />
+                Sửa: {updateCount}
+              </span>
+            </div>
+
+            <div className="h-6 w-[1px] bg-slate-200 hidden sm:block shrink-0" />
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                onClick={handleExportExcel}
+                disabled={filteredLogs.length === 0}
+                variant="outline"
+                className="h-9 gap-1 px-2.5 text-xs font-black text-indigo-700 border-indigo-200 bg-indigo-50/20 hover:bg-indigo-50/50 hover:border-indigo-300 rounded-xl cursor-pointer"
+                title="Xuất file Excel"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Excel
+              </Button>
+              <Button
+                onClick={handleExportText}
+                disabled={filteredLogs.length === 0}
+                variant="outline"
+                className="h-9 gap-1 px-2.5 text-xs font-black text-slate-700 border-slate-200 bg-slate-50/20 hover:bg-slate-100/50 hover:border-slate-300 rounded-xl cursor-pointer"
+                title="Xuất file Text"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Text
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-150 w-full max-w-full min-w-0">
+      {/* Table Section */}
+      <div className="w-full max-w-full overflow-hidden min-w-0">
         <CustomTable<SystemLog>
           columns={columns}
           data={filteredLogs}
@@ -312,16 +386,16 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
           enableColumnResizing={false}
           enableColumnVisibility={false}
           showFilterRow={false}
-          emptyMessage="Không có log phù hợp. Đổi bộ lọc hoặc thực hiện thêm thao tác để làm đầy lịch sử hệ thống."
+          emptyMessage="Không có log phù hợp."
           tableMinWidth={1150}
-          className="w-full min-w-0 h-[calc(100vh-450px)] min-h-[350px]"
+          className="w-full min-w-0 h-[calc(100vh-330px)] min-h-[350px]"
         />
       </div>
 
-      <div className="border-t border-slate-200 bg-slate-50/40 px-5 py-2.5">
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-          <AlertCircle className="h-3.5 w-3.5 text-slate-400" /> Nhật ký đồng bộ từ Firestore systems_log, hỗ trợ truy vết người thao tác và thời điểm xử lý.
-        </div>
+      {/* Footer Info */}
+      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 px-1">
+        <AlertCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+        Nhật ký đồng bộ từ Firestore systems_log.
       </div>
     </div>
   );
