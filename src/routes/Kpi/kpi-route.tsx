@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { TAB_ROUTE_MAP } from '../app-shell-state';
@@ -24,9 +24,13 @@ export default function KpiRoute() {
   const deleteConfigMutation = useDeleteKpiConfigMutation();
   const saveDailyValueMutation = useSaveKpiDailyValueMutation();
 
+  const hasInitializedConfigs = useRef(false);
+  const hasInitializedDailyValues = useRef(false);
+
   // Auto-initialize base templates if Firestore is empty
   useEffect(() => {
-    if (!isConfigsLoading && kpiConfigs.length === 0) {
+    if (!isConfigsLoading && kpiConfigs.length === 0 && !hasInitializedConfigs.current) {
+      hasInitializedConfigs.current = true;
       console.log('Khởi tạo cấu hình KPI mẫu lên Firestore...');
       INITIAL_KPI_CONFIGS.forEach((config) => {
         void createConfigMutation.mutate(config);
@@ -35,7 +39,8 @@ export default function KpiRoute() {
   }, [isConfigsLoading, kpiConfigs.length, createConfigMutation]);
 
   useEffect(() => {
-    if (!isDailyValuesLoading && kpiDailyValues.length === 0 && kpiConfigs.length > 0) {
+    if (!isDailyValuesLoading && kpiDailyValues.length === 0 && kpiConfigs.length > 0 && !hasInitializedDailyValues.current) {
+      hasInitializedDailyValues.current = true;
       console.log('Khởi tạo dữ liệu KPI thực tế hàng ngày mẫu lên Firestore...');
       INITIAL_KPI_DAILY_VALUES.forEach((val) => {
         void saveDailyValueMutation.mutate(val);

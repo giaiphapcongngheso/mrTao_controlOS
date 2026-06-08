@@ -33,7 +33,7 @@ export function useKpiDailyValuesQuery() {
 export function useCreateKpiConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (newConfig: KPIConfig) => kpiConfigService.post(newConfig.id, newConfig),
+    mutationFn: (newConfig: KPIConfig) => kpiConfigService.create(newConfig),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.configs });
     },
@@ -43,7 +43,7 @@ export function useCreateKpiConfigMutation() {
 export function useUpdateKpiConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (config: KPIConfig) => kpiConfigService.put(config.id, config),
+    mutationFn: (config: KPIConfig) => kpiConfigService.update(config.id, config),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.configs });
     },
@@ -63,7 +63,7 @@ export function useDeleteKpiConfigMutation() {
 export function useSaveKpiDailyValueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dailyValue: KPIDailyValue) => kpiDailyValueService.post(dailyValue.id, dailyValue),
+    mutationFn: (dailyValue: KPIDailyValue) => kpiDailyValueService.create(dailyValue),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.dailyValues });
     },
