@@ -30,6 +30,15 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '.
 import { ScrollArea, ScrollBar } from '../../shared/components/scroll-area';
 import { GroupBox } from '../../components/custom/group-box';
 import { Button } from '../../shared/components/button';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogClose 
+} from '../../../share/ui/dialog';
 
 interface KpiViewProps {
   staffMembers: StaffMember[];
@@ -88,25 +97,26 @@ export default function KpiView({
   );
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
   const [selectedSettingRole, setSelectedSettingRole] = useState<string>('SALES');
-  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
 
   // Input states for Tab 2 (Entry)
   const [entryValues, setEntryValues] = useState<Record<string, string>>({});
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  // Form states for Tab 3 (Add config)
-  const [isAddingConfig, setIsAddingConfig] = useState(false);
-  const [newConfigGoal, setNewConfigGoal] = useState('');
-  const [newConfigKpi, setNewConfigKpi] = useState('');
-  const [newConfigUnit, setNewConfigUnit] = useState('VNĐ');
-  const [newConfigTarget, setNewConfigTarget] = useState('');
-  const [newConfigWeight, setNewConfigWeight] = useState('');
-  const [newConfigProof, setNewConfigProof] = useState('');
+  // Dialog & Form states for Tab 3 (Add/Edit config)
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [selectedConfigToEdit, setSelectedConfigToEdit] = useState<KPIConfig | null>(null);
 
-  // Inline editing config states
-  const [editTarget, setEditTarget] = useState('');
-  const [editWeight, setEditWeight] = useState('');
-  const [editProof, setEditProof] = useState('');
+  const [formGoal, setFormGoal] = useState('');
+  const [formKpi, setFormKpi] = useState('');
+  const [formUnit, setFormUnit] = useState('VNĐ');
+  const [formTarget, setFormTarget] = useState('');
+  const [formWeight, setFormWeight] = useState('');
+  const [formProof, setFormProof] = useState('');
+
+  // Dialog state for Tab 2 (Entry) & Chart state
+  const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
+  const [focusedKpiInputId, setFocusedKpiInputId] = useState<string | null>(null);
+  const [activeChartKpiId, setActiveChartKpiId] = useState<string>('');
 
   // Helper: Get all active staff ranks dynamically calculated from Firestore
   const getDynamicStaffRanks = (): StaffRank[] => {
@@ -152,6 +162,32 @@ export default function KpiView({
   const dynamicRanks = getDynamicStaffRanks();
   const selectedStaff = staffMembers.find(s => s.id === selectedStaffId) || staffMembers[0];
   const staffConfigs = selectedStaff ? kpiConfigs.filter(c => normalizeRole(c.role) === normalizeRole(selectedStaff.role)) : [];
+
+  // Set default active KPI for chart
+  React.useEffect(() => {
+    if (staffConfigs.length > 0) {
+      if (!activeChartKpiId || !staffConfigs.some(c => c.id === activeChartKpiId)) {
+        setActiveChartKpiId(staffConfigs[0].id);
+      }
+    } else {
+      setActiveChartKpiId('');
+    }
+  }, [selectedStaffId, staffConfigs]);
+
+  // Tính doanh thu tháng lũy kế
+  const getRevenueStats = () => {
+    const vnKpis = staffConfigs.filter(c => c.unit === 'VNĐ');
+    const totalTarget = vnKpis.reduce((sum, c) => sum + c.monthlyTarget, 0);
+    const totalActual = vnKpis.reduce((sum, c) => {
+      const actual = kpiDailyValues
+        .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === c.id)
+        .reduce((s, item) => s + item.value, 0);
+      return sum + actual;
+    }, 0);
+    const pct = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
+    return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
+  };
+  const revenueStats = getRevenueStats();
 
   // Helper: format money/number
   const formatValue = (val: number, unit: string) => {
@@ -207,64 +243,72 @@ export default function KpiView({
     }
   };
 
-  // Tab 3: Edit configs
-  const startEditConfig = (config: KPIConfig) => {
-    setEditingConfigId(config.id);
-    setEditTarget(config.monthlyTarget.toString());
-    setEditWeight((config.weight * 100).toString());
-    setEditProof(config.proofSource);
+  // Open Dialog for Adding Config
+  const handleOpenAddConfigDialog = () => {
+    setSelectedConfigToEdit(null);
+    setFormGoal('');
+    setFormKpi('');
+    setFormUnit('VNĐ');
+    setFormTarget('');
+    setFormWeight('');
+    setFormProof('');
+    setIsConfigDialogOpen(true);
   };
 
-  const handleUpdateConfig = async (config: KPIConfig) => {
-    try {
-      const numTarget = parseFloat(editTarget) || 0;
-      const numWeight = (parseFloat(editWeight) || 0) / 100;
-      const dailyTarget = Math.round(numTarget / 30);
-
-      await onUpdateConfig({
-        ...config,
-        monthlyTarget: numTarget,
-        weight: numWeight,
-        dailyTarget,
-        proofSource: editProof
-      });
-      setEditingConfigId(null);
-    } catch (err) {
-      console.error('Lỗi khi cập nhật cấu hình KPI:', err);
-    }
+  // Open Dialog for Editing Config
+  const handleOpenEditConfigDialog = (config: KPIConfig) => {
+    setSelectedConfigToEdit(config);
+    setFormGoal(config.goalName);
+    setFormKpi(config.kpiName);
+    setFormUnit(config.unit);
+    setFormTarget(config.monthlyTarget.toString());
+    setFormWeight((config.weight * 100).toString());
+    setFormProof(config.proofSource);
+    setIsConfigDialogOpen(true);
   };
 
-  // Tab 3: Create config
-  const handleCreateConfig = async () => {
-    if (!newConfigKpi || !newConfigTarget || !newConfigWeight) return;
+  // Handle Form Submit inside Dialog
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formKpi || !formTarget || !formWeight) return;
+
     try {
-      const numTarget = parseFloat(newConfigTarget) || 0;
-      const numWeight = (parseFloat(newConfigWeight) || 0) / 100;
+      const numTarget = parseFloat(formTarget) || 0;
+      const numWeight = (parseFloat(formWeight) || 0) / 100;
       const dailyTarget = Math.round(numTarget / 30);
-      const newId = `cfg_${selectedSettingRole.toLowerCase()}_${Date.now()}`;
 
-      const payload: KPIConfig = {
-        id: newId,
-        storeId: selectedStaff?.storeId || 'store-mr-tao-q1',
-        role: selectedSettingRole,
-        goalName: newConfigGoal || 'Chưa phân loại',
-        kpiName: newConfigKpi,
-        unit: newConfigUnit,
-        monthlyTarget: numTarget,
-        weight: numWeight,
-        dailyTarget,
-        proofSource: newConfigProof || 'Chưa thiết lập'
-      };
-
-      await onCreateConfig(payload);
-      setIsAddingConfig(false);
-      setNewConfigGoal('');
-      setNewConfigKpi('');
-      setNewConfigTarget('');
-      setNewConfigWeight('');
-      setNewConfigProof('');
+      if (selectedConfigToEdit) {
+        // Update
+        await onUpdateConfig({
+          ...selectedConfigToEdit,
+          goalName: formGoal || 'Chưa phân loại',
+          kpiName: formKpi,
+          unit: formUnit,
+          monthlyTarget: numTarget,
+          weight: numWeight,
+          dailyTarget,
+          proofSource: formProof || 'Chưa thiết lập'
+        });
+      } else {
+        // Create
+        const newId = `cfg_${selectedSettingRole.toLowerCase()}_${Date.now()}`;
+        const payload: KPIConfig = {
+          id: newId,
+          storeId: selectedStaff?.storeId || 'store-mr-tao-q1',
+          role: selectedSettingRole,
+          goalName: formGoal || 'Chưa phân loại',
+          kpiName: formKpi,
+          unit: formUnit,
+          monthlyTarget: numTarget,
+          weight: numWeight,
+          dailyTarget,
+          proofSource: formProof || 'Chưa thiết lập'
+        };
+        await onCreateConfig(payload);
+      }
+      setIsConfigDialogOpen(false);
     } catch (err) {
-      console.error('Lỗi khi thêm cấu hình KPI:', err);
+      console.error('Lỗi khi lưu cấu hình KPI:', err);
     }
   };
 
@@ -335,10 +379,10 @@ export default function KpiView({
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
-                <h2 className="text-sm font-black text-slate-800 tracking-wider">LEADERBOARD THI ĐUA</h2>
-                <p className="text-[11px] text-slate-400 font-bold">Xếp hạng dựa trên kết quả chốt số thực tế</p>
+                <h2 className="text-base font-bold text-slate-800 tracking-wider">LEADERBOARD THI ĐUA</h2>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">Xếp hạng dựa trên kết quả chốt số thực tế</p>
               </div>
-              <span className="text-xs font-black text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
                 T06/2026
               </span>
             </div>
@@ -347,10 +391,10 @@ export default function KpiView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12 text-center">Hạng</TableHead>
-                    <TableHead>Nhân viên</TableHead>
-                    <TableHead className="text-right">Tổng điểm</TableHead>
-                    <TableHead className="text-right">Xếp loại</TableHead>
+                    <TableHead className="w-12 text-center text-xs">Hạng</TableHead>
+                    <TableHead className="text-xs">Nhân viên</TableHead>
+                    <TableHead className="text-right text-xs">Tổng điểm</TableHead>
+                    <TableHead className="text-right text-xs">Xếp loại</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -362,13 +406,13 @@ export default function KpiView({
                         onClick={() => setSelectedStaffId(rank.staffId)}
                         className={`cursor-pointer hover:bg-slate-50/70 ${isSelected ? 'bg-slate-50 font-semibold border-l-4 border-l-[#C21A1A]' : ''}`}
                       >
-                        <TableCell className="text-center font-sans">
+                        <TableCell className="text-center font-sans text-sm">
                           {idx === 0 ? (
-                            <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-black text-[11px] flex items-center justify-center mx-auto shadow-sm">1</span>
+                            <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">1</span>
                           ) : idx === 1 ? (
-                            <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-black text-[11px] flex items-center justify-center mx-auto shadow-sm">2</span>
+                            <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center mx-auto shadow-sm">2</span>
                           ) : idx === 2 ? (
-                            <span className="w-5 h-5 rounded-full bg-amber-600/70 text-white font-black text-[11px] flex items-center justify-center mx-auto shadow-sm">3</span>
+                            <span className="w-5 h-5 rounded-full bg-amber-600/70 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">3</span>
                           ) : (
                             <span className="text-xs text-slate-400 font-bold">{idx + 1}</span>
                           )}
@@ -378,15 +422,15 @@ export default function KpiView({
                             <img src={rank.avatar} className="w-7 h-7 rounded-full object-cover border border-slate-100 shrink-0" alt="" />
                             <div className="text-left">
                               <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{rank.role}</span>
+                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{rank.role}</span>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-sans font-black text-slate-800 text-sm">
+                        <TableCell className="text-right font-sans font-bold text-slate-800 text-sm">
                           {rank.score}%
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded border ${getClassificationBadgeClass(rank.classification)}`}>
+                          <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${getClassificationBadgeClass(rank.classification)}`}>
                             {translateClassification(rank.classification)}
                           </span>
                         </TableCell>
@@ -409,27 +453,59 @@ export default function KpiView({
                         <img src={selectedStaff.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedStaff.username}`} className="w-full h-full object-cover" alt="" />
                       </div>
                       <div className="text-left">
-                        <CardTitle className="text-lg font-black text-slate-900">{selectedStaff.fullName}</CardTitle>
+                        <CardTitle className="text-base font-bold text-slate-900">{selectedStaff.fullName}</CardTitle>
                         <CardDescription className="text-xs font-bold text-[#C21A1A] uppercase tracking-wider mt-0.5">
                           Vai trò: {selectedStaff.role}
                         </CardDescription>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">TỔNG ĐIỂM KPI CHỐT</p>
-                      <h3 className="text-2xl font-black font-sans text-slate-900 leading-none mt-1">
-                        {dynamicRanks.find(r => r.staffId === selectedStaff.id)?.score || 0}%
-                      </h3>
+                    <div className="flex gap-4 items-center">
+                      {revenueStats.hasRevenue && (
+                        <div className="text-right border-r border-slate-100 pr-4 hidden sm:block">
+                          <p className="text-xs font-bold text-slate-400 uppercase">DOANH THU THÁNG</p>
+                          <h3 className="text-sm font-bold text-slate-900 leading-none mt-1">
+                            {formatValue(revenueStats.totalActual, 'VNĐ')}
+                          </h3>
+                          <span className="text-xs font-semibold text-emerald-600">
+                            {revenueStats.pct.toFixed(0)}% Đạt
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-slate-400 uppercase">TỔNG ĐIỂM KPI</p>
+                        <h3 className="text-lg font-bold font-sans text-slate-900 leading-none mt-1">
+                          {dynamicRanks.find(r => r.staffId === selectedStaff.id)?.score || 0}%
+                        </h3>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="pt-5 space-y-5">
+
+                  {/* Card Thống kê Doanh thu phụ nếu có */}
+                  {revenueStats.hasRevenue && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center text-left">
+                      <div className="space-y-1">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Doanh thu đạt được</span>
+                        <h4 className="text-sm font-bold text-[#C21A1A]">
+                          {formatValue(revenueStats.totalActual, 'VNĐ')}
+                        </h4>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Chỉ tiêu tháng</span>
+                        <p className="text-xs font-bold text-slate-700">
+                          {formatValue(revenueStats.totalTarget, 'VNĐ')} ({revenueStats.pct.toFixed(1)}%)
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Danh sách chỉ số */}
                   <div className="space-y-3.5">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
                     
                     {staffConfigs.length === 0 ? (
                       <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
@@ -440,12 +516,12 @@ export default function KpiView({
                         <Table>
                           <TableHeader className="bg-slate-50/50">
                             <TableRow>
-                              <TableHead>Chỉ số KPI</TableHead>
-                              <TableHead className="text-right">Target tháng</TableHead>
-                              <TableHead className="text-right">Thực đạt</TableHead>
-                              <TableHead className="text-right">Đạt %</TableHead>
-                              <TableHead className="text-right">Điểm</TableHead>
-                              <TableHead className="text-right">Trạng thái</TableHead>
+                              <TableHead className="text-xs">Chỉ số KPI</TableHead>
+                              <TableHead className="text-right text-xs">Target tháng</TableHead>
+                              <TableHead className="text-right text-xs">Thực đạt</TableHead>
+                              <TableHead className="text-right text-xs">Đạt %</TableHead>
+                              <TableHead className="text-right text-xs">Điểm</TableHead>
+                              <TableHead className="text-right text-xs">Trạng thái</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -474,25 +550,25 @@ export default function KpiView({
                               return (
                                 <TableRow key={config.id}>
                                   <TableCell className="max-w-[150px] truncate text-left">
-                                    <p className="font-bold text-slate-800 text-xs truncate" title={config.kpiName}>
+                                    <p className="font-bold text-slate-800 text-sm truncate" title={config.kpiName}>
                                       {config.kpiName}
                                     </p>
-                                    <span className="text-[9px] text-slate-400 font-semibold">Trọng số: {(config.weight * 100)}%</span>
+                                    <span className="text-xs text-slate-400 font-semibold">Trọng số: {(config.weight * 100)}%</span>
                                   </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-xs">
+                                  <TableCell className="text-right font-sans font-bold text-sm">
                                     {formatValue(config.monthlyTarget, config.unit)}
                                   </TableCell>
-                                  <TableCell className="text-right font-sans font-black text-xs text-[#C21A1A]">
+                                  <TableCell className="text-right font-sans font-bold text-sm text-[#C21A1A]">
                                     {formatValue(actual, config.unit)}
                                   </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-xs">
+                                  <TableCell className="text-right font-sans font-bold text-sm">
                                     {pctStr}
                                   </TableCell>
-                                  <TableCell className="text-right font-sans font-black text-xs text-blue-600">
+                                  <TableCell className="text-right font-sans font-bold text-sm text-blue-600">
                                     {scoreStr}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded border ${statusColor}`}>
+                                    <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
                                       {statusText}
                                     </span>
                                   </TableCell>
@@ -505,10 +581,27 @@ export default function KpiView({
                     )}
                   </div>
 
-                  {/* SVG mini chart (ambient visuals) */}
+                  {/* SVG mini chart */}
                   {staffConfigs.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider text-left">BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG 6)</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG 6)</h4>
+                        
+                        {/* Selector vẽ biểu đồ */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-slate-400 font-medium">Chỉ số:</span>
+                          <select
+                            value={activeChartKpiId}
+                            onChange={(e) => setActiveChartKpiId(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 font-bold text-xs px-2 py-1 rounded-lg text-slate-700 focus:outline-none cursor-pointer"
+                          >
+                            {staffConfigs.map(c => (
+                              <option key={c.id} value={c.id}>{c.kpiName}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      
                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-stretch h-40 justify-between relative overflow-hidden">
                         
                         {/* Decorative background grid */}
@@ -528,8 +621,7 @@ export default function KpiView({
                               </linearGradient>
                             </defs>
                             {(() => {
-                              // Get daily values for the first KPI (often revenue/sales)
-                              const targetKpi = staffConfigs[0];
+                              const targetKpi = staffConfigs.find(c => c.id === activeChartKpiId) || staffConfigs[0];
                               if (!targetKpi) return null;
                               
                               const dailyValues = Array.from({ length: 30 }, (_, dayIdx) => {
@@ -544,7 +636,7 @@ export default function KpiView({
                               const maxVal = Math.max(...dailyValues, targetKpi.dailyTarget * 1.5, 1);
                               const points = dailyValues.map((val, idx) => {
                                 const x = (idx / 29) * 300;
-                                const y = 80 - (val / maxVal) * 70; // keep padding
+                                const y = 80 - (val / maxVal) * 70;
                                 return `${x},${y}`;
                               });
 
@@ -553,12 +645,8 @@ export default function KpiView({
 
                               return (
                                 <>
-                                  {/* Area fill */}
                                   <path d={fillData} fill="url(#chartGrad)" />
-                                  {/* Line stroke */}
                                   <path d={pathData} fill="none" stroke="#C21A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  
-                                  {/* Target line */}
                                   {(() => {
                                     const targetY = 80 - (targetKpi.dailyTarget / maxVal) * 70;
                                     return (
@@ -572,7 +660,7 @@ export default function KpiView({
                         </div>
                         
                         {/* Legend axis */}
-                        <div className="flex justify-between items-center text-[9px] font-black text-slate-400 mt-2 z-10">
+                        <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mt-2 z-10">
                           <span>01/06</span>
                           <span className="text-[#3b82f6]">Vạch target ngày (mốc đứt)</span>
                           <span>30/06</span>
@@ -595,9 +683,9 @@ export default function KpiView({
           <CardHeader className="border-b border-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="text-left">
-                <CardTitle className="text-base font-black text-slate-800 tracking-wider">NHẬP LIỆU ACTION PLAN KPI</CardTitle>
+                <CardTitle className="text-base font-bold text-slate-800 tracking-wider">NHẬP LIỆU ACTION PLAN KPI</CardTitle>
                 <CardDescription className="text-xs font-bold text-slate-400 mt-0.5">
-                  Nhân viên tự nhập số thực tế đạt được hằng ngày trước 21:30
+                  Nhân viên báo cáo số thực tế đạt được hằng ngày của tháng. Click đúp vào ô thực tế trên bảng để sửa nhanh.
                 </CardDescription>
               </div>
 
@@ -607,7 +695,7 @@ export default function KpiView({
                   <select
                     value={selectedStaffId}
                     onChange={(e) => setSelectedStaffId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 font-extrabold text-xs pl-3 pr-8 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-3 pr-8 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
                   >
                     {staffMembers.filter(s => s.status === 'active').map(s => (
                       <option key={s.id} value={s.id}>{s.fullName} ({s.role})</option>
@@ -615,98 +703,56 @@ export default function KpiView({
                   </select>
                 </div>
 
-                <div className="relative min-w-[120px]">
-                  <select
-                    value={selectedDay}
-                    onChange={(e) => setSelectedDay(parseInt(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 font-extrabold text-xs pl-3 pr-8 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
-                  >
-                    {daysInMonth.map(day => (
-                      <option key={day} value={day}>Ngày {day.toString().padStart(2, '0')}/06</option>
-                    ))}
-                  </select>
-                </div>
+                <Button 
+                  onClick={() => {
+                    setIsEntryDialogOpen(true);
+                    setFocusedKpiInputId(null);
+                  }}
+                  className="font-bold cursor-pointer h-[34px] rounded-xl text-xs"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Cập nhật số thực tế
+                </Button>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="pt-6 space-y-6">
+          <CardContent className="pt-6 space-y-4">
             
-            {/* Form nhập liệu */}
-            <GroupBox legend={<span className="text-xs font-black uppercase text-slate-500 tracking-wider">Số liệu ngày {selectedDay.toString().padStart(2, '0')}/06</span>}>
+            {saveSuccessMsg && (
+              <div className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in duration-300 w-fit">
+                <Check className="w-4 h-4 shrink-0" />
+                {saveSuccessMsg}
+              </div>
+            )}
+
+            {/* Bảng tổng hợp 30 ngày */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">BẢNG ACTION PLAN KPI CHI TIẾT (30 NGÀY)</h4>
+                <span className="text-xs font-semibold text-slate-400">Cuộn ngang để xem tất cả các ngày ➔</span>
+              </div>
+
               {staffConfigs.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400 font-bold">
+                <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
                   Nhân viên này chưa được cấu hình chỉ số KPI nào. Hãy sang tab Thiết lập để tạo cấu hình.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {staffConfigs.map(config => (
-                    <div key={config.id} className="bg-slate-50/50 p-4 border border-slate-200 rounded-xl flex flex-col justify-between gap-2 text-left">
-                      <div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wide">{config.goalName}</span>
-                        <h4 className="text-sm font-bold text-slate-800 leading-tight mt-0.5">{config.kpiName}</h4>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1">
-                          Target ngày: <span className="text-slate-700">{formatValue(config.dailyTarget, config.unit)}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-bold">
-                          Đối chứng: <span className="text-slate-500">{config.proofSource}</span>
-                        </p>
-                      </div>
-
-                      <div className="mt-2 flex items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nhập số thực tế..."
-                          value={entryValues[config.id] || ''}
-                          onChange={(e) => setEntryValues({ ...entryValues, [config.id]: e.target.value })}
-                          className="flex-1 px-3 py-1.5 bg-amber-50 border border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-sans font-black text-sm text-slate-800 rounded-lg outline-none transition-all shadow-inner placeholder:font-normal"
-                        />
-                        <span className="text-xs font-bold text-slate-400 w-10 shrink-0">{config.unit}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {staffConfigs.length > 0 && (
-                <div className="flex justify-end items-center gap-3 border-t border-slate-100 pt-4 mt-2">
-                  {saveSuccessMsg && (
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1 animate-in fade-in duration-300">
-                      <Check className="w-3.5 h-3.5 shrink-0" />
-                      {saveSuccessMsg}
-                    </span>
-                  )}
-                  <Button onClick={handleSaveDayValues} className="px-5 h-9 font-bold cursor-pointer">
-                    <Save className="w-4 h-4 mr-1.5" />
-                    Lưu báo cáo ngày
-                  </Button>
-                </div>
-              )}
-            </GroupBox>
-
-            {/* Bảng tổng hợp 30 ngày (cuộn ngang) */}
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">BẢNG ACTION PLAN KPI CHI TIẾT (30 NGÀY)</h4>
-                <span className="text-[10px] font-bold text-slate-400">Cuộn ngang để xem tất cả các ngày ➔</span>
-              </div>
-
-              {staffConfigs.length > 0 && (
                 <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                   <ScrollArea className="w-full">
-                    <Table className="text-center font-sans text-xs">
+                    <Table className="text-center font-sans text-sm">
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs">Chỉ số KPI</TableHead>
-                          <TableHead className="w-20 border-r">Dòng</TableHead>
+                          <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
+                          <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
                           {daysInMonth.map(day => (
-                            <TableHead key={day} className="w-14 min-w-[56px] text-center border-r font-bold">
+                            <TableHead key={day} className="w-14 min-w-[56px] text-center border-r font-bold text-xs">
                               {day.toString().padStart(2, '0')}/06
                             </TableHead>
                           ))}
-                          <TableHead className="w-24 border-r text-right font-black sticky right-[90px] bg-slate-50 border-l shadow-xs">Tổng</TableHead>
-                          <TableHead className="w-20 border-r text-right font-black sticky right-12 bg-slate-50 border-l shadow-xs">% Đạt</TableHead>
-                          <TableHead className="w-12 text-center font-black sticky right-0 bg-slate-50 border-l shadow-xs">Trạng thái</TableHead>
+                          <TableHead className="w-24 border-r text-right font-bold sticky right-[90px] bg-slate-50 border-l shadow-xs text-xs">Tổng</TableHead>
+                          <TableHead className="w-20 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
+                          <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -736,12 +782,11 @@ export default function KpiView({
                           }
 
                           return [
-                            // Dòng Mục tiêu
                             <TableRow key={`${config.id}_target`} className="hover:bg-slate-50/20">
                               <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
                                 {config.kpiName}
                               </TableCell>
-                              <TableCell className="border-r font-bold text-slate-400 bg-slate-50/30 text-[10px]">Mục tiêu</TableCell>
+                              <TableCell className="border-r font-bold text-slate-400 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
                               {daysInMonth.map(day => (
                                 <TableCell key={day} className="border-r text-slate-400 font-medium">
                                   {config.monthlyTarget > 0 ? (config.dailyTarget).toLocaleString() : '1'}
@@ -753,29 +798,36 @@ export default function KpiView({
                               <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs">-</TableCell>
                               <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400">-</TableCell>
                             </TableRow>,
-                            // Dòng Thực tế
                             <TableRow key={`${config.id}_actual`} className="bg-amber-50/20 hover:bg-amber-50/40">
                               <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
-                                {/* Empty cell or subtle indicator */}
-                                <span className="text-[10px] text-amber-600 font-black">↳ Thực tế</span>
+                                <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
                               </TableCell>
-                              <TableCell className="border-r font-black text-amber-700 bg-amber-50/50 text-[10px]">Thực tế</TableCell>
+                              <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
                               {daysInMonth.map((day, idx) => {
                                 const act = actuals[idx];
                                 return (
-                                  <TableCell key={day} className={`border-r font-black ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}>
+                                  <TableCell 
+                                    key={day}
+                                    onDoubleClick={() => {
+                                      setSelectedDay(day);
+                                      setIsEntryDialogOpen(true);
+                                      setFocusedKpiInputId(config.id);
+                                    }}
+                                    className={`border-r font-bold cursor-pointer select-none hover:bg-amber-100/50 transition-colors ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}
+                                    title="Double-click để sửa số ngày này"
+                                  >
                                     {act > 0 ? act.toLocaleString() : '-'}
                                   </TableCell>
                                 );
                               })}
-                              <TableCell className="border-r text-right font-black text-slate-800 sticky right-[90px] bg-[#fefdfa] border-l shadow-xs">
+                              <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[90px] bg-[#fefdfa] border-l shadow-xs">
                                 {totalActual.toLocaleString()}
                               </TableCell>
-                              <TableCell className="border-r text-right font-black text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
+                              <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
                                 {pctStr}
                               </TableCell>
                               <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
-                                <span className={`inline-block text-[9px] font-black px-1 py-0.5 rounded border ${statusColor}`}>
+                                <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
                                   {statusText}
                                 </span>
                               </TableCell>
@@ -800,137 +852,44 @@ export default function KpiView({
           <CardHeader className="border-b border-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="text-left">
-                <CardTitle className="text-base font-black text-slate-800 tracking-wider">CẤU HÌNH KPI THEO VAI TRÒ</CardTitle>
-                <CardDescription className="text-xs font-bold text-slate-400 mt-0.5">
+                <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH KPI THEO VAI TRÒ</CardTitle>
+                <CardDescription className="text-xs font-medium text-slate-400 mt-0.5">
                   Thiết lập các chỉ số, target tháng và trọng số áp dụng chung cho toàn bộ nhân sự theo vai trò.
                 </CardDescription>
               </div>
 
-              {/* Roles selection dropdown */}
-              <div className="relative min-w-[200px]">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">Vai trò</span>
-                <select
-                  value={selectedSettingRole}
-                  onChange={(e) => {
-                    setSelectedSettingRole(e.target.value);
-                    setIsAddingConfig(false);
-                    setEditingConfigId(null);
-                  }}
-                  className="w-full bg-slate-50 border border-slate-200 font-extrabold text-xs pl-16 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
-                >
-                  <option value="SALES">SALES (Bán hàng)</option>
-                  <option value="KỸ_THUẬT">KỸ THUẬT (Kỹ thuật viên)</option>
-                  <option value="QUAN_LY">QUAN LÝ (Cửa hàng trưởng)</option>
-                  <option value="KHO">KHO (Nhân viên Kho)</option>
-                </select>
+              {/* Roles selection & Add button */}
+              <div className="flex items-center gap-3">
+                <div className="relative min-w-[200px]">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">Vai trò</span>
+                  <select
+                    value={selectedSettingRole}
+                    onChange={(e) => {
+                      setSelectedSettingRole(e.target.value);
+                      setEditingConfigId(null);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-16 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                  >
+                    <option value="SALES">SALES (Bán hàng)</option>
+                    <option value="KỸ_THUẬT">KỸ THUẬT (Kỹ thuật viên)</option>
+                    <option value="QUAN_LY">QUAN LÝ (Cửa hàng trưởng)</option>
+                    <option value="KHO">KHO (Nhân viên Kho)</option>
+                  </select>
+                </div>
+
+                <Button onClick={handleOpenAddConfigDialog} className="font-bold cursor-pointer h-[38px] rounded-xl text-xs">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Thêm chỉ số KPI
+                </Button>
               </div>
             </div>
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
             
-            {/* Form thêm cấu hình */}
-            {isAddingConfig ? (
-              <GroupBox legend={<span className="text-xs font-black text-[#C21A1A] uppercase tracking-wider">Thêm chỉ số KPI cho vị trí {selectedSettingRole}</span>}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Tên nhóm mục tiêu</label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: Tăng kết quả kinh doanh"
-                      value={newConfigGoal}
-                      onChange={(e) => setNewConfigGoal(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Tên chỉ số KPI *</label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
-                      value={newConfigKpi}
-                      onChange={(e) => setNewConfigKpi(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Đơn vị đo lường</label>
-                    <select
-                      value={newConfigUnit}
-                      onChange={(e) => setNewConfigUnit(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                    >
-                      <option value="VNĐ">VNĐ (Tiền mặt)</option>
-                      <option value="Đơn">Đơn (Hóa đơn)</option>
-                      <option value="Khách">Khách (Lượt khách)</option>
-                      <option value="Đánh giá">Đánh giá (Review)</option>
-                      <option value="Ca">Ca (Ca sửa)</option>
-                      <option value="Máy">Máy (Số máy)</option>
-                      <option value="Ngày">Ngày (Số ngày)</option>
-                      <option value="%">% (Tỷ lệ)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Target tháng *</label>
-                    <input
-                      type="number"
-                      placeholder="Ví dụ: 450000000"
-                      value={newConfigTarget}
-                      onChange={(e) => setNewConfigTarget(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Trọng số (%) *</label>
-                    <input
-                      type="number"
-                      placeholder="Ví dụ: 45"
-                      value={newConfigWeight}
-                      onChange={(e) => setNewConfigWeight(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Nguồn đối chứng</label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: KiotViet theo nhân viên"
-                      value={newConfigProof}
-                      onChange={(e) => setNewConfigProof(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end items-center gap-2 border-t border-slate-100 pt-3 mt-3">
-                  <Button variant="ghost" size="sm" onClick={() => setIsAddingConfig(false)} className="font-bold cursor-pointer">
-                    Hủy bỏ
-                  </Button>
-                  <Button size="sm" onClick={handleCreateConfig} className="font-bold cursor-pointer">
-                    Tạo chỉ số
-                  </Button>
-                </div>
-              </GroupBox>
-            ) : (
-              <div className="flex justify-end">
-                <Button size="sm" onClick={() => setIsAddingConfig(true)} className="font-bold cursor-pointer">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Thêm chỉ số KPI mới
-                </Button>
-              </div>
-            )}
-
             {/* Danh sách chỉ số cấu hình */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
               
               {(() => {
                 const filteredConfigs = kpiConfigs.filter(c => normalizeRole(c.role) === selectedSettingRole);
@@ -939,17 +898,17 @@ export default function KpiView({
                 return (
                   <div className="space-y-3">
                     <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-                      <Table className="text-left text-xs">
+                      <Table className="text-left text-sm">
                         <TableHeader className="bg-slate-50/50">
                           <TableRow>
-                            <TableHead>Mục tiêu chung</TableHead>
-                            <TableHead>Chỉ số KPI</TableHead>
-                            <TableHead>Đơn vị</TableHead>
-                            <TableHead className="text-right">Target tháng</TableHead>
-                            <TableHead className="text-right">Target ngày (ước tính)</TableHead>
-                            <TableHead className="text-right">Trọng số (%)</TableHead>
-                            <TableHead>Nguồn đối chứng</TableHead>
-                            <TableHead className="w-24 text-right">Thao tác</TableHead>
+                            <TableHead className="text-xs">Mục tiêu chung</TableHead>
+                            <TableHead className="text-xs">Chỉ số KPI</TableHead>
+                            <TableHead className="text-xs">Đơn vị</TableHead>
+                            <TableHead className="text-right text-xs">Target tháng</TableHead>
+                            <TableHead className="text-right text-xs">Target ngày (ước tính)</TableHead>
+                            <TableHead className="text-right text-xs">Trọng số (%)</TableHead>
+                            <TableHead className="text-xs">Nguồn đối chứng</TableHead>
+                            <TableHead className="w-24 text-right text-xs">Thao tác</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -960,82 +919,39 @@ export default function KpiView({
                               </TableCell>
                             </TableRow>
                           ) : (
-                            filteredConfigs.map(config => {
-                              const isEditing = editingConfigId === config.id;
-                              return (
-                                <TableRow key={config.id}>
-                                  <TableCell className="font-semibold text-slate-500">
-                                    {config.goalName}
-                                  </TableCell>
-                                  <TableCell className="font-bold text-slate-800">
-                                    {config.kpiName}
-                                  </TableCell>
-                                  <TableCell>{config.unit}</TableCell>
-                                  <TableCell className="text-right font-sans font-bold">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        value={editTarget}
-                                        onChange={(e) => setEditTarget(e.target.value)}
-                                        className="w-24 px-2 py-1 border border-slate-200 text-xs font-semibold text-right rounded-lg outline-none"
-                                      />
-                                    ) : (
-                                      formatValue(config.monthlyTarget, config.unit)
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans text-slate-400 font-semibold">
-                                    {formatValue(config.dailyTarget, config.unit)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans font-black text-blue-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        value={editWeight}
-                                        onChange={(e) => setEditWeight(e.target.value)}
-                                        className="w-16 px-2 py-1 border border-slate-200 text-xs font-semibold text-right rounded-lg outline-none"
-                                      />
-                                    ) : (
-                                      `${(config.weight * 100)}%`
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={editProof}
-                                        onChange={(e) => setEditProof(e.target.value)}
-                                        className="w-full px-2 py-1 border border-slate-200 text-xs font-semibold rounded-lg outline-none"
-                                      />
-                                    ) : (
-                                      config.proofSource
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1.5">
-                                      {isEditing ? (
-                                        <>
-                                          <Button variant="ghost" size="icon-xs" onClick={() => setEditingConfigId(null)} className="cursor-pointer">
-                                            <X className="w-3.5 h-3.5 text-slate-400" />
-                                          </Button>
-                                          <Button size="icon-xs" onClick={() => handleUpdateConfig(config)} className="cursor-pointer">
-                                            <Check className="w-3.5 h-3.5 text-white" />
-                                          </Button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Button variant="ghost" size="icon-xs" onClick={() => startEditConfig(config)} className="cursor-pointer">
-                                            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                                          </Button>
-                                          <Button variant="destructive" size="icon-xs" onClick={() => handleDeleteConfig(config.id)} className="cursor-pointer">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
+                            filteredConfigs.map(config => (
+                              <TableRow key={config.id}>
+                                <TableCell className="font-semibold text-slate-500 text-sm">
+                                  {config.goalName}
+                                </TableCell>
+                                <TableCell className="font-bold text-slate-800 text-sm">
+                                  {config.kpiName}
+                                </TableCell>
+                                <TableCell className="text-sm">{config.unit}</TableCell>
+                                <TableCell className="text-right font-sans font-bold text-sm">
+                                  {formatValue(config.monthlyTarget, config.unit)}
+                                </TableCell>
+                                <TableCell className="text-right font-sans text-slate-400 font-semibold text-sm">
+                                  {formatValue(config.dailyTarget, config.unit)}
+                                </TableCell>
+                                <TableCell className="text-right font-sans font-bold text-blue-600 text-sm">
+                                  {`${(config.weight * 100)}%`}
+                                </TableCell>
+                                <TableCell className="text-slate-500 text-xs">
+                                  {config.proofSource}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEditConfigDialog(config)} className="cursor-pointer">
+                                      <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                                    </Button>
+                                    <Button variant="destructive" size="icon-xs" onClick={() => handleDeleteConfig(config.id)} className="cursor-pointer">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
                           )}
                         </TableBody>
                       </Table>
@@ -1057,6 +973,212 @@ export default function KpiView({
           </CardContent>
         </Card>
       )}
+
+      {/* 6. DIALOG THÊM / SỬA KPI CONFIGS (Radix UI + Form quản lý) */}
+      <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader className="text-left border-b border-slate-100 pb-3">
+            <DialogTitle className="text-base font-bold text-slate-800">
+              {selectedConfigToEdit ? 'CHỈNH SỬA CHỈ SỐ KPI' : 'THÊM CHỈ SỐ KPI MỚI'}
+            </DialogTitle>
+            <DialogDescription className="text-xs font-medium text-slate-400 mt-1">
+              {selectedConfigToEdit 
+                ? `Cập nhật cấu hình chỉ số cho vai trò ${selectedSettingRole}`
+                : `Tạo chỉ số KPI mới áp dụng chung cho vai trò ${selectedSettingRole}`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Form quản lý nhập liệu */}
+          <form onSubmit={handleFormSubmit} className="space-y-4 pt-2">
+            
+            <div className="flex flex-col gap-1.5 text-left">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tên nhóm mục tiêu</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: Tăng kết quả kinh doanh"
+                value={formGoal}
+                onChange={(e) => setFormGoal(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tên chỉ số KPI *</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
+                value={formKpi}
+                onChange={(e) => setFormKpi(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Đơn vị đo lường</label>
+                <select
+                  value={formUnit}
+                  onChange={(e) => setFormUnit(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50 cursor-pointer"
+                >
+                  <option value="VNĐ">VNĐ</option>
+                  <option value="Đơn">Đơn</option>
+                  <option value="Khách">Khách</option>
+                  <option value="Đánh giá">Đánh giá</option>
+                  <option value="Ca">Ca</option>
+                  <option value="Máy">Máy</option>
+                  <option value="Ngày">Ngày</option>
+                  <option value="%">%</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Trọng số KPI (%) *</label>
+                <input
+                  type="number"
+                  placeholder="Ví dụ: 45"
+                  value={formWeight}
+                  onChange={(e) => setFormWeight(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Target tháng *</label>
+              <input
+                type="number"
+                placeholder="Ví dụ: 450000000"
+                value={formTarget}
+                onChange={(e) => setFormTarget(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Nguồn đối chứng</label>
+              <input
+                type="text"
+                placeholder="Ví dụ: KiotViet theo nhân viên"
+                value={formProof}
+                onChange={(e) => setFormProof(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+              />
+            </div>
+
+            {/* Actions */}
+            <DialogFooter className="border-t border-slate-100 pt-4 mt-5 flex items-center justify-end gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-9">
+                  Hủy bỏ
+                </Button>
+              </DialogClose>
+              <Button type="submit" className="font-bold cursor-pointer h-9 px-5">
+                {selectedConfigToEdit ? 'Lưu thay đổi' : 'Tạo chỉ số'}
+              </Button>
+            </DialogFooter>
+            
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 7. DIALOG NHẬP SỐ THỰC TẾ HẰNG NGÀY (Tab 2 - Option B + C) */}
+      <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader className="text-left border-b border-slate-100 pb-3">
+            <DialogTitle className="text-base font-bold text-slate-800">
+              NHẬP SỐ THỰC TẾ HẰNG NGÀY
+            </DialogTitle>
+            <DialogDescription className="text-xs font-medium text-slate-400 mt-1">
+              Báo cáo số liệu thực tế cho {selectedStaff?.fullName} ({selectedStaff?.role})
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Form quản lý báo cáo */}
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            await handleSaveDayValues();
+            setIsEntryDialogOpen(false);
+          }} className="space-y-4 pt-2">
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-bold text-slate-400 uppercase">Nhân viên</label>
+                <div className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                  {selectedStaff?.fullName}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-bold text-slate-400 uppercase">Ngày báo cáo</label>
+                <select
+                  value={selectedDay}
+                  onChange={(e) => setSelectedDay(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50 cursor-pointer"
+                >
+                  {daysInMonth.map(day => (
+                    <option key={day} value={day}>Ngày {day.toString().padStart(2, '0')}/06</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+              {staffConfigs.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 font-bold">
+                  Nhân viên này chưa được cấu hình chỉ số KPI nào.
+                </div>
+              ) : (
+                staffConfigs.map(config => (
+                  <div key={config.id} className="bg-slate-50/50 p-3 border border-slate-200 rounded-xl flex flex-col justify-between gap-2 text-left">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{config.goalName}</span>
+                      <h4 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{config.kpiName}</h4>
+                      <p className="text-xs font-medium text-slate-400 mt-0.5">
+                        Target ngày: <span className="text-slate-700 font-bold">{formatValue(config.dailyTarget, config.unit)}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nhập số thực tế..."
+                        value={entryValues[config.id] || ''}
+                        ref={(el) => {
+                          if (el && focusedKpiInputId === config.id && isEntryDialogOpen) {
+                            setTimeout(() => el.focus(), 150);
+                            setFocusedKpiInputId(null);
+                          }
+                        }}
+                        onChange={(e) => setEntryValues({ ...entryValues, [config.id]: e.target.value })}
+                        className="flex-1 px-3 py-1.5 bg-amber-50 border border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-sans font-bold text-sm text-slate-800 rounded-lg outline-none transition-all shadow-inner placeholder:font-normal"
+                      />
+                      <span className="text-xs font-bold text-slate-400 w-10 shrink-0">{config.unit}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <DialogFooter className="border-t border-slate-100 pt-4 mt-5 flex items-center justify-end gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-9">
+                  Hủy bỏ
+                </Button>
+              </DialogClose>
+              {staffConfigs.length > 0 && (
+                <Button type="submit" className="font-bold cursor-pointer h-9 px-5">
+                  Lưu báo cáo
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
