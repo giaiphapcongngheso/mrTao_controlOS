@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { kpiConfigService, kpiDailyValueService, kpiStaffRankService } from '../../../services/admin/kpi-service';
+import { roleService } from '../../../services/admin/role-service';
 import type { KPIConfig, KPIDailyValue, StaffRank } from '../../../types/kpi.types';
 
 export const kpiQueryKeys = {
   staffRanks: ['kpi', 'staff-ranks'] as const,
   configs: ['kpi', 'configs'] as const,
   dailyValues: ['kpi', 'daily-values'] as const,
+  roles: ['roles'] as const,
 };
+
+export function useKpiRolesQuery() {
+  return useQuery({
+    queryKey: kpiQueryKeys.roles,
+    queryFn: roleService.getAll,
+  });
+}
 
 export function useKpiStaffRanksQuery() {
   return useQuery({

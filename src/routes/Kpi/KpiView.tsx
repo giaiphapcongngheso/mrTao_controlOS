@@ -22,7 +22,7 @@ import {
   ArrowDownRight,
   TrendingDown
 } from 'lucide-react';
-import type { StaffMember } from '../../types/staff.types';
+import type { StaffMember, StaffRole } from '../../types/staff.types';
 import type { KPIConfig, KPIDailyValue, StaffRank } from '../../types/kpi.types';
 import { ModuleHeader } from '../../../share/components/module-header';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../share/ui/card';
@@ -41,6 +41,7 @@ import {
 } from '../../../share/ui/dialog';
 
 interface KpiViewProps {
+  roles: StaffRole[];
   staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   kpiDailyValues: KPIDailyValue[];
@@ -79,6 +80,7 @@ const getClassificationBadgeClass = (cls: string) => {
 };
 
 export default function KpiView({
+  roles,
   staffMembers,
   kpiConfigs,
   kpiDailyValues,
@@ -97,6 +99,13 @@ export default function KpiView({
   );
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
   const [selectedSettingRole, setSelectedSettingRole] = useState<string>('SALES');
+
+  React.useEffect(() => {
+    const isRoleExist = roles.some(r => r.code === selectedSettingRole);
+    if (!isRoleExist && roles.length > 0) {
+      setSelectedSettingRole(roles[0].code);
+    }
+  }, [roles, selectedSettingRole, setSelectedSettingRole]);
 
   // Input states for Tab 2 (Entry)
   const [entryValues, setEntryValues] = useState<Record<string, string>>({});
@@ -866,14 +875,14 @@ export default function KpiView({
                     value={selectedSettingRole}
                     onChange={(e) => {
                       setSelectedSettingRole(e.target.value);
-                      setEditingConfigId(null);
                     }}
                     className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-16 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
                   >
-                    <option value="SALES">SALES (Bán hàng)</option>
-                    <option value="KỸ_THUẬT">KỸ THUẬT (Kỹ thuật viên)</option>
-                    <option value="QUAN_LY">QUAN LÝ (Cửa hàng trưởng)</option>
-                    <option value="KHO">KHO (Nhân viên Kho)</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.code}>
+                        {role.code} ({role.name})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

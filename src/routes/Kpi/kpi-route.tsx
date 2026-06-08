@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { TAB_ROUTE_MAP } from '../app-shell-state';
@@ -10,45 +9,22 @@ import {
   useUpdateKpiConfigMutation,
   useDeleteKpiConfigMutation,
   useSaveKpiDailyValueMutation,
+  useKpiRolesQuery,
 } from './_hook/use-kpi';
-import { INITIAL_KPI_CONFIGS, INITIAL_KPI_DAILY_VALUES } from '../../data';
 
 export default function KpiRoute() {
   const navigate = useNavigate();
   const { data: staffMembers = [], isLoading: isStaffLoading } = useStaffQuery();
   const { data: kpiConfigs = [], isLoading: isConfigsLoading } = useKpiConfigsQuery();
   const { data: kpiDailyValues = [], isLoading: isDailyValuesLoading } = useKpiDailyValuesQuery();
+  const { data: roles = [], isLoading: isRolesLoading } = useKpiRolesQuery();
 
   const createConfigMutation = useCreateKpiConfigMutation();
   const updateConfigMutation = useUpdateKpiConfigMutation();
   const deleteConfigMutation = useDeleteKpiConfigMutation();
   const saveDailyValueMutation = useSaveKpiDailyValueMutation();
 
-  const hasInitializedConfigs = useRef(false);
-  const hasInitializedDailyValues = useRef(false);
-
-  // Auto-initialize base templates if Firestore is empty
-  useEffect(() => {
-    if (!isConfigsLoading && kpiConfigs.length === 0 && !hasInitializedConfigs.current) {
-      hasInitializedConfigs.current = true;
-      console.log('Khởi tạo cấu hình KPI mẫu lên Firestore...');
-      INITIAL_KPI_CONFIGS.forEach((config) => {
-        void createConfigMutation.mutate(config);
-      });
-    }
-  }, [isConfigsLoading, kpiConfigs.length, createConfigMutation]);
-
-  useEffect(() => {
-    if (!isDailyValuesLoading && kpiDailyValues.length === 0 && kpiConfigs.length > 0 && !hasInitializedDailyValues.current) {
-      hasInitializedDailyValues.current = true;
-      console.log('Khởi tạo dữ liệu KPI thực tế hàng ngày mẫu lên Firestore...');
-      INITIAL_KPI_DAILY_VALUES.forEach((val) => {
-        void saveDailyValueMutation.mutate(val);
-      });
-    }
-  }, [isDailyValuesLoading, kpiDailyValues.length, kpiConfigs.length, saveDailyValueMutation]);
-
-  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading) {
+  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-sm font-semibold text-slate-500 animate-pulse">
@@ -58,8 +34,13 @@ export default function KpiRoute() {
     );
   }
 
+  const handleSetTab = (tab: any) => {
+    void navigate({ to: TAB_ROUTE_MAP[tab] });
+  };
+
   return (
     <KpiView
+      roles={roles}
       staffMembers={staffMembers}
       kpiConfigs={kpiConfigs}
       kpiDailyValues={kpiDailyValues}
@@ -67,9 +48,7 @@ export default function KpiRoute() {
       onUpdateConfig={(config) => updateConfigMutation.mutateAsync(config)}
       onDeleteConfig={(configId) => deleteConfigMutation.mutateAsync(configId)}
       onSaveDailyValue={(val) => saveDailyValueMutation.mutateAsync(val)}
-      onSetTab={(tab) => {
-        void navigate({ to: TAB_ROUTE_MAP[tab] });
-      }}
+      onSetTab={handleSetTab}
     />
   );
 }
