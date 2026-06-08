@@ -13,6 +13,8 @@ export const RESOURCE_PATH = {
   STAFF_PERMISSIONS: '/staff/permissions',
   REPORTS_DAILY: '/reports/daily',
   KPI_STAFF_RANKS: '/kpi/staff-ranks',
+  KPI_CONFIGS: '/kpi/configs',
+  KPI_DAILY_VALUES: '/kpi/daily-values',
   CHECKLIST_CATEGORIES: '/checklist/categories',
   CHECKLISTS: '/checklists',
   CHECKLIST_TEMPLATES: '/checklist_templates',
