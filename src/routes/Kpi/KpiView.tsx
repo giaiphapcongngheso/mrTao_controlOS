@@ -976,52 +976,52 @@ export default function KpiView({
 
       {/* 6. DIALOG THÊM / SỬA KPI CONFIGS (Radix UI + Form quản lý) */}
       <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader className="text-left border-b border-slate-100 pb-3">
-            <DialogTitle className="text-base font-bold text-slate-800">
-              {selectedConfigToEdit ? 'CHỈNH SỬA CHỈ SỐ KPI' : 'THÊM CHỈ SỐ KPI MỚI'}
+        <DialogContent className="sm:max-w-[480px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
+          <DialogHeader className="text-left pb-2">
+            <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
+              {selectedConfigToEdit ? 'Chỉnh sửa chỉ số KPI' : 'Thêm chỉ số KPI mới'}
             </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-slate-400 mt-1">
+            <DialogDescription className="text-xs font-medium text-slate-400 mt-1 leading-normal">
               {selectedConfigToEdit 
-                ? `Cập nhật cấu hình chỉ số cho vai trò ${selectedSettingRole}`
-                : `Tạo chỉ số KPI mới áp dụng chung cho vai trò ${selectedSettingRole}`
+                ? `Cập nhật cấu hình chỉ số chung cho vị trí ${selectedSettingRole}`
+                : `Tạo chỉ số KPI mới áp dụng chung cho vị trí ${selectedSettingRole}`
               }
             </DialogDescription>
           </DialogHeader>
 
           {/* Form quản lý nhập liệu */}
-          <form onSubmit={handleFormSubmit} className="space-y-4 pt-2">
+          <form onSubmit={handleFormSubmit} className="space-y-4 pt-3 text-left">
             
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tên nhóm mục tiêu</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 tracking-wide">Tên nhóm mục tiêu</label>
               <input
                 type="text"
                 placeholder="Ví dụ: Tăng kết quả kinh doanh"
                 value={formGoal}
                 onChange={(e) => setFormGoal(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
               />
             </div>
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tên chỉ số KPI *</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 tracking-wide">Tên chỉ số KPI *</label>
               <input
                 type="text"
                 placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
                 value={formKpi}
                 onChange={(e) => setFormKpi(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Đơn vị đo lường</label>
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Đơn vị đo lường</label>
                 <select
                   value={formUnit}
                   onChange={(e) => setFormUnit(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50 cursor-pointer"
+                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 cursor-pointer text-slate-700"
                 >
                   <option value="VNĐ">VNĐ</option>
                   <option value="Đơn">Đơn</option>
@@ -1034,53 +1034,56 @@ export default function KpiView({
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Trọng số KPI (%) *</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Trọng số KPI (%) *</label>
                 <input
                   type="number"
                   placeholder="Ví dụ: 45"
                   value={formWeight}
                   onChange={(e) => setFormWeight(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Target tháng *</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 tracking-wide">Target tháng *</label>
               <input
                 type="number"
                 placeholder="Ví dụ: 450000000"
                 value={formTarget}
                 onChange={(e) => setFormTarget(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
                 required
               />
             </div>
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Nguồn đối chứng</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 tracking-wide">Nguồn đối chứng</label>
               <input
                 type="text"
                 placeholder="Ví dụ: KiotViet theo nhân viên"
                 value={formProof}
                 onChange={(e) => setFormProof(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
               />
             </div>
 
             {/* Actions */}
-            <DialogFooter className="border-t border-slate-100 pt-4 mt-5 flex items-center justify-end gap-2">
+            <div className="pt-4 flex items-center justify-end gap-2.5">
               <DialogClose asChild>
-                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-9">
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
                   Hủy bỏ
                 </Button>
               </DialogClose>
-              <Button type="submit" className="font-bold cursor-pointer h-9 px-5">
+              <button 
+                type="submit" 
+                className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
+              >
                 {selectedConfigToEdit ? 'Lưu thay đổi' : 'Tạo chỉ số'}
-              </Button>
-            </DialogFooter>
+              </button>
+            </div>
             
           </form>
         </DialogContent>
@@ -1088,13 +1091,13 @@ export default function KpiView({
 
       {/* 7. DIALOG NHẬP SỐ THỰC TẾ HẰNG NGÀY (Tab 2 - Option B + C) */}
       <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader className="text-left border-b border-slate-100 pb-3">
-            <DialogTitle className="text-base font-bold text-slate-800">
-              NHẬP SỐ THỰC TẾ HẰNG NGÀY
+        <DialogContent className="sm:max-w-[480px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
+          <DialogHeader className="text-left pb-2">
+            <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
+              Nhập số thực tế hằng ngày
             </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-slate-400 mt-1">
-              Báo cáo số liệu thực tế cho {selectedStaff?.fullName} ({selectedStaff?.role})
+            <DialogDescription className="text-xs font-medium text-slate-400 mt-1 leading-normal">
+              Báo cáo kết quả và số liệu thực tế đạt được của nhân sự
             </DialogDescription>
           </DialogHeader>
 
@@ -1103,22 +1106,22 @@ export default function KpiView({
             e.preventDefault();
             await handleSaveDayValues();
             setIsEntryDialogOpen(false);
-          }} className="space-y-4 pt-2">
+          }} className="space-y-4 pt-3 text-left">
             
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-bold text-slate-400 uppercase">Nhân viên</label>
-                <div className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Nhân viên</label>
+                <div className="h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 flex items-center">
                   {selectedStaff?.fullName}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5 text-left">
-                <label className="text-xs font-bold text-slate-400 uppercase">Ngày báo cáo</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Ngày báo cáo</label>
                 <select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50 cursor-pointer"
+                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 cursor-pointer text-slate-700"
                 >
                   {daysInMonth.map(day => (
                     <option key={day} value={day}>Ngày {day.toString().padStart(2, '0')}/06</option>
@@ -1127,19 +1130,19 @@ export default function KpiView({
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1 mt-2 scrollbar-thin">
               {staffConfigs.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400 font-bold">
+                <div className="py-8 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-2xl">
                   Nhân viên này chưa được cấu hình chỉ số KPI nào.
                 </div>
               ) : (
                 staffConfigs.map(config => (
-                  <div key={config.id} className="bg-slate-50/50 p-3 border border-slate-200 rounded-xl flex flex-col justify-between gap-2 text-left">
+                  <div key={config.id} className="bg-slate-50/50 p-4 border border-slate-200 rounded-2xl flex flex-col justify-between gap-3 text-left hover:bg-slate-50 transition-all">
                     <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{config.goalName}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{config.goalName}</span>
                       <h4 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{config.kpiName}</h4>
-                      <p className="text-xs font-medium text-slate-400 mt-0.5">
-                        Target ngày: <span className="text-slate-700 font-bold">{formatValue(config.dailyTarget, config.unit)}</span>
+                      <p className="text-xs font-medium text-slate-400 mt-1">
+                        Mục tiêu ngày: <span className="text-slate-700 font-bold">{formatValue(config.dailyTarget, config.unit)}</span>
                       </p>
                     </div>
 
@@ -1155,7 +1158,7 @@ export default function KpiView({
                           }
                         }}
                         onChange={(e) => setEntryValues({ ...entryValues, [config.id]: e.target.value })}
-                        className="flex-1 px-3 py-1.5 bg-amber-50 border border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-sans font-bold text-sm text-slate-800 rounded-lg outline-none transition-all shadow-inner placeholder:font-normal"
+                        className="flex-1 h-10 px-3.5 bg-amber-50/40 border border-amber-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-100 font-sans font-bold text-sm text-slate-800 rounded-xl outline-none transition-all shadow-xs placeholder:font-normal"
                       />
                       <span className="text-xs font-bold text-slate-400 w-10 shrink-0">{config.unit}</span>
                     </div>
@@ -1164,18 +1167,21 @@ export default function KpiView({
               )}
             </div>
 
-            <DialogFooter className="border-t border-slate-100 pt-4 mt-5 flex items-center justify-end gap-2">
+            <div className="pt-4 flex items-center justify-end gap-2.5">
               <DialogClose asChild>
-                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-9">
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
                   Hủy bỏ
                 </Button>
               </DialogClose>
               {staffConfigs.length > 0 && (
-                <Button type="submit" className="font-bold cursor-pointer h-9 px-5">
+                <button 
+                  type="submit" 
+                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
+                >
                   Lưu báo cáo
-                </Button>
+                </button>
               )}
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
