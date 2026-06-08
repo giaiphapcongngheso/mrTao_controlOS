@@ -24,6 +24,8 @@ export const TAB_ROUTE_MAP: Record<TabType, string> = {
   Marketing: '/marketing',
   Warehouse: '/warehouse',
   Staff: '/staff',
+  Plans: '/plans',
+  Customers: '/customers',
   Notifications: '/notifications',
 };
 
@@ -39,6 +41,8 @@ export const PATH_TAB_MAP: Record<string, TabType> = {
   '/marketing': 'Marketing',
   '/warehouse': 'Warehouse',
   '/staff': 'Staff',
+  '/plans': 'Plans',
+  '/customers': 'Customers',
   '/notifications': 'Notifications',
 };
 

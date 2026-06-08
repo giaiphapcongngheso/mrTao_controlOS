@@ -13,6 +13,8 @@ const LazyHandbookView = lazy(() => import('./Handbook/HandbookView'));
 const LazyMarketingView = lazy(() => import('./marketing/marketing-view'));
 const LazyWarehouseView = lazy(() => import('./warehouse/warehouse-view'));
 const LazyStaffRoute = lazy(() => import('./StaffPermissions/staff-route'));
+const LazyPlansRoute = lazy(() => import('./Plans/plans-route'));
+const LazyCustomersRoute = lazy(() => import('./Customers/customers-route'));
 const LazyNotificationsView = lazy(() => import('./Notifications/NotificationsView'));
 
 function RouteFallback() {
@@ -123,6 +125,18 @@ const staffRoute = createRoute({
   component: withSuspense(LazyStaffRoute),
 });
 
+const plansRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'plans',
+  component: withSuspense(LazyPlansRoute),
+});
+
+const customersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'customers',
+  component: withSuspense(LazyCustomersRoute),
+});
+
 const notificationsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'notifications',
@@ -142,6 +156,8 @@ const routeTree = rootRoute.addChildren([
     marketingRoute,
     warehouseRoute,
     staffRoute,
+    plansRoute,
+    customersRoute,
     notificationsRoute,
   ]),
 ]);

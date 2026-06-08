@@ -5,7 +5,9 @@ import {
   Award,
   BarChart4,
   BookMarked,
+  CalendarRange,
   CheckSquare,
+  HeartHandshake,
   HelpCircle,
   Home,
   ListTodo,
@@ -41,6 +43,8 @@ const TAB_TO_MODULE_CODES: Record<TabType, string[]> = {
   Marketing: [MODULE_CODE.MARKETING],
   Warehouse: [MODULE_CODE.KHO_HANG],
   Staff: ['STAFF', 'TAI_KHOAN', 'NHAN_SU', 'STAFF_PERMISSIONS'],
+  Plans: [MODULE_CODE.KE_HOACH],
+  Customers: [MODULE_CODE.KHACH_HANG],
   Notifications: ['THONG_BAO', 'NOTIFICATIONS', 'PHE_DUYET'],
 };
 
@@ -55,14 +59,18 @@ const DESKTOP_TITLE_MAP: Record<TabType, string> = {
   Marketing: 'Marketing & Truyền thông',
   Warehouse: 'Quản lý Kho hàng',
   Staff: 'Nhân sự',
+  Plans: 'Kế hoạch',
+  Customers: 'Khách hàng',
   Notifications: 'Thông báo Phê duyệt',
 };
 
 const SIDEBAR_LINKS: AppFrameLayoutLink[] = [
   { key: 'Today', label: 'Tổng quan', icon: Home },
+  { key: 'Plans', label: 'Kế hoạch', icon: CalendarRange },
   { key: 'Checklist', label: 'Quy trình', icon: CheckSquare },
   { key: 'Tasks', label: 'Công việc', icon: ListTodo },
   { key: 'KPI', label: 'KPI', icon: Award },
+  { key: 'Customers', label: 'Khách hàng', icon: HeartHandshake },
   { key: 'SOP', label: 'Cải tiến', icon: AlertTriangle },
   { key: 'Reports', label: 'Báo cáo', icon: BarChart4 },
   { key: 'Handbook', label: 'Sổ tay', icon: BookMarked },

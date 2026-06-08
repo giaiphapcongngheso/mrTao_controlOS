@@ -14,5 +14,7 @@ export const ROUTE_PRELOAD_MAP: Partial<Record<TabType, () => Promise<unknown>>>
   Marketing: () => import('./marketing/marketing-view'),
   Warehouse: () => import('./warehouse/warehouse-view'),
   Staff: () => import('./StaffPermissions/staff-route'),
+  Plans: () => import('./Plans/plans-route'),
+  Customers: () => import('./Customers/customers-route'),
   Notifications: () => import('./Notifications/NotificationsView'),
 };

@@ -12,9 +12,11 @@
 
 export const MODULE_CODE = {
   HOM_NAY: 'HOM_NAY',
+  KE_HOACH: 'KE_HOACH',
   CHECKLIST: 'CHECKLIST',
   GIAO_VIEC: 'GIAO_VIEC',
   KPI: 'KPI',
+  KHACH_HANG: 'KHACH_HANG',
   LOI_SOP: 'LOI_SOP',
   BAO_CAO: 'BAO_CAO',
   SO_TAY: 'SO_TAY',
@@ -40,9 +42,11 @@ export interface ModuleMetadata {
 
 export const MODULE_METADATA: Record<string, ModuleMetadata> = {
   [MODULE_CODE.HOM_NAY]: { key: 'HOM_NAY', name: 'Tổng quan', icon: '🏠', desc: 'Thẩm quyền xem tổng hợp vận hành ngày, chu kỳ làm việc, 5 điều cấm kỵ.' },
+  [MODULE_CODE.KE_HOACH]: { key: 'KE_HOACH', name: 'Kế hoạch', icon: '📅', desc: 'Lập kế hoạch làm việc, đặt mục tiêu tuần/tháng cho showroom.' },
   [MODULE_CODE.CHECKLIST]: { key: 'CHECKLIST', name: 'Quy trình', icon: '✅', desc: 'Kiểm soát ca trực mở cửa, dọn dẹp, kiểm kho và chốt két an toàn.' },
   [MODULE_CODE.GIAO_VIEC]: { key: 'GIAO_VIEC', name: 'Công việc', icon: '📋', desc: 'Tạo việc, phân công nhiệm vụ, cập nhật trạng thái tiến độ trực quan ca.' },
   [MODULE_CODE.KPI]: { key: 'KPI', name: 'KPI', icon: '📈', desc: 'Xem thống kê doanh số cá nhân, bảng xếp hạng nhân viên, chấm điểm dịch vụ.' },
+  [MODULE_CODE.KHACH_HANG]: { key: 'KHACH_HANG', name: 'Khách hàng', icon: '🤝', desc: 'Quản lý thông tin khách hàng, lịch sử mua hàng và chăm sóc khách hàng.' },
   [MODULE_CODE.LOI_SOP]: { key: 'LOI_SOP', name: 'Cải tiến', icon: '⚠️', desc: 'Ghi nhận lỗi quy trình, ngoại lệ, bất ngờ phát sinh hoặc kiểm tra ca trực.' },
   [MODULE_CODE.BAO_CAO]: { key: 'BAO_CAO', name: 'Báo cáo', icon: '📊', desc: 'Xuất thống kê doanh số showroom, ước lượng lãi lỗ kinh doanh.' },
   [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },

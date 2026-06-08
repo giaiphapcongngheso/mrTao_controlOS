@@ -9,4 +9,6 @@ export type TabType =
   | 'Marketing'
   | 'Warehouse'
   | 'Staff'
+  | 'Plans'
+  | 'Customers'
   | 'Notifications';
