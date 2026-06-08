@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.2.104",
+  "version": "1.2.105",
   "type": "module",
   "scripts": {
     "dev": "npm run rules:ensure && vite --port=3000 --host=0.0.0.0",
