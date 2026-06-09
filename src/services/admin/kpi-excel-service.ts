@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import type { KPIConfig, KPIDailyValue } from '../../types/kpi.types';
 
 /**
@@ -34,7 +34,7 @@ export function parseMonthYear(monthYear: string): { year: number; month: number
 }
 
 /**
- * Exports KPI values of a staff member in a month to Excel.
+ * Exports KPI values of a staff member in a month to Excel with custom styling.
  * 
  * @param staffName Name of the staff member
  * @param role Role/Position of the staff member
@@ -52,33 +52,162 @@ export function exportKpiReportToExcel(
   const { year, month, daysInMonth } = parseMonthYear(monthYear);
   const mmStr = String(month).padStart(2, '0');
 
-  // Helper functions for cell formatting
-  const createNumberCell = (val: number, unit: string) => {
+  // --- BRAND STYLING DEFINITIONS (mrTao Red theme) ---
+  const FONT_FAMILY = 'Segoe UI';
+
+  const titleStyle = {
+    font: { name: FONT_FAMILY, sz: 14, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: 'C21A1A' } }, // mrTao primary red
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+
+  const infoStyle = {
+    font: { name: FONT_FAMILY, sz: 10, italic: true, color: { rgb: '475569' } },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  };
+
+  // Header styles
+  const headerStyle = {
+    font: { name: FONT_FAMILY, sz: 10, bold: true, color: { rgb: '1E293B' } },
+    fill: { fgColor: { rgb: 'E2E8F0' } }, // slate-200 background
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: '94A3B8' } },
+      bottom: { style: 'medium', color: { rgb: '475569' } },
+      left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+      right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+    }
+  };
+
+  const headerLeftStyle = {
+    ...headerStyle,
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true }
+  };
+
+  // Target Row (Mục tiêu) styles
+  const targetBorder = {
+    top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+    bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+    left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+    right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+  };
+
+  const targetTextStyle = {
+    font: { name: FONT_FAMILY, sz: 9.5, italic: true, color: { rgb: '475569' } },
+    fill: { fgColor: { rgb: 'F8FAFC' } }, // slate-50 background
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: targetBorder
+  };
+
+  const targetValueStyle = {
+    font: { name: FONT_FAMILY, sz: 9.5, italic: true, color: { rgb: '475569' } },
+    fill: { fgColor: { rgb: 'F8FAFC' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: targetBorder
+  };
+
+  const targetCenterStyle = {
+    font: { name: FONT_FAMILY, sz: 9.5, italic: true, color: { rgb: '475569' } },
+    fill: { fgColor: { rgb: 'F8FAFC' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: targetBorder
+  };
+
+  // Actual Row (Thực tế) styles
+  const actualBorder = {
+    top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    bottom: { style: 'thin', color: { rgb: '94A3B8' } },
+    left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+  };
+
+  const actualTextStyle = {
+    font: { name: FONT_FAMILY, sz: 10, bold: true, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: actualBorder
+  };
+
+  const actualValueStyle = {
+    font: { name: FONT_FAMILY, sz: 10, bold: true, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: actualBorder
+  };
+
+  const actualCenterStyle = {
+    font: { name: FONT_FAMILY, sz: 10, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: actualBorder
+  };
+
+  // Summary Row styles (Tổng hợp)
+  const summaryTextStyle = {
+    font: { name: FONT_FAMILY, sz: 11, bold: true, color: { rgb: '991B1B' } },
+    fill: { fgColor: { rgb: 'FEE2E2' } }, // red-100 background
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: {
+      top: { style: 'medium', color: { rgb: 'FCA5A5' } },
+      bottom: { style: 'double', color: { rgb: 'B91C1C' } },
+      left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+      right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+    }
+  };
+
+  const summaryValueStyle = {
+    font: { name: FONT_FAMILY, sz: 11, bold: true, color: { rgb: '991B1B' } },
+    fill: { fgColor: { rgb: 'FEE2E2' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: {
+      top: { style: 'medium', color: { rgb: 'FCA5A5' } },
+      bottom: { style: 'double', color: { rgb: 'B91C1C' } },
+      left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+      right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+    }
+  };
+
+  const summaryCenterStyle = {
+    font: { name: FONT_FAMILY, sz: 11, color: { rgb: '991B1B' } },
+    fill: { fgColor: { rgb: 'FEE2E2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'medium', color: { rgb: 'FCA5A5' } },
+      bottom: { style: 'double', color: { rgb: 'B91C1C' } },
+      left: { style: 'thin', color: { rgb: 'FCA5A5' } },
+      right: { style: 'thin', color: { rgb: 'FCA5A5' } }
+    }
+  };
+
+  // Helper functions for cell formatting with style mapping
+  const createNumberCell = (val: number, unit: string, isActual: boolean) => {
+    const style = isActual ? actualValueStyle : targetValueStyle;
     if (unit === 'VNĐ') {
-      return { v: val, t: 'n', z: '#,##0" đ"' };
+      return { v: val, t: 'n', z: '#,##0" đ"', s: style };
     }
     if (unit === '%') {
-      return { v: val / 100, t: 'n', z: '0.0%' };
+      return { v: val / 100, t: 'n', z: '0.0%', s: style };
     }
-    return { v: val, t: 'n', z: `#,##0" ${unit}"` };
+    return { v: val, t: 'n', z: `#,##0" ${unit}"`, s: style };
   };
 
-  const createPercentCell = (val: number) => {
-    return { v: val / 100, t: 'n', z: '0.0%' };
+  const createPercentCell = (val: number, isActual: boolean) => {
+    return { v: val / 100, t: 'n', z: '0.0%', s: isActual ? actualValueStyle : targetValueStyle };
   };
 
-  const createWeightCell = (val: number) => {
-    return { v: val, t: 'n', z: '0%' };
+  const createWeightCell = (val: number, isActual: boolean) => {
+    return { v: val, t: 'n', z: '0%', s: isActual ? actualValueStyle : targetValueStyle };
   };
 
-  // 1. Create workbook and data array
+  // 1. Initialize data array
   const data: any[][] = [];
 
-  // Row 1: Header title
-  data.push([`BẢNG TIẾN ĐỘ KPI NHÂN VIÊN - THÁNG ${monthYear}`]);
+  // Row 1: Header title (merged later)
+  data.push([
+    { v: `BẢNG TIẾN ĐỘ KPI NHÂN VIÊN - THÁNG ${monthYear}`, t: 's', s: titleStyle }
+  ]);
 
-  // Row 2: Staff info
-  data.push([`Nhân viên: ${staffName}   |   Vai trò: ${role}   |   Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`]);
+  // Row 2: Staff info (merged later)
+  data.push([
+    { v: `Nhân viên: ${staffName}   |   Vai trò: ${role}   |   Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, t: 's', s: infoStyle }
+  ]);
 
   // Row 3: Empty spacer row for better UI breathing space
   data.push([]);
@@ -97,19 +226,30 @@ export function exportKpiReportToExcel(
     'Tổng cộng',
     'Đạt %'
   ];
-  data.push(headers);
+
+  const headerRow = headers.map((h, idx) => {
+    const isFirst = idx === 0;
+    return {
+      v: h,
+      t: 's',
+      s: isFirst ? headerLeftStyle : headerStyle
+    };
+  });
+  data.push(headerRow);
 
   // 4. Populate rows for each configuration
   configs.forEach(config => {
     // Target Row
-    const targetDailyCells = Array.from({ length: daysInMonth }, () => createNumberCell(config.dailyTarget, config.unit));
+    const targetDailyCells = Array.from({ length: daysInMonth }, () => 
+      createNumberCell(config.dailyTarget, config.unit, false)
+    );
     const targetRow = [
-      { v: config.kpiName, t: 's' },
-      createWeightCell(config.weight),
-      { v: 'Mục tiêu', t: 's' },
+      { v: config.kpiName, t: 's', s: targetTextStyle },
+      createWeightCell(config.weight, false),
+      { v: 'Mục tiêu', t: 's', s: targetCenterStyle },
       ...targetDailyCells,
-      createNumberCell(config.monthlyTarget, config.unit),
-      { v: '-', t: 's' }
+      createNumberCell(config.monthlyTarget, config.unit, false),
+      { v: '-', t: 's', s: targetCenterStyle }
     ];
     data.push(targetRow);
 
@@ -127,15 +267,17 @@ export function exportKpiReportToExcel(
       totalActual += dayValue;
     }
 
-    const actualDailyCells = actualDailyValues.map(v => createNumberCell(v, config.unit));
+    const actualDailyCells = actualDailyValues.map(v => 
+      createNumberCell(v, config.unit, true)
+    );
     const pctReached = config.monthlyTarget > 0 ? (totalActual / config.monthlyTarget) * 100 : 0;
     const actualRow = [
-      { v: config.kpiName, t: 's' },
-      createWeightCell(config.weight),
-      { v: 'Thực tế', t: 's' },
+      { v: config.kpiName, t: 's', s: actualTextStyle },
+      createWeightCell(config.weight, true),
+      { v: 'Thực tế', t: 's', s: actualCenterStyle },
       ...actualDailyCells,
-      createNumberCell(totalActual, config.unit),
-      createPercentCell(pctReached)
+      createNumberCell(totalActual, config.unit, true),
+      createPercentCell(pctReached, true)
     ];
     data.push(actualRow);
   });
@@ -164,12 +306,12 @@ export function exportKpiReportToExcel(
 
   // Summary Row
   const summaryRow = [
-    { v: 'ĐIỂM HIỆU SUẤT KPI TỔNG HỢP', t: 's' },
-    createWeightCell(totalWeight),
-    { v: 'Đạt lũy kế', t: 's' },
-    ...Array.from({ length: daysInMonth }, () => ({ v: '', t: 's' })),
-    { v: '', t: 's' },
-    createPercentCell(totalScore * 100)
+    { v: 'ĐIỂM HIỆU SUẤT KPI TỔNG HỢP', t: 's', s: summaryTextStyle },
+    { v: totalWeight, t: 'n', z: '0%', s: summaryValueStyle },
+    { v: 'Đạt lũy kế', t: 's', s: summaryCenterStyle },
+    ...Array.from({ length: daysInMonth }, () => ({ v: '', t: 's', s: summaryCenterStyle })),
+    { v: '', t: 's', s: summaryCenterStyle },
+    { v: totalScore, t: 'n', z: '0.0%', s: summaryValueStyle }
   ];
   data.push(summaryRow);
 
@@ -208,9 +350,12 @@ export function exportKpiReportToExcel(
     let maxLength = header.length;
     // Skip title, info, and spacer rows (indices 0, 1, 2)
     for (let rowIdx = 3; rowIdx < data.length; rowIdx++) {
-      const cellStr = getCellValueString(data[rowIdx][colIdx]);
-      if (cellStr.length > maxLength) {
-        maxLength = cellStr.length;
+      const cell = data[rowIdx][colIdx];
+      if (cell) {
+        const cellStr = getCellValueString(cell);
+        if (cellStr.length > maxLength) {
+          maxLength = cellStr.length;
+        }
       }
     }
     return { wch: Math.min(Math.max(maxLength + 3, 8), 50) };
@@ -219,13 +364,13 @@ export function exportKpiReportToExcel(
 
   // 6. Set custom row heights for breathing space
   worksheet['!rows'] = data.map((row, idx) => {
-    if (idx === 0) return { hpx: 32 }; // Title
-    if (idx === 1) return { hpx: 22 }; // Info
+    if (idx === 0) return { hpx: 40 }; // Title
+    if (idx === 1) return { hpx: 24 }; // Info
     if (idx === 2) return { hpx: 12 }; // Spacer
-    if (idx === 3) return { hpx: 28 }; // Headers
-    if (idx === data.length - 1) return { hpx: 26 }; // Summary Row
+    if (idx === 3) return { hpx: 30 }; // Headers
+    if (idx === data.length - 1) return { hpx: 30 }; // Summary Row
     if (idx === data.length - 2) return { hpx: 12 }; // Summary Spacer
-    return { hpx: 20 }; // Normal rows
+    return { hpx: 22 }; // Normal rows (Target, Actual)
   });
 
   // 7. Create workbook and save

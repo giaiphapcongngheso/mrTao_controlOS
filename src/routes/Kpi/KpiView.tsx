@@ -112,6 +112,38 @@ export default function KpiView({
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
   const [selectedSettingRole, setSelectedSettingRole] = useState<string>('SALES');
 
+  // Tab 1 Ranks Timeframe Selector states
+  const [ranksTimeframe, setRanksTimeframe] = useState<'month' | 'quarter' | 'year'>('month');
+  const [ranksQuarter, setRanksQuarter] = useState<number>(() => {
+    const m = new Date().getMonth() + 1;
+    return Math.ceil(m / 3);
+  });
+  const [ranksYear, setRanksYear] = useState<number>(2026);
+  const [ranksMonth, setRanksMonth] = useState<string>('2026-06');
+
+  // Sync ranksMonth when selectedMonthYear changes
+  React.useEffect(() => {
+    setRanksMonth(selectedMonthYear);
+  }, [selectedMonthYear]);
+
+  // Months in the selected period (ranks & details overview)
+  const periodMonths = React.useMemo(() => {
+    if (ranksTimeframe === 'month') {
+      return [ranksMonth];
+    } else if (ranksTimeframe === 'quarter') {
+      const q = ranksQuarter;
+      const y = ranksYear;
+      return [
+        `${y}-${String((q - 1) * 3 + 1).padStart(2, '0')}`,
+        `${y}-${String((q - 1) * 3 + 2).padStart(2, '0')}`,
+        `${y}-${String((q - 1) * 3 + 3).padStart(2, '0')}`
+      ];
+    } else {
+      const y = ranksYear;
+      return Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`);
+    }
+  }, [ranksTimeframe, ranksMonth, ranksQuarter, ranksYear]);
+
   // Tab 2 view states
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [selectedWeekNum, setSelectedWeekNum] = useState<number | null>(null);
@@ -152,29 +184,38 @@ export default function KpiView({
   const daysInMonthCount = getDaysInMonthCount(selectedMonthYear);
   const daysInMonth = Array.from({ length: daysInMonthCount }, (_, i) => i + 1);
 
-  // Helper: Get all active staff ranks dynamically calculated from Firestore
+  // Helper: Get all active staff ranks dynamically calculated from Firestore over a period
   const getDynamicStaffRanks = (): StaffRank[] => {
     const activeStaff = staffMembers.filter(s => s.status === 'active');
     
     const ranks = activeStaff.map((staff): StaffRank => {
       const roleNorm = normalizeRole(staff.role);
-      const configs = kpiConfigs.filter(c => normalizeRole(c.role) === roleNorm && (c.month || '2026-06') === selectedMonthYear);
       
-      let totalScore = 0;
-      configs.forEach(config => {
-        // sum actuals
-        const values = kpiDailyValues.filter(
-          v => v.staffId === staff.id && v.kpiConfigId === config.id && v.date.startsWith(selectedMonthYear)
+      let totalScoreSum = 0;
+      let monthsCount = 0;
+      
+      periodMonths.forEach(m => {
+        const configs = kpiConfigs.filter(
+          c => normalizeRole(c.role) === roleNorm && (c.month || '2026-06') === m
         );
-        const actual = values.reduce((sum, item) => sum + item.value, 0);
-        // % progress
-        const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
-        // score capped at weight
-        const score = Math.min(config.weight, config.weight * pct);
-        totalScore += score;
+        
+        if (configs.length > 0) {
+          let monthScore = 0;
+          configs.forEach(config => {
+            const actual = kpiDailyValues
+              .filter(v => v.staffId === staff.id && v.kpiConfigId === config.id && v.date.startsWith(m))
+              .reduce((sum, item) => sum + item.value, 0);
+            
+            const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
+            const score = Math.min(config.weight, config.weight * pct);
+            monthScore += score;
+          });
+          totalScoreSum += monthScore;
+          monthsCount++;
+        }
       });
-
-      const finalScore = Math.round(totalScore * 100);
+      
+      const finalScore = monthsCount > 0 ? Math.round((totalScoreSum / monthsCount) * 100) : 0;
       let classification: 'excellent' | 'good' | 'pass' | 'needs_improvement' = 'needs_improvement';
       if (finalScore >= 90) classification = 'excellent';
       else if (finalScore >= 80) classification = 'good';
@@ -191,13 +232,12 @@ export default function KpiView({
       };
     });
 
-    // Sort descending by score
     return ranks.sort((a, b) => b.score - a.score);
   };
 
   const dynamicRanks = React.useMemo(() => {
     return getDynamicStaffRanks();
-  }, [staffMembers, kpiConfigs, kpiDailyValues, selectedMonthYear]);
+  }, [staffMembers, kpiConfigs, kpiDailyValues, periodMonths]);
 
   const selectedStaff = React.useMemo(() => {
     return staffMembers.find(s => s.id === selectedStaffId) || staffMembers[0];
@@ -235,6 +275,90 @@ export default function KpiView({
     const pct = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
     return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
   }, [staffConfigs, kpiDailyValues, selectedStaff, selectedMonthYear]);
+
+  // Tính doanh thu lũy kế theo giai đoạn được chọn (Tháng/Quý/Năm)
+  const periodRevenueStats = React.useMemo(() => {
+    if (!selectedStaff) return { totalTarget: 0, totalActual: 0, pct: 0, hasRevenue: false };
+    const roleNorm = normalizeRole(selectedStaff.role);
+    
+    const vnKpis = kpiConfigs.filter(c => 
+      normalizeRole(c.role) === roleNorm && 
+      c.unit === 'VNĐ' && 
+      periodMonths.includes(c.month || '2026-06')
+    );
+    
+    const totalTarget = vnKpis.reduce((sum, c) => sum + c.monthlyTarget, 0);
+    const totalActual = vnKpis.reduce((sum, c) => {
+      const actual = kpiDailyValues
+        .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === c.id && v.date.startsWith(c.month || '2026-06'))
+        .reduce((s, item) => s + item.value, 0);
+      return sum + actual;
+    }, 0);
+    
+    const pct = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
+    return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
+  }, [kpiConfigs, kpiDailyValues, selectedStaff, periodMonths]);
+
+  // Group và tính lũy kế KPI chi tiết của nhân viên được chọn theo giai đoạn (Tháng/Quý/Năm)
+  const periodKpis = React.useMemo(() => {
+    if (!selectedStaff) return [];
+    const roleNorm = normalizeRole(selectedStaff.role);
+    
+    const configsInPeriod = kpiConfigs.filter(c => 
+      normalizeRole(c.role) === roleNorm && 
+      periodMonths.includes(c.month || '2026-06')
+    );
+    
+    const groups: Record<string, {
+      kpiName: string;
+      unit: string;
+      weight: number;
+      totalTarget: number;
+      totalActual: number;
+      count: number;
+    }> = {};
+    
+    configsInPeriod.forEach(config => {
+      const key = `${config.kpiName.trim().toLowerCase()}_${config.unit}`;
+      
+      const actual = kpiDailyValues
+        .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date.startsWith(config.month || '2026-06'))
+        .reduce((sum, item) => sum + item.value, 0);
+        
+      if (!groups[key]) {
+        groups[key] = {
+          kpiName: config.kpiName,
+          unit: config.unit,
+          weight: config.weight,
+          totalTarget: config.monthlyTarget,
+          totalActual: actual,
+          count: 1
+        };
+      } else {
+        groups[key].weight += config.weight;
+        groups[key].totalTarget += config.monthlyTarget;
+        groups[key].totalActual += actual;
+        groups[key].count += 1;
+      }
+    });
+    
+    return Object.values(groups).map(g => {
+      const avgWeight = g.weight / g.count;
+      const pct = g.totalTarget > 0 ? (g.totalActual / g.totalTarget) : 0;
+      const score = Math.min(avgWeight, avgWeight * pct);
+      
+      return {
+        id: g.kpiName + '_' + g.unit,
+        kpiName: g.kpiName,
+        unit: g.unit,
+        weight: avgWeight,
+        target: g.totalTarget,
+        actual: g.totalActual,
+        pct,
+        score
+      };
+    });
+  }, [kpiConfigs, kpiDailyValues, selectedStaff, periodMonths]);
 
   // Helper: format money/number
   const formatValue = (val: number, unit: string) => {
@@ -553,309 +677,412 @@ export default function KpiView({
 
       {/* 3. TAB 1: BẢNG XẾP HẠNG & CHI TIẾT */}
       {activeSubTab === 'ranks' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          
-          {/* Cột trái (Bảng xếp hạng) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h2 className="text-base font-bold text-slate-800 tracking-wider">LEADERBOARD THI ĐUA</h2>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">Xếp hạng dựa trên kết quả chốt số thực tế</p>
-              </div>
-              <span className="text-xs font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
-                T{selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
-              </span>
+        <div className="space-y-4">
+          {/* Segmented Control & Timeframe Selectors */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200/50">
+              <button
+                onClick={() => setRanksTimeframe('month')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  ranksTimeframe === 'month'
+                    ? 'bg-white text-[#C21A1A] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Theo Tháng
+              </button>
+              <button
+                onClick={() => setRanksTimeframe('quarter')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  ranksTimeframe === 'quarter'
+                    ? 'bg-white text-[#C21A1A] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Theo Quý
+              </button>
+              <button
+                onClick={() => setRanksTimeframe('year')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  ranksTimeframe === 'year'
+                    ? 'bg-white text-[#C21A1A] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Theo Năm
+              </button>
             </div>
 
-            <div className="p-2">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 text-center text-xs">Hạng</TableHead>
-                    <TableHead className="text-xs">Nhân viên</TableHead>
-                    <TableHead className="text-right text-xs">Tổng điểm</TableHead>
-                    <TableHead className="text-right text-xs">Xếp loại</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dynamicRanks.map((rank, idx) => {
-                    const isSelected = selectedStaffId === rank.staffId;
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">Giai đoạn:</span>
+              {ranksTimeframe === 'month' && (
+                <select
+                  value={ranksMonth}
+                  onChange={(e) => setRanksMonth(e.target.value)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                >
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const m = (i + 1).toString().padStart(2, '0');
                     return (
-                      <TableRow 
-                        key={rank.staffId}
-                        onClick={() => setSelectedStaffId(rank.staffId)}
-                        className={`cursor-pointer hover:bg-slate-50/70 ${isSelected ? 'bg-slate-50 font-semibold border-l-4 border-l-[#C21A1A]' : ''}`}
-                      >
-                        <TableCell className="text-center font-sans text-sm">
-                          {idx === 0 ? (
-                            <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">1</span>
-                          ) : idx === 1 ? (
-                            <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center mx-auto shadow-sm">2</span>
-                          ) : idx === 2 ? (
-                            <span className="w-5 h-5 rounded-full bg-amber-600/70 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">3</span>
-                          ) : (
-                            <span className="text-xs text-slate-400 font-bold">{idx + 1}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <img src={rank.avatar} className="w-7 h-7 rounded-full object-cover border border-slate-100 shrink-0" alt="" />
-                            <div className="text-left">
-                              <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
-                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{rank.role}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-sans font-bold text-slate-800 text-sm">
-                          {rank.score}%
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${getClassificationBadgeClass(rank.classification)}`}>
-                            {translateClassification(rank.classification)}
-                          </span>
-                        </TableCell>
-                      </TableRow>
+                      <option key={m} value={`2026-${m}`}>
+                        Tháng {m}/2026
+                      </option>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </select>
+              )}
+
+              {ranksTimeframe === 'quarter' && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={ranksQuarter}
+                    onChange={(e) => setRanksQuarter(Number(e.target.value))}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                  >
+                    <option value={1}>Quý 1 (T01 - T03)</option>
+                    <option value={2}>Quý 2 (T04 - T06)</option>
+                    <option value={3}>Quý 3 (T07 - T09)</option>
+                    <option value={4}>Quý 4 (T10 - T12)</option>
+                  </select>
+                  <select
+                    value={ranksYear}
+                    onChange={(e) => setRanksYear(Number(e.target.value))}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                  >
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                    <option value={2027}>2027</option>
+                  </select>
+                </div>
+              )}
+
+              {ranksTimeframe === 'year' && (
+                <select
+                  value={ranksYear}
+                  onChange={(e) => setRanksYear(Number(e.target.value))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                >
+                  <option value={2025}>Năm 2025</option>
+                  <option value={2026}>Năm 2026</option>
+                  <option value={2027}>Năm 2027</option>
+                </select>
+              )}
             </div>
           </div>
 
-          {/* Cột phải (Chi tiết điểm) */}
-          <div className="lg:col-span-7 space-y-4">
-            {selectedStaff && (
-              <Card>
-                <CardHeader className="border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                        <img src={selectedStaff.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedStaff.username}`} className="w-full h-full object-cover" alt="" />
-                      </div>
-                      <div className="text-left">
-                        <CardTitle className="text-base font-bold text-slate-900">{selectedStaff.fullName}</CardTitle>
-                        <CardDescription className="text-xs font-bold text-[#C21A1A] uppercase tracking-wider mt-0.5">
-                          Vai trò: {selectedStaff.role}
-                        </CardDescription>
-                      </div>
-                    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* Cột trái (Bảng xếp hạng) */}
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800 tracking-wider">LEADERBOARD THI ĐUA</h2>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">Xếp hạng dựa trên kết quả đạt được</p>
+                </div>
+                <span className="text-xs font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
+                  {ranksTimeframe === 'month' 
+                    ? `Tháng ${ranksMonth.split('-')[1]}/${ranksMonth.split('-')[0]}`
+                    : ranksTimeframe === 'quarter'
+                      ? `Quý ${ranksQuarter}/${ranksYear}`
+                      : `Năm ${ranksYear}`
+                  }
+                </span>
+              </div>
 
-                    <div className="flex gap-4 items-center">
-                      {revenueStats.hasRevenue && (
-                        <div className="text-right border-r border-slate-100 pr-4 hidden sm:block">
-                          <p className="text-xs font-bold text-slate-400 uppercase">DOANH THU THÁNG</p>
-                          <h3 className="text-sm font-bold text-slate-900 leading-none mt-1">
-                            {formatValue(revenueStats.totalActual, 'VNĐ')}
-                          </h3>
-                          <span className="text-xs font-semibold text-emerald-600">
-                            {revenueStats.pct.toFixed(0)}% Đạt
-                          </span>
+              <div className="p-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 text-center text-xs">Hạng</TableHead>
+                      <TableHead className="text-xs">Nhân viên</TableHead>
+                      <TableHead className="text-right text-xs">Tổng điểm</TableHead>
+                      <TableHead className="text-right text-xs">Xếp loại</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dynamicRanks.map((rank, idx) => {
+                      const isSelected = selectedStaffId === rank.staffId;
+                      return (
+                        <TableRow 
+                          key={rank.staffId}
+                          onClick={() => setSelectedStaffId(rank.staffId)}
+                          className={`cursor-pointer hover:bg-slate-50/70 ${isSelected ? 'bg-slate-50 font-semibold border-l-4 border-l-[#C21A1A]' : ''}`}
+                        >
+                          <TableCell className="text-center font-sans text-sm">
+                            {idx === 0 ? (
+                              <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">1</span>
+                            ) : idx === 1 ? (
+                              <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center mx-auto shadow-sm">2</span>
+                            ) : idx === 2 ? (
+                              <span className="w-5 h-5 rounded-full bg-amber-600/70 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">3</span>
+                            ) : (
+                              <span className="text-xs text-slate-400 font-bold">{idx + 1}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2.5">
+                              <img src={rank.avatar} className="w-7 h-7 rounded-full object-cover border border-slate-100 shrink-0" alt="" />
+                              <div className="text-left">
+                                <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{rank.role}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-sans font-bold text-slate-800 text-sm">
+                            {rank.score}%
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${getClassificationBadgeClass(rank.classification)}`}>
+                              {translateClassification(rank.classification)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Cột phải (Chi tiết điểm) */}
+            <div className="lg:col-span-7 space-y-4">
+              {selectedStaff && (
+                <Card>
+                  <CardHeader className="border-b border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                          <img src={selectedStaff.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${selectedStaff.username}`} className="w-full h-full object-cover" alt="" />
                         </div>
-                      )}
+                        <div className="text-left">
+                          <CardTitle className="text-base font-bold text-slate-900">{selectedStaff.fullName}</CardTitle>
+                          <CardDescription className="text-xs font-bold text-[#C21A1A] uppercase tracking-wider mt-0.5">
+                            Vai trò: {selectedStaff.role}
+                          </CardDescription>
+                        </div>
+                      </div>
 
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-slate-400 uppercase">TỔNG ĐIỂM KPI</p>
-                        <h3 className="text-lg font-bold font-sans text-slate-900 leading-none mt-1">
-                          {dynamicRanks.find(r => r.staffId === selectedStaff.id)?.score || 0}%
-                        </h3>
+                      <div className="flex gap-4 items-center">
+                        {periodRevenueStats.hasRevenue && (
+                          <div className="text-right border-r border-slate-100 pr-4 hidden sm:block">
+                            <p className="text-xs font-bold text-slate-400 uppercase">
+                              {ranksTimeframe === 'month' ? 'DOANH THU THÁNG' : ranksTimeframe === 'quarter' ? 'DOANH THU QUÝ' : 'DOANH THU NĂM'}
+                            </p>
+                            <h3 className="text-sm font-bold text-slate-900 leading-none mt-1">
+                              {formatValue(periodRevenueStats.totalActual, 'VNĐ')}
+                            </h3>
+                            <span className="text-xs font-semibold text-emerald-600">
+                              {periodRevenueStats.pct.toFixed(0)}% Đạt
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-slate-400 uppercase">ĐIỂM TRUNG BÌNH KPI</p>
+                          <h3 className="text-lg font-bold font-sans text-slate-900 leading-none mt-1">
+                            {dynamicRanks.find(r => r.staffId === selectedStaff.id)?.score || 0}%
+                          </h3>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
-                <CardContent className="pt-5 space-y-5">
+                  <CardContent className="pt-5 space-y-5">
 
-                  {/* Card Thống kê Doanh thu phụ nếu có */}
-                  {revenueStats.hasRevenue && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center text-left">
-                      <div className="space-y-1">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Doanh thu đạt được</span>
-                        <h4 className="text-sm font-bold text-[#C21A1A]">
-                          {formatValue(revenueStats.totalActual, 'VNĐ')}
-                        </h4>
-                      </div>
-                      <div className="text-right space-y-1">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Chỉ tiêu tháng</span>
-                        <p className="text-xs font-bold text-slate-700">
-                          {formatValue(revenueStats.totalTarget, 'VNĐ')} ({revenueStats.pct.toFixed(1)}%)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Danh sách chỉ số */}
-                  <div className="space-y-3.5">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
-                    
-                    {staffConfigs.length === 0 ? (
-                      <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
-                        Chưa thiết lập chỉ số KPI nào cho vị trí này trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
-                      </div>
-                    ) : (
-                      <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <Table>
-                          <TableHeader className="bg-slate-50/50">
-                            <TableRow>
-                              <TableHead className="text-xs">Chỉ số KPI</TableHead>
-                              <TableHead className="text-right text-xs">Target tháng</TableHead>
-                              <TableHead className="text-right text-xs">Thực đạt</TableHead>
-                              <TableHead className="text-right text-xs">Đạt %</TableHead>
-                              <TableHead className="text-right text-xs">Điểm</TableHead>
-                              <TableHead className="text-right text-xs">Trạng thái</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {staffConfigs.map(config => {
-                              const actual = kpiDailyValues
-                                .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date.startsWith(selectedMonthYear))
-                                .reduce((sum, item) => sum + item.value, 0);
-                              
-                              const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
-                              const pctStr = (pct * 100).toFixed(1) + '%';
-                              const score = Math.min(config.weight, config.weight * pct);
-                              const scoreStr = (score * 100).toFixed(1) + '%';
-                              
-                              let statusText = 'Chưa nhập';
-                              let statusColor = 'text-slate-400 bg-slate-50 border-slate-200';
-                              if (actual > 0) {
-                                  if (pct >= 1) {
-                                    statusText = 'Đạt';
-                                    statusColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                                  } else {
-                                    statusText = 'Chưa đạt';
-                                    statusColor = 'text-rose-600 bg-rose-50 border-rose-200';
-                                  }
-                              }
-
-                              return (
-                                <TableRow key={config.id}>
-                                  <TableCell className="max-w-[150px] truncate text-left">
-                                    <p className="font-bold text-slate-800 text-sm truncate" title={config.kpiName}>
-                                      {config.kpiName}
-                                    </p>
-                                    <span className="text-xs text-slate-400 font-semibold">Trọng số: {(config.weight * 100)}%</span>
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-sm">
-                                    {formatValue(config.monthlyTarget, config.unit)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-sm text-[#C21A1A]">
-                                    {formatValue(actual, config.unit)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-sm">
-                                    {pctStr}
-                                  </TableCell>
-                                  <TableCell className="text-right font-sans font-bold text-sm text-blue-600">
-                                    {scoreStr}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
-                                      {statusText}
-                                    </span>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
+                    {/* Card Thống kê Doanh thu phụ nếu có */}
+                    {periodRevenueStats.hasRevenue && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center text-left">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-slate-400 uppercase">Doanh thu đạt được</span>
+                          <h4 className="text-sm font-bold text-[#C21A1A]">
+                            {formatValue(periodRevenueStats.totalActual, 'VNĐ')}
+                          </h4>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <span className="text-xs font-bold text-slate-400 uppercase">
+                            {ranksTimeframe === 'month' ? 'Chỉ tiêu tháng' : ranksTimeframe === 'quarter' ? 'Chỉ tiêu quý' : 'Chỉ tiêu năm'}
+                          </span>
+                          <p className="text-xs font-bold text-slate-700">
+                            {formatValue(periodRevenueStats.totalTarget, 'VNĐ')} ({periodRevenueStats.pct.toFixed(1)}%)
+                          </p>
+                        </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* SVG mini chart */}
-                  {staffConfigs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
-                          BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG {parseInt(selectedMonthYear.split('-')[1])})
-                        </h4>
-                        
-                        {/* Selector vẽ biểu đồ */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-slate-400 font-medium">Chỉ số:</span>
-                          <select
-                            value={activeChartKpiId}
-                            onChange={(e) => setActiveChartKpiId(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 font-bold text-xs px-2 py-1 rounded-lg text-slate-700 focus:outline-none cursor-pointer"
-                          >
-                            {staffConfigs.map(c => (
-                              <option key={c.id} value={c.id}>{c.kpiName}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                    
+                    {/* Danh sách chỉ số */}
+                    <div className="space-y-3.5">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
                       
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-stretch h-40 justify-between relative overflow-hidden">
-                        
-                        {/* Decorative background grid */}
-                        <div className="absolute inset-0 flex flex-col justify-between py-6 pointer-events-none opacity-50">
-                          <div className="border-b border-slate-200/50 w-full"></div>
-                          <div className="border-b border-slate-200/50 w-full"></div>
-                          <div className="border-b border-slate-200/50 w-full"></div>
+                      {periodKpis.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
+                          {ranksTimeframe === 'month' 
+                            ? `Chưa thiết lập chỉ số KPI nào cho vị trí này trong tháng ${ranksMonth.split('-')[1]}/${ranksMonth.split('-')[0]}`
+                            : ranksTimeframe === 'quarter'
+                              ? `Chưa thiết lập chỉ số KPI nào cho vị trí này trong Quý ${ranksQuarter}/${ranksYear}`
+                              : `Chưa thiết lập chỉ số KPI nào cho vị trí này trong Năm ${ranksYear}`
+                          }
                         </div>
+                      ) : (
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                          <Table>
+                            <TableHeader className="bg-slate-50/50">
+                              <TableRow>
+                                <TableHead className="text-xs">Chỉ số KPI</TableHead>
+                                <TableHead className="text-right text-xs">
+                                  {ranksTimeframe === 'month' ? 'Target tháng' : 'Target giai đoạn'}
+                                </TableHead>
+                                <TableHead className="text-right text-xs">Thực đạt</TableHead>
+                                <TableHead className="text-right text-xs">Đạt %</TableHead>
+                                <TableHead className="text-right text-xs">Điểm</TableHead>
+                                <TableHead className="text-right text-xs">Trạng thái</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {periodKpis.map(kpi => {
+                                const pctStr = (kpi.pct * 100).toFixed(1) + '%';
+                                const scoreStr = (kpi.score * 100).toFixed(1) + '%';
+                                
+                                let statusText = 'Chưa nhập';
+                                let statusColor = 'text-slate-400 bg-slate-50 border-slate-200';
+                                if (kpi.actual > 0) {
+                                    if (kpi.pct >= 1) {
+                                      statusText = 'Đạt';
+                                      statusColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                    } else {
+                                      statusText = 'Chưa đạt';
+                                      statusColor = 'text-rose-600 bg-rose-50 border-rose-200';
+                                    }
+                                }
 
-                        {/* Sparkline curve */}
-                        <div className="relative flex-1 w-full mt-2">
-                          <svg className="w-full h-full" viewBox="0 0 300 80" preserveAspectRatio="none">
-                            <defs>
-                              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#C21A1A" stopOpacity="0.2"/>
-                                <stop offset="100%" stopColor="#C21A1A" stopOpacity="0.0"/>
-                              </linearGradient>
-                            </defs>
-                            {(() => {
-                              const targetKpi = staffConfigs.find(c => c.id === activeChartKpiId) || staffConfigs[0];
-                              if (!targetKpi) return null;
-                              
-                              const dailyValues = Array.from({ length: daysInMonthCount }, (_, dayIdx) => {
-                                const day = dayIdx + 1;
-                                const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
-                                const record = kpiDailyValues.find(
-                                  v => v.staffId === selectedStaff.id && v.kpiConfigId === targetKpi.id && v.date === dateStr
+                                return (
+                                  <TableRow key={kpi.id}>
+                                    <TableCell className="max-w-[150px] truncate text-left">
+                                      <p className="font-bold text-slate-800 text-sm truncate" title={kpi.kpiName}>
+                                        {kpi.kpiName}
+                                      </p>
+                                      <span className="text-xs text-slate-400 font-semibold">Trọng số: {(kpi.weight * 100)}%</span>
+                                    </TableCell>
+                                    <TableCell className="text-right font-sans font-bold text-sm">
+                                      {formatValue(kpi.target, kpi.unit)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-sans font-bold text-sm text-[#C21A1A]">
+                                      {formatValue(kpi.actual, kpi.unit)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-sans font-bold text-sm">
+                                      {pctStr}
+                                    </TableCell>
+                                    <TableCell className="text-right font-sans font-bold text-sm text-blue-600">
+                                      {scoreStr}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
+                                        {statusText}
+                                      </span>
+                                    </TableCell>
+                                  </TableRow>
                                 );
-                                return record ? record.value : 0;
-                              });
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
 
-                              const maxVal = Math.max(...dailyValues, targetKpi.dailyTarget * 1.5, 1);
-                              const points = dailyValues.map((val, idx) => {
-                                const x = (idx / (daysInMonthCount - 1)) * 300;
-                                const y = 80 - (val / maxVal) * 70;
-                                return `${x},${y}`;
-                              });
-
-                              const pathData = `M ${points.join(' L ')}`;
-                              const fillData = `${pathData} L 300,80 L 0,80 Z`;
-
-                              return (
-                                <>
-                                  <path d={fillData} fill="url(#chartGrad)" />
-                                  <path d={pathData} fill="none" stroke="#C21A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  {(() => {
-                                    const targetY = 80 - (targetKpi.dailyTarget / maxVal) * 70;
-                                    return (
-                                      <line x1="0" y1={targetY} x2="300" y2={targetY} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
-                                    );
-                                  })()}
-                                </>
-                              );
-                            })()}
-                          </svg>
+                    {/* SVG mini chart (Chỉ hiển thị khi xem theo Tháng) */}
+                    {ranksTimeframe === 'month' && staffConfigs.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                            BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG {parseInt(ranksMonth.split('-')[1])})
+                          </h4>
+                          
+                          {/* Selector vẽ biểu đồ */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400 font-medium">Chỉ số:</span>
+                            <select
+                              value={activeChartKpiId}
+                              onChange={(e) => setActiveChartKpiId(e.target.value)}
+                              className="bg-slate-50 border border-slate-200 font-bold text-xs px-2 py-1 rounded-lg text-slate-700 focus:outline-none cursor-pointer"
+                            >
+                              {staffConfigs.map(c => (
+                                <option key={c.id} value={c.id}>{c.kpiName}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         
-                        {/* Legend axis */}
-                        <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mt-2 z-10">
-                          <span>01/{selectedMonthYear.split('-')[1]}</span>
-                          <span className="text-[#3b82f6]">Vạch target ngày (mốc đứt)</span>
-                          <span>{daysInMonthCount.toString().padStart(2, '0')}/{selectedMonthYear.split('-')[1]}</span>
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-stretch h-40 justify-between relative overflow-hidden">
+                          
+                          {/* Decorative background grid */}
+                          <div className="absolute inset-0 flex flex-col justify-between py-6 pointer-events-none opacity-50">
+                            <div className="border-b border-slate-200/50 w-full"></div>
+                            <div className="border-b border-slate-200/50 w-full"></div>
+                            <div className="border-b border-slate-200/50 w-full"></div>
+                          </div>
+
+                          {/* Sparkline curve */}
+                          <div className="relative flex-1 w-full mt-2">
+                            <svg className="w-full h-full" viewBox="0 0 300 80" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#C21A1A" stopOpacity="0.2"/>
+                                  <stop offset="100%" stopColor="#C21A1A" stopOpacity="0.0"/>
+                                </linearGradient>
+                              </defs>
+                              {(() => {
+                                const targetKpi = staffConfigs.find(c => c.id === activeChartKpiId) || staffConfigs[0];
+                                if (!targetKpi) return null;
+                                
+                                const dailyValues = Array.from({ length: daysInMonthCount }, (_, dayIdx) => {
+                                  const day = dayIdx + 1;
+                                  const dateStr = `${ranksMonth}-${day.toString().padStart(2, '0')}`;
+                                  const record = kpiDailyValues.find(
+                                    v => v.staffId === selectedStaff.id && v.kpiConfigId === targetKpi.id && v.date === dateStr
+                                  );
+                                  return record ? record.value : 0;
+                                });
+
+                                const maxVal = Math.max(...dailyValues, targetKpi.dailyTarget * 1.5, 1);
+                                const points = dailyValues.map((val, idx) => {
+                                  const x = (idx / (daysInMonthCount - 1)) * 300;
+                                  const y = 80 - (val / maxVal) * 70;
+                                  return `${x},${y}`;
+                                });
+
+                                const pathData = `M ${points.join(' L ')}`;
+                                const fillData = `${pathData} L 300,80 L 0,80 Z`;
+
+                                return (
+                                  <>
+                                    <path d={fillData} fill="url(#chartGrad)" />
+                                    <path d={pathData} fill="none" stroke="#C21A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    {(() => {
+                                      const targetY = 80 - (targetKpi.dailyTarget / maxVal) * 70;
+                                      return (
+                                        <line x1="0" y1={targetY} x2="300" y2={targetY} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
+                                      );
+                                    })()}
+                                  </>
+                                );
+                              })()}
+                            </svg>
+                          </div>
+                          
+                          {/* Legend axis */}
+                          <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mt-2 z-10">
+                            <span>01/{ranksMonth.split('-')[1]}</span>
+                            <span className="text-[#3b82f6]">Vạch target ngày (mốc đứt)</span>
+                            <span>{daysInMonthCount.toString().padStart(2, '0')}/{ranksMonth.split('-')[1]}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                  
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                    )}
+                    
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
+          </div>
         </div>
       )}
 
