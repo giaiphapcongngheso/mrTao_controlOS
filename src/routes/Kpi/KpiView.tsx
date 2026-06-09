@@ -644,39 +644,39 @@ export default function KpiView({
         </div>
       )}
 
-      {/* 2. SUBTABS PANEL (Premium Floating Dark Pill - Glassmorphism) */}
-      <div className="bg-[#0B0F19]/95 backdrop-blur-2xl p-1.5 rounded-full border border-[#1E293B]/60 shadow-2xl flex flex-wrap items-center gap-1.5 w-fit mx-auto md:mx-0 transition-all duration-300 hover:border-slate-700/80">
+      {/* 2. SUBTABS PANEL (Premium Floating Light Pill) */}
+      <div className="bg-slate-100/90 backdrop-blur-md p-1 rounded-full border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-1 w-fit mx-auto md:mx-0 transition-all duration-300">
         <button 
           onClick={() => setActiveSubTab('ranks')}
-          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+          className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
             activeSubTab === 'ranks'
-              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
           }`}
         >
-          <Award className="w-5 h-5 shrink-0" />
+          <Award className="w-4 h-4 shrink-0" />
           <span>Xếp hạng & Chi tiết</span>
         </button>
         <button 
           onClick={() => setActiveSubTab('entry')}
-          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+          className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
             activeSubTab === 'entry'
-              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
           }`}
         >
-          <Calendar className="w-5 h-5 shrink-0" />
+          <Calendar className="w-4 h-4 shrink-0" />
           <span>Nhập Action Plan</span>
         </button>
         <button 
           onClick={() => setActiveSubTab('settings')}
-          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+          className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
             activeSubTab === 'settings'
-              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
           }`}
         >
-          <Target className="w-5 h-5 shrink-0" />
+          <Target className="w-4 h-4 shrink-0" />
           <span>Thiết lập KPI Chung</span>
         </button>
       </div>
@@ -686,13 +686,13 @@ export default function KpiView({
         <div className="space-y-4">
           {/* Segmented Control & Timeframe Selectors (Dark Pill Style) */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-1 bg-[#0B0F19]/95 p-1 rounded-full w-fit border border-[#1E293B]/60 shadow-lg">
+            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-full w-fit border border-slate-200 shadow-xs">
               <button
                 onClick={() => setRanksTimeframe('month')}
                 className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'month'
-                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                 }`}
               >
                 Theo Tháng
@@ -701,8 +701,8 @@ export default function KpiView({
                 onClick={() => setRanksTimeframe('quarter')}
                 className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'quarter'
-                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                 }`}
               >
                 Theo Quý
@@ -711,8 +711,8 @@ export default function KpiView({
                 onClick={() => setRanksTimeframe('year')}
                 className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'year'
-                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                 }`}
               >
                 Theo Năm
@@ -1109,7 +1109,7 @@ export default function KpiView({
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-2.5">
                 {/* View Mode Toggle */}
-                <div className="bg-[#0B0F19]/95 p-1 rounded-full border border-[#1E293B]/60 flex items-center gap-1 shadow-sm">
+                <div className="bg-slate-100/80 p-1 rounded-full border border-slate-200 flex items-center gap-1 shadow-xs">
                   <button
                     onClick={() => {
                       setViewMode('month');
@@ -1117,8 +1117,8 @@ export default function KpiView({
                     }}
                     className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 border-0 cursor-pointer ${
                       viewMode === 'month' 
-                        ? 'bg-white/10 text-white border border-white/10 shadow-xs' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                     }`}
                   >
                     Xem theo Tháng
@@ -1130,8 +1130,8 @@ export default function KpiView({
                     }}
                     className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 border-0 cursor-pointer ${
                       viewMode === 'week' 
-                        ? 'bg-white/10 text-white border border-white/10 shadow-xs' 
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                     }`}
                   >
                     Xem theo Tuần
