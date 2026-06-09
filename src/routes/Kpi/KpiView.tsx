@@ -1628,7 +1628,7 @@ export default function KpiView({
 
       {/* 6. DIALOG THÊM / SỬA / XEM KPI CONFIGS */}
       <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent className="sm:max-w-[550px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
+        <DialogContent className="sm:max-w-[700px] w-[95vw] max-h-[90vh] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-y-auto text-left">
           <DialogHeader className="text-left pb-2">
             <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
               {configDialogMode === 'view' 
@@ -1794,7 +1794,7 @@ export default function KpiView({
 
       {/* 7. DIALOG NHẬP SỐ THỰC TẾ HẰNG NGÀY (Tab 2 - Option B + C) */}
       <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
+        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-y-auto text-left">
           <DialogHeader className="text-left pb-2">
             <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
               Nhập số thực tế hằng ngày

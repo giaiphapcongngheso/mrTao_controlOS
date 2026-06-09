@@ -577,7 +577,7 @@ export default function CustomersRoute() {
 
       {/* Edit/Create/View Dialog Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl font-sans">
+        <DialogContent className="sm:max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto rounded-2xl font-sans">
           <DialogHeader className="text-left">
             <DialogTitle className="text-[16px] font-bold text-slate-800">
               {formMode === 'create'
