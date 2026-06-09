@@ -12,13 +12,9 @@ import {
   FormMessage,
   Input,
   NumericInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
 } from '@shared/ui';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import type { Customer } from '../../../types/customer.types';
 import {
   User,
@@ -184,20 +180,18 @@ export default function CustomerDialog({
                 <FormItem className="md:col-span-1">
                   <FormLabel className="text-xs font-medium text-muted-foreground">Giới tính</FormLabel>
                   <FormControl>
-                    <Select
+                    <CustomSelect
                       disabled={isView}
-                      onValueChange={field.onChange}
+                      onChangeValue={field.onChange}
                       value={field.value}
-                    >
-                      <SelectTrigger className="bg-background focus:ring-1 focus:ring-primary/30 border-border rounded-lg h-9 text-sm transition-all">
-                        <SelectValue placeholder="Chọn giới tính" />
-                      </SelectTrigger>
-                      <SelectContent className="font-sans text-sm">
-                        <SelectItem value="male">Nam</SelectItem>
-                        <SelectItem value="female">Nữ</SelectItem>
-                        <SelectItem value="other">Khác</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      placeholder="Chọn giới tính"
+                      options={[
+                        { label: 'Nam', value: 'male' },
+                        { label: 'Nữ', value: 'female' },
+                        { label: 'Khác', value: 'other' },
+                      ]}
+                      clearable={false}
+                    />
                   </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>

@@ -1,7 +1,6 @@
-import { X, RefreshCw, History, User } from 'lucide-react';
-import { Button } from '@shared/ui';
+import { RefreshCw, History, User } from 'lucide-react';
+import { Button, Sheet, SheetContent } from '@shared/ui';
 import type { CustomerSyncLog } from '../../../types/customer.types';
-import { useEffect } from 'react';
 
 interface CustomerSyncHistoryDrawerProps {
   isOpen: boolean;
@@ -32,35 +31,9 @@ export default function CustomerSyncHistoryDrawer({
   isLoading,
   onRefresh,
 }: CustomerSyncHistoryDrawerProps) {
-  // ESC key listener to close drawer
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   return (
-    <div
-      className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-300 font-sans ${
-        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-    >
-      {/* Dark Overlay with Blur */}
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
-        onClick={onClose}
-      />
-
-      {/* Slide-out Drawer Panel */}
-      <div
-        className={`relative z-10 w-full max-w-md h-full bg-white shadow-2xl flex flex-col border-l border-slate-100 transition-transform duration-300 ease-out transform ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full max-w-md h-full bg-white shadow-2xl flex flex-col p-0 gap-0 border-l border-slate-100 font-sans">
         {/* Decorative Top Gradient Line */}
         <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-blue-500" />
 
@@ -80,7 +53,7 @@ export default function CustomerSyncHistoryDrawer({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 mr-6">
             <Button
               variant="ghost"
               size="icon"
@@ -89,14 +62,6 @@ export default function CustomerSyncHistoryDrawer({
               disabled={isLoading}
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-650 hover:bg-slate-50"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -189,7 +154,7 @@ export default function CustomerSyncHistoryDrawer({
             Đóng lại
           </Button>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }

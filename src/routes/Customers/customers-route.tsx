@@ -1,38 +1,6 @@
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  AlertDescription,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@shared/ui';
-import {
-  HeartHandshake,
-  Plus,
-  History,
-  RefreshCw,
-  Search,
-  User,
-  Coins,
-  Award,
-  Trash2,
-  Edit2,
-  Eye,
-  AlertTriangle,
-  Check,
-  X,
-  Users,
-} from 'lucide-react';
+import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { HeartHandshake, Plus, History, RefreshCw, Search, User, Coins, Award, Trash2, Edit2, Eye, AlertTriangle, Check, X, Users } from 'lucide-react';
 import { ModuleHeader, CustomTable } from '@shared/components';
 import { NumberRangePicker } from '../../../share/components/custom/number-range-picker';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
@@ -89,12 +57,11 @@ export default function CustomersRoute() {
         size: 130,
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc mã..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
             />
           ),
         },
@@ -115,12 +82,11 @@ export default function CustomersRoute() {
         size: 200,
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc tên..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-xs px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-indigo-500 font-medium"
             />
           ),
         },
