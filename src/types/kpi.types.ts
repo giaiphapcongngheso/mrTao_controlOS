@@ -19,6 +19,7 @@ export interface KPIConfig {
   weight: number; // Trọng số, ví dụ 0.45 (45%)
   dailyTarget: number;
   proofSource: string;
+  month?: string; // Định dạng YYYY-MM để quản lý theo từng tháng
 }
 
 export interface KPIDailyValue {

@@ -20,7 +20,9 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-  TrendingDown
+  TrendingDown,
+  Eye,
+  Download
 } from 'lucide-react';
 import type { StaffMember, StaffRole } from '../../types/staff.types';
 import type { KPIConfig, KPIDailyValue, StaffRank } from '../../types/kpi.types';
@@ -39,6 +41,7 @@ import {
   DialogFooter, 
   DialogClose 
 } from '../../../share/ui/dialog';
+import { exportKpiReportToExcel } from '../../services/admin/kpi-excel-service';
 
 interface KpiViewProps {
   roles: StaffRole[];
@@ -79,6 +82,14 @@ const getClassificationBadgeClass = (cls: string) => {
   return 'bg-rose-50 text-rose-600 border-rose-200';
 };
 
+// Get previous month/year string (YYYY-MM)
+const getPreviousMonthYear = (monthYearStr: string): string => {
+  const [year, month] = monthYearStr.split('-').map(Number);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  return `${prevYear}-${prevMonth.toString().padStart(2, '0')}`;
+};
+
 export default function KpiView({
   roles,
   staffMembers,
@@ -94,11 +105,16 @@ export default function KpiView({
   const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>('ranks');
   
   // Selection states
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>('2026-06');
   const [selectedStaffId, setSelectedStaffId] = useState<string>(
     staffMembers.find(s => s.status === 'active')?.id || ''
   );
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
   const [selectedSettingRole, setSelectedSettingRole] = useState<string>('SALES');
+
+  // Tab 2 view states
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [selectedWeekNum, setSelectedWeekNum] = useState<number | null>(null);
 
   React.useEffect(() => {
     const isRoleExist = roles.some(r => r.code === selectedSettingRole);
@@ -113,6 +129,7 @@ export default function KpiView({
 
   // Dialog & Form states for Tab 3 (Add/Edit config)
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [configDialogMode, setConfigDialogMode] = useState<'create' | 'edit' | 'view'>('create');
   const [selectedConfigToEdit, setSelectedConfigToEdit] = useState<KPIConfig | null>(null);
 
   const [formGoal, setFormGoal] = useState('');
@@ -127,18 +144,28 @@ export default function KpiView({
   const [focusedKpiInputId, setFocusedKpiInputId] = useState<string | null>(null);
   const [activeChartKpiId, setActiveChartKpiId] = useState<string>('');
 
+  // Helper to get number of days in selectedMonthYear
+  const getDaysInMonthCount = (monthYearStr: string): number => {
+    const [year, month] = monthYearStr.split('-').map(Number);
+    return new Date(year, month, 0).getDate();
+  };
+  const daysInMonthCount = getDaysInMonthCount(selectedMonthYear);
+  const daysInMonth = Array.from({ length: daysInMonthCount }, (_, i) => i + 1);
+
   // Helper: Get all active staff ranks dynamically calculated from Firestore
   const getDynamicStaffRanks = (): StaffRank[] => {
     const activeStaff = staffMembers.filter(s => s.status === 'active');
     
     const ranks = activeStaff.map((staff): StaffRank => {
       const roleNorm = normalizeRole(staff.role);
-      const configs = kpiConfigs.filter(c => normalizeRole(c.role) === roleNorm);
+      const configs = kpiConfigs.filter(c => normalizeRole(c.role) === roleNorm && (c.month || '2026-06') === selectedMonthYear);
       
       let totalScore = 0;
       configs.forEach(config => {
         // sum actuals
-        const values = kpiDailyValues.filter(v => v.staffId === staff.id && v.kpiConfigId === config.id);
+        const values = kpiDailyValues.filter(
+          v => v.staffId === staff.id && v.kpiConfigId === config.id && v.date.startsWith(selectedMonthYear)
+        );
         const actual = values.reduce((sum, item) => sum + item.value, 0);
         // % progress
         const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
@@ -170,7 +197,9 @@ export default function KpiView({
 
   const dynamicRanks = getDynamicStaffRanks();
   const selectedStaff = staffMembers.find(s => s.id === selectedStaffId) || staffMembers[0];
-  const staffConfigs = selectedStaff ? kpiConfigs.filter(c => normalizeRole(c.role) === normalizeRole(selectedStaff.role)) : [];
+  const staffConfigs = selectedStaff 
+    ? kpiConfigs.filter(c => normalizeRole(c.role) === normalizeRole(selectedStaff.role) && (c.month || '2026-06') === selectedMonthYear) 
+    : [];
 
   // Set default active KPI for chart
   React.useEffect(() => {
@@ -189,7 +218,7 @@ export default function KpiView({
     const totalTarget = vnKpis.reduce((sum, c) => sum + c.monthlyTarget, 0);
     const totalActual = vnKpis.reduce((sum, c) => {
       const actual = kpiDailyValues
-        .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === c.id)
+        .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === c.id && v.date.startsWith(selectedMonthYear))
         .reduce((s, item) => s + item.value, 0);
       return sum + actual;
     }, 0);
@@ -206,14 +235,11 @@ export default function KpiView({
     return `${val.toLocaleString()} ${unit}`;
   };
 
-  // Generate 30 days array
-  const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
-
-  // Tab 2: Load current values when Day/Staff changes
+  // Tab 2: Load current values when Day/Staff/Month changes
   React.useEffect(() => {
     if (!selectedStaff) return;
     const initialEntry: Record<string, string> = {};
-    const dateStr = `2026-06-${selectedDay.toString().padStart(2, '0')}`;
+    const dateStr = `${selectedMonthYear}-${selectedDay.toString().padStart(2, '0')}`;
     
     staffConfigs.forEach(config => {
       const record = kpiDailyValues.find(
@@ -223,12 +249,12 @@ export default function KpiView({
     });
     setEntryValues(initialEntry);
     setSaveSuccessMsg(null);
-  }, [selectedStaffId, selectedDay, kpiDailyValues, kpiConfigs]);
+  }, [selectedStaffId, selectedDay, kpiDailyValues, kpiConfigs, selectedMonthYear, staffConfigs]);
 
   // Tab 2: Handle saving day values
   const handleSaveDayValues = async () => {
     if (!selectedStaff) return;
-    const dateStr = `2026-06-${selectedDay.toString().padStart(2, '0')}`;
+    const dateStr = `${selectedMonthYear}-${selectedDay.toString().padStart(2, '0')}`;
 
     try {
       for (const config of staffConfigs) {
@@ -245,7 +271,7 @@ export default function KpiView({
         };
         await onSaveDailyValue(payload);
       }
-      setSaveSuccessMsg(`Đã lưu thành công số liệu ngày ${selectedDay.toString().padStart(2, '0')}/06 cho ${selectedStaff.fullName}`);
+      setSaveSuccessMsg(`Đã lưu thành công số liệu ngày ${selectedDay.toString().padStart(2, '0')}/${selectedMonthYear.split('-')[1]} cho ${selectedStaff.fullName}`);
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     } catch (err) {
       console.error('Lỗi khi lưu KPI ngày:', err);
@@ -261,6 +287,7 @@ export default function KpiView({
     setFormTarget('');
     setFormWeight('');
     setFormProof('');
+    setConfigDialogMode('create');
     setIsConfigDialogOpen(true);
   };
 
@@ -273,6 +300,20 @@ export default function KpiView({
     setFormTarget(config.monthlyTarget.toString());
     setFormWeight((config.weight * 100).toString());
     setFormProof(config.proofSource);
+    setConfigDialogMode('edit');
+    setIsConfigDialogOpen(true);
+  };
+
+  // Open Dialog for Viewing Config
+  const handleOpenViewConfigDialog = (config: KPIConfig) => {
+    setSelectedConfigToEdit(config);
+    setFormGoal(config.goalName);
+    setFormKpi(config.kpiName);
+    setFormUnit(config.unit);
+    setFormTarget(config.monthlyTarget.toString());
+    setFormWeight((config.weight * 100).toString());
+    setFormProof(config.proofSource);
+    setConfigDialogMode('view');
     setIsConfigDialogOpen(true);
   };
 
@@ -284,7 +325,7 @@ export default function KpiView({
     try {
       const numTarget = parseFloat(formTarget) || 0;
       const numWeight = (parseFloat(formWeight) || 0) / 100;
-      const dailyTarget = Math.round(numTarget / 30);
+      const dailyTarget = Math.round(numTarget / daysInMonthCount);
 
       if (selectedConfigToEdit) {
         // Update
@@ -296,7 +337,8 @@ export default function KpiView({
           monthlyTarget: numTarget,
           weight: numWeight,
           dailyTarget,
-          proofSource: formProof || 'Chưa thiết lập'
+          proofSource: formProof || 'Chưa thiết lập',
+          month: selectedConfigToEdit.month || selectedMonthYear
         });
       } else {
         // Create
@@ -311,7 +353,8 @@ export default function KpiView({
           monthlyTarget: numTarget,
           weight: numWeight,
           dailyTarget,
-          proofSource: formProof || 'Chưa thiết lập'
+          proofSource: formProof || 'Chưa thiết lập',
+          month: selectedMonthYear
         };
         await onCreateConfig(payload);
       }
@@ -332,6 +375,82 @@ export default function KpiView({
     }
   };
 
+  // Copy KPIs from previous month
+  const handleCopyKpiFromPreviousMonth = async () => {
+    const prevMonthYear = getPreviousMonthYear(selectedMonthYear);
+    const prevConfigs = kpiConfigs.filter(c => (c.month || '2026-06') === prevMonthYear);
+    
+    if (prevConfigs.length === 0) {
+      alert(`Không tìm thấy cấu hình KPI nào của tháng trước (${prevMonthYear}) để sao chép.`);
+      return;
+    }
+
+    if (confirm(`Bạn có chắc chắn muốn sao chép ${prevConfigs.length} cấu hình KPI từ tháng trước (${prevMonthYear}) sang tháng hiện tại (${selectedMonthYear})?`)) {
+      try {
+        for (const config of prevConfigs) {
+          const newId = `cfg_${config.role.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const payload: KPIConfig = {
+            ...config,
+            id: newId,
+            month: selectedMonthYear
+          };
+          await onCreateConfig(payload);
+        }
+        alert('Đã sao chép thành công cấu hình KPI từ tháng trước.');
+      } catch (err) {
+        console.error('Lỗi khi sao chép KPI:', err);
+        alert('Đã có lỗi xảy ra trong quá trình sao chép.');
+      }
+    }
+  };
+
+  // Week helpers for view mode toggle
+  const getWeekDays = (weekNum: number): number[] => {
+    let startDay = 1;
+    let endDay = 7;
+    if (weekNum === 2) {
+      startDay = 8;
+      endDay = 14;
+    } else if (weekNum === 3) {
+      startDay = 15;
+      endDay = 21;
+    } else if (weekNum === 4) {
+      startDay = 22;
+      endDay = 28;
+    } else if (weekNum === 5) {
+      startDay = 29;
+      endDay = daysInMonthCount;
+    }
+
+    const days: number[] = [];
+    for (let d = startDay; d <= endDay; d++) {
+      days.push(d);
+    }
+    return days;
+  };
+
+  const getWeekActual = (configId: string, weekNum: number): number => {
+    const days = getWeekDays(weekNum);
+    let total = 0;
+    days.forEach(day => {
+      const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+      const record = kpiDailyValues.find(
+        v => v.staffId === selectedStaff.id && v.kpiConfigId === configId && v.date === dateStr
+      );
+      if (record) {
+        total += record.value;
+      }
+    });
+    return total;
+  };
+
+  const getWeekTarget = (config: KPIConfig, weekNum: number): number => {
+    const days = getWeekDays(weekNum).length;
+    return config.monthlyTarget > 0 ? (config.dailyTarget * days) : days;
+  };
+
+  const hasNoConfigsForCurrentMonth = kpiConfigs.filter(c => (c.month || '2026-06') === selectedMonthYear).length === 0;
+
   return (
     <div className="space-y-4 text-left">
       
@@ -341,13 +460,56 @@ export default function KpiView({
         description="Đo lường tự động chỉ số doanh số, chăm sóc khách hàng và hiệu suất hoàn thành checklist tiêu chuẩn showroom."
         icon={<TrendingUp className="w-6 h-6 text-[#C21A1A]" />}
       >
-        <button 
-          onClick={() => onSetTab('Today')}
-          className="px-4 h-9 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center"
-        >
-          Về Trang Chủ
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedMonthYear}
+            onChange={(e) => {
+              setSelectedMonthYear(e.target.value);
+              // Reset week view states on month change
+              setViewMode('month');
+              setSelectedWeekNum(null);
+            }}
+            className="px-3 h-9 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+          >
+            {Array.from({ length: 12 }, (_, i) => {
+              const m = (i + 1).toString().padStart(2, '0');
+              return (
+                <option key={m} value={`2026-${m}`}>
+                  Tháng {m}/2026
+                </option>
+              );
+            })}
+          </select>
+          <button 
+            onClick={() => onSetTab('Today')}
+            className="px-4 h-9 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
+          >
+            Về Trang Chủ
+          </button>
+        </div>
       </ModuleHeader>
+
+      {/* Banner/Alert Copy KPIs when current month has no configs */}
+      {hasNoConfigsForCurrentMonth && (
+        <div className="bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left shadow-2xs">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[#C21A1A] font-bold text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              Chưa có cấu hình KPI cho Tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
+            </div>
+            <p className="text-xs text-slate-500 font-semibold">
+              Bạn có thể sao chép nhanh toàn bộ danh mục chỉ số và mục tiêu từ tháng liền kề trước đó ({getPreviousMonthYear(selectedMonthYear)}) để tiết kiệm thời gian thiết lập.
+            </p>
+          </div>
+          <button
+            onClick={handleCopyKpiFromPreviousMonth}
+            className="px-4 py-2.5 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer border-0 shrink-0"
+          >
+            <Zap className="w-4 h-4 mr-1.5" />
+            Sao chép KPI từ tháng trước
+          </button>
+        </div>
+      )}
 
       {/* 2. SUBTABS PANEL (Glassmorphism & Interactive) */}
       <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1.5 w-fit">
@@ -392,7 +554,7 @@ export default function KpiView({
                 <p className="text-xs text-slate-400 font-medium mt-0.5">Xếp hạng dựa trên kết quả chốt số thực tế</p>
               </div>
               <span className="text-xs font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
-                T06/2026
+                T{selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
               </span>
             </div>
 
@@ -518,7 +680,7 @@ export default function KpiView({
                     
                     {staffConfigs.length === 0 ? (
                       <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
-                        Chưa thiết lập chỉ số KPI nào cho vị trí này
+                        Chưa thiết lập chỉ số KPI nào cho vị trí này trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
                       </div>
                     ) : (
                       <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -536,7 +698,7 @@ export default function KpiView({
                           <TableBody>
                             {staffConfigs.map(config => {
                               const actual = kpiDailyValues
-                                .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id)
+                                .filter(v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date.startsWith(selectedMonthYear))
                                 .reduce((sum, item) => sum + item.value, 0);
                               
                               const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
@@ -547,13 +709,13 @@ export default function KpiView({
                               let statusText = 'Chưa nhập';
                               let statusColor = 'text-slate-400 bg-slate-50 border-slate-200';
                               if (actual > 0) {
-                                if (pct >= 1) {
-                                  statusText = 'Đạt';
-                                  statusColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                                } else {
-                                  statusText = 'Chưa đạt';
-                                  statusColor = 'text-rose-600 bg-rose-50 border-rose-200';
-                                }
+                                  if (pct >= 1) {
+                                    statusText = 'Đạt';
+                                    statusColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                  } else {
+                                    statusText = 'Chưa đạt';
+                                    statusColor = 'text-rose-600 bg-rose-50 border-rose-200';
+                                  }
                               }
 
                               return (
@@ -594,7 +756,9 @@ export default function KpiView({
                   {staffConfigs.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG 6)</h4>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                          BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG {parseInt(selectedMonthYear.split('-')[1])})
+                        </h4>
                         
                         {/* Selector vẽ biểu đồ */}
                         <div className="flex items-center gap-1.5">
@@ -633,9 +797,9 @@ export default function KpiView({
                               const targetKpi = staffConfigs.find(c => c.id === activeChartKpiId) || staffConfigs[0];
                               if (!targetKpi) return null;
                               
-                              const dailyValues = Array.from({ length: 30 }, (_, dayIdx) => {
+                              const dailyValues = Array.from({ length: daysInMonthCount }, (_, dayIdx) => {
                                 const day = dayIdx + 1;
-                                const dateStr = `2026-06-${day.toString().padStart(2, '0')}`;
+                                const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
                                 const record = kpiDailyValues.find(
                                   v => v.staffId === selectedStaff.id && v.kpiConfigId === targetKpi.id && v.date === dateStr
                                 );
@@ -644,7 +808,7 @@ export default function KpiView({
 
                               const maxVal = Math.max(...dailyValues, targetKpi.dailyTarget * 1.5, 1);
                               const points = dailyValues.map((val, idx) => {
-                                const x = (idx / 29) * 300;
+                                const x = (idx / (daysInMonthCount - 1)) * 300;
                                 const y = 80 - (val / maxVal) * 70;
                                 return `${x},${y}`;
                               });
@@ -670,9 +834,9 @@ export default function KpiView({
                         
                         {/* Legend axis */}
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mt-2 z-10">
-                          <span>01/06</span>
+                          <span>01/{selectedMonthYear.split('-')[1]}</span>
                           <span className="text-[#3b82f6]">Vạch target ngày (mốc đứt)</span>
-                          <span>30/06</span>
+                          <span>{daysInMonthCount.toString().padStart(2, '0')}/{selectedMonthYear.split('-')[1]}</span>
                         </div>
                       </div>
                     </div>
@@ -692,7 +856,9 @@ export default function KpiView({
           <CardHeader className="border-b border-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="text-left">
-                <CardTitle className="text-base font-bold text-slate-800 tracking-wider">NHẬP LIỆU ACTION PLAN KPI</CardTitle>
+                <CardTitle className="text-base font-bold text-slate-800 tracking-wider">
+                  NHẬP LIỆU ACTION PLAN KPI ({viewMode === 'month' ? 'THÁNG' : 'CHI TIẾT TUẦN'})
+                </CardTitle>
                 <CardDescription className="text-xs font-bold text-slate-400 mt-0.5">
                   Nhân viên báo cáo số thực tế đạt được hằng ngày của tháng. Click đúp vào ô thực tế trên bảng để sửa nhanh.
                 </CardDescription>
@@ -700,11 +866,50 @@ export default function KpiView({
 
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-2.5">
+                {/* View Mode Toggle */}
+                <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setViewMode('month');
+                      setSelectedWeekNum(null);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer ${viewMode === 'month' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+                  >
+                    Xem theo Tháng
+                  </button>
+                  <button
+                    onClick={() => {
+                      setViewMode('week');
+                      setSelectedWeekNum(1); // Default to Week 1
+                    }}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer ${viewMode === 'week' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+                  >
+                    Xem theo Tuần
+                  </button>
+                </div>
+
+                {/* Week Selector (Only in week view mode) */}
+                {viewMode === 'week' && (
+                  <select
+                    value={selectedWeekNum || 1}
+                    onChange={(e) => setSelectedWeekNum(parseInt(e.target.value))}
+                    className="bg-slate-50 border border-slate-200 font-bold text-xs px-3 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer"
+                  >
+                    <option value={1}>Tuần 1 (Ngày 01 - 07)</option>
+                    <option value={2}>Tuần 2 (Ngày 08 - 14)</option>
+                    <option value={3}>Tuần 3 (Ngày 15 - 21)</option>
+                    <option value={4}>Tuần 4 (Ngày 22 - 28)</option>
+                    {daysInMonthCount > 28 && (
+                      <option value={5}>Tuần 5 (Ngày 29 - {daysInMonthCount})</option>
+                    )}
+                  </select>
+                )}
+
                 <div className="relative min-w-[180px]">
                   <select
                     value={selectedStaffId}
                     onChange={(e) => setSelectedStaffId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-3 pr-8 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-3 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
                   >
                     {staffMembers.filter(s => s.status === 'active').map(s => (
                       <option key={s.id} value={s.id}>{s.fullName} ({s.role})</option>
@@ -712,12 +917,31 @@ export default function KpiView({
                   </select>
                 </div>
 
+                {/* Excel Export Button */}
+                <Button 
+                  onClick={() => {
+                    if (selectedStaff) {
+                      exportKpiReportToExcel(
+                        selectedStaff.fullName,
+                        selectedStaff.role,
+                        selectedMonthYear,
+                        staffConfigs,
+                        kpiDailyValues.filter(v => v.staffId === selectedStaff.id)
+                      );
+                    }
+                  }}
+                  className="font-bold cursor-pointer h-[38px] rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+                >
+                  <Download className="w-4 h-4" />
+                  Xuất Excel
+                </Button>
+
                 <Button 
                   onClick={() => {
                     setIsEntryDialogOpen(true);
                     setFocusedKpiInputId(null);
                   }}
-                  className="font-bold cursor-pointer h-[34px] rounded-xl text-xs"
+                  className="font-bold cursor-pointer h-[38px] rounded-xl text-xs"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Cập nhật số thực tế
@@ -735,115 +959,280 @@ export default function KpiView({
               </div>
             )}
 
-            {/* Bảng tổng hợp 30 ngày */}
+            {/* Back to month view button */}
+            {viewMode === 'week' && (
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setViewMode('month');
+                    setSelectedWeekNum(null);
+                  }}
+                  className="font-bold rounded-xl text-xs hover:bg-slate-50"
+                >
+                  ← Quay lại dạng Tháng
+                </Button>
+                <span className="text-xs text-slate-400 font-medium">Đang xem dữ liệu Tuần {selectedWeekNum}</span>
+              </div>
+            )}
+
+            {/* Bảng tổng hợp theo Tháng / Tuần */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">BẢNG ACTION PLAN KPI CHI TIẾT (30 NGÀY)</h4>
-                <span className="text-xs font-semibold text-slate-400">Cuộn ngang để xem tất cả các ngày ➔</span>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  BẢNG ACTION PLAN KPI CHI TIẾT ({viewMode === 'month' ? 'TÓM TẮT TUẦN' : '7 NGÀY CHI TIẾT'})
+                </h4>
+                {viewMode === 'month' && (
+                  <span className="text-xs font-semibold text-slate-400">Click "Xem chi tiết" ở mỗi cột tuần để xem/sửa chi tiết từng ngày ➔</span>
+                )}
               </div>
 
               {staffConfigs.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
-                  Nhân viên này chưa được cấu hình chỉ số KPI nào. Hãy sang tab Thiết lập để tạo cấu hình.
+                  Nhân viên này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}. Hãy cấu hình ở tab Thiết lập.
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                   <ScrollArea className="w-full">
                     <Table className="text-center font-sans text-sm">
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
-                          <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
-                          {daysInMonth.map(day => (
-                            <TableHead key={day} className="w-14 min-w-[56px] text-center border-r font-bold text-xs">
-                              {day.toString().padStart(2, '0')}/06
-                            </TableHead>
-                          ))}
-                          <TableHead className="w-24 border-r text-right font-bold sticky right-[90px] bg-slate-50 border-l shadow-xs text-xs">Tổng</TableHead>
-                          <TableHead className="w-20 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
-                          <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {staffConfigs.flatMap(config => {
-                          const actuals = daysInMonth.map(day => {
-                            const dateStr = `2026-06-${day.toString().padStart(2, '0')}`;
-                            const record = kpiDailyValues.find(
-                              v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
-                            );
-                            return record ? record.value : 0;
-                          });
+                      {/* VIEW MODE: MONTH */}
+                      {viewMode === 'month' && (
+                        <>
+                          <TableHeader className="bg-slate-50">
+                            <TableRow>
+                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
+                              <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
+                              {[1, 2, 3, 4, 5].map(week => {
+                                let dateRangeText = '';
+                                if (week === 1) dateRangeText = '01-07';
+                                else if (week === 2) dateRangeText = '08-14';
+                                else if (week === 3) dateRangeText = '15-21';
+                                else if (week === 4) dateRangeText = '22-28';
+                                else if (week === 5) dateRangeText = `29-${daysInMonthCount}`;
 
-                          const totalActual = actuals.reduce((sum, v) => sum + v, 0);
-                          const pct = config.monthlyTarget > 0 ? (totalActual / config.monthlyTarget) : 0;
-                          const pctStr = (pct * 100).toFixed(0) + '%';
-                          
-                          let statusText = 'Chưa nhập';
-                          let statusColor = 'bg-slate-50 text-slate-400 border-slate-200';
-                          if (totalActual > 0) {
-                            if (pct >= 1) {
-                              statusText = 'Đạt';
-                              statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-200';
-                            } else {
-                              statusText = 'Chưa đạt';
-                              statusColor = 'bg-rose-50 text-rose-600 border-rose-200';
-                            }
-                          }
-
-                          return [
-                            <TableRow key={`${config.id}_target`} className="hover:bg-slate-50/20">
-                              <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
-                                {config.kpiName}
-                              </TableCell>
-                              <TableCell className="border-r font-bold text-slate-400 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
-                              {daysInMonth.map(day => (
-                                <TableCell key={day} className="border-r text-slate-400 font-medium">
-                                  {config.monthlyTarget > 0 ? (config.dailyTarget).toLocaleString() : '1'}
-                                </TableCell>
-                              ))}
-                              <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[90px] bg-white border-l shadow-xs">
-                                {config.monthlyTarget.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs">-</TableCell>
-                              <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400">-</TableCell>
-                            </TableRow>,
-                            <TableRow key={`${config.id}_actual`} className="bg-amber-50/20 hover:bg-amber-50/40">
-                              <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
-                                <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
-                              </TableCell>
-                              <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
-                              {daysInMonth.map((day, idx) => {
-                                const act = actuals[idx];
                                 return (
-                                  <TableCell 
-                                    key={day}
-                                    onDoubleClick={() => {
-                                      setSelectedDay(day);
-                                      setIsEntryDialogOpen(true);
-                                      setFocusedKpiInputId(config.id);
-                                    }}
-                                    className={`border-r font-bold cursor-pointer select-none hover:bg-amber-100/50 transition-colors ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}
-                                    title="Double-click để sửa số ngày này"
-                                  >
-                                    {act > 0 ? act.toLocaleString() : '-'}
-                                  </TableCell>
+                                  <TableHead key={week} className="w-32 text-center border-r font-bold text-xs bg-slate-50">
+                                    <div className="flex flex-col items-center gap-1.5 py-1">
+                                      <span>Tuần {week} ({dateRangeText})</span>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedWeekNum(week);
+                                          setViewMode('week');
+                                        }}
+                                        className="text-[10px] text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md font-bold transition-all border-0 cursor-pointer"
+                                      >
+                                        Xem chi tiết
+                                      </button>
+                                    </div>
+                                  </TableHead>
                                 );
                               })}
-                              <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[90px] bg-[#fefdfa] border-l shadow-xs">
-                                {totalActual.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
-                                {pctStr}
-                              </TableCell>
-                              <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
-                                <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
-                                  {statusText}
-                                </span>
-                              </TableCell>
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[90px] bg-slate-50 border-l shadow-xs text-xs">Tổng</TableHead>
+                              <TableHead className="w-20 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
+                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
                             </TableRow>
-                          ];
-                        })}
-                      </TableBody>
+                          </TableHeader>
+                          <TableBody>
+                            {staffConfigs.map(config => {
+                              const actuals = daysInMonth.map(day => {
+                                const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+                                const record = kpiDailyValues.find(
+                                  v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
+                                );
+                                return record ? record.value : 0;
+                              });
+
+                              const totalActual = actuals.reduce((sum, v) => sum + v, 0);
+                              const pct = config.monthlyTarget > 0 ? (totalActual / config.monthlyTarget) : 0;
+                              const pctStr = (pct * 100).toFixed(0) + '%';
+                              
+                              let statusText = 'Chưa nhập';
+                              let statusColor = 'bg-slate-50 text-slate-400 border-slate-200';
+                              if (totalActual > 0) {
+                                if (pct >= 1) {
+                                  statusText = 'Đạt';
+                                  statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+                                } else {
+                                  statusText = 'Chưa đạt';
+                                  statusColor = 'bg-rose-50 text-rose-600 border-rose-200';
+                                }
+                              }
+
+                              return (
+                                <React.Fragment key={config.id}>
+                                  {/* Row Target */}
+                                  <TableRow className="hover:bg-slate-50/20">
+                                    <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
+                                      {config.kpiName}
+                                    </TableCell>
+                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
+                                    {[1, 2, 3, 4, 5].map(week => {
+                                      const weekTarget = getWeekTarget(config, week);
+                                      return (
+                                        <TableCell key={week} className="border-r text-slate-400 font-semibold text-center">
+                                          {weekTarget.toLocaleString()}
+                                        </TableCell>
+                                      );
+                                    })}
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[90px] bg-white border-l shadow-xs">
+                                      {config.monthlyTarget.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs">-</TableCell>
+                                    <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400">-</TableCell>
+                                  </TableRow>
+                                  
+                                  {/* Row Actual */}
+                                  <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
+                                    <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
+                                      <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
+                                    </TableCell>
+                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
+                                    {[1, 2, 3, 4, 5].map(week => {
+                                      const weekAct = getWeekActual(config.id, week);
+                                      return (
+                                        <TableCell key={week} className={`border-r font-bold text-center ${weekAct > 0 ? 'text-amber-800' : 'text-slate-300'}`}>
+                                          {weekAct > 0 ? weekAct.toLocaleString() : '-'}
+                                        </TableCell>
+                                      );
+                                    })}
+                                    <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[90px] bg-[#fefdfa] border-l shadow-xs">
+                                      {totalActual.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
+                                      {pctStr}
+                                    </TableCell>
+                                    <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
+                                      <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
+                                        {statusText}
+                                      </span>
+                                    </TableCell>
+                                  </TableRow>
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableBody>
+                        </>
+                      )}
+
+                      {/* VIEW MODE: WEEK */}
+                      {viewMode === 'week' && (
+                        <>
+                          <TableHeader className="bg-slate-50">
+                            <TableRow>
+                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
+                              <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
+                              {getWeekDays(selectedWeekNum || 1).map(day => (
+                                <TableHead key={day} className="w-16 min-w-[64px] text-center border-r font-bold text-xs bg-slate-50">
+                                  Ngày {day.toString().padStart(2, '0')}/{selectedMonthYear.split('-')[1]}
+                                </TableHead>
+                              ))}
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[202px] bg-slate-50 border-l shadow-xs text-xs">Tổng tuần</TableHead>
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[112px] bg-slate-50 border-l shadow-xs text-xs">Tổng tháng</TableHead>
+                              <TableHead className="w-18 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
+                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {staffConfigs.map(config => {
+                              const weekDaysList = getWeekDays(selectedWeekNum || 1);
+                              const totalActual = daysInMonth.map(day => {
+                                const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+                                const record = kpiDailyValues.find(
+                                  v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
+                                );
+                                return record ? record.value : 0;
+                              }).reduce((sum, v) => sum + v, 0);
+
+                              const pct = config.monthlyTarget > 0 ? (totalActual / config.monthlyTarget) : 0;
+                              const pctStr = (pct * 100).toFixed(0) + '%';
+
+                              let statusText = 'Chưa nhập';
+                              let statusColor = 'bg-slate-50 text-slate-400 border-slate-200';
+                              if (totalActual > 0) {
+                                if (pct >= 1) {
+                                  statusText = 'Đạt';
+                                  statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+                                } else {
+                                  statusText = 'Chưa đạt';
+                                  statusColor = 'bg-rose-50 text-rose-600 border-rose-200';
+                                }
+                              }
+
+                              const weekTarget = getWeekTarget(config, selectedWeekNum || 1);
+                              const weekAct = getWeekActual(config.id, selectedWeekNum || 1);
+
+                              return (
+                                <React.Fragment key={config.id}>
+                                  {/* Row Target */}
+                                  <TableRow className="hover:bg-slate-50/20">
+                                    <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
+                                      {config.kpiName}
+                                    </TableCell>
+                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
+                                    {weekDaysList.map(day => (
+                                      <TableCell key={day} className="border-r text-slate-400 font-medium text-center">
+                                        {config.monthlyTarget > 0 ? config.dailyTarget.toLocaleString() : '1'}
+                                      </TableCell>
+                                    ))}
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[202px] bg-white border-l shadow-xs">
+                                      {weekTarget.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[112px] bg-white border-l shadow-xs">
+                                      {config.monthlyTarget.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs">-</TableCell>
+                                    <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400">-</TableCell>
+                                  </TableRow>
+
+                                  {/* Row Actual */}
+                                  <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
+                                    <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
+                                      <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
+                                    </TableCell>
+                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
+                                    {weekDaysList.map(day => {
+                                      const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+                                      const record = kpiDailyValues.find(
+                                        v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
+                                      );
+                                      const act = record ? record.value : 0;
+                                      return (
+                                        <TableCell
+                                          key={day}
+                                          onDoubleClick={() => {
+                                            setSelectedDay(day);
+                                            setIsEntryDialogOpen(true);
+                                            setFocusedKpiInputId(config.id);
+                                          }}
+                                          className={`border-r font-bold cursor-pointer select-none hover:bg-amber-100/50 transition-colors text-center ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}
+                                          title="Double-click để sửa số ngày này"
+                                        >
+                                          {act > 0 ? act.toLocaleString() : '-'}
+                                        </TableCell>
+                                      );
+                                    })}
+                                    <TableCell className="border-r text-right font-bold text-amber-800 sticky right-[202px] bg-[#fefdfa] border-l shadow-xs">
+                                      {weekAct.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[112px] bg-[#fefdfa] border-l shadow-xs">
+                                      {totalActual.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
+                                      {pctStr}
+                                    </TableCell>
+                                    <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
+                                      <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
+                                        {statusText}
+                                      </span>
+                                    </TableCell>
+                                  </TableRow>
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableBody>
+                        </>
+                      )}
                     </Table>
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
@@ -901,7 +1290,9 @@ export default function KpiView({
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
               
               {(() => {
-                const filteredConfigs = kpiConfigs.filter(c => normalizeRole(c.role) === selectedSettingRole);
+                const filteredConfigs = kpiConfigs.filter(
+                  c => normalizeRole(c.role) === normalizeRole(selectedSettingRole) && (c.month || '2026-06') === selectedMonthYear
+                );
                 const totalWeight = filteredConfigs.reduce((sum, c) => sum + c.weight, 0);
 
                 return (
@@ -917,14 +1308,14 @@ export default function KpiView({
                             <TableHead className="text-right text-xs">Target ngày (ước tính)</TableHead>
                             <TableHead className="text-right text-xs">Trọng số (%)</TableHead>
                             <TableHead className="text-xs">Nguồn đối chứng</TableHead>
-                            <TableHead className="w-24 text-right text-xs">Thao tác</TableHead>
+                            <TableHead className="w-32 text-right text-xs">Thao tác</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredConfigs.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={8} className="text-center py-6 text-slate-400 font-bold">
-                                Vị trí này chưa được cấu hình chỉ số KPI nào
+                                Vị trí này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
                               </TableCell>
                             </TableRow>
                           ) : (
@@ -951,10 +1342,13 @@ export default function KpiView({
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEditConfigDialog(config)} className="cursor-pointer">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenViewConfigDialog(config)} className="cursor-pointer" title="Xem chi tiết">
+                                      <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon-xs" onClick={() => handleOpenEditConfigDialog(config)} className="cursor-pointer" title="Chỉnh sửa">
                                       <Edit2 className="w-3.5 h-3.5 text-slate-400" />
                                     </Button>
-                                    <Button variant="destructive" size="icon-xs" onClick={() => handleDeleteConfig(config.id)} className="cursor-pointer">
+                                    <Button variant="destructive" size="icon-xs" onClick={() => handleDeleteConfig(config.id)} className="cursor-pointer" title="Xóa">
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </Button>
                                   </div>
@@ -983,17 +1377,24 @@ export default function KpiView({
         </Card>
       )}
 
-      {/* 6. DIALOG THÊM / SỬA KPI CONFIGS (Radix UI + Form quản lý) */}
+      {/* 6. DIALOG THÊM / SỬA / XEM KPI CONFIGS */}
       <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
+        <DialogContent className="sm:max-w-[550px] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-hidden text-left">
           <DialogHeader className="text-left pb-2">
             <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
-              {selectedConfigToEdit ? 'Chỉnh sửa chỉ số KPI' : 'Thêm chỉ số KPI mới'}
+              {configDialogMode === 'view' 
+                ? 'Chi tiết chỉ số KPI' 
+                : configDialogMode === 'edit' 
+                  ? 'Chỉnh sửa chỉ số KPI' 
+                  : 'Thêm chỉ số KPI mới'
+              }
             </DialogTitle>
             <DialogDescription className="text-xs font-medium text-slate-400 mt-1 leading-normal">
-              {selectedConfigToEdit 
-                ? `Cập nhật cấu hình chỉ số chung cho vị trí ${selectedSettingRole}`
-                : `Tạo chỉ số KPI mới áp dụng chung cho vị trí ${selectedSettingRole}`
+              {configDialogMode === 'view'
+                ? `Xem cấu hình chỉ số chung cho vị trí ${selectedSettingRole}`
+                : configDialogMode === 'edit'
+                  ? `Cập nhật cấu hình chỉ số chung cho vị trí ${selectedSettingRole}`
+                  : `Tạo chỉ số KPI mới áp dụng chung cho vị trí ${selectedSettingRole}`
               }
             </DialogDescription>
           </DialogHeader>
@@ -1001,97 +1402,141 @@ export default function KpiView({
           {/* Form quản lý nhập liệu */}
           <form onSubmit={handleFormSubmit} className="space-y-4 pt-3 text-left">
             
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 tracking-wide">Tên nhóm mục tiêu</label>
-              <input
-                type="text"
-                placeholder="Ví dụ: Tăng kết quả kinh doanh"
-                value={formGoal}
-                onChange={(e) => setFormGoal(e.target.value)}
-                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 tracking-wide">Tên chỉ số KPI *</label>
-              <input
-                type="text"
-                placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
-                value={formKpi}
-                onChange={(e) => setFormKpi(e.target.value)}
-                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Đơn vị đo lường</label>
-                <select
-                  value={formUnit}
-                  onChange={(e) => setFormUnit(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 cursor-pointer text-slate-700"
-                >
-                  <option value="VNĐ">VNĐ</option>
-                  <option value="Đơn">Đơn</option>
-                  <option value="Khách">Khách</option>
-                  <option value="Đánh giá">Đánh giá</option>
-                  <option value="Ca">Ca</option>
-                  <option value="Máy">Máy</option>
-                  <option value="Ngày">Ngày</option>
-                  <option value="%">%</option>
-                </select>
+            {/* Block 1: Thông tin chỉ số KPI */}
+            <div className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 space-y-3.5">
+              <div className="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                <Target className="w-4 h-4 text-blue-500 shrink-0" />
+                Thông tin chỉ số KPI
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Trọng số KPI (%) *</label>
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Tên chỉ số KPI *</label>
                 <input
-                  type="number"
-                  placeholder="Ví dụ: 45"
-                  value={formWeight}
-                  onChange={(e) => setFormWeight(e.target.value)}
-                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
+                  type="text"
+                  placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
+                  value={formKpi}
+                  onChange={(e) => setFormKpi(e.target.value)}
+                  disabled={configDialogMode === 'view'}
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800 disabled:opacity-75 disabled:bg-slate-150"
                   required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 tracking-wide">Đơn vị đo lường</label>
+                  <select
+                    value={formUnit}
+                    onChange={(e) => setFormUnit(e.target.value)}
+                    disabled={configDialogMode === 'view'}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 cursor-pointer text-slate-700 disabled:opacity-75 disabled:bg-slate-150"
+                  >
+                    <option value="VNĐ">VNĐ</option>
+                    <option value="Đơn">Đơn</option>
+                    <option value="Khách">Khách</option>
+                    <option value="Đánh giá">Đánh giá</option>
+                    <option value="Ca">Ca</option>
+                    <option value="Máy">Máy</option>
+                    <option value="Ngày">Ngày</option>
+                    <option value="%">%</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 tracking-wide">Trọng số KPI (%) *</label>
+                  <input
+                    type="number"
+                    placeholder="Ví dụ: 45"
+                    value={formWeight}
+                    onChange={(e) => setFormWeight(e.target.value)}
+                    disabled={configDialogMode === 'view'}
+                    className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800 disabled:opacity-75 disabled:bg-slate-150"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Vai trò áp dụng</label>
+                <input
+                  type="text"
+                  value={selectedSettingRole}
+                  disabled
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold bg-slate-100 text-slate-500"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 tracking-wide">Target tháng *</label>
-              <input
-                type="number"
-                placeholder="Ví dụ: 450000000"
-                value={formTarget}
-                onChange={(e) => setFormTarget(e.target.value)}
-                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
-                required
-              />
-            </div>
+            {/* Block 2: Chỉ tiêu & Đối chứng */}
+            <div className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 space-y-3.5">
+              <div className="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                <Award className="w-4 h-4 text-emerald-500 shrink-0" />
+                Chỉ tiêu & Đối chứng
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 tracking-wide">Nguồn đối chứng</label>
-              <input
-                type="text"
-                placeholder="Ví dụ: KiotViet theo nhân viên"
-                value={formProof}
-                onChange={(e) => setFormProof(e.target.value)}
-                className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800"
-              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Tên nhóm mục tiêu</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Tăng kết quả kinh doanh"
+                  value={formGoal}
+                  onChange={(e) => setFormGoal(e.target.value)}
+                  disabled={configDialogMode === 'view'}
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800 disabled:opacity-75 disabled:bg-slate-150"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Chỉ tiêu tháng *</label>
+                <input
+                  type="number"
+                  placeholder="Ví dụ: 450000000"
+                  value={formTarget}
+                  onChange={(e) => setFormTarget(e.target.value)}
+                  disabled={configDialogMode === 'view'}
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800 disabled:opacity-75 disabled:bg-slate-150"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-500 tracking-wide">Nguồn đối chứng</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: KiotViet theo nhân viên"
+                  value={formProof}
+                  onChange={(e) => setFormProof(e.target.value)}
+                  disabled={configDialogMode === 'view'}
+                  className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:bg-white focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 placeholder:text-slate-400 placeholder:font-normal text-slate-800 disabled:opacity-75 disabled:bg-slate-150"
+                />
+              </div>
+
+              {/* Nhãn tính toán Target ngày */}
+              {formTarget && (
+                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800 font-semibold flex items-center justify-between">
+                  <span>Target ngày ước tính:</span>
+                  <span className="font-bold text-sm">
+                    {formatValue(Math.round((parseFloat(formTarget) || 0) / daysInMonthCount), formUnit)} / ngày
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
             <div className="pt-4 flex items-center justify-end gap-2.5">
               <DialogClose asChild>
                 <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
-                  Hủy bỏ
+                  {configDialogMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
                 </Button>
               </DialogClose>
-              <button 
-                type="submit" 
-                className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
-              >
-                {selectedConfigToEdit ? 'Lưu thay đổi' : 'Tạo chỉ số'}
-              </button>
+              {configDialogMode !== 'view' && (
+                <button 
+                  type="submit" 
+                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
+                >
+                  {configDialogMode === 'edit' ? 'Lưu thay đổi' : 'Tạo chỉ số'}
+                </button>
+              )}
             </div>
             
           </form>
@@ -1133,7 +1578,7 @@ export default function KpiView({
                   className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-slate-50/50 cursor-pointer text-slate-700"
                 >
                   {daysInMonth.map(day => (
-                    <option key={day} value={day}>Ngày {day.toString().padStart(2, '0')}/06</option>
+                    <option key={day} value={day}>Ngày {day.toString().padStart(2, '0')}/{selectedMonthYear.split('-')[1]}</option>
                   ))}
                 </select>
               </div>
