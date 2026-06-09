@@ -684,8 +684,7 @@ export default function KpiView({
       {/* 3. TAB 1: BẢNG XẾP HẠNG & CHI TIẾT */}
       {activeSubTab === 'ranks' && (
         <div className="space-y-4">
-          {/* Segmented Control & Timeframe Selectors (Dark Pill Style) */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-full w-fit border border-slate-200 shadow-xs">
               <button
                 onClick={() => setRanksTimeframe('month')}
