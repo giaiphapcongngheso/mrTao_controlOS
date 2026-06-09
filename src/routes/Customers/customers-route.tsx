@@ -570,7 +570,7 @@ export default function CustomersRoute() {
           enablePagination={true}
           pageSizeOptions={[10, 20, 50, 100]}
           emptyMessage="Chưa có khách hàng nào trong hệ thống hoặc không khớp với bộ lọc."
-          className="h-[calc(100vh-320px)]"
+          className="h-[calc(100vh-340px)]"
           getRowId={(c) => c.id}
         />
       </div>

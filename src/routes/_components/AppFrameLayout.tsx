@@ -56,8 +56,8 @@ function AppFrameLayout({
   }, [onSelectTab]);
 
   return (
-    <div className="min-h-screen bg-surface-bg flex justify-center w-full antialiased p-0">
-      <div className="w-full flex flex-col md:flex-row p-0 gap-0 min-w-0">
+    <div className="h-screen max-h-screen overflow-hidden bg-surface-bg flex justify-center w-full antialiased p-0">
+      <div className="w-full h-full flex flex-col md:flex-row p-0 gap-0 min-w-0">
         <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-slate-200 shrink-0 sticky top-0 h-screen shadow-xs text-slate-700 py-5 px-4">
           <div className="px-2 pb-4 mb-4 border-b border-slate-100 flex items-center justify-start">
             <Logo size="sm" variant="dark" />
@@ -197,7 +197,7 @@ function AppFrameLayout({
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-5 md:p-5 pb-20 md:pb-4 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 flex-1 min-h-0 overflow-y-auto">
+          <div className="p-5 md:p-5 pb-20 md:pb-8 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 flex-1 min-h-0 overflow-y-auto">
             {children}
           </div>
         </main>

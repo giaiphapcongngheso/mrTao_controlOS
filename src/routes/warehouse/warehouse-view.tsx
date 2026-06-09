@@ -699,7 +699,7 @@ export default function WarehouseView() {
             enablePagination={true}
             pageSizeOptions={[10, 20, 50, 100]}
             emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
-            className="h-[calc(100vh-320px)]"
+            className="h-[calc(100vh-340px)]"
             activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
             getRowId={(product) => String(product.id)}
             onRowClick={(row) => setSelectedProduct(row.original)}
@@ -751,7 +751,7 @@ function SelectedProductPanel({ product, onClose, onEdit, onDelete }: SelectedPr
   const totalStock = (product.inventories ?? []).reduce((sum, inv) => sum + inv.onHand, 0);
 
   return (
-    <Card className="w-full lg:w-[37%] xl:w-[34%] rounded-2xl border border-slate-200/80 shadow-3xs bg-white p-4 h-[calc(100vh-320px)] overflow-y-auto sticky top-4 flex flex-col shrink-0 animate-fade-in font-sans">
+    <Card className="w-full lg:w-[37%] xl:w-[34%] rounded-2xl border border-slate-200/80 shadow-3xs bg-white p-4 h-[calc(100vh-340px)] overflow-y-auto sticky top-4 flex flex-col shrink-0 animate-fade-in font-sans">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Chi tiết sản phẩm</h4>
