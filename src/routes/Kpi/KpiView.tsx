@@ -195,11 +195,21 @@ export default function KpiView({
     return ranks.sort((a, b) => b.score - a.score);
   };
 
-  const dynamicRanks = getDynamicStaffRanks();
-  const selectedStaff = staffMembers.find(s => s.id === selectedStaffId) || staffMembers[0];
-  const staffConfigs = selectedStaff 
-    ? kpiConfigs.filter(c => normalizeRole(c.role) === normalizeRole(selectedStaff.role) && (c.month || '2026-06') === selectedMonthYear) 
-    : [];
+  const dynamicRanks = React.useMemo(() => {
+    return getDynamicStaffRanks();
+  }, [staffMembers, kpiConfigs, kpiDailyValues, selectedMonthYear]);
+
+  const selectedStaff = React.useMemo(() => {
+    return staffMembers.find(s => s.id === selectedStaffId) || staffMembers[0];
+  }, [staffMembers, selectedStaffId]);
+
+  const staffConfigs = React.useMemo(() => {
+    if (!selectedStaff) return [];
+    return kpiConfigs.filter(c => 
+      normalizeRole(c.role) === normalizeRole(selectedStaff.role) && 
+      (c.month || '2026-06') === selectedMonthYear
+    );
+  }, [kpiConfigs, selectedStaff, selectedMonthYear]);
 
   // Set default active KPI for chart
   React.useEffect(() => {
@@ -213,7 +223,7 @@ export default function KpiView({
   }, [selectedStaffId, staffConfigs]);
 
   // Tính doanh thu tháng lũy kế
-  const getRevenueStats = () => {
+  const revenueStats = React.useMemo(() => {
     const vnKpis = staffConfigs.filter(c => c.unit === 'VNĐ');
     const totalTarget = vnKpis.reduce((sum, c) => sum + c.monthlyTarget, 0);
     const totalActual = vnKpis.reduce((sum, c) => {
@@ -224,8 +234,7 @@ export default function KpiView({
     }, 0);
     const pct = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
     return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
-  };
-  const revenueStats = getRevenueStats();
+  }, [staffConfigs, kpiDailyValues, selectedStaff, selectedMonthYear]);
 
   // Helper: format money/number
   const formatValue = (val: number, unit: string) => {
