@@ -602,7 +602,7 @@ export default function KpiView({
               setViewMode('month');
               setSelectedWeekNum(null);
             }}
-            className="px-3 h-9 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+            className="px-3 h-9 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
           >
             {Array.from({ length: 12 }, (_, i) => {
               const m = (i + 1).toString().padStart(2, '0');
@@ -615,7 +615,7 @@ export default function KpiView({
           </select>
           <button 
             onClick={() => onSetTab('Today')}
-            className="px-4 h-9 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
+            className="px-4 h-9 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
           >
             Về Trang Chủ
           </button>
@@ -630,13 +630,13 @@ export default function KpiView({
               <AlertTriangle className="w-5 h-5 shrink-0" />
               Chưa có cấu hình KPI cho Tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
             </div>
-            <p className="text-xs text-slate-500 font-semibold">
+            <p className="text-sm text-slate-500 font-semibold">
               Bạn có thể sao chép nhanh toàn bộ danh mục chỉ số và mục tiêu từ tháng liền kề trước đó ({getPreviousMonthYear(selectedMonthYear)}) để tiết kiệm thời gian thiết lập.
             </p>
           </div>
           <button
             onClick={handleCopyKpiFromPreviousMonth}
-            className="px-4 py-2.5 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer border-0 shrink-0"
+            className="px-4 py-2.5 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold text-sm rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer border-0 shrink-0"
           >
             <Zap className="w-4 h-4 mr-1.5" />
             Sao chép KPI từ tháng trước
@@ -644,69 +644,75 @@ export default function KpiView({
         </div>
       )}
 
-      {/* 2. SUBTABS PANEL (Glassmorphism & Interactive) */}
-      <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1.5 w-fit">
-        <Button 
-          variant={activeSubTab === 'ranks' ? 'default' : 'ghost'} 
-          size="sm"
+      {/* 2. SUBTABS PANEL (Premium Floating Dark Pill - Glassmorphism) */}
+      <div className="bg-[#0B0F19]/95 backdrop-blur-2xl p-1.5 rounded-full border border-[#1E293B]/60 shadow-2xl flex flex-wrap items-center gap-1.5 w-fit mx-auto md:mx-0 transition-all duration-300 hover:border-slate-700/80">
+        <button 
           onClick={() => setActiveSubTab('ranks')}
-          className="font-bold cursor-pointer"
+          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+            activeSubTab === 'ranks'
+              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
         >
-          <Award className="w-4 h-4 mr-1" />
-          Xếp hạng & Chi tiết
-        </Button>
-        <Button 
-          variant={activeSubTab === 'entry' ? 'default' : 'ghost'} 
-          size="sm"
+          <Award className="w-5 h-5 shrink-0" />
+          <span>Xếp hạng & Chi tiết</span>
+        </button>
+        <button 
           onClick={() => setActiveSubTab('entry')}
-          className="font-bold cursor-pointer"
+          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+            activeSubTab === 'entry'
+              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
         >
-          <Calendar className="w-4 h-4 mr-1" />
-          Nhập Action Plan
-        </Button>
-        <Button 
-          variant={activeSubTab === 'settings' ? 'default' : 'ghost'} 
-          size="sm"
+          <Calendar className="w-5 h-5 shrink-0" />
+          <span>Nhập Action Plan</span>
+        </button>
+        <button 
           onClick={() => setActiveSubTab('settings')}
-          className="font-bold cursor-pointer"
+          className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full font-bold text-sm sm:text-base tracking-wide transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+            activeSubTab === 'settings'
+              ? 'bg-white/10 text-white border border-white/10 shadow-lg'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
         >
-          <Target className="w-4 h-4 mr-1" />
-          Thiết lập KPI Chung
-        </Button>
+          <Target className="w-5 h-5 shrink-0" />
+          <span>Thiết lập KPI Chung</span>
+        </button>
       </div>
 
       {/* 3. TAB 1: BẢNG XẾP HẠNG & CHI TIẾT */}
       {activeSubTab === 'ranks' && (
         <div className="space-y-4">
-          {/* Segmented Control & Timeframe Selectors */}
+          {/* Segmented Control & Timeframe Selectors (Dark Pill Style) */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200/50">
+            <div className="flex items-center gap-1 bg-[#0B0F19]/95 p-1 rounded-full w-fit border border-[#1E293B]/60 shadow-lg">
               <button
                 onClick={() => setRanksTimeframe('month')}
-                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'month'
-                    ? 'bg-white text-[#C21A1A] shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
                 Theo Tháng
               </button>
               <button
                 onClick={() => setRanksTimeframe('quarter')}
-                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'quarter'
-                    ? 'bg-white text-[#C21A1A] shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
                 Theo Quý
               </button>
               <button
                 onClick={() => setRanksTimeframe('year')}
-                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   ranksTimeframe === 'year'
-                    ? 'bg-white text-[#C21A1A] shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white/10 text-white border border-white/10 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
                 Theo Năm
@@ -714,12 +720,12 @@ export default function KpiView({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-400 uppercase">Giai đoạn:</span>
+              <span className="text-sm font-bold text-slate-500 uppercase">Giai đoạn:</span>
               {ranksTimeframe === 'month' && (
                 <select
                   value={ranksMonth}
                   onChange={(e) => setRanksMonth(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
                 >
                   {Array.from({ length: 12 }, (_, i) => {
                     const m = (i + 1).toString().padStart(2, '0');
@@ -737,7 +743,7 @@ export default function KpiView({
                   <select
                     value={ranksQuarter}
                     onChange={(e) => setRanksQuarter(Number(e.target.value))}
-                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
                   >
                     <option value={1}>Quý 1 (T01 - T03)</option>
                     <option value={2}>Quý 2 (T04 - T06)</option>
@@ -747,7 +753,7 @@ export default function KpiView({
                   <select
                     value={ranksYear}
                     onChange={(e) => setRanksYear(Number(e.target.value))}
-                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
                   >
                     <option value={2025}>2025</option>
                     <option value={2026}>2026</option>
@@ -760,7 +766,7 @@ export default function KpiView({
                 <select
                   value={ranksYear}
                   onChange={(e) => setRanksYear(Number(e.target.value))}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer focus:outline-none"
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
                 >
                   <option value={2025}>Năm 2025</option>
                   <option value={2026}>Năm 2026</option>
@@ -776,9 +782,9 @@ export default function KpiView({
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div>
                   <h2 className="text-base font-bold text-slate-800 tracking-wider">LEADERBOARD THI ĐUA</h2>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">Xếp hạng dựa trên kết quả đạt được</p>
+                  <p className="text-sm text-slate-500 font-semibold mt-1">Xếp hạng dựa trên kết quả đạt được</p>
                 </div>
-                <span className="text-xs font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
+                <span className="text-sm font-bold text-[#C21A1A] bg-red-50 border border-red-100 px-3 py-1 rounded-xl">
                   {ranksTimeframe === 'month' 
                     ? `Tháng ${ranksMonth.split('-')[1]}/${ranksMonth.split('-')[0]}`
                     : ranksTimeframe === 'quarter'
@@ -792,10 +798,10 @@ export default function KpiView({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12 text-center text-xs">Hạng</TableHead>
-                      <TableHead className="text-xs">Nhân viên</TableHead>
-                      <TableHead className="text-right text-xs">Tổng điểm</TableHead>
-                      <TableHead className="text-right text-xs">Xếp loại</TableHead>
+                      <TableHead className="w-12 text-center text-sm font-bold text-slate-700">Hạng</TableHead>
+                      <TableHead className="text-sm font-bold text-slate-700">Nhân viên</TableHead>
+                      <TableHead className="text-right text-sm font-bold text-slate-700">Tổng điểm</TableHead>
+                      <TableHead className="text-right text-sm font-bold text-slate-700">Xếp loại</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -809,13 +815,13 @@ export default function KpiView({
                         >
                           <TableCell className="text-center font-sans text-sm">
                             {idx === 0 ? (
-                              <span className="w-5 h-5 rounded-full bg-amber-400 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">1</span>
+                              <span className="w-6 h-6 rounded-full bg-amber-400 text-white font-bold text-sm flex items-center justify-center mx-auto shadow-sm">1</span>
                             ) : idx === 1 ? (
-                              <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center mx-auto shadow-sm">2</span>
+                              <span className="w-6 h-6 rounded-full bg-slate-300 text-slate-800 font-bold text-sm flex items-center justify-center mx-auto shadow-sm">2</span>
                             ) : idx === 2 ? (
-                              <span className="w-5 h-5 rounded-full bg-amber-600/70 text-white font-bold text-xs flex items-center justify-center mx-auto shadow-sm">3</span>
+                              <span className="w-6 h-6 rounded-full bg-amber-600/70 text-white font-bold text-sm flex items-center justify-center mx-auto shadow-sm">3</span>
                             ) : (
-                              <span className="text-xs text-slate-400 font-bold">{idx + 1}</span>
+                              <span className="text-sm text-slate-500 font-bold">{idx + 1}</span>
                             )}
                           </TableCell>
                           <TableCell>
@@ -823,7 +829,7 @@ export default function KpiView({
                               <img src={rank.avatar} className="w-7 h-7 rounded-full object-cover border border-slate-100 shrink-0" alt="" />
                               <div className="text-left">
                                 <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
-                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{rank.role}</span>
+                                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{rank.role}</span>
                               </div>
                             </div>
                           </TableCell>
@@ -831,7 +837,7 @@ export default function KpiView({
                             {rank.score}%
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${getClassificationBadgeClass(rank.classification)}`}>
+                            <span className={`inline-block text-sm font-bold px-2.5 py-1 rounded-lg border ${getClassificationBadgeClass(rank.classification)}`}>
                               {translateClassification(rank.classification)}
                             </span>
                           </TableCell>
@@ -855,7 +861,7 @@ export default function KpiView({
                         </div>
                         <div className="text-left">
                           <CardTitle className="text-base font-bold text-slate-900">{selectedStaff.fullName}</CardTitle>
-                          <CardDescription className="text-xs font-bold text-[#C21A1A] uppercase tracking-wider mt-0.5">
+                          <CardDescription className="text-sm font-bold text-[#C21A1A] uppercase tracking-wider mt-1">
                             Vai trò: {selectedStaff.role}
                           </CardDescription>
                         </div>
@@ -864,20 +870,20 @@ export default function KpiView({
                       <div className="flex gap-4 items-center">
                         {periodRevenueStats.hasRevenue && (
                           <div className="text-right border-r border-slate-100 pr-4 hidden sm:block">
-                            <p className="text-xs font-bold text-slate-400 uppercase">
+                            <p className="text-sm font-bold text-slate-500 uppercase">
                               {ranksTimeframe === 'month' ? 'DOANH THU THÁNG' : ranksTimeframe === 'quarter' ? 'DOANH THU QUÝ' : 'DOANH THU NĂM'}
                             </p>
                             <h3 className="text-sm font-bold text-slate-900 leading-none mt-1">
                               {formatValue(periodRevenueStats.totalActual, 'VNĐ')}
                             </h3>
-                            <span className="text-xs font-semibold text-emerald-600">
+                            <span className="text-sm font-bold text-emerald-600 mt-0.5 block">
                               {periodRevenueStats.pct.toFixed(0)}% Đạt
                             </span>
                           </div>
                         )}
 
                         <div className="text-right">
-                          <p className="text-xs font-bold text-slate-400 uppercase">ĐIỂM TRUNG BÌNH KPI</p>
+                          <p className="text-sm font-bold text-slate-500 uppercase">ĐIỂM TRUNG BÌNH KPI</p>
                           <h3 className="text-lg font-bold font-sans text-slate-900 leading-none mt-1">
                             {dynamicRanks.find(r => r.staffId === selectedStaff.id)?.score || 0}%
                           </h3>
@@ -892,16 +898,16 @@ export default function KpiView({
                     {periodRevenueStats.hasRevenue && (
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center text-left">
                         <div className="space-y-1">
-                          <span className="text-xs font-bold text-slate-400 uppercase">Doanh thu đạt được</span>
+                          <span className="text-sm font-bold text-slate-500 uppercase">Doanh thu đạt được</span>
                           <h4 className="text-sm font-bold text-[#C21A1A]">
                             {formatValue(periodRevenueStats.totalActual, 'VNĐ')}
                           </h4>
                         </div>
                         <div className="text-right space-y-1">
-                          <span className="text-xs font-bold text-slate-400 uppercase">
+                          <span className="text-sm font-bold text-slate-500 uppercase">
                             {ranksTimeframe === 'month' ? 'Chỉ tiêu tháng' : ranksTimeframe === 'quarter' ? 'Chỉ tiêu quý' : 'Chỉ tiêu năm'}
                           </span>
-                          <p className="text-xs font-bold text-slate-700">
+                          <p className="text-sm font-bold text-slate-700">
                             {formatValue(periodRevenueStats.totalTarget, 'VNĐ')} ({periodRevenueStats.pct.toFixed(1)}%)
                           </p>
                         </div>
@@ -910,10 +916,10 @@ export default function KpiView({
                     
                     {/* Danh sách chỉ số */}
                     <div className="space-y-3.5">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
+                      <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">CHI TIẾT CHỈ SỐ KPI ĐẠT ĐƯỢC</h4>
                       
                       {periodKpis.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
+                        <div className="py-6 text-center text-sm text-slate-500 font-bold border border-dashed border-slate-200 rounded-xl">
                           {ranksTimeframe === 'month' 
                             ? `Chưa thiết lập chỉ số KPI nào cho vị trí này trong tháng ${ranksMonth.split('-')[1]}/${ranksMonth.split('-')[0]}`
                             : ranksTimeframe === 'quarter'
@@ -926,14 +932,14 @@ export default function KpiView({
                           <Table>
                             <TableHeader className="bg-slate-50/50">
                               <TableRow>
-                                <TableHead className="text-xs">Chỉ số KPI</TableHead>
-                                <TableHead className="text-right text-xs">
+                                <TableHead className="text-sm font-bold text-slate-700">Chỉ số KPI</TableHead>
+                                <TableHead className="text-right text-sm font-bold text-slate-700">
                                   {ranksTimeframe === 'month' ? 'Target tháng' : 'Target giai đoạn'}
                                 </TableHead>
-                                <TableHead className="text-right text-xs">Thực đạt</TableHead>
-                                <TableHead className="text-right text-xs">Đạt %</TableHead>
-                                <TableHead className="text-right text-xs">Điểm</TableHead>
-                                <TableHead className="text-right text-xs">Trạng thái</TableHead>
+                                <TableHead className="text-right text-sm font-bold text-slate-700">Thực đạt</TableHead>
+                                <TableHead className="text-right text-sm font-bold text-slate-700">Đạt %</TableHead>
+                                <TableHead className="text-right text-sm font-bold text-slate-700">Điểm</TableHead>
+                                <TableHead className="text-right text-sm font-bold text-slate-700">Trạng thái</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -959,7 +965,7 @@ export default function KpiView({
                                       <p className="font-bold text-slate-800 text-sm truncate" title={kpi.kpiName}>
                                         {kpi.kpiName}
                                       </p>
-                                      <span className="text-xs text-slate-400 font-semibold">Trọng số: {(kpi.weight * 100)}%</span>
+                                      <span className="text-sm text-slate-500 font-semibold mt-0.5 block">Trọng số: {(kpi.weight * 100)}%</span>
                                     </TableCell>
                                     <TableCell className="text-right font-sans font-bold text-sm">
                                       {formatValue(kpi.target, kpi.unit)}
@@ -974,7 +980,7 @@ export default function KpiView({
                                       {scoreStr}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                      <span className={`inline-block text-xs font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
+                                      <span className={`inline-block text-sm font-bold px-2 py-0.5 rounded-lg border ${statusColor}`}>
                                         {statusText}
                                       </span>
                                     </TableCell>
@@ -991,17 +997,17 @@ export default function KpiView({
                     {ranksTimeframe === 'month' && staffConfigs.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                          <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">
                             BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY (THÁNG {parseInt(ranksMonth.split('-')[1])})
                           </h4>
                           
                           {/* Selector vẽ biểu đồ */}
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400 font-medium">Chỉ số:</span>
+                            <span className="text-sm text-slate-500 font-semibold">Chỉ số:</span>
                             <select
                               value={activeChartKpiId}
                               onChange={(e) => setActiveChartKpiId(e.target.value)}
-                              className="bg-slate-50 border border-slate-200 font-bold text-xs px-2 py-1 rounded-lg text-slate-700 focus:outline-none cursor-pointer"
+                              className="bg-slate-50 border border-slate-200 font-bold text-sm px-3 py-1.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer"
                             >
                               {staffConfigs.map(c => (
                                 <option key={c.id} value={c.id}>{c.kpiName}</option>
@@ -1068,7 +1074,7 @@ export default function KpiView({
                           </div>
                           
                           {/* Legend axis */}
-                          <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mt-2 z-10">
+                          <div className="flex justify-between items-center text-sm font-semibold text-slate-500 mt-2 z-10">
                             <span>01/{ranksMonth.split('-')[1]}</span>
                             <span className="text-[#3b82f6]">Vạch target ngày (mốc đứt)</span>
                             <span>{daysInMonthCount.toString().padStart(2, '0')}/{ranksMonth.split('-')[1]}</span>
@@ -1095,7 +1101,7 @@ export default function KpiView({
                 <CardTitle className="text-base font-bold text-slate-800 tracking-wider">
                   NHẬP LIỆU ACTION PLAN KPI ({viewMode === 'month' ? 'THÁNG' : 'CHI TIẾT TUẦN'})
                 </CardTitle>
-                <CardDescription className="text-xs font-bold text-slate-400 mt-0.5">
+                <CardDescription className="text-sm font-medium text-slate-500 mt-1">
                   Nhân viên báo cáo số thực tế đạt được hằng ngày của tháng. Click đúp vào ô thực tế trên bảng để sửa nhanh.
                 </CardDescription>
               </div>
@@ -1103,13 +1109,17 @@ export default function KpiView({
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-2.5">
                 {/* View Mode Toggle */}
-                <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1">
+                <div className="bg-[#0B0F19]/95 p-1 rounded-full border border-[#1E293B]/60 flex items-center gap-1 shadow-sm">
                   <button
                     onClick={() => {
                       setViewMode('month');
                       setSelectedWeekNum(null);
                     }}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer ${viewMode === 'month' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+                    className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 border-0 cursor-pointer ${
+                      viewMode === 'month' 
+                        ? 'bg-white/10 text-white border border-white/10 shadow-xs' 
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    }`}
                   >
                     Xem theo Tháng
                   </button>
@@ -1118,7 +1128,11 @@ export default function KpiView({
                       setViewMode('week');
                       setSelectedWeekNum(1); // Default to Week 1
                     }}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer ${viewMode === 'week' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
+                    className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 border-0 cursor-pointer ${
+                      viewMode === 'week' 
+                        ? 'bg-white/10 text-white border border-white/10 shadow-xs' 
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    }`}
                   >
                     Xem theo Tuần
                   </button>
@@ -1129,7 +1143,7 @@ export default function KpiView({
                   <select
                     value={selectedWeekNum || 1}
                     onChange={(e) => setSelectedWeekNum(parseInt(e.target.value))}
-                    className="bg-slate-50 border border-slate-200 font-bold text-xs px-3 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer"
+                    className="bg-slate-50 border border-slate-200 font-bold text-sm px-4 py-2 rounded-xl text-slate-700 focus:outline-none cursor-pointer"
                   >
                     <option value={1}>Tuần 1 (Ngày 01 - 07)</option>
                     <option value={2}>Tuần 2 (Ngày 08 - 14)</option>
@@ -1145,7 +1159,7 @@ export default function KpiView({
                   <select
                     value={selectedStaffId}
                     onChange={(e) => setSelectedStaffId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-3 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 font-bold text-sm pl-3 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
                   >
                     {staffMembers.filter(s => s.status === 'active').map(s => (
                       <option key={s.id} value={s.id}>{s.fullName} ({s.role})</option>
@@ -1166,7 +1180,7 @@ export default function KpiView({
                       );
                     }
                   }}
-                  className="font-bold cursor-pointer h-[38px] rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+                  className="font-bold cursor-pointer h-[38px] rounded-xl text-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
                 >
                   <Download className="w-4 h-4" />
                   Xuất Excel
@@ -1177,7 +1191,7 @@ export default function KpiView({
                     setIsEntryDialogOpen(true);
                     setFocusedKpiInputId(null);
                   }}
-                  className="font-bold cursor-pointer h-[38px] rounded-xl text-xs"
+                  className="font-bold cursor-pointer h-[38px] rounded-xl text-sm"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Cập nhật số thực tế
@@ -1189,7 +1203,7 @@ export default function KpiView({
           <CardContent className="pt-6 space-y-4">
             
             {saveSuccessMsg && (
-              <div className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in duration-300 w-fit">
+              <div className="text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in duration-300 w-fit">
                 <Check className="w-4 h-4 shrink-0" />
                 {saveSuccessMsg}
               </div>
@@ -1205,27 +1219,27 @@ export default function KpiView({
                     setViewMode('month');
                     setSelectedWeekNum(null);
                   }}
-                  className="font-bold rounded-xl text-xs hover:bg-slate-50"
+                  className="font-bold rounded-xl text-sm hover:bg-slate-50"
                 >
                   ← Quay lại dạng Tháng
                 </Button>
-                <span className="text-xs text-slate-400 font-medium">Đang xem dữ liệu Tuần {selectedWeekNum}</span>
+                <span className="text-sm text-slate-500 font-semibold">Đang xem dữ liệu Tuần {selectedWeekNum}</span>
               </div>
             )}
 
             {/* Bảng tổng hợp theo Tháng / Tuần */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
                   BẢNG ACTION PLAN KPI CHI TIẾT ({viewMode === 'month' ? 'TÓM TẮT TUẦN' : '7 NGÀY CHI TIẾT'})
                 </h4>
                 {viewMode === 'month' && (
-                  <span className="text-xs font-semibold text-slate-400">Click "Xem chi tiết" ở mỗi cột tuần để xem/sửa chi tiết từng ngày ➔</span>
+                  <span className="text-sm font-semibold text-slate-500">Click "Xem chi tiết" ở mỗi cột tuần để xem/sửa chi tiết từng ngày ➔</span>
                 )}
               </div>
 
               {staffConfigs.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-xl">
+                <div className="py-6 text-center text-sm text-slate-500 font-bold border border-dashed border-slate-200 rounded-xl">
                   Nhân viên này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}. Hãy cấu hình ở tab Thiết lập.
                 </div>
               ) : (
@@ -1237,8 +1251,8 @@ export default function KpiView({
                         <>
                           <TableHeader className="bg-slate-50">
                             <TableRow>
-                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
-                              <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
+                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-sm font-bold text-slate-700">Chỉ số KPI</TableHead>
+                              <TableHead className="w-20 border-r text-sm font-bold text-slate-700">Dòng</TableHead>
                               {[1, 2, 3, 4, 5].map(week => {
                                 let dateRangeText = '';
                                 if (week === 1) dateRangeText = '01-07';
@@ -1248,7 +1262,7 @@ export default function KpiView({
                                 else if (week === 5) dateRangeText = `29-${daysInMonthCount}`;
 
                                 return (
-                                  <TableHead key={week} className="w-32 text-center border-r font-bold text-xs bg-slate-50">
+                                  <TableHead key={week} className="w-32 text-center border-r font-bold text-sm text-slate-700 bg-slate-50">
                                     <div className="flex flex-col items-center gap-1.5 py-1">
                                       <span>Tuần {week} ({dateRangeText})</span>
                                       <button
@@ -1256,7 +1270,7 @@ export default function KpiView({
                                           setSelectedWeekNum(week);
                                           setViewMode('week');
                                         }}
-                                        className="text-[10px] text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md font-bold transition-all border-0 cursor-pointer"
+                                        className="text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg font-bold transition-all border-0 cursor-pointer"
                                       >
                                         Xem chi tiết
                                       </button>
@@ -1264,9 +1278,9 @@ export default function KpiView({
                                   </TableHead>
                                 );
                               })}
-                              <TableHead className="w-24 border-r text-right font-bold sticky right-[90px] bg-slate-50 border-l shadow-xs text-xs">Tổng</TableHead>
-                              <TableHead className="w-20 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
-                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[90px] bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">Tổng</TableHead>
+                              <TableHead className="w-20 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">% Đạt</TableHead>
+                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">Trạng thái</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1302,7 +1316,7 @@ export default function KpiView({
                                     <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
                                       {config.kpiName}
                                     </TableCell>
-                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
+                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-sm">Mục tiêu</TableCell>
                                     {[1, 2, 3, 4, 5].map(week => {
                                       const weekTarget = getWeekTarget(config, week);
                                       return (
@@ -1321,9 +1335,9 @@ export default function KpiView({
                                   {/* Row Actual */}
                                   <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
                                     <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
-                                      <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
+                                      <span className="text-sm text-amber-650 font-bold">↳ Thực tế</span>
                                     </TableCell>
-                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
+                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-sm">Thực tế</TableCell>
                                     {[1, 2, 3, 4, 5].map(week => {
                                       const weekAct = getWeekActual(config.id, week);
                                       return (
@@ -1339,7 +1353,7 @@ export default function KpiView({
                                       {pctStr}
                                     </TableCell>
                                     <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
-                                      <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
+                                      <span className={`inline-block text-sm font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
                                         {statusText}
                                       </span>
                                     </TableCell>
@@ -1356,17 +1370,17 @@ export default function KpiView({
                         <>
                           <TableHeader className="bg-slate-50">
                             <TableRow>
-                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-xs">Chỉ số KPI</TableHead>
-                              <TableHead className="w-20 border-r text-xs">Dòng</TableHead>
+                              <TableHead className="text-left w-48 sticky left-0 bg-slate-50 z-10 border-r shadow-xs text-sm font-bold text-slate-700">Chỉ số KPI</TableHead>
+                              <TableHead className="w-20 border-r text-sm font-bold text-slate-700">Dòng</TableHead>
                               {getWeekDays(selectedWeekNum || 1).map(day => (
-                                <TableHead key={day} className="w-16 min-w-[64px] text-center border-r font-bold text-xs bg-slate-50">
+                                <TableHead key={day} className="w-16 min-w-[64px] text-center border-r font-bold text-sm text-slate-700 bg-slate-50">
                                   Ngày {day.toString().padStart(2, '0')}/{selectedMonthYear.split('-')[1]}
                                 </TableHead>
                               ))}
-                              <TableHead className="w-24 border-r text-right font-bold sticky right-[202px] bg-slate-50 border-l shadow-xs text-xs">Tổng tuần</TableHead>
-                              <TableHead className="w-24 border-r text-right font-bold sticky right-[112px] bg-slate-50 border-l shadow-xs text-xs">Tổng tháng</TableHead>
-                              <TableHead className="w-18 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-xs">% Đạt</TableHead>
-                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-xs">Trạng thái</TableHead>
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[202px] bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">Tổng tuần</TableHead>
+                              <TableHead className="w-24 border-r text-right font-bold sticky right-[112px] bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">Tổng tháng</TableHead>
+                              <TableHead className="w-18 border-r text-right font-bold sticky right-12 bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">% Đạt</TableHead>
+                              <TableHead className="w-12 text-center font-bold sticky right-0 bg-slate-50 border-l shadow-xs text-sm font-bold text-slate-700">Trạng thái</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1405,28 +1419,28 @@ export default function KpiView({
                                     <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-white z-10 border-r shadow-xs max-w-[192px] truncate" title={config.kpiName}>
                                       {config.kpiName}
                                     </TableCell>
-                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-xs">Mục tiêu</TableCell>
+                                    <TableCell className="border-r font-bold text-slate-450 bg-slate-50/30 text-sm">Mục tiêu</TableCell>
                                     {weekDaysList.map(day => (
-                                      <TableCell key={day} className="border-r text-slate-400 font-medium text-center">
+                                      <TableCell key={day} className="border-r text-slate-400 font-medium text-center text-sm">
                                         {config.monthlyTarget > 0 ? config.dailyTarget.toLocaleString() : '1'}
                                       </TableCell>
                                     ))}
-                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[202px] bg-white border-l shadow-xs">
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[202px] bg-white border-l shadow-xs text-sm">
                                       {weekTarget.toLocaleString()}
                                     </TableCell>
-                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[112px] bg-white border-l shadow-xs">
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-[112px] bg-white border-l shadow-xs text-sm">
                                       {config.monthlyTarget.toLocaleString()}
                                     </TableCell>
-                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs">-</TableCell>
-                                    <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400">-</TableCell>
+                                    <TableCell className="border-r text-right font-bold text-slate-400 sticky right-12 bg-white border-l shadow-xs text-sm">-</TableCell>
+                                    <TableCell className="sticky right-0 bg-white border-l shadow-xs font-bold text-slate-400 text-sm">-</TableCell>
                                   </TableRow>
 
                                   {/* Row Actual */}
                                   <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
                                     <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
-                                      <span className="text-xs text-amber-600 font-bold">↳ Thực tế</span>
+                                      <span className="text-sm text-amber-650 font-bold">↳ Thực tế</span>
                                     </TableCell>
-                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-xs">Thực tế</TableCell>
+                                    <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-sm">Thực tế</TableCell>
                                     {weekDaysList.map(day => {
                                       const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
                                       const record = kpiDailyValues.find(
@@ -1441,24 +1455,24 @@ export default function KpiView({
                                             setIsEntryDialogOpen(true);
                                             setFocusedKpiInputId(config.id);
                                           }}
-                                          className={`border-r font-bold cursor-pointer select-none hover:bg-amber-100/50 transition-colors text-center ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}
+                                          className={`border-r font-bold cursor-pointer select-none hover:bg-amber-100/50 transition-colors text-center text-sm ${act > 0 ? 'text-amber-800' : 'text-slate-300'}`}
                                           title="Double-click để sửa số ngày này"
                                         >
                                           {act > 0 ? act.toLocaleString() : '-'}
                                         </TableCell>
                                       );
                                     })}
-                                    <TableCell className="border-r text-right font-bold text-amber-800 sticky right-[202px] bg-[#fefdfa] border-l shadow-xs">
+                                    <TableCell className="border-r text-right font-bold text-amber-800 sticky right-[202px] bg-[#fefdfa] border-l shadow-xs text-sm">
                                       {weekAct.toLocaleString()}
                                     </TableCell>
-                                    <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[112px] bg-[#fefdfa] border-l shadow-xs">
+                                    <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[112px] bg-[#fefdfa] border-l shadow-xs text-sm">
                                       {totalActual.toLocaleString()}
                                     </TableCell>
-                                    <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
+                                    <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs text-sm">
                                       {pctStr}
                                     </TableCell>
-                                    <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
-                                      <span className={`inline-block text-xs font-bold px-1 py-0.5 rounded border ${statusColor}`}>
+                                    <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs text-sm">
+                                      <span className={`inline-block text-sm font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
                                         {statusText}
                                       </span>
                                     </TableCell>
@@ -1487,21 +1501,21 @@ export default function KpiView({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="text-left">
                 <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH KPI THEO VAI TRÒ</CardTitle>
-                <CardDescription className="text-xs font-medium text-slate-400 mt-0.5">
-                  Thiết lập các chỉ số, target tháng và trọng số áp dụng chung cho toàn bộ nhân sự theo vai trò.
+                <CardDescription className="text-sm font-semibold text-slate-500 mt-1">
+                  Thiết lập các chỉ số, target tháng and trọng số áp dụng chung cho toàn bộ nhân sự theo vai trò.
                 </CardDescription>
               </div>
 
               {/* Roles selection & Add button */}
               <div className="flex items-center gap-3">
                 <div className="relative min-w-[200px]">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">Vai trò</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 uppercase">Vai trò</span>
                   <select
                     value={selectedSettingRole}
                     onChange={(e) => {
                       setSelectedSettingRole(e.target.value);
                     }}
-                    className="w-full bg-slate-50 border border-slate-200 font-bold text-xs pl-16 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 font-bold text-sm pl-20 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
                   >
                     {roles.map((role) => (
                       <option key={role.id} value={role.code}>
@@ -1511,7 +1525,7 @@ export default function KpiView({
                   </select>
                 </div>
 
-                <Button onClick={handleOpenAddConfigDialog} className="font-bold cursor-pointer h-[38px] rounded-xl text-xs">
+                <Button onClick={handleOpenAddConfigDialog} className="font-bold cursor-pointer h-[38px] rounded-xl text-sm">
                   <Plus className="w-4 h-4 mr-1" />
                   Thêm chỉ số KPI
                 </Button>
@@ -1523,7 +1537,7 @@ export default function KpiView({
             
             {/* Danh sách chỉ số cấu hình */}
             <div className="space-y-3.5">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
+              <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
               
               {(() => {
                 const filteredConfigs = kpiConfigs.filter(
@@ -1537,20 +1551,20 @@ export default function KpiView({
                       <Table className="text-left text-sm">
                         <TableHeader className="bg-slate-50/50">
                           <TableRow>
-                            <TableHead className="text-xs">Mục tiêu chung</TableHead>
-                            <TableHead className="text-xs">Chỉ số KPI</TableHead>
-                            <TableHead className="text-xs">Đơn vị</TableHead>
-                            <TableHead className="text-right text-xs">Target tháng</TableHead>
-                            <TableHead className="text-right text-xs">Target ngày (ước tính)</TableHead>
-                            <TableHead className="text-right text-xs">Trọng số (%)</TableHead>
-                            <TableHead className="text-xs">Nguồn đối chứng</TableHead>
-                            <TableHead className="w-32 text-right text-xs">Thao tác</TableHead>
+                            <TableHead className="text-sm font-bold text-slate-700">Mục tiêu chung</TableHead>
+                            <TableHead className="text-sm font-bold text-slate-700">Chỉ số KPI</TableHead>
+                            <TableHead className="text-sm font-bold text-slate-700">Đơn vị</TableHead>
+                            <TableHead className="text-right text-sm font-bold text-slate-700">Target tháng</TableHead>
+                            <TableHead className="text-right text-sm font-bold text-slate-700">Target ngày (ước tính)</TableHead>
+                            <TableHead className="text-right text-sm font-bold text-slate-700">Trọng số (%)</TableHead>
+                            <TableHead className="text-sm font-bold text-slate-700">Nguồn đối chứng</TableHead>
+                            <TableHead className="w-32 text-right text-sm font-bold text-slate-700">Thao tác</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredConfigs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={8} className="text-center py-6 text-slate-400 font-bold">
+                              <TableCell colSpan={8} className="text-center py-6 text-slate-500 font-bold text-sm">
                                 Vị trí này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
                               </TableCell>
                             </TableRow>
@@ -1573,7 +1587,7 @@ export default function KpiView({
                                 <TableCell className="text-right font-sans font-bold text-blue-600 text-sm">
                                   {`${(config.weight * 100)}%`}
                                 </TableCell>
-                                <TableCell className="text-slate-500 text-xs">
+                                <TableCell className="text-slate-650 text-sm">
                                   {config.proofSource}
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -1596,7 +1610,7 @@ export default function KpiView({
                       </Table>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-xs font-bold text-slate-600">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-sm font-bold text-slate-600">
                       <span>Tổng số chỉ số: {filteredConfigs.length}</span>
                       <span className={`flex items-center gap-1 ${totalWeight === 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
                         <Sparkles className="w-4 h-4 shrink-0" />
@@ -1625,7 +1639,7 @@ export default function KpiView({
                   : 'Thêm chỉ số KPI mới'
               }
             </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-slate-400 mt-1 leading-normal">
+            <DialogDescription className="text-sm font-semibold text-slate-500 mt-1 leading-normal">
               {configDialogMode === 'view'
                 ? `Xem cấu hình chỉ số chung cho vị trí ${selectedSettingRole}`
                 : configDialogMode === 'edit'
@@ -1640,13 +1654,13 @@ export default function KpiView({
             
             {/* Block 1: Thông tin chỉ số KPI */}
             <div className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 space-y-3.5">
-              <div className="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 text-slate-700 font-bold text-sm uppercase tracking-wider border-b border-slate-100 pb-2">
                 <Target className="w-4 h-4 text-blue-500 shrink-0" />
                 Thông tin chỉ số KPI
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Tên chỉ số KPI *</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Tên chỉ số KPI *</label>
                 <input
                   type="text"
                   placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
@@ -1660,7 +1674,7 @@ export default function KpiView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 tracking-wide">Đơn vị đo lường</label>
+                  <label className="text-sm font-bold text-slate-600 tracking-wide">Đơn vị đo lường</label>
                   <select
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
@@ -1679,7 +1693,7 @@ export default function KpiView({
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 tracking-wide">Trọng số KPI (%) *</label>
+                  <label className="text-sm font-bold text-slate-600 tracking-wide">Trọng số KPI (%) *</label>
                   <input
                     type="number"
                     placeholder="Ví dụ: 45"
@@ -1693,7 +1707,7 @@ export default function KpiView({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Vai trò áp dụng</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Vai trò áp dụng</label>
                 <input
                   type="text"
                   value={selectedSettingRole}
@@ -1705,13 +1719,13 @@ export default function KpiView({
 
             {/* Block 2: Chỉ tiêu & Đối chứng */}
             <div className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/30 space-y-3.5">
-              <div className="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 text-slate-700 font-bold text-sm uppercase tracking-wider border-b border-slate-100 pb-2">
                 <Award className="w-4 h-4 text-emerald-500 shrink-0" />
                 Chỉ tiêu & Đối chứng
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Tên nhóm mục tiêu</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Tên nhóm mục tiêu</label>
                 <input
                   type="text"
                   placeholder="Ví dụ: Tăng kết quả kinh doanh"
@@ -1723,7 +1737,7 @@ export default function KpiView({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Chỉ tiêu tháng *</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Chỉ tiêu tháng *</label>
                 <input
                   type="number"
                   placeholder="Ví dụ: 450000000"
@@ -1736,7 +1750,7 @@ export default function KpiView({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Nguồn đối chứng</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Nguồn đối chứng</label>
                 <input
                   type="text"
                   placeholder="Ví dụ: KiotViet theo nhân viên"
@@ -1749,7 +1763,7 @@ export default function KpiView({
 
               {/* Nhãn tính toán Target ngày */}
               {formTarget && (
-                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800 font-semibold flex items-center justify-between">
+                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-sm text-emerald-800 font-semibold flex items-center justify-between">
                   <span>Target ngày ước tính:</span>
                   <span className="font-bold text-sm">
                     {formatValue(Math.round((parseFloat(formTarget) || 0) / daysInMonthCount), formUnit)} / ngày
@@ -1761,14 +1775,14 @@ export default function KpiView({
             {/* Actions */}
             <div className="pt-4 flex items-center justify-end gap-2.5">
               <DialogClose asChild>
-                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
                   {configDialogMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
                 </Button>
               </DialogClose>
               {configDialogMode !== 'view' && (
                 <button 
                   type="submit" 
-                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
+                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-sm"
                 >
                   {configDialogMode === 'edit' ? 'Lưu thay đổi' : 'Tạo chỉ số'}
                 </button>
@@ -1786,7 +1800,7 @@ export default function KpiView({
             <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">
               Nhập số thực tế hằng ngày
             </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-slate-400 mt-1 leading-normal">
+            <DialogDescription className="text-sm font-semibold text-slate-500 mt-1 leading-normal">
               Báo cáo kết quả và số liệu thực tế đạt được của nhân sự
             </DialogDescription>
           </DialogHeader>
@@ -1800,14 +1814,14 @@ export default function KpiView({
             
             <div className="grid grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Nhân viên</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Nhân viên</label>
                 <div className="h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 flex items-center">
                   {selectedStaff?.fullName}
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-500 tracking-wide">Ngày báo cáo</label>
+                <label className="text-sm font-bold text-slate-600 tracking-wide">Ngày báo cáo</label>
                 <select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(parseInt(e.target.value))}
@@ -1822,16 +1836,16 @@ export default function KpiView({
 
             <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1 mt-2 scrollbar-thin">
               {staffConfigs.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 font-bold border border-dashed border-slate-200 rounded-2xl">
+                <div className="py-8 text-center text-sm text-slate-500 font-bold border border-dashed border-slate-200 rounded-2xl">
                   Nhân viên này chưa được cấu hình chỉ số KPI nào.
                 </div>
               ) : (
                 staffConfigs.map(config => (
                   <div key={config.id} className="bg-slate-50/50 p-4 border border-slate-200 rounded-2xl flex flex-col justify-between gap-3 text-left hover:bg-slate-50 transition-all">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{config.goalName}</span>
-                      <h4 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{config.kpiName}</h4>
-                      <p className="text-xs font-medium text-slate-400 mt-1">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{config.goalName}</span>
+                      <h4 className="text-sm font-bold text-slate-800 leading-tight mt-0.5">{config.kpiName}</h4>
+                      <p className="text-sm font-medium text-slate-500 mt-1">
                         Mục tiêu ngày: <span className="text-slate-700 font-bold">{formatValue(config.dailyTarget, config.unit)}</span>
                       </p>
                     </div>
@@ -1850,7 +1864,7 @@ export default function KpiView({
                         onChange={(e) => setEntryValues({ ...entryValues, [config.id]: e.target.value })}
                         className="flex-1 h-10 px-3.5 bg-amber-50/40 border border-amber-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-100 font-sans font-bold text-sm text-slate-800 rounded-xl outline-none transition-all shadow-xs placeholder:font-normal"
                       />
-                      <span className="text-xs font-bold text-slate-400 w-10 shrink-0">{config.unit}</span>
+                      <span className="text-sm font-bold text-slate-500 w-10 shrink-0">{config.unit}</span>
                     </div>
                   </div>
                 ))
@@ -1859,14 +1873,14 @@ export default function KpiView({
 
             <div className="pt-4 flex items-center justify-end gap-2.5">
               <DialogClose asChild>
-                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
+                <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
                   Hủy bỏ
                 </Button>
               </DialogClose>
               {staffConfigs.length > 0 && (
                 <button 
                   type="submit" 
-                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-xs"
+                  className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-sm"
                 >
                   Lưu báo cáo
                 </button>
