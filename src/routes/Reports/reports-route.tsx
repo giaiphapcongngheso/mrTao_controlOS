@@ -1,4 +1,4 @@
-import ReportsView from './ReportsView';
+import ReportsView from './reports-view';
 import { useAppShellState } from '../app-shell-state';
 import { useAppStore } from '../../stores/app-store';
 

@@ -32,12 +32,6 @@ interface ReportsViewProps {
   currentUser?: { fullName: string; role: string; roleCode?: string; username?: string; avatar?: string } | null;
 }
 
-interface ReportsPermissions {
-  canCreate: boolean;
-  canUpdate: boolean;
-  canDelete: boolean;
-}
-
 interface ToastState {
   show: boolean;
   msg: string;
@@ -69,8 +63,6 @@ const DEFAULT_FORM_STATE: ReportFormState = {
 };
 
 const ITEMS_PER_PAGE = 5;
-
-// normalizeAccessCode is imported from shared hooks
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
@@ -184,9 +176,6 @@ export default function ReportsView({
       saveStatus: 'idle',
     }));
   }, [defaultNotes, defaultStatus, reportTab]);
-
-  // ─── Permissions loaded via useModulePermissions hook ──────────────────────
-
 
   useEffect(() => {
     let cancelled = false;
@@ -473,7 +462,7 @@ export default function ReportsView({
     <div className="space-y-4 text-left font-sans text-sm text-slate-650">
       {showToast.show && (
         <div
-          className={`fixed left-5 bottom-5 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold shadow-lg ${
+          className={`fixed left-5 bottom-5 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-lg ${
             showToast.type === 'error'
               ? 'border-rose-200 bg-rose-50 text-rose-700'
               : 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -495,7 +484,7 @@ export default function ReportsView({
               <TrendingUp className="h-5 w-5 text-[#C21A1A]" />
               Ký duyệt báo cáo điều hành
             </h1>
-            <p className="mt-1 text-xs font-medium text-slate-400">
+            <p className="mt-1 text-sm font-medium text-slate-400">
               Đồng bộ dữ liệu và gửi báo cáo định kỳ cho quản lý.
             </p>
           </div>
@@ -510,16 +499,16 @@ export default function ReportsView({
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex w-full rounded-xl border border-slate-200 bg-slate-100 p-1 lg:w-auto">
+          <div className="bg-slate-100/90 backdrop-blur-md p-1 rounded-full border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-1 w-fit transition-all duration-300">
             {(['day', 'week', 'month'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => handleReportTabChange(tab)}
-                className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-bold transition-colors cursor-pointer lg:flex-initial ${
+                className={`flex items-center gap-2 px-5 py-1.5 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
                   reportTab === tab
-                    ? 'bg-white text-[#C21A1A] shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-white text-[#C21A1A] border border-slate-200/50 shadow-xs'
+                    : 'text-slate-500 hover:text-[#C21A1A] hover:bg-white/50'
                 }`}
               >
                 {PERIOD_LABEL[tab]}
@@ -539,7 +528,7 @@ export default function ReportsView({
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
               >
                 Xóa
               </button>
@@ -556,7 +545,7 @@ export default function ReportsView({
               Lịch sử báo cáo {PERIOD_LABEL[reportTab].toLowerCase()}
             </h2>
           </div>
-          <span className="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-bold text-[#C21A1A]">
+          <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-sm font-bold text-[#C21A1A]">
             {totalItems} bản ghi
           </span>
         </div>
@@ -565,14 +554,14 @@ export default function ReportsView({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Thời gian</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Người lập</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Trạng thái</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Doanh thu</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Checklist</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Sự cố</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold">Ghi chú</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-600 text-xs font-bold text-right">Tác vụ</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Thời gian</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Người lập</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Trạng thái</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Doanh thu</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Checklist</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Sự cố</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Ghi chú</TableHead>
+                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold text-right">Tác vụ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -596,7 +585,7 @@ export default function ReportsView({
                     <TableCell className="text-sm font-semibold text-slate-700">{report.actor}</TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
+                        className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${
                           report.status === 'green'
                             ? 'bg-emerald-50 text-emerald-700'
                             : report.status === 'yellow'
@@ -616,7 +605,7 @@ export default function ReportsView({
                     <TableCell className="text-sm font-semibold text-slate-700">
                       {`Trễ ${report.delayedCount} | SOP ${report.sopErrorsCount} | KN ${report.complaintsCount}`}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600 max-w-[260px]">
+                    <TableCell className="text-sm text-slate-650 max-w-[260px]">
                       <p className="line-clamp-2">{report.notes}</p>
                     </TableCell>
                     <TableCell className="text-right">
@@ -633,7 +622,7 @@ export default function ReportsView({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-xs italic text-slate-400">
+                  <TableCell colSpan={8} className="py-10 text-center text-sm italic text-slate-400">
                     Chưa có báo cáo nào cho kỳ này.
                   </TableCell>
                 </TableRow>
@@ -644,7 +633,7 @@ export default function ReportsView({
 
         {totalPages > 1 && (
           <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-sm font-semibold text-slate-500">
               Bản ghi {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(totalItems, currentPage * ITEMS_PER_PAGE)} / {totalItems}
             </span>
             <div className="flex items-center gap-1.5">
@@ -652,7 +641,7 @@ export default function ReportsView({
                 type="button"
                 onClick={handlePrevPage}
                 disabled={currentPage === 1}
-                className="rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                className="rounded-md border border-slate-200 px-2.5 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 Trước
               </button>
@@ -661,7 +650,7 @@ export default function ReportsView({
                   key={pageNumber}
                   type="button"
                   onClick={() => handleGoToPage(pageNumber)}
-                  className={`h-8 w-8 rounded-md text-xs font-black cursor-pointer ${
+                  className={`h-8 w-8 rounded-md text-sm font-black cursor-pointer ${
                     pageNumber === currentPage
                       ? 'bg-[#C21A1A] text-white'
                       : 'border border-slate-200 text-slate-600 hover:bg-white'
@@ -674,7 +663,7 @@ export default function ReportsView({
                 type="button"
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
-                className="rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                className="rounded-md border border-slate-200 px-2.5 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 Sau
               </button>
