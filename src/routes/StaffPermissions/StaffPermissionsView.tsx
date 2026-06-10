@@ -76,30 +76,25 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     [staffList],
   );
 
-  const addLog = async (actionType: SystemLogActionType, target: string, details: string) => {
-    const expireAt = new Date();
-    expireAt.setDate(expireAt.getDate() + 30); // Log expires in 30 days
-
-    const newLog: SystemLog = {
-      id: `LOG-${Date.now()}`,
-      storeId: staffList[0]?.storeId ?? DEFAULT_STORE_ID,
-      timestamp: new Date().toISOString(),
-      actor: currentUser?.fullName || 'Hệ thống',
-      role: currentUser?.role || 'Không xác định',
-      actionType,
-      target,
-      details,
-      expireAt,
-    };
-
-    setLogs((prev: SystemLog[]) => [newLog, ...prev]);
-
+  const refreshLogs = async () => {
     try {
-      await systemLogService.update(newLog.id, newLog);
+      const systemLogs = await systemLogService.getAll();
+      const sortedLogs = (systemLogs || [])
+        .filter((log: SystemLog) => Boolean(log?.timestamp))
+        .sort((a: SystemLog, b: SystemLog) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
+      setLogs(sortedLogs);
     } catch (error) {
-      console.error('Failed to persist system log:', error);
+      console.error('Failed to refresh system logs:', error);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      void refreshLogs();
+    }
+  }, [activeTab]);
 
   const loadAuthorityData = async (refresh = false) => {
     if (refresh) {
@@ -185,12 +180,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
         );
       setLogs(sortedLogs);
-
-      void addLog(
-        'SYNC',
-        'Đồng bộ',
-        refresh ? 'Đã tải lại danh sách nhân sự, vai trò, phân quyền và log hệ thống.' : 'Đã tải dữ liệu hệ thống từ Firestore.',
-      );
     } catch (error) {
       console.error('Failed to load staff permissions data:', error);
       toastError('Không thể tải dữ liệu phân quyền từ Firestore. Vui lòng kiểm tra cấu hình và quyền truy cập.');
@@ -279,10 +268,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       }
 
       try {
-        // 1. Save role (create or update)
-        await roleService.update(role.id, role);
+        // 1. Save role (create or update) with custom log details
+        await roleService.update(role.id, role, {
+          logDetails: isCreating
+            ? `Đã tạo vai trò ${role.name} (${role.code}) với ${permissions.length} module.`
+            : `Đã cập nhật phân quyền vai trò ${role.name} (${role.code}).`,
+        });
 
-        // 2. Batch save permissions
+        // 2. Batch save permissions (bypass auto log to avoid spamming Firestore)
         const permissionTasks = permissions.map((perm) => {
           // Find existing row for this role + module
           const existing = permissionRows.find(
@@ -304,7 +297,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
             canApprove: perm.canApprove,
           };
 
-          return staffPermissionService.update(permRow.id, permRow).then(() => permRow);
+          return staffPermissionService.update(permRow.id, permRow, { bypassAutoLog: true }).then(() => permRow);
         });
 
         const savedPermissions = await Promise.all(permissionTasks);
@@ -324,13 +317,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         });
 
         toastSuccess(isCreating ? 'Đã tạo vai trò và phân quyền.' : 'Đã cập nhật phân quyền.');
-        void addLog(
-          isCreating ? 'CREATE' : 'UPDATE',
-          'Vai trò & Phân quyền',
-          isCreating
-            ? `Đã tạo vai trò ${role.name} (${role.code}) với ${savedPermissions.length} module.`
-            : `Đã cập nhật phân quyền vai trò ${role.name} (${role.code}).`,
-        );
       } catch (error) {
         console.error('Failed to save role with permissions:', error);
         toastError('Không thể lưu vai trò và phân quyền. Vui lòng kiểm tra quyền ghi Firestore.');
@@ -363,16 +349,18 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       if (!confirmed) return;
 
       try {
-        // 1. Delete all permission rows for this role
+        // 1. Delete all permission rows for this role (bypass auto log to avoid spamming)
         const relatedPermissions = permissionRows.filter(
           (row) => row.roleId === role.id || row.roleCode === role.code,
         );
         await Promise.all(
-          relatedPermissions.map((perm) => staffPermissionService.delete(perm.id)),
+          relatedPermissions.map((perm) => staffPermissionService.delete(perm.id, { bypassAutoLog: true })),
         );
 
-        // 2. Delete the role itself
-        await roleService.delete(role.id);
+        // 2. Delete the role itself with custom log details
+        await roleService.delete(role.id, {
+          logDetails: `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
+        });
 
         // 3. Update local state
         setRoles((prev) => prev.filter((r) => r.id !== role.id));
@@ -381,11 +369,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         );
 
         toastSuccess(`Đã xoá vai trò "${role.name}" và ${relatedPermissions.length} phân quyền liên quan.`);
-        void addLog(
-          'DELETE',
-          'Vai trò',
-          `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
-        );
       } catch (error) {
         console.error('Failed to delete role:', error);
         toastError('Không thể xoá vai trò. Vui lòng kiểm tra quyền ghi Firestore.');
@@ -500,18 +483,20 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         firebaseUid,
       };
 
-      await staffService.update(payload.id, payload);
+      await staffService.update(payload.id, payload, {
+        logDetails: isEditMode
+          ? `Đã cập nhật nhân sự ${payload.fullName} (${payload.id}).`
+          : `Đã tạo nhân sự ${payload.fullName} (${payload.id}) với vai trò ${payload.role}.`,
+      });
 
       if (isEditMode) {
         setStaffList((prev: StaffMember[]) =>
           prev.map((item) => (item.id === payload.id ? payload : item)),
         );
         toastSuccess('Đã cập nhật thông tin nhân sự.');
-        void addLog('UPDATE', 'Nhân sự', `Đã cập nhật nhân sự ${payload.fullName} (${payload.id}).`);
       } else {
         setStaffList((prev: StaffMember[]) => toSortedStaff([...prev, payload]));
         toastSuccess('Đã thêm nhân sự mới.');
-        void addLog('CREATE', 'Nhân sự', `Đã tạo nhân sự ${payload.fullName} (${payload.id}) với vai trò ${payload.role}.`);
       }
 
       setStaffForm(DEFAULT_STAFF_FORM);
@@ -581,10 +566,11 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     };
 
     try {
-      await staffService.update(next.id, next);
+      await staffService.update(next.id, next, {
+        logDetails: `Đã đổi trạng thái nhân sự ${staff.fullName} (${staff.id}) sang ${next.status}.`,
+      });
       setStaffList((prev: StaffMember[]) => prev.map((item: StaffMember) => (item.id === next.id ? next : item)));
       toastSuccess('Đã cập nhật trạng thái nhân sự.');
-      void addLog('UPDATE', 'Nhân sự', `Đã đổi trạng thái nhân sự ${staff.fullName} (${staff.id}) sang ${next.status}.`);
     } catch (error) {
       console.error('Failed to update staff status:', error);
       toastError('Không thể cập nhật trạng thái nhân sự.');
@@ -611,10 +597,11 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     }
 
     try {
-      await staffService.delete(staff.id);
+      await staffService.delete(staff.id, {
+        logDetails: `Đã xóa nhân sự ${staff.fullName} (${staff.id}).`,
+      });
       setStaffList((prev: StaffMember[]) => prev.filter((item: StaffMember) => item.id !== staff.id));
       toastSuccess('Đã xóa nhân sự.');
-      void addLog('DELETE', 'Nhân sự', `Đã xóa nhân sự ${staff.fullName} (${staff.id}).`);
     } catch (error) {
       console.error('Failed to delete staff:', error);
       toastError('Không thể xóa nhân sự.');
@@ -655,7 +642,9 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     };
 
     try {
-      await staffPermissionService.update(next.id, next);
+      await staffPermissionService.update(next.id, next, {
+        logDetails: `${existed ? 'Đã cập nhật' : 'Đã tạo'} quyền ${field} cho vai trò ${role.code} trên module ${moduleCode}.`,
+      });
       setPermissionRows((prev: RolePermissionRow[]) => {
         if (!existed) {
           return toSortedPermissions([...prev, next]);
@@ -664,11 +653,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         return prev.map((item: RolePermissionRow) => (item.id === next.id ? next : item));
       });
       toastSuccess('Đã cập nhật phân quyền.');
-      void addLog(
-        existed ? 'UPDATE' : 'CREATE',
-        'Phân quyền',
-        `${existed ? 'Đã cập nhật' : 'Đã tạo'} quyền ${field} cho vai trò ${role.code} trên module ${moduleCode}.`,
-      );
     } catch (error) {
       console.error('Failed to update permission row:', error);
       toastError('Không thể cập nhật phân quyền.');

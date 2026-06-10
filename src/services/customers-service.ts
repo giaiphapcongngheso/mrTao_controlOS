@@ -7,4 +7,5 @@ export const customersService = createBaseService<Customer, Partial<Customer>>({
   client: dataClient,
   resource: RESOURCE_PATH.CUSTOMERS,
   cacheTtlMs: 2 * 60 * 1000, // 2 minutes local cache
+  autoLog: { target: 'Khách hàng' },
 });

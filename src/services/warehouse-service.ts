@@ -260,18 +260,21 @@ export const warehouseBranchesService = createBaseService<Branch, Partial<Branch
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_BRANCHES,
   cacheTtlMs: 5 * 60 * 1000, // Cache branches in 5 minutes
+  autoLog: { target: 'Chi nhánh Kho' },
 });
 
 export const warehouseProductsService = createBaseService<WarehouseProduct, Partial<WarehouseProduct>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_PRODUCTS,
   cacheTtlMs: 5 * 60 * 1000, // Cache products in 5 minutes
+  autoLog: { target: 'Sản phẩm Kho' },
 });
 
 export const warehouseSyncLogsService = createBaseService<WarehouseSyncLog, Partial<WarehouseSyncLog>>({
   client: dataClient,
   resource: RESOURCE_PATH.WAREHOUSE_SYNC_LOGS,
   cacheTtlMs: 2 * 60 * 1000, // Cache sync logs in 2 minutes
+  autoLog: { target: 'Log đồng bộ Kho' },
 });
 
 export async function saveWarehouseDataWithStats(

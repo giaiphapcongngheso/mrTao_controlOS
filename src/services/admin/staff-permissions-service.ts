@@ -7,4 +7,5 @@ export const staffPermissionService = createBaseService<RolePermissionRow, Parti
   client: dataClient,
   resource: RESOURCE_PATH.STAFF_PERMISSIONS,
   cacheTtlMs: 5 * 60 * 1000,
+  autoLog: { target: 'Phân quyền' },
 });

@@ -6,4 +6,5 @@ import { dataClient } from './data-client';
 export const tasksService = createBaseService<TaskItem, TaskRequestType>({
   client: dataClient,
   resource: RESOURCE_PATH.TASKS,
+  autoLog: { target: 'Công việc' },
 });

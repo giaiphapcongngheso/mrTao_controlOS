@@ -6,4 +6,5 @@ import { dataClient } from './data-client';
 export const handbookService = createBaseService<HandbookDoc, Partial<HandbookDoc>>({
   client: dataClient,
   resource: RESOURCE_PATH.HANDBOOK_DOCUMENTS,
+  autoLog: { target: 'Bài viết Sổ tay' },
 });

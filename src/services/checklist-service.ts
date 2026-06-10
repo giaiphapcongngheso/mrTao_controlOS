@@ -27,6 +27,7 @@ import { generateSnapshotGuardId } from '../routes/Checklist/checklist-domain';
 export const checklistService = createBaseService<ChecklistDocument, Partial<ChecklistDocument>>({
   client: dataClient,
   resource: RESOURCE_PATH.CHECKLISTS,
+  autoLog: { target: 'Checklist' },
 });
 
 /**
@@ -134,12 +135,14 @@ export const checklistTemplateService = createBaseService<ChecklistTemplateDocum
   client: dataClient,
   resource: RESOURCE_PATH.CHECKLIST_TEMPLATES,
   cacheTtlMs: 5 * 60 * 1000, // 5 min - templates are admin-managed, slow-changing
+  autoLog: { target: 'Checklist mẫu' },
 });
 
 export const processService = createBaseService<ProcessDocument, Partial<ProcessDocument>>({
   client: dataClient,
   resource: RESOURCE_PATH.PROCESSES,
   cacheTtlMs: 5 * 60 * 1000, // 5 min - process templates are slow-changing
+  autoLog: { target: 'Quy trình checklist' },
 });
 
 /**
@@ -148,4 +151,5 @@ export const processService = createBaseService<ProcessDocument, Partial<Process
 export const checklistCategoryService = createBaseService<ChecklistCategory, Partial<ChecklistCategory>>({
   client: dataClient,
   resource: RESOURCE_PATH.CHECKLIST_CATEGORIES,
+  autoLog: { target: 'Danh mục checklist' },
 });

@@ -17,7 +17,13 @@ export interface HttpClient {
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-export interface BaseServiceConfig {
+export interface BaseServiceAutoLogConfig<TEntity, TRequest> {
+  target: string;
+  /** Custom callback to build log details string based on action and payload */
+  resolveDetails?: (action: 'CREATE' | 'UPDATE' | 'DELETE', id?: string, payload?: TRequest) => string | null;
+}
+
+export interface BaseServiceConfig<TEntity, TRequest = Partial<TEntity>> {
   client: HttpClient;
   resource: string;
   /**
@@ -30,6 +36,17 @@ export interface BaseServiceConfig {
    * Do NOT use for frequently-changing data like checklist snapshots.
    */
   cacheTtlMs?: number;
+  /** Optional configuration for automatic audit logging on mutations */
+  autoLog?: BaseServiceAutoLogConfig<TEntity, TRequest>;
+}
+
+// ─── Mutation Options ────────────────────────────────────────────────────────
+
+export interface MutationOptions {
+  /** Override default details string for this specific call */
+  logDetails?: string;
+  /** Prevent automatic audit log creation for this specific call */
+  bypassAutoLog?: boolean;
 }
 
 // ─── Pagination Options ──────────────────────────────────────────────────────
@@ -52,9 +69,9 @@ export interface BasePagedOptions {
 export interface BaseService<TEntity, TRequest = Partial<TEntity>> {
   getAll: () => Promise<TEntity[]>;
   getById: (id: string) => Promise<TEntity>;
-  create: (payload: TRequest) => Promise<TEntity>;
-  update: (id: string, payload: TRequest) => Promise<TEntity>;
-  delete: (id: string) => Promise<void>;
+  create: (payload: TRequest, options?: MutationOptions) => Promise<TEntity>;
+  update: (id: string, payload: TRequest, options?: MutationOptions) => Promise<TEntity>;
+  delete: (id: string, options?: MutationOptions) => Promise<void>;
   /**
    * Paginated Firestore query using cursor-based pagination.
    * Uses the generic getFirestorePaged utility under the hood.
@@ -67,6 +84,25 @@ export interface BaseService<TEntity, TRequest = Partial<TEntity>> {
    * No-op if cacheTtlMs is not configured.
    */
   invalidateCache: () => void;
+}
+
+// ─── Log Handler Registration ───────────────────────────────────────────────
+
+export interface LogHandlerParams {
+  actionType: 'CREATE' | 'UPDATE' | 'DELETE';
+  target: string;
+  details: string;
+  storeId?: string;
+  id?: string;
+  payload?: any;
+}
+
+export type LogHandler = (params: LogHandlerParams) => Promise<any> | void;
+
+let activeLogHandler: LogHandler | null = null;
+
+export function registerLogHandler(handler: LogHandler) {
+  activeLogHandler = handler;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,7 +124,8 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
   client,
   resource,
   cacheTtlMs,
-}: BaseServiceConfig): BaseService<TEntity, TRequest> {
+  autoLog,
+}: BaseServiceConfig<TEntity, TRequest>): BaseService<TEntity, TRequest> {
   const collectionName = resourceToCollectionName(resource);
 
   // Optional in-memory cache for getAll()
@@ -118,24 +155,105 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
 
     getById: (id) => client.get<TEntity>(`${resource}/${id}`),
 
-    create: async (payload) => {
+    create: async (payload, options) => {
       const result = await client.post<TEntity>(resource, payload);
       // Invalidate cache on mutation
       cache?.invalidate();
+
+      // Trigger automatic log
+      if (autoLog && !options?.bypassAutoLog && activeLogHandler) {
+        let details = options?.logDetails || '';
+        if (!details) {
+          if (autoLog.resolveDetails) {
+            details = autoLog.resolveDetails('CREATE', undefined, payload) || '';
+          }
+          if (!details) {
+            const nameField = (payload && typeof payload === 'object')
+              ? (payload as any).name || (payload as any).title || (payload as any).fullName || (payload as any).code || (payload as any).username || ''
+              : '';
+            details = `Đã tạo ${autoLog.target.toLowerCase()}${nameField ? ` "${nameField}"` : ''}`;
+          }
+        }
+
+        const storeId = (payload && typeof payload === 'object') ? (payload as any).storeId : undefined;
+
+        void Promise.resolve(
+          activeLogHandler({
+            actionType: 'CREATE',
+            target: autoLog.target,
+            details,
+            storeId,
+            payload,
+          })
+        ).catch((err) => console.error('Auto log processing failed:', err));
+      }
+
       return result;
     },
 
-    update: async (id, payload) => {
+    update: async (id, payload, options) => {
       const result = await client.put<TEntity>(`${resource}/${id}`, payload);
       // Invalidate cache on mutation
       cache?.invalidate();
+
+      // Trigger automatic log
+      if (autoLog && !options?.bypassAutoLog && activeLogHandler) {
+        let details = options?.logDetails || '';
+        if (!details) {
+          if (autoLog.resolveDetails) {
+            details = autoLog.resolveDetails('UPDATE', id, payload) || '';
+          }
+          if (!details) {
+            const nameField = (payload && typeof payload === 'object')
+              ? (payload as any).name || (payload as any).title || (payload as any).fullName || (payload as any).code || (payload as any).username || ''
+              : '';
+            details = `Đã cập nhật ${autoLog.target.toLowerCase()}${nameField ? ` "${nameField}"` : ''} (ID: ${id})`;
+          }
+        }
+
+        const storeId = (payload && typeof payload === 'object') ? (payload as any).storeId : undefined;
+
+        void Promise.resolve(
+          activeLogHandler({
+            actionType: 'UPDATE',
+            target: autoLog.target,
+            details,
+            storeId,
+            id,
+            payload,
+          })
+        ).catch((err) => console.error('Auto log processing failed:', err));
+      }
+
       return result;
     },
 
-    delete: async (id) => {
+    delete: async (id, options) => {
       await client.delete<void>(`${resource}/${id}`);
       // Invalidate cache on mutation
       cache?.invalidate();
+
+      // Trigger automatic log
+      if (autoLog && !options?.bypassAutoLog && activeLogHandler) {
+        let details = options?.logDetails || '';
+        if (!details) {
+          if (autoLog.resolveDetails) {
+            details = autoLog.resolveDetails('DELETE', id, undefined) || '';
+          }
+          if (!details) {
+            details = `Đã xóa ${autoLog.target.toLowerCase()} (ID: ${id})`;
+          }
+        }
+
+        void Promise.resolve(
+          activeLogHandler({
+            actionType: 'DELETE',
+            target: autoLog.target,
+            details,
+            id,
+          })
+        ).catch((err) => console.error('Auto log processing failed:', err));
+      }
     },
 
     getPaged: (options?: BasePagedOptions) =>

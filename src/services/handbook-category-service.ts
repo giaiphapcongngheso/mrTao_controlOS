@@ -7,4 +7,5 @@ export const handbookCategoryService = createBaseService<HandbookCategory, Handb
   client: dataClient,
   resource: RESOURCE_PATH.HANDBOOK_CATEGORIES,
   cacheTtlMs: 5 * 60 * 1000, // 5 min - categories are structural, rarely change
+  autoLog: { target: 'Danh mục Sổ tay' },
 });

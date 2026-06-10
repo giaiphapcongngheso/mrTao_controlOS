@@ -74,4 +74,5 @@ export function calculateMarketingSummary(campaigns: MarketingCampaign[]): Marke
 export const marketingCampaignsService = createBaseService<MarketingCampaign, Partial<MarketingCampaign>>({
   client: dataClient,
   resource: RESOURCE_PATH.MARKETING_CAMPAIGNS,
+  autoLog: { target: 'Chiến dịch Marketing' },
 });

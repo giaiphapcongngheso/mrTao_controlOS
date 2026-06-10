@@ -13,7 +13,6 @@ import type {
 import type { FirestoreFilter } from '../../../shared/services/firestore-pagination';
 import type { StaffRole } from '../../../types/staff.types';
 import type { UserSession } from '../../../stores/app-store';
-import type { SystemLogActionType } from '../../../types/system-log.types';
 import { MODULE_CODE } from '../../../constants/staff-permissions.constants';
 import { ENTITY_PREFIX } from '../../../constants/entity-id.constants';
 import { roleService } from '../../../services/admin';
@@ -25,7 +24,7 @@ import {
   getChecklistsByDateRange,
   processService,
 } from '../../../services/checklist-service';
-import { systemLogService } from '../../../services/system-log-service';
+
 import { toastError, toastSuccess, toastWarning } from '../../../shared/lib/toast';
 import { useModulePermissions, normalizeAccessCode } from '../../../shared/hooks/use-module-permissions';
 import {
@@ -458,28 +457,7 @@ export function useChecklist({
     };
   }, [refreshChecklistData]);
 
-  const appendChecklistLog = useCallback(async (
-    actionType: SystemLogActionType,
-    target: string,
-    details: string,
-  ) => {
-    const actorName = currentUser?.fullName || currentUser?.username || 'Hệ thống';
-    const actorRole = currentUser?.role || currentRoleCode;
 
-    try {
-      await systemLogService.update(`LOG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, {
-        storeId: activeStoreId,
-        timestamp: new Date().toISOString(),
-        actor: actorName,
-        role: actorRole,
-        actionType,
-        target,
-        details,
-      });
-    } catch (error) {
-      console.error('Không thể ghi log checklist:', error);
-    }
-  }, [activeStoreId, currentRoleCode, currentUser]);
 
   const handleToggleChecklistItem = useCallback(async (itemId: string) => {
     const found = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
@@ -522,14 +500,15 @@ export function useChecklist({
     }));
 
     try {
-      await checklistService.update(targetDoc.id, {
-        tasks: updatedDoc.tasks,
-        updatedAt: nowIso,
-      });
-      void appendChecklistLog(
-        'UPDATE',
-        'Checklist - Cập nhật trạng thái',
-        `${nextCompleted ? 'Hoàn thành' : 'Bỏ hoàn thành'} công việc "${targetTask.title}".`,
+      await checklistService.update(
+        targetDoc.id,
+        {
+          tasks: updatedDoc.tasks,
+          updatedAt: nowIso,
+        },
+        {
+          logDetails: `${nextCompleted ? 'Hoàn thành' : 'Bỏ hoàn thành'} công việc "${targetTask.title}".`,
+        }
       );
     } catch (error) {
       restoreLocalState(previousState);
@@ -537,7 +516,6 @@ export function useChecklist({
       toastError('Cập nhật trạng thái checklist thất bại. Vui lòng thử lại.');
     }
   }, [
-    appendChecklistLog,
     currentUser,
     permissions,
     restoreLocalState,
@@ -594,11 +572,16 @@ export function useChecklist({
     }));
 
     try {
-      await checklistService.update(updatedSnapshot.id, {
-        tasks: updatedSnapshot.tasks,
-        updatedAt: nowIso,
-      });
-      void appendChecklistLog('UPDATE', 'Checklist - Thêm công việc phát sinh', `Cập nhật nhóm "${safeTitle}" hôm nay.`);
+      await checklistService.update(
+        updatedSnapshot.id,
+        {
+          tasks: updatedSnapshot.tasks,
+          updatedAt: nowIso,
+        },
+        {
+          logDetails: `Cập nhật nhóm "${safeTitle}" hôm nay (Thêm công việc phát sinh).`,
+        }
+      );
     } catch (error) {
       restoreLocalState(previousState);
       console.error('Không thể thêm công việc checklist hôm nay:', error);
@@ -607,7 +590,6 @@ export function useChecklist({
     }
   }, [
     activeStoreId,
-    appendChecklistLog,
     permissions,
     restoreLocalState,
     updateLocalState,
@@ -645,11 +627,16 @@ export function useChecklist({
       }));
 
       try {
-        await checklistService.update(snapshotFound.doc.id, {
-          tasks: updatedDoc.tasks,
-          updatedAt: nowIso,
-        });
-        void appendChecklistLog('DELETE', 'Checklist - Xóa công việc', `Xóa công việc "${snapshotFound.task.title}".`);
+        await checklistService.update(
+          snapshotFound.doc.id,
+          {
+            tasks: updatedDoc.tasks,
+            updatedAt: nowIso,
+          },
+          {
+            logDetails: `Xóa công việc "${snapshotFound.task.title}".`,
+          }
+        );
       } catch (error) {
         restoreLocalState(previousState);
         console.error('Không thể xóa công việc checklist:', error);
@@ -661,7 +648,6 @@ export function useChecklist({
 
     toastError(`Không tìm thấy công việc với ID: ${itemId}`);
   }, [
-    appendChecklistLog,
     currentUser,
     permissions,
     restoreLocalState,

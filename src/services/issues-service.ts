@@ -6,4 +6,5 @@ import { dataClient } from './data-client';
 export const issuesService = createBaseService<SOPIssue, Partial<SOPIssue>>({
   client: dataClient,
   resource: RESOURCE_PATH.ISSUES,
+  autoLog: { target: 'Sự cố' },
 });

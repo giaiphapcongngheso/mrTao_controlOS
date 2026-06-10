@@ -6,6 +6,7 @@ import { dataClient } from '../data-client';
 const baseStaffService = createBaseService<StaffMember, Partial<StaffMember>>({
   client: dataClient,
   resource: RESOURCE_PATH.STAFF,
+  autoLog: { target: 'Nhân sự' },
 });
 
 function normalizeUsername(value: string): string {

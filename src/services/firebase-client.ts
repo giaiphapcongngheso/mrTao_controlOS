@@ -76,6 +76,26 @@ function withEntityId<T>(id: string, data: T): T {
   return { ...data, id } as T;
 }
 
+// Helper function to prevent infinite pending promises due to Firestore's offline queue/retry behavior during quota limits (429) or network loss
+function withTimeout<T>(promise: Promise<T>, timeoutMs = 12000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Firebase operation timeout. Please check your network or quota limit.'));
+    }, timeoutMs);
+
+    promise.then(
+      (res) => {
+        clearTimeout(timer);
+        resolve(res);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 export const firebaseClient: HttpClient = {
   async get<T>(url) {
     const db = getFirestoreDb();
@@ -83,7 +103,7 @@ export const firebaseClient: HttpClient = {
     const collectionName = toCollectionName(resource);
 
     if (docId) {
-      const snapshot = await getDoc(doc(db, collectionName, docId));
+      const snapshot = await withTimeout(getDoc(doc(db, collectionName, docId)));
       if (!snapshot.exists()) {
         throw new Error(`Document not found for ${url}`);
       }
@@ -91,7 +111,7 @@ export const firebaseClient: HttpClient = {
       return withEntityId(docId, snapshot.data() as T);
     }
 
-    const snapshot = await getDocs(collection(db, collectionName));
+    const snapshot = await withTimeout(getDocs(collection(db, collectionName)));
     return snapshot.docs.map((item) => withEntityId(item.id, item.data())) as T;
   },
 
@@ -104,7 +124,7 @@ export const firebaseClient: HttpClient = {
 
     // If URL already contains a docId (e.g. /checklists/CL300526001)
     if (docId) {
-      await setDoc(doc(db, collectionName, docId), payload, { merge: true });
+      await withTimeout(setDoc(doc(db, collectionName, docId), payload, { merge: true }));
       return withEntityId(docId, payload as T);
     }
 
@@ -112,16 +132,16 @@ export const firebaseClient: HttpClient = {
     const entityId = payload.id as string | undefined;
     if (entityId) {
       const targetRef = doc(db, collectionName, entityId);
-      const existingSnap = await getDoc(targetRef);
+      const existingSnap = await withTimeout(getDoc(targetRef));
       if (existingSnap.exists()) {
         throw new Error(`Document ID "${entityId}" đã tồn tại trong collection "${collectionName}". Vui lòng thử lại.`);
       }
-      await setDoc(targetRef, payload);
+      await withTimeout(setDoc(targetRef, payload));
       return withEntityId(entityId, payload as T);
     }
 
     // Fallback: auto-generated Firestore ID (legacy compatibility)
-    const created = await addDoc(collection(db, collectionName), payload);
+    const created = await withTimeout(addDoc(collection(db, collectionName), payload));
     return withEntityId(created.id, payload as T);
   },
 
@@ -136,7 +156,7 @@ export const firebaseClient: HttpClient = {
     const cleanedBody = cleanUndefined(body);
     const payload = isRecord(cleanedBody) ? cleanedBody : {};
 
-    await setDoc(doc(db, collectionName, docId), payload, { merge: true });
+    await withTimeout(setDoc(doc(db, collectionName, docId), payload, { merge: true }));
     return withEntityId(docId, payload as T);
   },
 
@@ -148,7 +168,7 @@ export const firebaseClient: HttpClient = {
     }
 
     const collectionName = toCollectionName(resource);
-    await deleteDoc(doc(db, collectionName, docId));
+    await withTimeout(deleteDoc(doc(db, collectionName, docId)));
     return undefined as T;
   },
 };
