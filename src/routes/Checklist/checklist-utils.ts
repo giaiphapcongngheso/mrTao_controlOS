@@ -1,5 +1,5 @@
 import { ChecklistItem } from '../../types/checklist.types';
-import type { CategoryMeta } from './components/checklist-view.types';
+import type { CategoryMeta } from './checklist-view.types';
 import { getChecklistColorMeta } from './checklist-meta';
 
 /**

@@ -142,6 +142,11 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
   const previewColor = useMemo(() => getChecklistColorMeta(selectedColorKey), [selectedColorKey]);
   const PreviewIcon = useMemo(() => resolveChecklistIcon(selectedIconName), [selectedIconName]);
 
+  const selectedRoleCode = form.watch('roleCode');
+  const selectedRoleName = useMemo(() => {
+    return roleOptions.find((r) => r.code === selectedRoleCode)?.name || 'Checklist mẫu';
+  }, [selectedRoleCode, roleOptions]);
+
   const [isMetaDialogOpen, setIsMetaDialogOpen] = React.useState(false);
   const [tempIconName, setTempIconName] = React.useState('Layers');
   const [tempColorKey, setTempColorKey] = React.useState('rose');
@@ -203,7 +208,7 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
               <span className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                 {isEditMode ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4 stroke-[3]" />}
               </span>
-              <span>{isEditMode ? 'Chỉnh sửa checklist mẫu' : 'Thêm checklist mẫu mới'}</span>
+              <span>{isEditMode ? 'Cập nhật checklist mẫu theo vai trò' : 'Thêm checklist mẫu theo vai trò'}</span>
             </DialogTitle>
             <DialogClose asChild>
               <Button
@@ -238,59 +243,36 @@ const ChecklistCreateDialog = React.memo(function ChecklistCreateDialog({
                     </div>
                     <p className="mt-2.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Preview</p>
                     <p className="mt-0.5 text-xs font-bold text-slate-500 leading-relaxed max-w-[100px] truncate">
-                      {form.watch('title') || 'Nhóm checklist'}
+                      {selectedRoleName}
                     </p>
                   </Button>
 
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="roleCode"
-                        render={({ field }) => (
-                          <FormItem className="grid gap-0">
-                            <FormLabel isRequired className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">
-                              Vai trò
-                            </FormLabel>
-                            <FormControl>
-                              <CustomSelect
-                                value={field.value}
-                                onChangeValue={field.onChange}
-                                options={roleOptions.map((role) => ({
-                                  label: role.name,
-                                  value: role.code,
-                                }))}
-                                clearable={false}
-                                className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem className="grid gap-0">
-                            <FormLabel isRequired className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">
-                              Tên nhóm
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                placeholder="VD: Ca sáng, chốt ca, kiểm kho..."
-                                clearable={false}
-                                {...field}
-                                className="font-sans w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="roleCode"
+                      render={({ field }) => (
+                        <FormItem className="grid gap-0">
+                          <FormLabel isRequired className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">
+                            Vai trò
+                          </FormLabel>
+                          <FormControl>
+                            <CustomSelect
+                              value={field.value}
+                              onChangeValue={field.onChange}
+                              options={roleOptions.map((role) => ({
+                                label: role.name,
+                                value: role.code,
+                              }))}
+                              clearable={false}
+                              disabled={isEditMode}
+                              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer transition-colors"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 

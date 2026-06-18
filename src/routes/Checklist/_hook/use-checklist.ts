@@ -266,9 +266,36 @@ export function useChecklist({
     filteredState: ChecklistDataState,
     todayKey: string,
   ) => {
-    const currentRoleTemplates = filteredState.templates.filter(
-      (template) => normalizeAccessCode(template.roleCode) === currentRoleCode,
-    );
+    const getDayOfWeekIndex = (dateStr: string) => {
+      const date = new Date(dateStr);
+      const day = date.getDay(); // 0: CN, 1: T2, ..., 6: T7
+      return String(day);
+    };
+    const currentDayOfWeekStr = getDayOfWeekIndex(todayKey);
+
+    const currentRoleTemplates = filteredState.templates.filter((template) => {
+      if (normalizeAccessCode(template.roleCode) !== currentRoleCode) {
+        return false;
+      }
+      if (template.status === 'hidden') {
+        return false;
+      }
+      if (template.autoCreateDaily === false) {
+        return false;
+      }
+      if (template.frequency === 'weekly' && template.frequencyDetail) {
+        if (template.frequencyDetail !== currentDayOfWeekStr) {
+          return false;
+        }
+      }
+      if (template.frequency === 'monthly' && template.frequencyDetail) {
+        const dayOfMonth = String(new Date(todayKey).getDate());
+        if (template.frequencyDetail !== dayOfMonth) {
+          return false;
+        }
+      }
+      return true;
+    });
     const currentRoleSnapshots = filteredState.snapshots.filter(
       (snapshot) => normalizeAccessCode(snapshot.roleCode) === currentRoleCode,
     );
@@ -320,6 +347,8 @@ export function useChecklist({
           checkedAt: null,
           checkedByName: null,
           checkedByUsername: null,
+          isRequired: task.isRequired,
+          evidenceRequired: template.evidenceRequired,
         })),
       );
 
@@ -381,7 +410,6 @@ export function useChecklist({
         checklistService.getAll(),
         processService.getAll(),
       ]);
-
       const filteredState = filterState({
         templates: allTemplates || [],
         snapshots: allSnapshots || [],
@@ -392,7 +420,8 @@ export function useChecklist({
       setIsLoading(false);
 
       ensureMissingSnapshotsInBackground(filteredState, todayKey);
-    } catch {
+    } catch (error) {
+      console.error('Không thể refresh dữ liệu checklist:', error);
       setIsLoading(false);
     }
   }, [ensureMissingSnapshotsInBackground, filterState, replaceLocalState]);
@@ -467,6 +496,18 @@ export function useChecklist({
     }
 
     const { doc: targetDoc, task: targetTask } = found;
+    const nextCompleted = !targetTask.isCompleted;
+
+    if (nextCompleted && targetTask.evidenceRequired === 'required') {
+      const imagesCount = (targetTask.imageUrls || []).length;
+      if (imagesCount === 0) {
+        toastError(`Bắt buộc phải tải ảnh minh chứng trước khi hoàn thành đầu việc "${targetTask.title}"!`);
+        const event = new CustomEvent('open-checklist-item-detail', { detail: targetTask });
+        window.dispatchEvent(event);
+        return;
+      }
+    }
+
     const err = guardAction(permissions, 'canUpdate', targetTask, `công việc "${targetTask.title}"`);
     if (err) {
       toastError(err);
@@ -476,7 +517,6 @@ export function useChecklist({
     const nowIso = new Date().toISOString();
     const checkerName = currentUser?.fullName || currentUser?.username || 'Hệ thống';
     const checkerUsername = currentUser?.username || 'system';
-    const nextCompleted = !targetTask.isCompleted;
     const updatedDoc: ChecklistDocument = {
       ...targetDoc,
       updatedAt: nowIso,
@@ -717,6 +757,15 @@ export function useChecklist({
     iconName: string;
     colorKey: string;
     tasks: SaveCategoryTaskInput[];
+    frequency?: string;
+    frequencyDetail?: string;
+    shift?: string;
+    autoCreateDaily?: boolean;
+    evidenceRequired?: string;
+    status?: string;
+    defaultAssignee?: string;
+    inspectorId?: string;
+    inspectorName?: string;
   }) => {
     const err = guardAction(
       permissions,
@@ -729,10 +778,11 @@ export function useChecklist({
     }
 
     const normalizedRoleCode = normalizeAccessCode(params.roleCode);
-    const safeTitle = params.title.trim();
+    const roleName = roleOptions.find((r) => r.code === normalizedRoleCode)?.name || normalizedRoleCode;
+    const safeTitle = (params.title || roleName).trim();
     const templateTasks = toTemplateTasks(params.tasks);
     if (!safeTitle || templateTasks.length === 0) {
-      throw new Error('Nhóm checklist phải có tên và tối thiểu 1 công việc.');
+      throw new Error('Checklist mẫu phải có tối thiểu 1 công việc.');
     }
 
     const nowIso = new Date().toISOString();
@@ -743,7 +793,7 @@ export function useChecklist({
         throw new Error('Không tìm thấy template checklist để cập nhật.');
       }
 
-      const updatedTemplate = {
+      const updatedTemplate: ChecklistTemplateDocument = {
         ...originalTemplate,
         title: safeTitle,
         roleCode: normalizedRoleCode,
@@ -751,6 +801,15 @@ export function useChecklist({
         colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
         updatedAt: nowIso,
+        frequency: params.frequency,
+        frequencyDetail: params.frequencyDetail,
+        shift: params.shift,
+        autoCreateDaily: params.autoCreateDaily,
+        evidenceRequired: params.evidenceRequired,
+        status: params.status,
+        defaultAssignee: params.defaultAssignee,
+        inspectorId: params.inspectorId,
+        inspectorName: params.inspectorName,
       };
       const previousState = updateLocalState((state) => ({
         ...state,
@@ -769,6 +828,7 @@ export function useChecklist({
           snapshotTitle: todayKey,
           previousTemplateTaskIds: originalTemplate.tasks.map((task) => task.id),
           updatedTemplateTasks: templateTasks,
+          evidenceRequired: params.evidenceRequired,
         });
       }
 
@@ -780,6 +840,15 @@ export function useChecklist({
           colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
           tasks: templateTasks,
           updatedAt: nowIso,
+          frequency: params.frequency,
+          frequencyDetail: params.frequencyDetail,
+          shift: params.shift,
+          autoCreateDaily: params.autoCreateDaily,
+          evidenceRequired: params.evidenceRequired,
+          status: params.status,
+          defaultAssignee: params.defaultAssignee,
+          inspectorId: params.inspectorId,
+          inspectorName: params.inspectorName,
         });
         toastSuccess('Đã lưu checklist.');
       } catch (error) {
@@ -803,6 +872,15 @@ export function useChecklist({
         iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
         colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
         tasks: templateTasks,
+        frequency: params.frequency,
+        frequencyDetail: params.frequencyDetail,
+        shift: params.shift,
+        autoCreateDaily: params.autoCreateDaily,
+        evidenceRequired: params.evidenceRequired,
+        status: params.status,
+        defaultAssignee: params.defaultAssignee,
+        inspectorId: params.inspectorId,
+        inspectorName: params.inspectorName,
       };
       const persistedTemplate = await checklistTemplateService.create(newTemplate);
       updateLocalState((state) => ({
@@ -832,15 +910,29 @@ export function useChecklist({
       let updatedSnapshot: ChecklistDocument;
       let shouldCreateSnapshot = false;
       if (existingSnapshot) {
-        const extraTasks = toSnapshotTasks(params.tasks, newTemplate.id, todayKey);
+        const extraTasks = toSnapshotTasks(params.tasks, newTemplate.id, todayKey, params.evidenceRequired);
         updatedSnapshot = {
           ...existingSnapshot,
           tasks: [...existingSnapshot.tasks, ...extraTasks],
           updatedAt: nowIso,
         };
       } else {
-        updatedSnapshot = buildDailySnapshot([newTemplate], activeStoreId, normalizedRoleCode, todayKey);
-        shouldCreateSnapshot = true;
+        const currentDayOfWeekStr = String(new Date(todayKey).getDay());
+        let matchesFrequency = true;
+        if (newTemplate.status === 'hidden' || newTemplate.autoCreateDaily === false) {
+          matchesFrequency = false;
+        } else if (newTemplate.frequency === 'weekly' && newTemplate.frequencyDetail) {
+          matchesFrequency = newTemplate.frequencyDetail === currentDayOfWeekStr;
+        } else if (newTemplate.frequency === 'monthly' && newTemplate.frequencyDetail) {
+          matchesFrequency = newTemplate.frequencyDetail === String(new Date(todayKey).getDate());
+        }
+
+        if (matchesFrequency) {
+          updatedSnapshot = buildDailySnapshot([newTemplate], activeStoreId, normalizedRoleCode, todayKey);
+          shouldCreateSnapshot = true;
+        } else {
+          return;
+        }
       }
 
       const persistedSnapshot = shouldCreateSnapshot
@@ -877,7 +969,7 @@ export function useChecklist({
 
     return {
       id: targetTemplate.id,
-      title: targetTemplate.title,
+      title: targetTemplate.title || '',
       roleCode: targetTemplate.roleCode,
       iconName: targetTemplate.iconName || DEFAULT_CHECKLIST_ICON_NAME,
       colorKey: targetTemplate.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
@@ -885,7 +977,17 @@ export function useChecklist({
         id: task.id,
         title: task.title,
         timeLimit: task.timeLimit,
+        isRequired: task.isRequired,
       })),
+      frequency: targetTemplate.frequency,
+      frequencyDetail: targetTemplate.frequencyDetail,
+      shift: targetTemplate.shift,
+      autoCreateDaily: targetTemplate.autoCreateDaily,
+      evidenceRequired: targetTemplate.evidenceRequired,
+      status: targetTemplate.status,
+      defaultAssignee: targetTemplate.defaultAssignee,
+      inspectorId: targetTemplate.inspectorId,
+      inspectorName: targetTemplate.inspectorName,
     };
   }, []);
 
@@ -971,6 +1073,7 @@ export function useChecklist({
       pendingSync: pendingTemplateSync,
       nowIso,
       todayKey: getTodayKey(),
+      evidenceRequired: pendingTemplateSync.evidenceRequired,
     });
     const updatedSnapshot = {
       ...snapshot,
@@ -1010,6 +1113,12 @@ export function useChecklist({
     iconName?: string;
     colorKey?: string;
     steps: ProcessStep[];
+    objective?: string;
+    whenToUse?: string;
+    responsibleRole?: string;
+    mandatoryControls?: string[];
+    attachments?: Array<{ name: string; url: string; type: 'pdf' | 'excel' | 'word' | 'other' }>;
+    status?: string;
   }) => {
     const err = guardAction(permissions, 'canCreate', null, 'quy trình');
     if (err) {
@@ -1027,6 +1136,12 @@ export function useChecklist({
         iconName: payload.iconName,
         colorKey: payload.colorKey,
         steps: payload.steps,
+        objective: payload.objective,
+        whenToUse: payload.whenToUse,
+        responsibleRole: payload.responsibleRole,
+        mandatoryControls: payload.mandatoryControls,
+        attachments: payload.attachments,
+        status: payload.status || 'active',
       };
       await processService.create(newProcess);
       updateLocalState((state) => ({
@@ -1094,6 +1209,7 @@ export function useChecklist({
     permissions,
     roleOptions,
     isLoading,
+    templates: dataState.templates,
     derivedState,
     historySnapshots,
     historyLoading,

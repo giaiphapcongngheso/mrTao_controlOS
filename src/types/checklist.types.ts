@@ -14,6 +14,9 @@ export interface ChecklistTask extends BaseEntity {
   checkedByName?: string | null;
   checkedByUsername?: string | null;
   imageUrls?: string[];
+  // Mang theo cấu hình từ template để validate
+  isRequired?: boolean;
+  evidenceRequired?: string;
 }
 
 /**
@@ -23,6 +26,7 @@ export interface ChecklistTemplateTask {
   id: string;
   title: string;
   timeLimit?: string;
+  isRequired?: boolean; // Bắt buộc thực hiện
 }
 
 /**
@@ -32,10 +36,20 @@ export interface ChecklistTemplateTask {
 export interface ChecklistTemplateDocument extends BaseEntity {
   storeId: string;
   roleCode: string;
-  title: string;
+  title?: string;
   iconName?: string;
   colorKey?: string;
   tasks: ChecklistTemplateTask[];
+  // Các trường cấu hình nâng cao mới
+  frequency?: string;          // daily | weekly | monthly
+  frequencyDetail?: string;    // Chi tiết tần suất ví dụ thứ trong tuần: "1" (T2) -> "7" (CN)
+  shift?: string;              // all_day | morning | afternoon | night
+  autoCreateDaily?: boolean;   // Tự động tạo checklist hàng ngày
+  evidenceRequired?: string;   // required | optional
+  status?: string;             // active | hidden
+  defaultAssignee?: string;    // all_staff | ID cụ thể
+  inspectorId?: string;        // ID người kiểm tra
+  inspectorName?: string;      // Tên người kiểm tra
 }
 
 /**
@@ -73,6 +87,18 @@ export interface ProcessDocument extends BaseEntity {
   iconName?: string;
   colorKey?: string;
   steps: ProcessStep[];
+  
+  // Advanced SOP fields
+  objective?: string;           // Mục tiêu quy trình
+  whenToUse?: string;           // Khi nào dùng
+  responsibleRole?: string;     // Vai trò chịu trách nhiệm chính
+  mandatoryControls?: string[]; // Điểm kiểm soát bắt buộc (bullet points)
+  attachments?: Array<{         // Biểu mẫu / tài liệu liên quan
+    name: string;
+    url: string;
+    type: 'pdf' | 'excel' | 'word' | 'other';
+  }>;
+  status?: string;              // Trạng thái: active | hidden
 }
 
 /**
@@ -109,4 +135,7 @@ export interface ChecklistItem extends BaseEntity {
   checkedByName?: string | null;
   checkedByUsername?: string | null;
   imageUrls?: string[];
+  // Mang theo cấu hình từ template để validate
+  isRequired?: boolean;
+  evidenceRequired?: string;
 }

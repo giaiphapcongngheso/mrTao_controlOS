@@ -1,31 +1,37 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../share/ui';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
-import { ChecklistCategory, ChecklistItem, ProcessDocument, ProcessStep, ChecklistDocument } from '../../types/checklist.types';
-import ChecklistContentArea from './components/checklist-content-area';
-import ChecklistCreateDialog from './components/checklist-create-dialog';
-import ChecklistHeader from './components/checklist-header';
-import ChecklistTabBar from './components/checklist-tab-bar';
-import ChecklistConfigBar from './components/checklist-config-bar';
-import ChecklistErrorBanner from './components/checklist-error-banner';
-import ProcessContentArea from './components/process-content-area';
-import ProcessCreateDialog, { type ProcessDialogValues } from './components/process-create-dialog';
+import type {
+  ChecklistItem,
+  ChecklistCategory,
+  ProcessDocument,
+  ProcessStep,
+  ChecklistTemplateDocument,
+} from '../../types/checklist.types';
+
+import {
+  ChecklistHeader,
+  ChecklistTabBar,
+  ChecklistConfigBar,
+  ChecklistErrorBanner,
+  ChecklistCreateDialog,
+} from './shared';
+import { TodayTab, ProcessTab, TemplateTab } from './tabs';
 import {
   useFilteredCategories,
-  useKpiStats,
-  useInlineEdit,
   useChecklistDialog,
 } from './_hook';
-import { getTodayKey, toLocalDateKey } from './checklist-utils';
+import { getTodayKey, toLocalDateKey, isItemLate } from './checklist-utils';
 import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
+  templates: ChecklistTemplateDocument[];
   processes: ProcessDocument[];
   items: ChecklistItem[];
-  historySnapshots?: ChecklistDocument[];
+  historySnapshots?: import('../../types/checklist.types').ChecklistDocument[];
   historyLoading?: boolean;
   onFetchHistory?: (from: string, to: string, roleCode: string) => Promise<void>;
   onToggleItem: (itemId: string) => void;
@@ -79,46 +85,12 @@ interface ChecklistViewProps {
   errorMessage?: string | null;
   onDismissError?: () => void;
   isOwner?: boolean;
-}
-
-function createProcessDialogDefaults(roleCode: string): ProcessDialogValues {
-  return {
-    title: '',
-    roleCode,
-    description: '',
-    iconName: 'Layers',
-    colorKey: 'rose',
-    steps: [{
-      id: `step-${Date.now()}`,
-      title: '',
-      tasksText: '',
-      subSteps: [],
-    }],
-  };
-}
-
-function mapProcessToDialogValues(process: ProcessDocument): ProcessDialogValues {
-  return {
-    title: process.title,
-    roleCode: process.roleCode,
-    description: process.description || '',
-    iconName: process.iconName || 'Layers',
-    colorKey: process.colorKey || 'rose',
-    steps: (process.steps || []).map((step) => ({
-      id: step.id,
-      title: step.title,
-      tasksText: (step.tasks || []).join('\n'),
-      subSteps: (step.steps || []).map((subStep) => ({
-        id: subStep.id,
-        title: subStep.title,
-        tasksText: (subStep.tasks || []).join('\n'),
-      })),
-    })),
-  };
+  onRefresh?: () => Promise<void>;
 }
 
 export default function ChecklistView({
   todayCategories,
+  templates,
   processes,
   items,
   historySnapshots = [],
@@ -145,34 +117,47 @@ export default function ChecklistView({
   errorMessage,
   onDismissError,
   isOwner = false,
+  onRefresh,
 }: ChecklistViewProps) {
-  const [subTab, setSubTab] = useState<'today' | 'process' | 'history'>('today');
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+  // ── Tab & Filter State ──
+  const [subTab, setSubTab] = useState<'today' | 'checklist_template' | 'process' | 'history'>('today');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPerformer, setSelectedPerformer] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Date range state for history filter
+  // Template filter state
+  const [templateFilterRole, setTemplateFilterRole] = useState('all');
+  const [templateFilterFrequency, setTemplateFilterFrequency] = useState('all');
+  const [templateFilterStatus, setTemplateFilterStatus] = useState('all');
+  const [templateSearchTerm, setTemplateSearchTerm] = useState('');
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [isCreatingProcess, setIsCreatingProcess] = useState(false);
+
+  // History date range
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
 
-  // Redirect non-owners away from history tab if they somehow access it
+  // Redirect non-owners away from history tab
   useEffect(() => {
     if (!isOwner && subTab === 'history') {
       setSubTab('today');
     }
   }, [isOwner, subTab]);
 
-  // Process dialog states
-  const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
-  const [processDialogInitialValues, setProcessDialogInitialValues] = useState<ProcessDialogValues | null>(null);
-  const [processDialogError, setProcessDialogError] = useState<string | null>(null);
-  const [processDialogEditId, setProcessDialogEditId] = useState<string | null>(null);
-  const [isSubmittingProcessDialog, setIsSubmittingProcessDialog] = useState(false);
-
-  const toggleExpand = useCallback((catId: string) => {
-    setExpandedCategoryId((prev) => prev === catId ? null : catId);
-  }, []);
+  // ── Role Code Logic ──
+  const defaultSelectedRoleCode = useMemo(() => {
+    if (!isOwner) return defaultRoleCode;
+    const normalizedDefault = defaultRoleCode.trim().toUpperCase();
+    const ownerHasTemplates = templates.some(
+      (t) => (t.roleCode || '').trim().toUpperCase() === normalizedDefault
+    );
+    if (ownerHasTemplates) return defaultRoleCode;
+    if (templates.length > 0) return templates[0].roleCode.trim().toUpperCase();
+    return defaultRoleCode;
+  }, [defaultRoleCode, isOwner, templates]);
 
   const {
     isAddingItem,
@@ -187,13 +172,19 @@ export default function ChecklistView({
     dialogEditCategoryId,
     handleDialogSubmit,
   } = useChecklistDialog({
-    defaultRoleCode,
+    defaultRoleCode: defaultSelectedRoleCode,
     onSaveCategoryBatch,
     onRequestEditCategory,
   });
-  const selectedRoleCode = dialogRoleCode || defaultRoleCode;
+  const selectedRoleCode = dialogRoleCode || defaultSelectedRoleCode;
 
-  // Fetch history when tab, date range, or selected role changes.
+  const createRoleOptions = useMemo(() => {
+    if (dialogEditCategoryId !== null) return roleOptions;
+    const existingRoleCodes = new Set(templates.map((t) => t.roleCode.toUpperCase()));
+    return roleOptions.filter((r) => !existingRoleCodes.has(r.code.toUpperCase()));
+  }, [roleOptions, templates, dialogEditCategoryId]);
+
+  // Fetch history when tab, date range, or selected role changes
   useEffect(() => {
     if (subTab === 'history' && dateRange?.from && dateRange?.to && onFetchHistory) {
       const fromStr = toLocalDateKey(dateRange.from);
@@ -202,152 +193,83 @@ export default function ChecklistView({
     }
   }, [dateRange, onFetchHistory, selectedRoleCode, subTab]);
 
+  // ── Filtered Data ──
   const {
     filteredCategories,
     filteredProcesses,
     historyDateGroups,
   } = useFilteredCategories({
     todayCategories,
+    templates,
     processes,
     items,
     historySnapshots,
     subTab,
     searchTerm,
     selectedRoleCode,
-    completedViewMode: 'day', // fallback/legacy
-    selectedWeekDayKey: getTodayKey(), // fallback/legacy
+    completedViewMode: 'day',
+    selectedWeekDayKey: getTodayKey(),
   });
 
-  const selectedRoleItems = useMemo(
-    () => items.filter(
-      (item) => item.roleCode?.trim().toUpperCase() === selectedRoleCode.trim().toUpperCase(),
-    ),
-    [items, selectedRoleCode],
-  );
-  const kpiStats = useKpiStats(selectedRoleItems);
+  // Apply extra Performer & Status filters dynamically for 'today' tab
+  const filteredCategoriesWithExtraFilters = useMemo(() => {
+    if (subTab !== 'today') return filteredCategories;
 
-  const {
-    editingItemId,
-    setEditingItemId,
-    editItemTitle,
-    setEditItemTitle,
-    editItemTimeLimit,
-    setEditItemTimeLimit,
-    handleInlineSave,
-    handleDeleteItem,
-  } = useInlineEdit({
-    onUpdateChecklistItem,
-    onDeleteChecklistItem,
-  });
+    return filteredCategories
+      .map((cat) => {
+        const tasks = cat.tasks.filter((task) => {
+          if (selectedPerformer !== 'all' && task.checkedByName !== selectedPerformer) return false;
+          if (selectedStatus !== 'all') {
+            const isLate = isItemLate(task);
+            if (selectedStatus === 'completed' && !task.isCompleted) return false;
+            if (selectedStatus === 'not_completed' && (task.isCompleted || isLate)) return false;
+            if (selectedStatus === 'late' && (task.isCompleted || !isLate)) return false;
+            if (selectedStatus === 'in_progress' && (task.isCompleted || isLate)) return false;
+          }
+          return true;
+        });
+        return { ...cat, tasks, countTotal: tasks.length, countDone: tasks.filter((t) => t.isCompleted).length };
+      })
+      .filter((cat) => cat.tasks.length > 0);
+  }, [filteredCategories, subTab, selectedPerformer, selectedStatus]);
 
-  const editState = useMemo(() => ({
-    editingItemId,
-    setEditingItemId,
-    editItemTitle,
-    setEditItemTitle,
-    editItemTimeLimit,
-    setEditItemTimeLimit,
-    onInlineSave: handleInlineSave,
-  }), [
-    editingItemId,
-    editItemTitle,
-    editItemTimeLimit,
-    handleInlineSave,
-    setEditItemTimeLimit,
-    setEditItemTitle,
-    setEditingItemId,
-  ]);
-
+  // ── Handlers ──
   const handleOpenCreateDialog = useCallback(() => {
+    if (subTab === 'checklist_template') {
+      setEditingTemplateId('new');
+      return;
+    }
     if (subTab === 'process') {
-      setProcessDialogEditId(null);
-      setProcessDialogError(null);
-      setProcessDialogInitialValues(createProcessDialogDefaults(dialogRoleCode || defaultRoleCode));
-      setIsProcessDialogOpen(true);
+      setIsCreatingProcess(true);
       return;
     }
     openCreateDialog();
-  }, [defaultRoleCode, dialogRoleCode, openCreateDialog, subTab]);
+  }, [openCreateDialog, subTab]);
+
+  const handleCloseCreatingProcess = useCallback(() => {
+    setIsCreatingProcess(false);
+  }, []);
 
   const handleOpenEditChecklistDialog = useCallback((cat: { id: string }) => {
     void openEditDialog(cat.id);
   }, [openEditDialog]);
 
-  const handleOpenEditProcessDialog = useCallback((process: ProcessDocument) => {
-    setProcessDialogEditId(process.id);
-    setProcessDialogError(null);
-    setProcessDialogInitialValues(mapProcessToDialogValues(process));
-    setIsProcessDialogOpen(true);
-  }, []);
-
-  const handleAddInlineItem = useCallback(async (
-    categoryId: string,
-    categoryTitle: string,
-    title: string,
-    timeLimit?: string,
-  ) => {
-    const roleCode = selectedRoleCode;
-    if (onCreateTodayChecklistBatch) {
-      // For adding inline to a history category or today
-      // Extract original template ID if it is a history ID (which is in format dateKey_templateId)
-      let cleanCategoryId = categoryId;
-      if (categoryId.includes('_')) {
-        cleanCategoryId = categoryId.split('_')[1];
-      }
-      await onCreateTodayChecklistBatch(roleCode, cleanCategoryId, categoryTitle, [{ title, timeLimit }]);
-      return;
-    }
-
-    await onCreateRoleChecklist(roleCode, categoryId, categoryTitle, title);
-  }, [onCreateRoleChecklist, onCreateTodayChecklistBatch, selectedRoleCode]);
-
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
     setSearchTerm('');
-    setDateRange({
-      from: subDays(new Date(), 7),
-      to: new Date(),
-    });
+    setSelectedPerformer('all');
+    setSelectedStatus('all');
+    setSelectedDate(new Date());
+    setDateRange({ from: subDays(new Date(), 7), to: new Date() });
   }, []);
 
   const handleCloseChecklistDialog = useCallback(() => {
     setIsAddingItem(false);
   }, [setIsAddingItem]);
 
-  const handleCloseProcessDialog = useCallback(() => {
-    setIsProcessDialogOpen(false);
-    setProcessDialogError(null);
-    setProcessDialogEditId(null);
-  }, []);
-
-  const handleSubmitProcessDialog = useCallback(async (payload: {
-    title: string;
-    description?: string;
-    roleCode: string;
-    iconName?: string;
-    colorKey?: string;
-    steps: ProcessStep[];
-  }) => {
-    setProcessDialogError(null);
-    setIsSubmittingProcessDialog(true);
-
-    try {
-      if (processDialogEditId) {
-        await onUpdateProcess?.(processDialogEditId, payload);
-      } else {
-        await onCreateProcess?.(payload);
-      }
-      handleCloseProcessDialog();
-    } catch (error: any) {
-      setProcessDialogError(error?.message || 'Không thể lưu quy trình. Vui lòng thử lại.');
-      throw error;
-    } finally {
-      setIsSubmittingProcessDialog(false);
-    }
-  }, [handleCloseProcessDialog, onCreateProcess, onUpdateProcess, processDialogEditId]);
-
+  // ── Render ──
   return (
-    <div className="space-y-2.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
+    <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
       <ChecklistHeader
         subTab={subTab}
         canCreate={permissions.canCreate}
@@ -367,8 +289,26 @@ export default function ChecklistView({
         selectedRoleCode={selectedRoleCode}
         setSelectedRoleCode={setDialogRoleCode}
         roleOptions={roleOptions}
+        items={items}
+        selectedPerformer={selectedPerformer}
+        setSelectedPerformer={setSelectedPerformer}
+        selectedStatus={selectedStatus}
+        setSelectedStatus={setSelectedStatus}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        onRefresh={onRefresh}
         showHistory={isOwner}
         showRoleSelect={isOwner}
+        templateFilterRole={templateFilterRole}
+        setTemplateFilterRole={setTemplateFilterRole}
+        templateFilterFrequency={templateFilterFrequency}
+        setTemplateFilterFrequency={setTemplateFilterFrequency}
+        templateFilterStatus={templateFilterStatus}
+        setTemplateFilterStatus={setTemplateFilterStatus}
+        templateSearchTerm={templateSearchTerm}
+        setTemplateSearchTerm={setTemplateSearchTerm}
+        canCreate={permissions.canCreate}
+        onOpenCreateTemplate={() => setEditingTemplateId('new')}
       />
 
       <ChecklistConfigBar
@@ -377,72 +317,78 @@ export default function ChecklistView({
         onDateRangeChange={setDateRange}
       />
 
-      {subTab === 'process' ? (
-        <ProcessContentArea
+      {/* ── Tab Content Routing ────────────────────────── */}
+      {subTab === 'checklist_template' ? (
+        <TemplateTab
+          templates={templates}
+          roleOptions={roleOptions}
+          onSaveCategoryBatch={onSaveCategoryBatch!}
+          onDeleteCategory={onDeleteCategory!}
+          permissions={permissions}
+          filterRole={templateFilterRole}
+          filterFrequency={templateFilterFrequency}
+          filterStatus={templateFilterStatus}
+          searchTerm={templateSearchTerm}
+          editingTemplateId={editingTemplateId}
+          setEditingTemplateId={setEditingTemplateId}
+        />
+      ) : subTab === 'process' ? (
+        <ProcessTab
           processes={filteredProcesses}
+          permissions={permissions}
           isLoading={isLoading}
-          canCreate={permissions.canCreate}
-          canUpdate={permissions.canUpdate}
-          canDelete={permissions.canDelete}
-          onOpenCreateDialog={handleOpenCreateDialog}
-          onOpenEditDialog={handleOpenEditProcessDialog}
-          onDeleteProcess={async (id) => {
-            await onDeleteProcess?.(id);
-          }}
+          roleOptions={roleOptions}
+          defaultRoleCode={defaultRoleCode}
+          dialogRoleCode={dialogRoleCode || defaultSelectedRoleCode}
+          onCreateProcess={onCreateProcess}
+          onUpdateProcess={onUpdateProcess}
+          onDeleteProcess={onDeleteProcess}
           onResetFilters={handleResetFilters}
+          isCreatingProcess={isCreatingProcess}
+          onCloseCreatingProcess={handleCloseCreatingProcess}
         />
       ) : (
-        <ChecklistContentArea
-          filteredCategories={filteredCategories}
-          subTab={subTab}
-          expandedCategoryId={expandedCategoryId}
-          onToggleExpand={toggleExpand}
+        <TodayTab
+          filteredCategories={subTab === 'today' ? filteredCategoriesWithExtraFilters : filteredCategories}
+          historyDateGroups={historyDateGroups}
           permissions={permissions}
+          isLoading={isLoading}
+          historyLoading={historyLoading}
+          roleOptions={roleOptions}
+          selectedRoleCode={selectedRoleCode}
+          subTab={subTab}
           onToggleItem={onToggleItem}
           onDeleteCategory={onDeleteCategory}
           onOpenEditCategoryDialog={handleOpenEditChecklistDialog}
-          editState={editState}
-          onDeleteItem={handleDeleteItem}
-          onAddInlineItem={handleAddInlineItem}
-          onResetFilters={handleResetFilters}
-          kpiStats={kpiStats}
-          isLoading={isLoading || historyLoading}
-          roleOptions={roleOptions}
+          onCreateRoleChecklist={onCreateRoleChecklist}
+          onCreateTodayChecklistBatch={onCreateTodayChecklistBatch}
+          onDeleteChecklistItem={onDeleteChecklistItem}
           onUpdateChecklistItem={onUpdateChecklistItem}
-          historyDateGroups={historyDateGroups}
+          onResetFilters={handleResetFilters}
         />
       )}
 
+      {/* ── Mobile FAB ──────────────────────── */}
       {permissions.canCreate && (
         <Button
           onClick={handleOpenCreateDialog}
           className="fixed bottom-24 right-5 sm:hidden w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-lg cursor-pointer z-40"
-          title={subTab === 'process' ? 'Thêm quy trình mới' : 'Thêm checklist mới'}
+          title={subTab === 'process' ? 'Thêm quy trình mới' : 'Thêm checklist mẫu mới'}
         >
           <Plus className="w-6 h-6 stroke-[3]" />
         </Button>
       )}
 
+      {/* ── Dialogs ──────────────────────── */}
       <ChecklistCreateDialog
         isOpen={isAddingItem}
         initialValues={dialogInitialValues}
-        roleOptions={roleOptions}
+        roleOptions={createRoleOptions}
         isSubmittingDialog={isSubmittingDialog}
         dialogError={dialogError}
         onClose={handleCloseChecklistDialog}
         onSubmit={handleDialogSubmit}
         isEditMode={dialogEditCategoryId !== null}
-      />
-
-      <ProcessCreateDialog
-        isOpen={isProcessDialogOpen}
-        roleOptions={roleOptions}
-        initialValues={processDialogInitialValues}
-        isSubmitting={isSubmittingProcessDialog}
-        errorMessage={processDialogError}
-        isEditMode={processDialogEditId !== null}
-        onClose={handleCloseProcessDialog}
-        onSubmit={handleSubmitProcessDialog}
       />
 
       <ActionConfirmDialog

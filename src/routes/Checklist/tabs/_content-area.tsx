@@ -1,27 +1,6 @@
 import React from 'react';
-import {
-  AlertCircle,
-  Award,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Circle,
-  Clock,
-  Edit2,
-  FileText,
-  Image,
-  Info,
-  Plus,
-  Smile,
-  Trash2,
-  X,
-  Camera,
-  Upload,
-  User,
-  Loader2,
-} from 'lucide-react';
-import { Button, Card, ScrollArea, Textarea, Tooltip, TooltipTrigger, TooltipContent } from '../../../../share/ui';
+import { AlertCircle, Award, Check, CheckCircle2, ChevronDown, ChevronUp, Circle, Clock, Edit2, FileText, Image, Info, Plus, Smile, Trash2, X, Camera, Upload, User, Loader2, Paperclip } from 'lucide-react';
+import { Button, Card, ScrollArea, Textarea, Input } from '../../../../share/ui';
 import { DeleteConfirm } from '../../../../share/components/delete-confirm';
 import { Badge } from '../../../../share/ui/badge';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
@@ -34,12 +13,13 @@ import type {
   ChecklistSubTab,
   ChecklistViewCategory,
   HistoryDateGroup,
-} from './checklist-view.types';
+} from '../checklist-view.types';
 import { isItemLate, formatCheckedAt } from '../checklist-utils';
 import { cn } from '../../../../share/lib/utils';
 import type { ChecklistItem } from '../../../types/checklist.types';
 import { resolveChecklistIcon } from '../checklist-meta';
-import HistoryDateGroupCard from './history-date-group';
+import HistoryDateGroupCard from './_history-date-group';
+import { ChecklistFlatTable } from './_flat-table';
 
 const parseTimeToDate = (timeStr: string) => {
   if (!timeStr) return undefined;
@@ -162,101 +142,133 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
           showCloseButton={false}
           className="!p-0 !border-0 overflow-hidden max-w-lg rounded-2xl bg-white shadow-2xl font-sans"
         >
-          {/* Header màu đỏ thương hiệu */}
-          <div className="bg-[#C21A1A] p-5 text-white relative rounded-t-2xl">
+          <DialogTitle className="sr-only">Checklist Details</DialogTitle>
+          
+          {/* Header with red brand gradient */}
+          <div className="bg-gradient-to-br from-[#C21A1A] via-[#B01717] to-[#9A1212] p-6 text-white relative rounded-t-2xl shadow-inner">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70 block mb-1">
               CHI TIẾT CHECKLIST
             </span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-white/80 block mb-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-white/80 block mb-2.5">
               TÊN ĐẦU VIỆC (QUẢN LÝ SỬA)
             </span>
             
-            <input
+            <Input
               type="text"
               value={titleValue}
               onChange={(e) => setTitleValue(e.target.value)}
               onBlur={handleBlurSave}
               placeholder="Nhập tên đầu việc..."
-              className="w-full bg-[#A31616] text-white placeholder-white/50 border-none outline-none focus:ring-1 focus:ring-white/25 rounded-xl px-3 py-2 text-sm font-bold leading-normal transition-colors"
+              className="w-full bg-white/10 text-white placeholder-white/60 border border-white/10 outline-none focus:border-white/30 focus:bg-white/15 focus:ring-2 focus:ring-white/10 rounded-xl px-4 py-2.5 text-sm font-bold leading-normal transition-all duration-200"
             />
 
-            <button
+            <Button
+              type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none focus:outline-none"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 hover:rotate-90 text-white flex items-center justify-center transition-all duration-300 cursor-pointer border-none outline-none focus:outline-none"
             >
               <X className="w-4 h-4 stroke-[2.5]" />
-            </button>
+            </Button>
           </div>
 
           {/* Body */}
-          <div className="p-5 space-y-5 bg-white text-left">
-            {/* Grid 2 cột */}
+          <div className="p-6 space-y-5 bg-white text-left">
+            {/* 2-column Grid of Info Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-center">
+              {/* Role Info Card */}
+              <div className="bg-gradient-to-b from-slate-50/50 to-slate-100/50 border border-slate-200/50 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300/60 transition-colors duration-200">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 block">
                   VAI TRÒ CỦA NHÓM
                 </span>
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                  <User className="w-4 h-4 text-[#C21A1A] shrink-0" />
-                  <span>{roleName}</span>
+                <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700">
+                  <div className="w-7 h-7 rounded-lg bg-[#C21A1A]/10 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-[#C21A1A]" />
+                  </div>
+                  <span className="truncate">{roleName}</span>
                 </div>
               </div>
 
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-center">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">
+              {/* Time Limit Picker Card */}
+              <div className="bg-gradient-to-b from-slate-50/50 to-slate-100/50 border border-slate-200/50 rounded-2xl p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300/60 transition-colors duration-200">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 block">
                   GIỜ CHỐT HOÀN THÀNH
                 </span>
-                <div className="w-full">
-                  <DatePicker
-                    value={parseTimeToDate(item.timeLimit || '')}
-                    onChange={handleTimeLimitChange}
-                    timeOnly={true}
-                    clearable={false}
-                    size="sm"
-                  />
+                <div className="w-full flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <DatePicker
+                      value={parseTimeToDate(item.timeLimit || '')}
+                      onChange={handleTimeLimitChange}
+                      timeOnly={true}
+                      clearable={false}
+                      size="sm"
+                      className="border-none bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-700 font-extrabold text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Trạng thái công việc */}
-            <div className="flex items-center justify-between py-2.5 border-y border-slate-100">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Trạng thái công việc</span>
+            {/* Task Status Control */}
+            <div className="flex items-center justify-between py-4 border-y border-slate-100/80 bg-slate-50/20 px-1 rounded-xl">
+              <div className="flex items-center gap-3">
                 {item.isCompleted ? (
-                  <span className="text-[10px] font-medium text-slate-400">
-                    Đã hoàn thành bởi: <span className="font-semibold text-slate-600">{item.checkedByName || 'Hệ thống'}</span>
-                  </span>
+                  <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
                 ) : (
-                  <span className="text-[10px] font-medium text-slate-400">Chưa hoàn thành</span>
+                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Circle className="w-5 h-5" />
+                  </div>
                 )}
+                <div className="flex flex-col">
+                  <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Trạng thái công việc</span>
+                  {item.isCompleted ? (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center text-[8px] font-black uppercase">
+                        {(item.checkedByName || 'H').trim().charAt(0)}
+                      </span>
+                      <span className="text-[10px] font-medium text-slate-500">
+                        Đã hoàn thành bởi: <span className="font-bold text-slate-700">{item.checkedByName || 'Hệ thống'}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 mt-0.5">Chưa hoàn thành</span>
+                  )}
+                </div>
               </div>
               <Button
                 type="button"
                 onClick={handleToggleStatus}
                 className={cn(
-                  "px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 border cursor-pointer h-9",
+                  "px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 border cursor-pointer h-9 active:scale-95 shadow-xs",
                   item.isCompleted
-                    ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
-                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-emerald-100/50 hover:shadow-emerald-200/50"
+                    : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200/80 hover:border-slate-300"
                 )}
               >
-                {item.isCompleted ? '✓ Đã hoàn thành' : 'Chưa hoàn thành'}
+                {item.isCompleted ? '✓ Đã xong' : 'Đánh dấu xong'}
               </Button>
             </div>
 
-            {/* Bằng chứng hình ảnh */}
-            <div className="space-y-3">
+            {/* Evidence Image Gallery */}
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 uppercase tracking-wider">
-                  <Camera className="w-4 h-4 text-slate-400" />
-                  <span>BẰNG CHỨNG HÌNH ẢNH ({imageUrls.length})</span>
+                <div className="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
+                  <Camera className="w-4.5 h-4.5 text-[#C21A1A]" />
+                  <span>BẰNG CHỨNG HÌNH ẢNH</span>
+                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-black">
+                    {imageUrls.length}
+                  </span>
                 </div>
                 <Button
                   type="button"
                   disabled={isUploading}
                   onClick={triggerFileInput}
                   variant="link"
-                  className="text-xs font-extrabold text-[#C21A1A] hover:text-[#A81515] p-0 h-auto flex items-center gap-1 cursor-pointer focus:outline-none"
+                  className="text-xs font-black text-[#C21A1A] hover:text-[#A81515] p-0 h-auto flex items-center gap-1.5 cursor-pointer focus:outline-none transition-colors duration-200"
                 >
                   {isUploading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -275,32 +287,44 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
               </div>
 
               {imageUrls.length === 0 ? (
-                <div className="border border-dashed border-slate-200 rounded-2xl py-6 flex flex-col items-center justify-center text-center bg-slate-50/50">
-                  <Camera className="w-8 h-8 text-slate-300 mb-2" />
-                  <p className="text-xs font-bold text-slate-400">Chưa có ảnh bằng chứng</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Vui lòng tải ảnh lên làm minh chứng hoàn thành.</p>
+                <div 
+                  onClick={triggerFileInput}
+                  className="border border-dashed border-slate-200 hover:border-[#C21A1A]/40 rounded-2xl py-8 flex flex-col items-center justify-center text-center bg-slate-50/40 hover:bg-slate-50/80 cursor-pointer transition-all duration-300 group/upload"
+                >
+                  <div className="w-12 h-12 rounded-full bg-slate-100 group-hover/upload:bg-rose-50 flex items-center justify-center mb-3 transition-colors duration-300">
+                    <Camera className="w-6 h-6 text-slate-400 group-hover/upload:text-[#C21A1A] group-hover/upload:scale-110 transition-all duration-300" />
+                  </div>
+                  <p className="text-xs font-extrabold text-slate-500 group-hover/upload:text-slate-700 transition-colors">Nhấp để tải ảnh bằng chứng</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Định dạng JPG, PNG để làm minh chứng hoàn thành</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-3">
                   {imageUrls.map((url, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group animate-in fade-in duration-200"
+                      className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-150 bg-slate-50 shadow-2xs group/img animate-in fade-in duration-300"
                     >
                       <img
                         src={url}
-                        alt={`Bằng chứng ${idx + 1}`}
+                        alt={`Evidence ${idx + 1}`}
                         onClick={() => setActiveZoomUrl(url)}
-                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
                       />
-                      <button
+                      
+                      {/* Black overlay on hover */}
+                      <div 
+                        onClick={() => setActiveZoomUrl(url)}
+                        className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center cursor-pointer"
+                      />
+
+                      <Button
                         type="button"
                         onClick={(e) => handleDeleteImage(url, e)}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-md bg-black/60 hover:bg-black/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer border-none outline-none"
-                        title="Xóa ảnh"
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-lg bg-black/60 hover:bg-[#C21A1A] text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all duration-200 hover:scale-105 cursor-pointer border-none outline-none shadow-xs"
+                        tooltip="Xóa hình ảnh"
                       >
                         <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -308,13 +332,13 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-5 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-b-2xl">
+          {/* Footer Action Buttons */}
+          <div className="p-5 border-t border-slate-100/80 flex items-center justify-between bg-slate-50/30 rounded-b-2xl">
             <Button
               type="button"
               onClick={handleDeleteTaskClick}
               variant="ghost"
-              className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl px-3 py-2 flex items-center gap-1.5 cursor-pointer"
+              className="text-xs font-black tracking-wider text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl px-4 py-2.5 flex items-center gap-1.5 cursor-pointer transition-all duration-200 active:scale-95 border border-transparent hover:border-rose-100/50"
             >
               <Trash2 className="w-4 h-4" />
               <span>XÓA ĐẦU VIỆC</span>
@@ -322,7 +346,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
             <Button
               type="button"
               onClick={onClose}
-              className="h-10 px-5 text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 border border-slate-200 bg-white rounded-xl cursor-pointer"
+              className="h-10 px-6 text-xs font-black uppercase tracking-wider text-slate-600 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/80 bg-white rounded-xl cursor-pointer shadow-2xs hover:shadow-xs transition-all duration-200 active:scale-95"
             >
               ĐÓNG LẠI
             </Button>
@@ -335,12 +359,13 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
         <Dialog open={activeZoomUrl !== null} onOpenChange={(open) => { if (!open) setActiveZoomUrl(null); }}>
           <DialogContent
             showCloseButton={true}
-            className="max-w-4xl p-2 bg-black border-none rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
+            className="max-w-4xl p-2 bg-black/95 border-none rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl backdrop-blur-md"
           >
+            <DialogTitle className="sr-only">Evidence Image Zoomed</DialogTitle>
             <img
               src={activeZoomUrl}
-              alt="Bằng chứng phóng to"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+              alt="Evidence zoomed"
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
             />
           </DialogContent>
         </Dialog>
@@ -384,45 +409,26 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
   const isCurrentlyEditing = editState.editingItemId === item.id;
   const isReadOnlyCompletedTab = subTab === 'history';
 
-  const lastClickTimeRef = React.useRef<number>(0);
-  const lastToggleTimeRef = React.useRef<number>(0);
-
   const handleRowClick = React.useCallback(() => {
     if (subTab === 'process' || isReadOnlyCompletedTab || isCurrentlyEditing) return;
 
-    const now = Date.now();
-    const lastClickTime = lastClickTimeRef.current;
-    lastClickTimeRef.current = now;
+    if (item.isCompleted) {
+      // Single Click to uncheck
+      const tempItem = { ...item, isCompleted: false, checkedAt: undefined };
+      const isLateAfterUncheck = isItemLate(tempItem);
 
-    const isDoubleClick = now - lastClickTime < 500;
-
-    if (isDoubleClick) {
-      // Double Click
-      if (item.isCompleted) {
-        const lastToggleTime = lastToggleTimeRef.current;
-        if (now - lastToggleTime < 500) {
-          return;
-        }
-
-        const tempItem = { ...item, isCompleted: false, checkedAt: undefined };
-        const isLateAfterUncheck = isItemLate(tempItem);
-
-        if (isLateAfterUncheck) {
-          setUncheckTarget({
-            id: item.id,
-            title: item.title,
-            timeLimit: item.timeLimit || '',
-          });
-        } else {
-          onToggleItem(item.id);
-        }
+      if (isLateAfterUncheck) {
+        setUncheckTarget({
+          id: item.id,
+          title: item.title,
+          timeLimit: item.timeLimit || '',
+        });
+      } else {
+        onToggleItem(item.id);
       }
     } else {
-      // Single Click
-      if (!item.isCompleted) {
-        onToggleItem(item.id);
-        lastToggleTimeRef.current = Date.now();
-      }
+      // Single Click to check completed
+      onToggleItem(item.id);
     }
   }, [subTab, isReadOnlyCompletedTab, isCurrentlyEditing, item, onToggleItem, setUncheckTarget]);
 
@@ -580,31 +586,17 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
       {/* Right-side actions */}
       {!isCurrentlyEditing && (
         <div
-          className="flex items-center gap-1.5 shrink-0 animate-in fade-in"
+          className="flex items-center gap-2.5 sm:gap-4 shrink-0 animate-in fade-in"
           onClick={stopProp}
         >
-          {/* Delete */}
-          {subTab === 'today' && permissions.canDelete && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleDeleteClick}
-              className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
-              title="Xóa"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-
-          {/* Time badge */}
+          {/* 1. Time Limit (Hour) */}
           {subTab !== 'process' && item.timeLimit && (
             <span
               className={cn(
-                "text-xs font-sans font-bold px-2 py-1 rounded-lg flex items-center gap-1 select-none",
+                "text-xs font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 select-none tabular-nums",
                 isLate
-                  ? "bg-rose-50 text-rose-600 border border-rose-100"
-                  : "bg-slate-50 text-slate-500 border border-slate-150"
+                  ? "bg-rose-50 text-rose-600 border border-rose-100/50"
+                  : "bg-slate-50 text-slate-500 border border-slate-100"
               )}
             >
               <Clock className="w-3 h-3" />
@@ -612,7 +604,19 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
             </span>
           )}
 
-          {/* Image evidence / Detail */}
+          {/* 2. Performer (Avatar + Name) */}
+          {subTab !== 'process' && item.isCompleted && item.checkedByName && (
+            <div className="hidden md:flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-100/80 px-2 py-1 rounded-xl">
+              <span className="w-5 h-5 rounded-full bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center text-[10px] font-black uppercase">
+                {item.checkedByName.trim().charAt(0)}
+              </span>
+              <span className="text-[11px] font-bold text-slate-500 truncate max-w-[100px]" title={item.checkedByName}>
+                {item.checkedByName}
+              </span>
+            </div>
+          )}
+
+          {/* 3. Evidence / Paperclip attachment with counter */}
           {(subTab === 'today' || subTab === 'history') && (
             <Button
               type="button"
@@ -622,48 +626,80 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
                 e.stopPropagation();
                 onOpenDetail(item);
               }}
-              className="flex w-7 h-7 rounded-lg bg-slate-50 border border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100 items-center justify-center transition-colors cursor-pointer animate-in fade-in"
-              title="Bằng chứng hình ảnh & Chi tiết"
+              className={cn(
+                "flex h-7.5 items-center justify-center transition-all duration-200 cursor-pointer border rounded-xl gap-1.5 px-2.5 w-auto shadow-2xs select-none active:scale-95",
+                (item.imageUrls || []).length > 0
+                  ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100/70"
+                  : "bg-slate-50 border-slate-200/60 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              )}
+              tooltip="Bằng chứng hình ảnh & Chi tiết"
             >
-              <Image className="w-3.5 h-3.5" />
+              <Paperclip className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="text-[10px] font-black">{(item.imageUrls || []).length}</span>
             </Button>
           )}
 
-          {/* Checked Info Tooltip */}
-          {subTab === 'today' && item.isCompleted && (item.checkedByName || item.checkedAt) && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
-                  title="Thông tin hoàn thành"
-                >
-                  <Award className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                className="w-56 p-3 bg-slate-900 text-white border border-slate-800 rounded-xl shadow-xl animate-in fade-in zoom-in-95"
-              >
-                <div className="font-bold border-b border-slate-800 pb-1.5 mb-1.5 flex items-center gap-1.5 text-emerald-400 text-xs">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Đã hoàn thành</span>
-                </div>
-                <div className="space-y-1 text-[11px] text-left">
-                  <p className="text-slate-300">
-                    Người thực hiện: <span className="font-semibold text-white">{item.checkedByName || 'N/A'}</span>
-                  </p>
-                  {item.checkedAt && (
-                    <p className="text-slate-400">
-                      Thời gian: <span className="font-semibold text-white">{formatCheckedAt(item.checkedAt)}</span>
-                    </p>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
+          {/* 4. Status Badge */}
+          {subTab !== 'process' && (
+            <span
+              className={cn(
+                "text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-xl text-center min-w-[70px] select-none",
+                item.isCompleted
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100/50"
+                  : isLate
+                  ? "bg-rose-50 text-rose-600 border border-rose-100/50 animate-pulse"
+                  : "bg-slate-100 text-slate-500 border border-slate-200/50"
+              )}
+            >
+              {item.isCompleted ? 'Đã xong' : isLate ? 'Quá hạn' : 'Chưa làm'}
+            </span>
           )}
+
+          {/* 5. Delete and Checkmark info Tooltip */}
+          <div className="flex items-center gap-1">
+            {subTab === 'today' && permissions.canDelete && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleDeleteClick}
+                className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover/row:opacity-100"
+                tooltip="Xóa"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+
+            {subTab === 'today' && item.isCompleted && (item.checkedByName || item.checkedAt) && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
+                tooltip={
+                  <>
+                    <div className="font-bold border-b border-slate-800 pb-1.5 mb-1.5 flex items-center gap-1.5 text-emerald-400 text-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Đã hoàn thành</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-left">
+                      <p className="text-slate-300">
+                        Người thực hiện: <span className="font-semibold text-white">{item.checkedByName || 'N/A'}</span>
+                      </p>
+                      {item.checkedAt && (
+                        <p className="text-slate-400">
+                          Thời gian: <span className="font-semibold text-white">{formatCheckedAt(item.checkedAt)}</span>
+                        </p>
+                      )}
+                    </div>
+                  </>
+                }
+                tooltipClassName="w-56 p-3 rounded-xl shadow-xl animate-in fade-in zoom-in-95"
+              >
+                <Award className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -684,6 +720,7 @@ interface CategoryCardProps {
   onConfirmDeleteItem: (itemId: string, title: string) => void;
   onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
   onOpenDetail: (item: ChecklistItem) => void;
+  roleOptions: Array<{ code: string; name: string }>;
 }
 
 const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
@@ -699,6 +736,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   onConfirmDeleteItem,
   onAddInlineItem,
   onOpenDetail,
+  roleOptions,
 }: CategoryCardProps) {
   const ratio = cat.countTotal > 0 ? (cat.countDone / cat.countTotal) : 0;
   const isFinishedList = cat.countTotal > 0 && cat.countDone === cat.countTotal;
@@ -711,6 +749,10 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   const [newItemTimeLimit, setNewItemTimeLimit] = React.useState('08:00');
   const [isSubmittingNewItem, setIsSubmittingNewItem] = React.useState(false);
   const [uncheckTarget, setUncheckTarget] = React.useState<{ id: string; title: string; timeLimit: string } | null>(null);
+
+  const roleName = React.useMemo(() => {
+    return roleOptions.find((r) => r.code?.toUpperCase() === cat.roleCode?.toUpperCase())?.name || cat.title || 'Checklist vai trò';
+  }, [cat.roleCode, cat.title, roleOptions]);
 
   const handleSaveInlineItem = React.useCallback(async () => {
     const trimmed = newItemTitle.trim();
@@ -759,14 +801,18 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   return (
     <Card
       className={cn(
-        "font-sans w-full bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col gap-0 py-0 shadow-none",
-        isExpanded ? "border-slate-200 shadow-sm" : "border-slate-200/80 hover:shadow-sm"
+        "font-sans w-full bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col gap-0 py-0 shadow-none border-slate-200/80 hover:shadow-sm border-l-4",
+        isExpanded ? "border-slate-200 shadow-2xs" : ""
       )}
+      style={{ borderLeftColor: cat.meta.accentHex }}
     >
       {/* ── Category Header ─────────────────────────────────── */}
       <div
         onClick={handleHeaderClick}
-        className="w-full min-w-0 px-3 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 sm:gap-4 cursor-pointer select-none group/header animate-in fade-in"
+        className={cn(
+          "w-full min-w-0 px-3 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 sm:gap-4 cursor-pointer select-none group/header animate-in fade-in transition-colors",
+          isExpanded ? "bg-slate-50/40" : "hover:bg-slate-50/30"
+        )}
       >
         {/* Icon */}
         <span
@@ -782,7 +828,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <h3 className="text-sm font-extrabold tracking-tight text-slate-800 truncate" style={{ color: cat.meta.accentHex }}>
-              {cat.meta.label}
+              {roleName}
             </h3>
 
             {subTab !== 'process' && isFinishedList && (
@@ -792,27 +838,19 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
             )}
           </div>
 
-          {/* Progress bar row */}
-          <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-1.5">
-            {subTab === 'process' ? (
-              <span className="text-[11px] sm:text-xs font-bold text-slate-400">
-                {cat.countTotal} đầu việc chuẩn
+          {/* Minimalist Task count metadata (No horizontal progress bar to match template) */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400">
+              {subTab === 'process' || subTab === 'checklist_template' ? (
+                `${cat.countTotal} đầu việc`
+              ) : (
+                `${cat.countDone}/${cat.countTotal} hoàn thành`
+              )}
+            </span>
+            {subTab !== 'process' && subTab !== 'checklist_template' && cat.countTotal > 0 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100/80">
+                Hiệu suất: {percentText}%
               </span>
-            ) : (
-              <>
-                <span className="text-[11px] sm:text-xs font-bold text-slate-500 shrink-0">
-                  {cat.countDone}/{cat.countTotal} <span className="hidden sm:inline">việc hoàn thành</span>
-                </span>
-                <div className="hidden sm:block w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
-                  <div
-                    className={cn("h-full rounded-full transition-all duration-500 ease-out", cat.meta.barColor)}
-                    style={{ width: `${percentText}%` }}
-                  />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-slate-400 shrink-0">
-                  {percentText}%
-                </span>
-              </>
             )}
           </div>
         </div>
@@ -824,9 +862,9 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
               type="button"
               variant="outline"
               size="icon"
-              title="Chỉnh sửa nhóm"
               onClick={handleEditClick}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border-slate-150 text-slate-400 hover:text-blue-500 hover:bg-blue-50 hover:border-blue-100 flex items-center justify-center transition-colors cursor-pointer"
+              tooltip="Chỉnh sửa checklist mẫu"
             >
               <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </Button>
@@ -836,9 +874,9 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
               type="button"
               variant="outline"
               size="icon"
-              title="Xóa nhóm"
               onClick={handleDeleteClick}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border-slate-150 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center transition-colors cursor-pointer"
+              tooltip="Xóa checklist mẫu"
             >
               <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </Button>
@@ -950,7 +988,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
                 className="w-full sm:w-auto inline-flex items-center justify-start gap-1.5 text-left whitespace-normal break-words text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors p-0 h-auto active:scale-95"
               >
                 <Plus className="w-4 h-4 stroke-[2]" />
-                <span>Thêm đầu việc mới vào nhóm này</span>
+                <span>Thêm đầu việc mới cho vai trò này</span>
               </Button>
             </div>
           )}
@@ -1029,6 +1067,56 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string } | null>(null);
   const [activeDetailItem, setActiveDetailItem] = React.useState<ChecklistItem | null>(null);
 
+  React.useEffect(() => {
+    const handleOpenDetailEvent = (e: Event) => {
+      const task = (e as CustomEvent).detail as ChecklistItem;
+      if (task) {
+        setActiveDetailItem(task);
+      }
+    };
+    window.addEventListener('open-checklist-item-detail', handleOpenDetailEvent);
+    return () => {
+      window.removeEventListener('open-checklist-item-detail', handleOpenDetailEvent);
+    };
+  }, []);
+
+  // Sync activeDetailItem with the updated state from parent (filteredCategories & historyDateGroups)
+  React.useEffect(() => {
+    if (!activeDetailItem) return;
+
+    let found: ChecklistItem | undefined;
+    // Look up in filteredCategories first
+    for (const cat of filteredCategories) {
+      found = cat.tasks?.find((t) => t.id === activeDetailItem.id);
+      if (found) break;
+    }
+
+    // Look up in historyDateGroups if not found (e.g. History Tab)
+    if (!found && historyDateGroups) {
+      for (const group of historyDateGroups) {
+        for (const cat of group.categories) {
+          found = cat.tasks?.find((t) => t.id === activeDetailItem.id);
+          if (found) break;
+        }
+        if (found) break;
+      }
+    }
+
+    if (found) {
+      const isChanged =
+        found.isCompleted !== activeDetailItem.isCompleted ||
+        found.title !== activeDetailItem.title ||
+        found.timeLimit !== activeDetailItem.timeLimit ||
+        JSON.stringify(found.imageUrls) !== JSON.stringify(activeDetailItem.imageUrls) ||
+        found.checkedByName !== activeDetailItem.checkedByName ||
+        found.checkedAt !== activeDetailItem.checkedAt;
+
+      if (isChanged) {
+        setActiveDetailItem(found);
+      }
+    }
+  }, [filteredCategories, historyDateGroups, activeDetailItem]);
+
   // State for expanded date groups in history view (default: all expanded)
   const [expandedDates, setExpandedDates] = React.useState<Set<string>>(() => {
     return new Set(historyDateGroups.map((g) => g.dateKey));
@@ -1070,7 +1158,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   }, []);
 
   return (
-    <div className="font-sans grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div className="font-sans w-full space-y-3.5 text-left">
       {/* Detail Dialog */}
       {activeDetailItem && (
         <ChecklistItemDetailDialog
@@ -1082,7 +1170,6 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
           onUpdateItem={async (id, updates) => {
             if (onUpdateChecklistItem) {
               await onUpdateChecklistItem(id, updates);
-              // Update local state in dialog to reflect updates
               setActiveDetailItem((prev) => {
                 if (prev && prev.id === id) {
                   return { ...prev, ...updates };
@@ -1095,13 +1182,13 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
         />
       )}
 
-      {/* ── Category Cards Column ────────────────────────── */}
-      <ScrollArea className="w-full lg:col-span-8 h-auto lg:h-[calc(100dvh-230px)] pr-0 lg:pr-1" viewportClassName="w-full pr-0 sm:pr-2 [&>div]:w-full [&>div]:min-w-0 [&>div]:max-w-full overflow-x-hidden">
+      {/* Category Cards Column */}
+      <ScrollArea className="w-full h-auto lg:h-[calc(100dvh-260px)] pr-0 overflow-x-hidden" viewportClassName="w-full [&>div]:w-full">
         <div className="w-full space-y-3 pb-4">
           {isLoading ? (
             <Card className="bg-white p-10 text-center rounded-2xl border border-slate-200 gap-3 py-10 shadow-none flex flex-col items-center justify-center animate-in fade-in">
               <span className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin block" />
-              <p className="text-sm font-semibold text-slate-500">Dang tai checklist...</p>
+              <p className="text-sm font-semibold text-slate-500">Đang tải checklist...</p>
             </Card>
           ) : filteredCategories.length === 0 ? (
             <Card className="bg-white p-14 text-center rounded-2xl border border-dashed border-slate-200 gap-3 py-14 shadow-none flex flex-col items-center justify-center animate-in fade-in">
@@ -1120,6 +1207,15 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                 Đặt lại bộ lọc
               </Button>
             </Card>
+          ) : subTab === 'today' ? (
+            <ChecklistFlatTable
+              filteredCategories={filteredCategories}
+              permissions={permissions}
+              onToggleItem={onToggleItem}
+              editState={editState}
+              onDeleteItem={onDeleteItem}
+              onOpenDetail={setActiveDetailItem}
+            />
           ) : subTab === 'history' && historyDateGroups.length > 0 ? (
             historyDateGroups.map((group) => (
               <HistoryDateGroupCard
@@ -1143,6 +1239,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                     onConfirmDeleteItem={handleConfirmDeleteItem}
                     onAddInlineItem={onAddInlineItem}
                     onOpenDetail={setActiveDetailItem}
+                    roleOptions={roleOptions}
                   />
                 ))}
               </HistoryDateGroupCard>
@@ -1163,83 +1260,12 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
                 onConfirmDeleteItem={handleConfirmDeleteItem}
                 onAddInlineItem={onAddInlineItem}
                 onOpenDetail={setActiveDetailItem}
+                roleOptions={roleOptions}
               />
             ))
           )}
         </div>
       </ScrollArea>
-
-      {/* ── KPI Sidebar ──────────────────────────────────── */}
-      <div className="lg:col-span-4 space-y-3">
-        {/* Stats card */}
-        <Card className="bg-white rounded-2xl border border-slate-200/80 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-none">
-          {/* Top accent bar */}
-          <div className="h-1 bg-gradient-to-r from-slate-400 via-slate-600 to-slate-800" />
-
-          <div className="p-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-slate-400" />
-              Thống kê tiến độ hôm nay
-            </h3>
-
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
-              <div className="p-3 bg-emerald-50/60 border border-emerald-100/80 rounded-xl">
-                <span className="text-[11px] font-bold uppercase text-emerald-600 tracking-wider block">Đúng hạn</span>
-                <div className="flex items-baseline justify-between mt-1.5">
-                  <span className="text-xl font-extrabold text-emerald-700 tabular-nums">{kpiStats.onTimeCount}</span>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded tabular-nums">{kpiStats.onTimePercent}%</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-rose-50/60 border border-rose-100/80 rounded-xl">
-                <span className="text-[11px] font-bold uppercase text-rose-600 tracking-wider block">Trễ hạn</span>
-                <div className="flex items-baseline justify-between mt-1.5">
-                  <span className="text-xl font-extrabold text-rose-700 tabular-nums">{kpiStats.lateCount}</span>
-                  <span className="text-[11px] font-bold text-rose-600 bg-rose-100/60 px-1.5 py-0.5 rounded tabular-nums">{kpiStats.latePercent}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Overall progress */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>Tổng hoàn thành</span>
-                <span className="tabular-nums">{kpiStats.completedCount}/{kpiStats.total} ({kpiStats.completionPercent}%)</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-                <div
-                  className="bg-emerald-500 h-full transition-all duration-500 ease-out"
-                  style={{ width: `${kpiStats.total > 0 ? (kpiStats.onTimeCount / kpiStats.total) * 100 : 0}%` }}
-                  title="Đúng hạn"
-                />
-                <div
-                  className="bg-rose-500 h-full transition-all duration-500 ease-out"
-                  style={{ width: `${kpiStats.total > 0 ? (kpiStats.lateCount / kpiStats.total) * 100 : 0}%` }}
-                  title="Trễ hạn"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-400 pt-0.5">
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Đúng hạn</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />Trễ hạn</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-200" />Chưa xong</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Info note */}
-        <Card className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 text-left flex flex-col gap-1.5 py-3.5 shadow-none">
-          <div className="flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Ghi chú</h4>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed font-medium">
-            Báo cáo đúng hạn checklist giúp tăng 15% điểm thưởng KPI chất lượng dịch vụ showroom. Các đầu việc tiền mặt và bàn giao két an toàn bắt buộc đính kèm minh chứng hình ảnh thực tế.
-          </p>
-        </Card>
-      </div>
 
       {/* Delete Category Confirmation */}
       <DeleteConfirm
@@ -1247,9 +1273,9 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
         onOpenChange={(open) => {
           if (!open) setDeleteCategoryTarget(null);
         }}
-        title="Xóa nhóm công việc"
-        description={`Bạn có chắc chắn muốn xóa nhóm "${deleteCategoryTarget?.title || ''}"? Tất cả công việc bên trong cũng sẽ bị xóa vĩnh viễn.`}
-        confirmText="Xóa nhóm"
+        title="Xóa checklist mẫu"
+        description={`Bạn có chắc chắn muốn xóa checklist mẫu của vai trò "${deleteCategoryTarget?.title || ''}"? Tất cả công việc bên trong cũng sẽ bị xóa vĩnh viễn.`}
+        confirmText="Xóa checklist"
         cancelText="Hủy"
         onConfirm={async () => {
           if (deleteCategoryTarget && onDeleteCategory) {
@@ -1276,7 +1302,6 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
           setDeleteItemTarget(null);
         }}
       />
-
     </div>
   );
 });

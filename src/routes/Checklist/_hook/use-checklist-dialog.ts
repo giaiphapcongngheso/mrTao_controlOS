@@ -21,17 +21,17 @@ export type EditableChecklistCategory = {
 };
 
 export const checklistFormSchema = z.object({
-  roleCode: z.string().min(1, 'Vui long chon vai tro'),
-  title: z.string().trim().min(1, 'Vui long dien ten nhom cong viec'),
-  iconName: z.string().min(1, 'Vui long chon icon'),
-  colorKey: z.string().min(1, 'Vui long chon mau'),
+  roleCode: z.string().min(1, 'Vui lòng chọn vai trò'),
+  title: z.string().optional(),
+  iconName: z.string().min(1, 'Vui lòng chọn icon'),
+  colorKey: z.string().min(1, 'Vui lòng chọn màu'),
   tasks: z.array(
     z.object({
       id: z.string().optional(),
-      title: z.string().trim().min(1, 'Vui long dien noi dung cong viec'),
-      timeLimit: z.string().min(1, 'Vui long chon gio quy dinh'),
+      title: z.string().trim().min(1, 'Vui lòng điền nội dung công việc'),
+      timeLimit: z.string().min(1, 'Vui lòng chọn giờ quy định'),
     }),
-  ).min(1, 'Vui long them it nhat 1 cong viec'),
+  ).min(1, 'Vui lòng thêm ít nhất 1 công việc'),
 });
 
 export type ChecklistFormValues = z.infer<typeof checklistFormSchema>;
@@ -122,11 +122,11 @@ export function useChecklistDialog({
     setDialogError(null);
 
     if (!onSaveCategoryBatch) {
-      setDialogError('Khong the luu checklist do thieu cau hinh callback.');
+      setDialogError('Không thể lưu checklist do thiếu cấu hình callback.');
       return;
     }
 
-    const categoryTitle = values.title.trim();
+    const categoryTitle = (values.title || '').trim();
     const validTasks = values.tasks
       .map((task) => ({
         id: task.id,
@@ -136,7 +136,7 @@ export function useChecklistDialog({
       .filter((task) => task.title.length > 0);
 
     if (validTasks.length === 0) {
-      setDialogError('Vui long them it nhat 1 noi dung cong viec.');
+      setDialogError('Vui lòng thêm ít nhất 1 nội dung công việc.');
       return;
     }
 
@@ -155,7 +155,7 @@ export function useChecklistDialog({
       setDialogEditCategoryId(null);
       setDialogInitialValues(null);
     } catch (err: any) {
-      setDialogError(err?.message || 'Khong the luu checklist. Vui long kiem tra du lieu va thu lai.');
+      setDialogError(err?.message || 'Không thể lưu checklist. Vui lòng kiểm tra dữ liệu và thử lại.');
       throw err;
     } finally {
       setIsSubmittingDialog(false);

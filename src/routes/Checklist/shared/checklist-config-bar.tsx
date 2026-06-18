@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
 interface ChecklistConfigBarProps {
-  subTab: 'today' | 'process' | 'history';
+  subTab: 'today' | 'checklist_template' | 'process' | 'history';
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange) => void;
 }

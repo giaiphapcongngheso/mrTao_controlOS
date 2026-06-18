@@ -20,6 +20,7 @@ export type SaveCategoryTaskInput = {
   id?: string;
   title: string;
   timeLimit?: string;
+  isRequired?: boolean;
 };
 
 export type ChecklistRoleOption = {
@@ -48,6 +49,7 @@ export type PendingTemplateSyncState = {
   snapshotTitle: string;
   previousTemplateTaskIds: string[];
   updatedTemplateTasks: ChecklistTemplateTask[];
+  evidenceRequired?: string;
 };
 
 export const EMPTY_CHECKLIST_DATA_STATE: ChecklistDataState = {
@@ -78,6 +80,7 @@ export function normalizeTaskInputs(tasks: SaveCategoryTaskInput[]): SaveCategor
       id: task.id,
       title: task.title.trim(),
       timeLimit: task.timeLimit?.trim() || undefined,
+      isRequired: task.isRequired,
     }))
     .filter((task) => task.title.length > 0);
 }
@@ -87,6 +90,7 @@ export function toTemplateTasks(tasks: SaveCategoryTaskInput[]): ChecklistTempla
     id: task.id || initBaseEntity('t').id,
     title: task.title,
     timeLimit: task.timeLimit,
+    isRequired: task.isRequired,
   }));
 }
 
@@ -94,6 +98,7 @@ export function toSnapshotTasks(
   tasks: SaveCategoryTaskInput[],
   templateId: string,
   todayKey = getTodayKey(),
+  evidenceRequired?: string,
 ): ChecklistTask[] {
   return normalizeTaskInputs(tasks).map((task) => ({
     ...initBaseEntity('t', task.id),
@@ -105,6 +110,8 @@ export function toSnapshotTasks(
     checkedAt: null,
     checkedByName: null,
     checkedByUsername: null,
+    isRequired: task.isRequired,
+    evidenceRequired,
   }));
 }
 
@@ -130,6 +137,8 @@ export function buildDailySnapshot(
       checkedAt: null,
       checkedByName: null,
       checkedByUsername: null,
+      isRequired: task.isRequired,
+      evidenceRequired: template.evidenceRequired,
     })),
   );
 
@@ -156,9 +165,10 @@ export function flattenSnapshotTask(
   task: ChecklistTask,
   templateLookup?: Map<string, ChecklistTemplateDocument>,
 ): ChecklistItem {
-  const templateTitle = task.templateId && templateLookup
-    ? templateLookup.get(task.templateId)?.title
+  const template = task.templateId && templateLookup
+    ? templateLookup.get(task.templateId)
     : undefined;
+  const templateTitle = template?.title || template?.roleCode;
 
   return {
     id: task.id,
@@ -180,6 +190,8 @@ export function flattenSnapshotTask(
     deletedByName: task.deletedByName,
     deletedByUsername: task.deletedByUsername,
     imageUrls: task.imageUrls || [],
+    isRequired: task.isRequired !== undefined ? task.isRequired : template?.tasks?.find(t => t.id === task.id)?.isRequired,
+    evidenceRequired: task.evidenceRequired || template?.evidenceRequired,
   };
 }
 
@@ -250,7 +262,7 @@ export function deriveChecklistState(
     return {
       id: template.id,
       storeId: template.storeId,
-      title: template.title,
+      title: template.title || template.roleCode,
       countDone: doneCount,
       countTotal: catItems.length,
       isCompleted: catItems.length > 0 && doneCount === catItems.length,
@@ -309,8 +321,9 @@ export function mergeTemplateTasksIntoSnapshot(params: {
   pendingSync: PendingTemplateSyncState;
   nowIso: string;
   todayKey: string;
+  evidenceRequired?: string;
 }): ChecklistTask[] {
-  const { snapshot, pendingSync, nowIso, todayKey } = params;
+  const { snapshot, pendingSync, nowIso, todayKey, evidenceRequired } = params;
   const previousTaskIdSet = new Set(pendingSync.previousTemplateTaskIds);
   const nextTemplateTaskMap = new Map(pendingSync.updatedTemplateTasks.map((task) => [task.id, task] as const));
 
@@ -343,6 +356,8 @@ export function mergeTemplateTasksIntoSnapshot(params: {
       ...snapshotTask,
       title: nextTemplateTask.title,
       timeLimit: nextTemplateTask.timeLimit,
+      isRequired: nextTemplateTask.isRequired,
+      evidenceRequired: evidenceRequired || snapshotTask.evidenceRequired,
       updatedAt: nowIso,
     });
   }
@@ -362,6 +377,8 @@ export function mergeTemplateTasksIntoSnapshot(params: {
       checkedAt: null,
       checkedByName: null,
       checkedByUsername: null,
+      isRequired: templateTask.isRequired,
+      evidenceRequired,
     });
   }
 

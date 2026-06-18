@@ -1,15 +1,16 @@
 import { useMemo, useRef } from 'react';
-import { ChecklistCategory, ChecklistItem, ProcessDocument, ChecklistDocument } from '../../../types/checklist.types';
-import type { ChecklistViewCategory, HistoryDateGroup } from '../components/checklist-view.types';
-import type { CategoryMeta } from '../components/checklist-view.types';
+import { ChecklistCategory, ChecklistItem, ProcessDocument, ChecklistDocument, ChecklistTemplateDocument } from '../../../types/checklist.types';
+import type { ChecklistViewCategory, HistoryDateGroup } from '../checklist-view.types';
+import type { CategoryMeta } from '../checklist-view.types';
 import { getCategoryMeta, getTodayKey, formatDateKeyToVietnamese } from '../checklist-utils';
 
 interface UseFilteredCategoriesProps {
   todayCategories: ChecklistCategory[];
+  templates: ChecklistTemplateDocument[];
   processes: ProcessDocument[];
   items: ChecklistItem[];
   historySnapshots: ChecklistDocument[];
-  subTab: 'today' | 'process' | 'history';
+  subTab: 'today' | 'checklist_template' | 'process' | 'history';
   searchTerm: string;
   selectedRoleCode: string;
   completedViewMode: 'day' | 'week';
@@ -50,6 +51,7 @@ function matchesProcessSearch(process: ProcessDocument, searchLower: string): bo
  */
 export function useFilteredCategories({
   todayCategories,
+  templates,
   processes,
   items,
   historySnapshots = [],
@@ -86,6 +88,64 @@ export function useFilteredCategories({
     const filteredProcesses = processes.filter(
       (process) => matchesSelectedRole(process.roleCode) && matchesProcessSearch(process, searchLower),
     );
+
+    // 1. Checklist Templates Tab
+    if (subTab === 'checklist_template') {
+      const templatesForRole = hasRoleFilter
+        ? templates.filter((t) => matchesSelectedRole(t.roleCode))
+        : templates;
+
+      const filteredCategories = templatesForRole
+        .map((template, index) => {
+          const meta = getStableMeta(template.title || template.roleCode, index, template.colorKey);
+
+          const flatTasks: ChecklistItem[] = (template.tasks || []).map((task) => ({
+            id: task.id,
+            storeId: template.storeId,
+            categoryId: template.id,
+            templateId: template.id,
+            title: task.title,
+            isCompleted: false,
+            timeLimit: task.timeLimit,
+            roleCode: template.roleCode,
+            dateKey: '',
+            checklistName: template.title || template.roleCode,
+            createdAt: template.createdAt,
+            updatedAt: template.updatedAt,
+            imageUrls: [],
+          }));
+
+          const filteredTasks = flatTasks.filter((it) =>
+            it.title.toLowerCase().includes(searchLower)
+          );
+
+          return {
+            id: template.id,
+            storeId: template.storeId,
+            roleCode: template.roleCode,
+            title: template.title || template.roleCode,
+            iconName: template.iconName || 'ClipboardList',
+            colorKey: template.colorKey || 'gray',
+            countDone: 0,
+            countTotal: flatTasks.length,
+            isCompleted: false,
+            meta,
+            tasks: filteredTasks,
+          };
+        })
+        .filter((cat) => {
+          if (hasSearch) {
+            return cat.tasks.length > 0;
+          }
+          return true;
+        });
+
+      return {
+        filteredCategories,
+        filteredProcesses,
+        historyDateGroups: [] as HistoryDateGroup[],
+      };
+    }
 
     // 2. History items (subTab === 'history')
     if (subTab === 'history') {
@@ -249,6 +309,7 @@ export function useFilteredCategories({
     };
   }, [
     todayCategories,
+    templates,
     processes,
     items,
     historySnapshots,

@@ -22,6 +22,7 @@ export default function ChecklistContainer({
     roleOptions,
     isLoading,
     permissions,
+    templates,
     historySnapshots,
     historyLoading,
     fetchHistoryByDateRange,
@@ -39,6 +40,7 @@ export default function ChecklistContainer({
     handleCreateProcess,
     handleUpdateProcess,
     handleDeleteProcess,
+    refreshChecklistData,
   } = useChecklist({
     currentUser,
     isOwner,
@@ -49,6 +51,7 @@ export default function ChecklistContainer({
   return (
     <ChecklistView
       todayCategories={derivedState.todayCategories}
+      templates={templates}
       processes={derivedState.processes}
       items={derivedState.todayItems}
       historySnapshots={historySnapshots}
@@ -80,6 +83,7 @@ export default function ChecklistContainer({
       permissions={permissions}
       isLoading={isLoading}
       isOwner={isOwner}
+      onRefresh={refreshChecklistData}
     />
   );
 }
