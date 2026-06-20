@@ -45,7 +45,15 @@ interface ChecklistViewProps {
     roleCode: string;
     iconName: string;
     colorKey: string;
-    tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
+    tasks: Array<{ id?: string; title: string; timeLimit?: string; isRequired?: boolean; evidenceRequired?: boolean }>;
+    frequency?: string;
+    frequencyDetail?: string;
+    shift?: string;
+    autoCreateDaily?: boolean;
+    status?: string;
+    defaultAssignee?: string;
+    inspectorId?: string;
+    inspectorName?: string;
   }) => Promise<void>;
   onRequestEditCategory?: (
     categoryId: string,
@@ -55,7 +63,15 @@ interface ChecklistViewProps {
     roleCode: string;
     iconName?: string;
     colorKey?: string;
-    tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
+    tasks: Array<{ id?: string; title: string; timeLimit?: string; isRequired?: boolean; evidenceRequired?: boolean }>;
+    frequency?: string;
+    frequencyDetail?: string;
+    shift?: string;
+    autoCreateDaily?: boolean;
+    status?: string;
+    defaultAssignee?: string;
+    inspectorId?: string;
+    inspectorName?: string;
   } | null>;
   onDeleteCategory?: (id: string) => Promise<void>;
   onDeleteChecklistItem?: (itemId: string, dateKey?: string) => Promise<void>;

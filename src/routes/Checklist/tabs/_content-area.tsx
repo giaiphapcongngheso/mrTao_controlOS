@@ -148,7 +148,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
       <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md md:max-w-lg !p-0 !border-0 overflow-y-auto bg-white shadow-2xl font-sans h-full flex flex-col"
+          className="w-full sm:max-w-md md:max-w-lg !p-0 !border-0 overflow-visible bg-white shadow-2xl font-sans h-full flex flex-col"
         >
           <SheetTitle className="sr-only">Checklist Details</SheetTitle>
           
@@ -389,7 +389,7 @@ interface TaskEditState {
   setEditingItemId: React.Dispatch<React.SetStateAction<string | null>>;
   setEditItemTitle: React.Dispatch<React.SetStateAction<string>>;
   setEditItemTimeLimit: React.Dispatch<React.SetStateAction<string>>;
-  onInlineSave: (itemId: string) => Promise<void>;
+  onInlineSave: (itemId: string, dateKey?: string) => Promise<void>;
 }
 
 interface ChecklistTaskItemProps {
@@ -397,9 +397,9 @@ interface ChecklistTaskItemProps {
   subTab: ChecklistSubTab;
   permissions: ChecklistPermissions;
   editState: TaskEditState;
-  onToggleItem: (itemId: string) => void;
-  onConfirmDeleteItem: (itemId: string, title: string) => void;
-  setUncheckTarget: React.Dispatch<React.SetStateAction<{ id: string; title: string; timeLimit: string } | null>>;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
+  onConfirmDeleteItem: (itemId: string, title: string, dateKey?: string) => void;
+  setUncheckTarget: React.Dispatch<React.SetStateAction<{ id: string; title: string; timeLimit: string; dateKey?: string } | null>>;
   onOpenDetail: (item: ChecklistItem) => void;
 }
 
@@ -722,11 +722,11 @@ interface CategoryCardProps {
   subTab: ChecklistSubTab;
   permissions: ChecklistPermissions;
   onToggleExpand: (categoryId: string) => void;
-  onToggleItem: (itemId: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
   onConfirmDeleteCategory: (id: string, title: string) => void;
   onOpenEditCategoryDialog: (cat: ChecklistViewCategory) => void;
   editState: TaskEditState;
-  onConfirmDeleteItem: (itemId: string, title: string) => void;
+  onConfirmDeleteItem: (itemId: string, title: string, dateKey?: string) => void;
   onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
   onOpenDetail: (item: ChecklistItem) => void;
   roleOptions: Array<{ code: string; name: string }>;
@@ -1049,7 +1049,7 @@ interface ChecklistContentAreaProps {
     completionPercent: number;
   };
   roleOptions: Array<{ code: string; name: string }>;
-  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => Promise<void>;
   historyDateGroups?: HistoryDateGroup[];
 }
 

@@ -24,7 +24,6 @@ const templateFormSchema = z.object({
   frequencyDetail: z.string().optional(),
   shift: z.string().min(1, 'Vui lòng chọn ca áp dụng'),
   autoCreateDaily: z.boolean(),
-  evidenceRequired: z.string().min(1, 'Vui lòng chọn yêu cầu bằng chứng'),
   status: z.string().min(1, 'Vui lòng chọn trạng thái'),
   defaultAssignee: z.string().min(1, 'Vui lòng chọn người thực hiện mặc định'),
   inspectorId: z.string().min(1, 'Vui lòng chọn người kiểm tra'),
@@ -34,6 +33,7 @@ const templateFormSchema = z.object({
       title: z.string().trim().min(1, 'Vui lòng điền nội dung công việc'),
       timeLimit: z.string().min(1, 'Vui lòng chọn giờ quy định'),
       isRequired: z.boolean(),
+      evidenceRequired: z.boolean().optional(),
     })
   ).min(1, 'Vui lòng thêm ít nhất 1 đầu việc'),
 });
@@ -114,11 +114,10 @@ export default function ChecklistTemplateTabContent({
       frequencyDetail: '',
       shift: 'all_day',
       autoCreateDaily: true,
-      evidenceRequired: 'optional',
       status: 'active',
       defaultAssignee: 'all_staff',
       inspectorId: '',
-      tasks: [{ title: '', timeLimit: '08:00', isRequired: false }],
+      tasks: [{ title: '', timeLimit: '08:00', isRequired: false, evidenceRequired: false }],
     },
   });
 
@@ -184,11 +183,10 @@ export default function ChecklistTemplateTabContent({
         frequencyDetail: '',
         shift: 'all_day',
         autoCreateDaily: true,
-        evidenceRequired: 'optional',
         status: 'active',
         defaultAssignee: 'all_staff',
         inspectorId: staffList[0]?.id || '',
-        tasks: [{ title: '', timeLimit: '08:00', isRequired: false }],
+        tasks: [{ title: '', timeLimit: '08:00', isRequired: false, evidenceRequired: false }],
       });
     } else {
       setEditingTemplateId(template.id);
@@ -199,7 +197,6 @@ export default function ChecklistTemplateTabContent({
         frequencyDetail: template.frequencyDetail || '',
         shift: template.shift || 'all_day',
         autoCreateDaily: template.autoCreateDaily !== false,
-        evidenceRequired: template.evidenceRequired || 'optional',
         status: template.status || 'active',
         defaultAssignee: template.defaultAssignee || 'all_staff',
         inspectorId: template.inspectorId || '',
@@ -208,6 +205,7 @@ export default function ChecklistTemplateTabContent({
           title: task.title,
           timeLimit: task.timeLimit || '08:00',
           isRequired: task.isRequired === true,
+          evidenceRequired: task.evidenceRequired === true,
         })),
       });
     }
@@ -453,6 +451,34 @@ export default function ChecklistTemplateTabContent({
       },
     },
     {
+      id: 'evidenceRequired',
+      header: () => <div className="text-center w-full">Bắt buộc ảnh</div>,
+      size: 90,
+      cell: ({ row }) => {
+        const idx = row.index;
+        return (
+          <div className="flex items-center justify-center">
+            <FormField
+              control={form.control}
+              name={`tasks.${idx}.evidenceRequired`}
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-center space-y-0 h-6">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value === true}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="rounded border-slate-300 text-[#C21A1A] focus:ring-[#C21A1A]/30 w-4 h-4 cursor-pointer"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        );
+      },
+    },
+    {
       id: 'actions',
       header: '',
       size: 50,
@@ -492,12 +518,12 @@ export default function ChecklistTemplateTabContent({
           title: t.title.trim(),
           timeLimit: t.timeLimit,
           isRequired: t.isRequired,
+          evidenceRequired: t.evidenceRequired === true,
         })),
         frequency: values.frequency,
         frequencyDetail: values.frequencyDetail,
         shift: values.shift,
         autoCreateDaily: values.autoCreateDaily,
-        evidenceRequired: values.evidenceRequired,
         status: values.status,
         defaultAssignee: values.defaultAssignee,
         inspectorId: values.inspectorId,
@@ -686,6 +712,7 @@ export default function ChecklistTemplateTabContent({
                                 options={roleOptions.map(r => ({ label: r.name, value: r.code }))}
                                 clearable={false}
                                 disabled={editingTemplateId !== 'new'}
+                                placeholder="Chọn vai trò..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -709,6 +736,7 @@ export default function ChecklistTemplateTabContent({
                                 onChangeValue={field.onChange}
                                 options={staffOptions}
                                 clearable={false}
+                                placeholder="Chọn người thực hiện..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -733,6 +761,7 @@ export default function ChecklistTemplateTabContent({
                               onChangeValue={field.onChange}
                               options={inspectorOptions}
                               clearable={false}
+                              placeholder="Chọn người kiểm tra..."
                               className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                             />
                           </FormControl>
@@ -761,6 +790,7 @@ export default function ChecklistTemplateTabContent({
                                 }}
                                 options={frequencyOptions}
                                 clearable={false}
+                                placeholder="Chọn tần suất..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -789,6 +819,7 @@ export default function ChecklistTemplateTabContent({
                                   { label: 'Ca tối', value: 'night' }
                                 ]}
                                 clearable={false}
+                                placeholder="Chọn ca áp dụng..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -814,6 +845,7 @@ export default function ChecklistTemplateTabContent({
                                 onChangeValue={field.onChange}
                                 options={weekdayOptions}
                                 clearable={false}
+                                placeholder="Chọn thứ trong tuần..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -838,6 +870,7 @@ export default function ChecklistTemplateTabContent({
                                 onChangeValue={field.onChange}
                                 options={dayOfMonthOptions}
                                 clearable={false}
+                                placeholder="Chọn ngày trong tháng..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />
                             </FormControl>
@@ -847,48 +880,23 @@ export default function ChecklistTemplateTabContent({
                       />
                     )}
 
-                    {/* Toggle switch: Tự động sinh hàng ngày */}
-                    <div className="flex items-center justify-between gap-4 p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
-                      <FormField
-                        control={form.control}
-                        name="autoCreateDaily"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between gap-3 w-full space-y-0">
-                            <div className="flex flex-col text-left">
-                              <span className="text-xs font-bold text-slate-700 leading-normal">Tự động sinh checklist</span>
-                              <span className="text-[10px] text-slate-400 leading-normal font-medium">Hệ thống tự tạo checklist cho ca làm việc</span>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="data-[state=checked]:bg-[#C21A1A]"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* Grid 2 cột: Bắt buộc ảnh & Trạng thái hoạt động đặt ngang nhau */}
-                    <div className="grid grid-cols-2 gap-3.5">
-                      {/* Toggle: Yêu cầu bằng chứng ảnh */}
+                    {/* Toggle switches row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Toggle switch: Tự động sinh hàng ngày */}
                       <div className="flex items-center justify-between gap-4 p-3 bg-slate-50/50 border border-slate-100 rounded-xl">
                         <FormField
                           control={form.control}
-                          name="evidenceRequired"
+                          name="autoCreateDaily"
                           render={({ field }) => (
                             <FormItem className="flex items-center justify-between gap-3 w-full space-y-0">
                               <div className="flex flex-col text-left">
-                                <span className="text-xs font-bold text-slate-700 leading-normal">Bắt buộc ảnh</span>
-                                <span className="text-[10px] text-slate-400 leading-normal font-medium">Yêu cầu chụp minh chứng</span>
+                                <span className="text-xs font-bold text-slate-700 leading-normal">Tự động sinh checklist</span>
+                                <span className="text-[10px] text-slate-400 leading-normal font-medium">Hệ thống tự tạo checklist cho ca làm việc</span>
                               </div>
                               <FormControl>
                                 <Switch
-                                  checked={field.value === 'required'}
-                                  onCheckedChange={(checked) => {
-                                    field.onChange(checked ? 'required' : 'optional');
-                                  }}
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
                                   className="data-[state=checked]:bg-[#C21A1A]"
                                 />
                               </FormControl>
@@ -933,7 +941,7 @@ export default function ChecklistTemplateTabContent({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => append({ title: '', timeLimit: '08:00', isRequired: false })}
+                          onClick={() => append({ title: '', timeLimit: '08:00', isRequired: false, evidenceRequired: false })}
                           className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold h-8 px-2.5 rounded-xl border border-slate-200"
                         >
                           <Plus className="size-3.5 stroke-[2.5]" />
@@ -953,7 +961,7 @@ export default function ChecklistTemplateTabContent({
                           enableColumnVisibility={false}
                           showFilterRow={false}
                           emptyMessage="Chưa có đầu việc nào."
-                          tableMinWidth={550}
+                          tableMinWidth={640}
                           enableInternalVerticalScroll={false}
                           className="w-full border-0 shadow-none bg-transparent [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:text-[10px] [&_th]:font-black"
                         />

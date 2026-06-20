@@ -348,7 +348,7 @@ export function useChecklist({
           checkedByName: null,
           checkedByUsername: null,
           isRequired: task.isRequired,
-          evidenceRequired: template.evidenceRequired,
+          evidenceRequired: task.evidenceRequired === true,
         })),
       );
 
@@ -498,7 +498,7 @@ export function useChecklist({
     const { doc: targetDoc, task: targetTask } = found;
     const nextCompleted = !targetTask.isCompleted;
 
-    if (nextCompleted && targetTask.evidenceRequired === 'required') {
+    if (nextCompleted && targetTask.evidenceRequired) {
       const imagesCount = (targetTask.imageUrls || []).length;
       if (imagesCount === 0) {
         toastError(`Bắt buộc phải tải ảnh minh chứng trước khi hoàn thành đầu việc "${targetTask.title}"!`);
@@ -761,7 +761,6 @@ export function useChecklist({
     frequencyDetail?: string;
     shift?: string;
     autoCreateDaily?: boolean;
-    evidenceRequired?: string;
     status?: string;
     defaultAssignee?: string;
     inspectorId?: string;
@@ -805,7 +804,6 @@ export function useChecklist({
         frequencyDetail: params.frequencyDetail,
         shift: params.shift,
         autoCreateDaily: params.autoCreateDaily,
-        evidenceRequired: params.evidenceRequired,
         status: params.status,
         defaultAssignee: params.defaultAssignee,
         inspectorId: params.inspectorId,
@@ -828,7 +826,6 @@ export function useChecklist({
           snapshotTitle: todayKey,
           previousTemplateTaskIds: originalTemplate.tasks.map((task) => task.id),
           updatedTemplateTasks: templateTasks,
-          evidenceRequired: params.evidenceRequired,
         });
       }
 
@@ -844,7 +841,6 @@ export function useChecklist({
           frequencyDetail: params.frequencyDetail,
           shift: params.shift,
           autoCreateDaily: params.autoCreateDaily,
-          evidenceRequired: params.evidenceRequired,
           status: params.status,
           defaultAssignee: params.defaultAssignee,
           inspectorId: params.inspectorId,
@@ -876,7 +872,6 @@ export function useChecklist({
         frequencyDetail: params.frequencyDetail,
         shift: params.shift,
         autoCreateDaily: params.autoCreateDaily,
-        evidenceRequired: params.evidenceRequired,
         status: params.status,
         defaultAssignee: params.defaultAssignee,
         inspectorId: params.inspectorId,
@@ -910,7 +905,7 @@ export function useChecklist({
       let updatedSnapshot: ChecklistDocument;
       let shouldCreateSnapshot = false;
       if (existingSnapshot) {
-        const extraTasks = toSnapshotTasks(params.tasks, newTemplate.id, todayKey, params.evidenceRequired);
+        const extraTasks = toSnapshotTasks(params.tasks, newTemplate.id, todayKey);
         updatedSnapshot = {
           ...existingSnapshot,
           tasks: [...existingSnapshot.tasks, ...extraTasks],
@@ -978,12 +973,12 @@ export function useChecklist({
         title: task.title,
         timeLimit: task.timeLimit,
         isRequired: task.isRequired,
+        evidenceRequired: task.evidenceRequired === true,
       })),
       frequency: targetTemplate.frequency,
       frequencyDetail: targetTemplate.frequencyDetail,
       shift: targetTemplate.shift,
       autoCreateDaily: targetTemplate.autoCreateDaily,
-      evidenceRequired: targetTemplate.evidenceRequired,
       status: targetTemplate.status,
       defaultAssignee: targetTemplate.defaultAssignee,
       inspectorId: targetTemplate.inspectorId,
@@ -1073,7 +1068,6 @@ export function useChecklist({
       pendingSync: pendingTemplateSync,
       nowIso,
       todayKey: getTodayKey(),
-      evidenceRequired: pendingTemplateSync.evidenceRequired,
     });
     const updatedSnapshot = {
       ...snapshot,

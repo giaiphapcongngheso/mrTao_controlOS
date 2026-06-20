@@ -411,6 +411,7 @@ const AttachmentItem = React.memo(function AttachmentItem({
               { label: 'Định dạng khác', value: 'other' },
             ]}
             clearable={false}
+            placeholder="Chọn định dạng file..."
             className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer text-xs"
           />
         </div>
@@ -847,6 +848,7 @@ const ProcessCreateDialog = React.memo(function ProcessCreateDialog({
                       value: role.code,
                     }))}
                     clearable={false}
+                    placeholder="Chọn vai trò áp dụng..."
                     className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl cursor-pointer transition-colors text-xs"
                   />
                 </div>

@@ -85,11 +85,11 @@ function TableHead({ className, sticky, tooltip, children, ...props }: TableHead
     <th
       data-slot="table-head"
       className={cn(
-        'relative bg-primary text-primary-foreground h-11 px-4 text-left align-middle font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md',
+        'relative bg-slate-50 text-slate-800 h-11 px-4 text-left align-middle font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:rounded-tl-md [&:last-child]:rounded-tr-md border-b border-slate-100',
         {
           // darker, more neutral shadow so it stands out from table shadow
-          'sticky left-0 z-10 bg-primary shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'left',
-          'sticky right-0 z-10 bg-primary shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'right',
+          'sticky left-0 z-10 bg-slate-50 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'left',
+          'sticky right-0 z-10 bg-slate-50 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]': sticky === 'right',
         },
         className,
       )}

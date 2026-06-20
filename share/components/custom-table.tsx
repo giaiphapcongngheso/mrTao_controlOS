@@ -379,7 +379,7 @@ function TableHeaderCell<TData>({
       style={finalStyle}
       className={cn(
         isSelectOrExpander && '!w-[40px] !min-w-[40px] !max-w-[40px] !px-2',
-        sticky && 'bg-primary z-10',
+        sticky && 'bg-slate-50 z-10',
         sticky === 'left' && 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]',
         sticky === 'right' && 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]',
       )}
@@ -390,32 +390,32 @@ function TableHeaderCell<TData>({
           <div className="w-full flex items-center justify-between py-1">
             <div
               className={cn(
-                'flex-1 flex  items-center gap-1 break-words whitespace-normal rounded-md py-1 px-1 -mx-1 transition-colors',
+                'flex-1 flex items-center gap-1 break-words whitespace-normal rounded-md py-1 px-1 -mx-1 transition-colors',
                 isSelectOrExpander && 'justify-center',
-                enableSorting && canSort && 'cursor-pointer hover:bg-white/15',
-                enableSorting && canSort && isSorted && 'bg-white/15',
+                enableSorting && canSort && 'cursor-pointer hover:bg-slate-200/50 text-slate-800',
+                enableSorting && canSort && isSorted && 'bg-slate-200/50 text-slate-800',
               )}
               onClick={
                 enableSorting && canSort
                   ? () => {
-                    if (!isSorted) {
-                      header.column.toggleSorting(false);
-                    } else if (isSorted === 'asc') {
-                      header.column.toggleSorting(true);
-                    } else {
-                      header.column.clearSorting();
+                      if (!isSorted) {
+                        header.column.toggleSorting(false);
+                      } else if (isSorted === 'asc') {
+                        header.column.toggleSorting(true);
+                      } else {
+                        header.column.clearSorting();
+                      }
                     }
-                  }
                   : undefined
               }
             >
               {headerContent}
               {enableSorting && canSort && isSorted && (
-                <span className="shrink-0 inline-flex items-center justify-center h-4 w-4 text-white/70">
+                <span className="shrink-0 inline-flex items-center justify-center h-4 w-4 text-slate-500">
                   {isSorted === 'asc' ? (
-                    <ChevronDown className="h-4 w-4 text-white" />
+                    <ChevronDown className="h-4 w-4 text-slate-700" />
                   ) : (
-                    <ChevronUp className="h-4 w-4 text-white" />
+                    <ChevronUp className="h-4 w-4 text-slate-700" />
                   )}
                 </span>
               )}
@@ -426,8 +426,8 @@ function TableHeaderCell<TData>({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    'h-6 w-6 p-0 text-white hover:bg-white/20',
-                    isFilter && 'bg-white/20',
+                    'h-6 w-6 p-0 text-slate-500 hover:bg-slate-200/60 hover:text-slate-700',
+                    isFilter && 'bg-slate-200/60 text-slate-700',
                   )}
                   onClick={onFilterClick}
                 >

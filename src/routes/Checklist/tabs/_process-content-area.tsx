@@ -114,11 +114,7 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                             {roleOptions.find((r) => r.code.toUpperCase() === (process.roleCode || '').toUpperCase())?.name || process.roleCode}
                           </span>
                         </div>
-                        {process.description && (
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5 line-clamp-1 truncate" title={process.description}>
-                            {process.description}
-                          </p>
-                        )}
+
                         
                         <CardDescription className="mt-0.5 flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                           <span>{stepsCount} bước</span>

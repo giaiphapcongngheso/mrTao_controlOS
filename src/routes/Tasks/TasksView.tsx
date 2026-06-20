@@ -39,6 +39,7 @@ import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
+import { ActionStack } from '@shared/components/custom/action-stack';
 import { TaskCreateModal } from './components/task-create-modal';
 import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
 import { TaskDetailModal } from './components/task-detail-modal';
@@ -636,41 +637,70 @@ export default function TasksView({
       {
         id: 'actions',
         header: 'Thao tác',
-        size: 220,
+        size: 110,
         cell: ({ row }) => {
           const task = row.original;
+          const actions = [
+            {
+              key: 'view',
+              label: 'Xem',
+              variant: 'ghost' as const,
+              onClick: () => setViewingTask(task),
+              element: (
+                <Button
+                  key="view"
+                  variant="ghost"
+                  tooltip="Xem chi tiết"
+                  className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                  onClick={() => setViewingTask(task)}
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              ),
+            },
+            {
+              key: 'edit',
+              label: 'Sửa',
+              variant: 'ghost' as const,
+              onClick: () => setEditingTask(task),
+              element: (
+                <Button
+                  key="edit"
+                  variant="ghost"
+                  tooltip="Chỉnh sửa công việc"
+                  className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                  onClick={() => setEditingTask(task)}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              ),
+            },
+            {
+              key: 'delete',
+              label: 'Xóa',
+              variant: 'ghost' as const,
+              onClick: () => setTaskToDelete(task),
+              element: (
+                <Button
+                  key="delete"
+                  variant="ghost"
+                  tooltip="Xóa công việc"
+                  className="w-8 h-8 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                  onClick={() => setTaskToDelete(task)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              ),
+            },
+          ];
+
           return (
-            <div className="flex items-center gap-1.5 justify-center" onClick={(e) => e.stopPropagation()}>
-              <Button
+            <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              <ActionStack
+                actions={actions}
                 size="sm"
-                type="button"
-                variant="outline"
-                className="h-7 text-xs px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1 text-slate-700"
-                onClick={() => setViewingTask(task)}
-              >
-                <Eye className="w-3 h-3 text-slate-500" />
-                Xem
-              </Button>
-              <Button
-                size="sm"
-                type="button"
-                variant="outline"
-                className="h-7 text-xs px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                onClick={() => setEditingTask(task)}
-              >
-                <Pencil className="w-3 h-3 text-slate-500" />
-                Sửa
-              </Button>
-              <Button
-                size="sm"
-                type="button"
-                variant="ghost"
-                className="h-7 text-xs px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                onClick={() => setTaskToDelete(task)}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Xóa
-              </Button>
+                className="justify-center gap-1.5"
+              />
             </div>
           );
         },
@@ -689,8 +719,8 @@ export default function TasksView({
   const visibleTasks = useMemo(() => {
     const isManager = canUpdate || canCreate;
     if (isManager || !currentUser) return tasks;
-    return tasks.filter(task => 
-      task.assignee === currentUser.fullName || 
+    return tasks.filter(task =>
+      task.assignee === currentUser.fullName ||
       (task.helpers || []).includes(currentUser.fullName)
     );
   }, [tasks, canUpdate, canCreate, currentUser]);
@@ -964,28 +994,28 @@ export default function TasksView({
       {!isMobile && (
         <div className="flex items-center justify-between gap-4">
           {/* View Tabs with underline */}
-          <div className="flex items-center gap-0.5 border-b-2 border-slate-100">
+          <div className="flex items-center gap-6 sm:gap-8 border-b border-slate-200 pb-0">
             {([
-              { key: 'list' as const, label: 'Danh sách', icon: <ListTodo className="w-3.5 h-3.5" /> },
-              { key: 'kanban' as const, label: 'Kanban', icon: <ClipboardList className="w-3.5 h-3.5" /> },
-              { key: 'calendar' as const, label: 'Lịch', icon: <Calendar className="w-3.5 h-3.5" /> },
+              { key: 'list' as const, label: 'Danh sách', icon: <ListTodo className="w-4 h-4 shrink-0" /> },
+              { key: 'kanban' as const, label: 'Kanban', icon: <ClipboardList className="w-4 h-4 shrink-0" /> },
+              { key: 'calendar' as const, label: 'Lịch', icon: <Calendar className="w-4 h-4 shrink-0" /> },
             ]).map(({ key, label, icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setActiveView(key)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 text-xs font-black tracking-wider transition-all cursor-pointer relative',
+                  'flex items-center gap-1.5 px-0 pb-3 text-sm font-bold transition-all cursor-pointer relative border-b-2 border-transparent -mb-[1px]',
                   activeView === key
-                    ? 'text-slate-900 after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[2px] after:bg-[#C21A1A] after:rounded-full'
-                    : 'text-slate-400 hover:text-slate-600',
+                    ? 'text-[#C21A1A] border-b-[#C21A1A]'
+                    : 'text-slate-500 hover:text-slate-800',
                 )}
               >
                 {icon}
                 <span>{label}</span>
                 {/* Badge count */}
                 <span className={cn(
-                  'text-[9px] font-black px-1.5 py-0 rounded-full min-w-[18px] text-center',
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transition-colors',
                   activeView === key
                     ? 'bg-[#C21A1A] text-white'
                     : 'bg-slate-100 text-slate-400'
@@ -1010,7 +1040,7 @@ export default function TasksView({
               type="button"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
               Bộ lọc
             </button>
           </div>

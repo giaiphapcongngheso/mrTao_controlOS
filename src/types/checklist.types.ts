@@ -16,7 +16,7 @@ export interface ChecklistTask extends BaseEntity {
   imageUrls?: string[];
   // Mang theo cấu hình từ template để validate
   isRequired?: boolean;
-  evidenceRequired?: string;
+  evidenceRequired?: boolean;
 }
 
 /**
@@ -27,6 +27,7 @@ export interface ChecklistTemplateTask {
   title: string;
   timeLimit?: string;
   isRequired?: boolean; // Bắt buộc thực hiện
+  evidenceRequired?: boolean; // Yêu cầu bằng chứng hình ảnh (boolean)
 }
 
 /**
@@ -45,7 +46,6 @@ export interface ChecklistTemplateDocument extends BaseEntity {
   frequencyDetail?: string;    // Chi tiết tần suất ví dụ thứ trong tuần: "1" (T2) -> "7" (CN)
   shift?: string;              // all_day | morning | afternoon | night
   autoCreateDaily?: boolean;   // Tự động tạo checklist hàng ngày
-  evidenceRequired?: string;   // required | optional
   status?: string;             // active | hidden
   defaultAssignee?: string;    // all_staff | ID cụ thể
   inspectorId?: string;        // ID người kiểm tra
@@ -137,5 +137,5 @@ export interface ChecklistItem extends BaseEntity {
   imageUrls?: string[];
   // Mang theo cấu hình từ template để validate
   isRequired?: boolean;
-  evidenceRequired?: string;
+  evidenceRequired?: boolean;
 }

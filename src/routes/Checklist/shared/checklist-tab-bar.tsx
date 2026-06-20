@@ -102,7 +102,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
           <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-6 sm:gap-8 justify-start !h-auto w-full overflow-x-auto scrollbar-none !border-none !shadow-none">
             <TabsTrigger
               value="today"
-              className="flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
             >
               <Calendar className="w-4 h-4 shrink-0" />
               <span>Hôm nay</span>
@@ -110,7 +110,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
 
             <TabsTrigger
               value="checklist_template"
-              className="flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
             >
               <Ruler className="w-4 h-4 shrink-0" />
               <span>Checklist mẫu</span>
@@ -118,7 +118,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
 
             <TabsTrigger
               value="process"
-              className="flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span>Quy trình SOP</span>
@@ -127,7 +127,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
             {showHistory && (
               <TabsTrigger
                 value="history"
-                className="flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
               >
                 <History className="w-4 h-4 shrink-0" />
                 <span>Lịch sử</span>
@@ -157,6 +157,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       }))
                     ]}
                     clearable={false}
+                    placeholder="Chọn vai trò..."
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
@@ -174,6 +175,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       { label: 'Hàng tháng', value: 'monthly' }
                     ]}
                     clearable={false}
+                    placeholder="Chọn tần suất..."
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
@@ -190,6 +192,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       { label: 'Tạm ẩn', value: 'hidden' }
                     ]}
                     clearable={false}
+                    placeholder="Chọn trạng thái..."
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
@@ -212,20 +215,6 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-                {/* Filter 1: Date (Only for today/history tabs) */}
-                {(subTab === 'today' || subTab === 'history') && (
-                  <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Ngày</span>
-                    <DatePicker
-                      value={selectedDate}
-                      onChange={(date) => date && setSelectedDate(date)}
-                      clearable={false}
-                      size="sm"
-                      className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
-                    />
-                  </div>
-                )}
-
                 {/* Filter 2: Role Selection */}
                 {showRoleSelect && (
                   <div className="flex flex-col gap-1 text-left min-w-[150px] flex-1 sm:flex-none">
@@ -238,6 +227,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                         value: role.code,
                       }))}
                       clearable={false}
+                      placeholder="Chọn vai trò..."
                       className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                     />
                   </div>
@@ -252,6 +242,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       onChangeValue={(value) => setSelectedPerformer(String(value))}
                       options={performerOptions}
                       clearable={false}
+                      placeholder="Chọn người thực hiện..."
                       className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                     />
                   </div>
@@ -266,6 +257,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       onChangeValue={(value) => setSelectedStatus(String(value))}
                       options={statusOptions}
                       clearable={false}
+                      placeholder="Chọn trạng thái..."
                       className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                     />
                   </div>
@@ -281,8 +273,6 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       placeholder={
                         subTab === 'process'
                           ? 'Tìm kiếm quy trình chuẩn...'
-                          : subTab === 'history'
-                          ? 'Tìm kiếm lịch sử công việc...'
                           : 'Tìm theo tên việc, mô tả...'
                       }
                       value={searchTerm}

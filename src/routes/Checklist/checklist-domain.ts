@@ -21,6 +21,7 @@ export type SaveCategoryTaskInput = {
   title: string;
   timeLimit?: string;
   isRequired?: boolean;
+  evidenceRequired?: boolean;
 };
 
 export type ChecklistRoleOption = {
@@ -49,7 +50,6 @@ export type PendingTemplateSyncState = {
   snapshotTitle: string;
   previousTemplateTaskIds: string[];
   updatedTemplateTasks: ChecklistTemplateTask[];
-  evidenceRequired?: string;
 };
 
 export const EMPTY_CHECKLIST_DATA_STATE: ChecklistDataState = {
@@ -81,6 +81,7 @@ export function normalizeTaskInputs(tasks: SaveCategoryTaskInput[]): SaveCategor
       title: task.title.trim(),
       timeLimit: task.timeLimit?.trim() || undefined,
       isRequired: task.isRequired,
+      evidenceRequired: task.evidenceRequired,
     }))
     .filter((task) => task.title.length > 0);
 }
@@ -91,6 +92,7 @@ export function toTemplateTasks(tasks: SaveCategoryTaskInput[]): ChecklistTempla
     title: task.title,
     timeLimit: task.timeLimit,
     isRequired: task.isRequired,
+    evidenceRequired: task.evidenceRequired === true,
   }));
 }
 
@@ -98,7 +100,6 @@ export function toSnapshotTasks(
   tasks: SaveCategoryTaskInput[],
   templateId: string,
   todayKey = getTodayKey(),
-  evidenceRequired?: string,
 ): ChecklistTask[] {
   return normalizeTaskInputs(tasks).map((task) => ({
     ...initBaseEntity('t', task.id),
@@ -111,7 +112,7 @@ export function toSnapshotTasks(
     checkedByName: null,
     checkedByUsername: null,
     isRequired: task.isRequired,
-    evidenceRequired,
+    evidenceRequired: task.evidenceRequired === true,
   }));
 }
 
@@ -138,7 +139,7 @@ export function buildDailySnapshot(
       checkedByName: null,
       checkedByUsername: null,
       isRequired: task.isRequired,
-      evidenceRequired: template.evidenceRequired,
+      evidenceRequired: task.evidenceRequired === true,
     })),
   );
 
@@ -169,6 +170,7 @@ export function flattenSnapshotTask(
     ? templateLookup.get(task.templateId)
     : undefined;
   const templateTitle = template?.title || template?.roleCode;
+  const templateTask = template?.tasks?.find(t => t.id === task.id);
 
   return {
     id: task.id,
@@ -190,8 +192,8 @@ export function flattenSnapshotTask(
     deletedByName: task.deletedByName,
     deletedByUsername: task.deletedByUsername,
     imageUrls: task.imageUrls || [],
-    isRequired: task.isRequired !== undefined ? task.isRequired : template?.tasks?.find(t => t.id === task.id)?.isRequired,
-    evidenceRequired: task.evidenceRequired || template?.evidenceRequired,
+    isRequired: task.isRequired !== undefined ? task.isRequired : templateTask?.isRequired,
+    evidenceRequired: task.evidenceRequired === true || templateTask?.evidenceRequired === true,
   };
 }
 
@@ -325,9 +327,8 @@ export function mergeTemplateTasksIntoSnapshot(params: {
   pendingSync: PendingTemplateSyncState;
   nowIso: string;
   todayKey: string;
-  evidenceRequired?: string;
 }): ChecklistTask[] {
-  const { snapshot, pendingSync, nowIso, todayKey, evidenceRequired } = params;
+  const { snapshot, pendingSync, nowIso, todayKey } = params;
   const previousTaskIdSet = new Set(pendingSync.previousTemplateTaskIds);
   const nextTemplateTaskMap = new Map(pendingSync.updatedTemplateTasks.map((task) => [task.id, task] as const));
 
@@ -361,7 +362,7 @@ export function mergeTemplateTasksIntoSnapshot(params: {
       title: nextTemplateTask.title,
       timeLimit: nextTemplateTask.timeLimit,
       isRequired: nextTemplateTask.isRequired,
-      evidenceRequired: evidenceRequired || snapshotTask.evidenceRequired,
+      evidenceRequired: nextTemplateTask.evidenceRequired === true || snapshotTask.evidenceRequired === true,
       updatedAt: nowIso,
     });
   }
@@ -382,7 +383,7 @@ export function mergeTemplateTasksIntoSnapshot(params: {
       checkedByName: null,
       checkedByUsername: null,
       isRequired: templateTask.isRequired,
-      evidenceRequired,
+      evidenceRequired: templateTask.evidenceRequired === true,
     });
   }
 
