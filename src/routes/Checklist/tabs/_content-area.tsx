@@ -42,9 +42,9 @@ interface ChecklistItemDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   roleOptions: Array<{ code: string; name: string }>;
-  onToggleItem: (itemId: string) => void;
-  onUpdateItem: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
-  onConfirmDeleteItem: (itemId: string, title: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
+  onUpdateItem: (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => Promise<void>;
+  onConfirmDeleteItem: (itemId: string, title: string, dateKey?: string) => void;
 }
 
 const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog({
@@ -76,7 +76,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     const trimmed = titleValue.trim();
     if (!trimmed || trimmed === item.title) return;
     try {
-      await onUpdateItem(item.id, { title: trimmed });
+      await onUpdateItem(item.id, { title: trimmed }, item.dateKey);
     } catch (err) {
       console.error(err);
     }
@@ -86,14 +86,14 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     const newTime = formatDateToTime(date);
     if (newTime === item.timeLimit) return;
     try {
-      await onUpdateItem(item.id, { timeLimit: newTime });
+      await onUpdateItem(item.id, { timeLimit: newTime }, item.dateKey);
     } catch (err) {
       console.error(err);
     }
   };
 
   const handleToggleStatus = () => {
-    onToggleItem(item.id);
+    onToggleItem(item.id, item.dateKey);
   };
 
   const triggerFileInput = () => {
@@ -108,7 +108,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     try {
       const url = await uploadChecklistItemImage(file, item.id);
       const nextUrls = [...imageUrls, url];
-      await onUpdateItem(item.id, { imageUrls: nextUrls });
+      await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
     } catch (error) {
       console.error('Lỗi khi tải ảnh lên:', error);
       toastError('Tải ảnh lên thất bại. Vui lòng thử lại.');
@@ -124,7 +124,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     e.stopPropagation();
     const nextUrls = imageUrls.filter((url) => url !== urlToDelete);
     try {
-      await onUpdateItem(item.id, { imageUrls: nextUrls });
+      await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
     } catch (err) {
       console.error(err);
     }
@@ -132,7 +132,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
 
   const handleDeleteTaskClick = () => {
     onClose();
-    onConfirmDeleteItem(item.id, item.title);
+    onConfirmDeleteItem(item.id, item.title, item.dateKey);
   };
 
   return (
@@ -422,13 +422,14 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
           id: item.id,
           title: item.title,
           timeLimit: item.timeLimit || '',
+          dateKey: item.dateKey,
         });
       } else {
-        onToggleItem(item.id);
+        onToggleItem(item.id, item.dateKey);
       }
     } else {
       // Single Click to check completed
-      onToggleItem(item.id);
+      onToggleItem(item.id, item.dateKey);
     }
   }, [subTab, isReadOnlyCompletedTab, isCurrentlyEditing, item, onToggleItem, setUncheckTarget]);
 
@@ -444,8 +445,8 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
 
   const handleSaveClick = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    void editState.onInlineSave(item.id);
-  }, [editState.onInlineSave, item.id]);
+    void editState.onInlineSave(item.id, item.dateKey);
+  }, [editState.onInlineSave, item.id, item.dateKey]);
 
   const handleCancelClick = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -454,8 +455,8 @@ const ChecklistTaskItem = React.memo(function ChecklistTaskItem({
 
   const handleDeleteClick = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onConfirmDeleteItem(item.id, item.title);
-  }, [onConfirmDeleteItem, item.id, item.title]);
+    onConfirmDeleteItem(item.id, item.title, item.dateKey);
+  }, [onConfirmDeleteItem, item.id, item.title, item.dateKey]);
 
   const stopProp = React.useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -748,7 +749,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
   const [newItemTitle, setNewItemTitle] = React.useState('');
   const [newItemTimeLimit, setNewItemTimeLimit] = React.useState('08:00');
   const [isSubmittingNewItem, setIsSubmittingNewItem] = React.useState(false);
-  const [uncheckTarget, setUncheckTarget] = React.useState<{ id: string; title: string; timeLimit: string } | null>(null);
+  const [uncheckTarget, setUncheckTarget] = React.useState<{ id: string; title: string; timeLimit: string; dateKey?: string } | null>(null);
 
   const roleName = React.useMemo(() => {
     return roleOptions.find((r) => r.code?.toUpperCase() === cat.roleCode?.toUpperCase())?.name || cat.title || 'Checklist vai trò';
@@ -1005,7 +1006,7 @@ const ChecklistCategoryCard = React.memo(function ChecklistCategoryCard({
         description={`Bỏ hoàn thành công việc "${uncheckTarget?.title || ''}" lúc này sẽ làm nó bị TRỄ HẠN do thời gian hiện tại đã quá giờ quy định (${uncheckTarget?.timeLimit || ''}). Bạn có chắc chắn muốn bỏ hoàn thành?`}
         onConfirm={() => {
           if (uncheckTarget) {
-            onToggleItem(uncheckTarget.id);
+            onToggleItem(uncheckTarget.id, uncheckTarget.dateKey);
           }
           setUncheckTarget(null);
         }}
@@ -1023,11 +1024,11 @@ interface ChecklistContentAreaProps {
   expandedCategoryId: string | null;
   onToggleExpand: (categoryId: string) => void;
   permissions: ChecklistPermissions;
-  onToggleItem: (itemId: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
   onDeleteCategory?: (id: string) => Promise<void>;
   onOpenEditCategoryDialog: (cat: ChecklistViewCategory) => void;
   editState: TaskEditState;
-  onDeleteItem: (itemId: string) => Promise<void>;
+  onDeleteItem: (itemId: string, dateKey?: string) => Promise<void>;
   onAddInlineItem: (categoryId: string, categoryTitle: string, title: string, timeLimit?: string) => Promise<void>;
   onResetFilters: () => void;
   kpiStats: {
@@ -1064,7 +1065,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
   historyDateGroups = [],
 }: ChecklistContentAreaProps) {
   const [deleteCategoryTarget, setDeleteCategoryTarget] = React.useState<{ id: string; title: string } | null>(null);
-  const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [deleteItemTarget, setDeleteItemTarget] = React.useState<{ id: string; title: string; dateKey?: string } | null>(null);
   const [activeDetailItem, setActiveDetailItem] = React.useState<ChecklistItem | null>(null);
 
   React.useEffect(() => {
@@ -1153,8 +1154,8 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
     setDeleteCategoryTarget({ id, title });
   }, []);
 
-  const handleConfirmDeleteItem = React.useCallback((id: string, title: string) => {
-    setDeleteItemTarget({ id, title });
+  const handleConfirmDeleteItem = React.useCallback((id: string, title: string, dateKey?: string) => {
+    setDeleteItemTarget({ id, title, dateKey });
   }, []);
 
   return (
@@ -1167,9 +1168,9 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
           onClose={() => setActiveDetailItem(null)}
           roleOptions={roleOptions}
           onToggleItem={onToggleItem}
-          onUpdateItem={async (id, updates) => {
+          onUpdateItem={async (id, updates, dateKey) => {
             if (onUpdateChecklistItem) {
-              await onUpdateChecklistItem(id, updates);
+              await onUpdateChecklistItem(id, updates, dateKey);
               setActiveDetailItem((prev) => {
                 if (prev && prev.id === id) {
                   return { ...prev, ...updates };
@@ -1297,7 +1298,7 @@ const ChecklistContentArea = React.memo(function ChecklistContentArea({
         cancelText="Hủy"
         onConfirm={async () => {
           if (deleteItemTarget && onDeleteItem) {
-            await onDeleteItem(deleteItemTarget.id);
+            await onDeleteItem(deleteItemTarget.id, deleteItemTarget.dateKey);
           }
           setDeleteItemTarget(null);
         }}

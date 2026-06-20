@@ -21,13 +21,13 @@ interface TodayTabProps {
   roleOptions: Array<{ code: string; name: string }>;
   selectedRoleCode: string;
   subTab: 'today' | 'history';
-  onToggleItem: (itemId: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
   onDeleteCategory?: (id: string) => Promise<void>;
   onOpenEditCategoryDialog: (cat: { id: string }) => void;
   onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
   onCreateTodayChecklistBatch?: (roleCode: string, categoryId: string, checklistName: string, tasksList: Array<{ title: string; timeLimit?: string }>) => Promise<void>;
-  onDeleteChecklistItem?: (itemId: string) => Promise<void>;
-  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  onDeleteChecklistItem?: (itemId: string, dateKey?: string) => Promise<void>;
+  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => Promise<void>;
   onResetFilters: () => void;
 }
 

@@ -198,8 +198,12 @@ export function flattenSnapshotTask(
 export function findSnapshotTaskById(
   docs: ChecklistDocument[],
   itemId: string,
+  dateKey?: string,
 ): { doc: ChecklistDocument; task: ChecklistTask } | null {
   for (const doc of docs) {
+    if (dateKey && doc.dateKey !== dateKey) {
+      continue;
+    }
     const task = (doc.tasks || []).find((entry) => entry.id === itemId);
     if (task) {
       return { doc, task };

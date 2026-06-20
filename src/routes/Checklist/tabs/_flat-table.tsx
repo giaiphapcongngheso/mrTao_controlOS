@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Clock, Circle, CheckCircle2, Paperclip, MoreVertical, Check, X, Edit2, Trash2, Award, Eye } from 'lucide-react';
+import { Clock, Square, CheckSquare, Paperclip, MoreVertical, Check, X, Edit2, Trash2, Award, Eye } from 'lucide-react';
 import { Button, Textarea, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../share/ui';
 import { cn } from '../../../../share/lib/utils';
 import type { ChecklistItem } from '../../../types/checklist.types';
@@ -30,15 +30,15 @@ interface TaskEditState {
   setEditingItemId: React.Dispatch<React.SetStateAction<string | null>>;
   setEditItemTitle: React.Dispatch<React.SetStateAction<string>>;
   setEditItemTimeLimit: React.Dispatch<React.SetStateAction<string>>;
-  onInlineSave: (itemId: string) => Promise<void>;
+  onInlineSave: (itemId: string, dateKey?: string) => Promise<void>;
 }
 
 interface ChecklistFlatTableProps {
   filteredCategories: ChecklistViewCategory[];
   permissions: ChecklistPermissions;
-  onToggleItem: (itemId: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
   editState: TaskEditState;
-  onDeleteItem: (itemId: string) => Promise<void>;
+  onDeleteItem: (itemId: string, dateKey?: string) => Promise<void>;
   onOpenDetail: (item: ChecklistItem) => void;
 }
 
@@ -55,7 +55,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
   onDeleteItem,
   onOpenDetail,
 }: ChecklistFlatTableProps) {
-  const [uncheckTarget, setUncheckTarget] = useState<{ id: string; title: string; timeLimit: string } | null>(null);
+  const [uncheckTarget, setUncheckTarget] = useState<{ id: string; title: string; timeLimit: string; dateKey?: string } | null>(null);
 
   // Flatten tasks and sort by timeLimit chronologically
   const flatTasks = useMemo(() => {
@@ -91,15 +91,16 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
           id: item.id,
           title: item.title,
           timeLimit: item.timeLimit || '',
+          dateKey: item.dateKey,
         });
       } else {
-        onToggleItem(item.id);
+        onToggleItem(item.id, item.dateKey);
       }
     } else {
       // Single click to check completed
-      onToggleItem(item.id);
+      onToggleItem(item.id, item.dateKey);
     }
-  }, [editState.editingItemId, onToggleItem]);
+  }, [editState.editingItemId, onToggleItem, setUncheckTarget]);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     editState.setEditItemTitle(e.target.value);
@@ -111,9 +112,9 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
     editState.setEditItemTimeLimit(formatDateToTime(date));
   }, [editState.setEditItemTimeLimit]);
 
-  const handleSaveClick = useCallback((itemId: string, e: React.MouseEvent) => {
+  const handleSaveClick = useCallback((itemId: string, dateKey: string | undefined, e: React.MouseEvent) => {
     e.stopPropagation();
-    void editState.onInlineSave(itemId);
+    void editState.onInlineSave(itemId, dateKey);
   }, [editState.onInlineSave]);
 
   const handleCancelClick = useCallback((e: React.MouseEvent) => {
@@ -128,10 +129,10 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
     editState.setEditingItemId(item.id);
   }, [editState]);
 
-  const handleDeleteClick = useCallback((itemId: string, e: React.MouseEvent) => {
+  const handleDeleteClick = useCallback((itemId: string, dateKey: string | undefined, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Bạn có chắc chắn muốn xóa đầu việc này?')) {
-      void onDeleteItem(itemId);
+      void onDeleteItem(itemId, dateKey);
     }
   }, [onDeleteItem]);
 
@@ -140,13 +141,13 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
       <Table className="w-full">
         <TableHeader className="bg-white select-none">
           <TableRow className="border-b border-slate-100 hover:bg-transparent">
-            <TableHead className="w-[8%] text-center text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Chọn</TableHead>
-            <TableHead className="w-[12%] text-left text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Giờ chốt</TableHead>
-            <TableHead className="w-[40%] text-left text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Việc cần làm</TableHead>
-            <TableHead className="w-[18%] text-left text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Người thực hiện</TableHead>
-            <TableHead className="w-[10%] text-center text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Minh chứng</TableHead>
-            <TableHead className="w-[10%] text-center text-[10px] font-black uppercase tracking-wider !bg-white !text-slate-400">Trạng thái</TableHead>
-            <TableHead className="w-[2%] text-center !bg-white !text-slate-400"></TableHead>
+            <TableHead className="w-[8%] text-center text-sm !font-semibold !bg-white !text-slate-700">Chọn</TableHead>
+            <TableHead className="w-[12%] text-left text-sm !font-semibold !bg-white !text-slate-700">Giờ chốt</TableHead>
+            <TableHead className="w-[40%] text-left text-sm !font-semibold !bg-white !text-slate-700">Việc cần làm</TableHead>
+            <TableHead className="w-[18%] text-left text-sm !font-semibold !bg-white !text-slate-700">Người thực hiện</TableHead>
+            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-white !text-slate-700">Minh chứng</TableHead>
+            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-white !text-slate-700">Trạng thái</TableHead>
+            <TableHead className="w-[2%] text-center !bg-white !text-slate-700"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -165,19 +166,24 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
               return (
                 <TableRow
                   key={item.id}
-                  onClick={() => handleRowClick(item)}
                   className={cn(
                     "border-b border-slate-100/80 transition-colors duration-150 group/row",
-                    isEditing ? "bg-slate-50/70" : "hover:bg-slate-50/40 cursor-pointer"
+                    isEditing ? "bg-slate-50/70" : "hover:bg-slate-50/40"
                   )}
                 >
                   {/* Column 1: Checkbox */}
-                  <TableCell className="text-center py-3">
-                    <span className="inline-flex justify-center items-center">
+                  <TableCell
+                    className="text-center py-3 cursor-pointer hover:bg-slate-150/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRowClick(item);
+                    }}
+                  >
+                    <span className="inline-flex justify-center items-center pointer-events-none">
                       {item.isCompleted ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                        <CheckSquare className="w-5 h-5 text-emerald-500 shrink-0" />
                       ) : (
-                        <Circle
+                        <Square
                           className={cn(
                             "w-5 h-5 shrink-0 transition-colors",
                             isLate ? "text-rose-400" : "text-slate-300 group-hover/row:text-slate-400"
@@ -207,8 +213,8 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                             isLate
                               ? "bg-rose-50 text-rose-600 border-rose-100/50"
                               : item.isCompleted
-                              ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
-                              : "bg-slate-50 text-slate-500 border-slate-100"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
+                                : "bg-slate-50 text-slate-500 border-slate-100"
                           )}
                         >
                           <Clock className="w-3 h-3 shrink-0" />
@@ -219,7 +225,15 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                   </TableCell>
 
                   {/* Column 3: Task Title */}
-                  <TableCell className="py-3 text-left">
+                  <TableCell
+                    className="py-3 text-left cursor-pointer"
+                    onClick={(e) => {
+                      if (!isEditing) {
+                        e.stopPropagation();
+                        handleRowClick(item);
+                      }
+                    }}
+                  >
                     {isEditing ? (
                       <div className="flex items-start gap-2 w-full" onClick={(e) => e.stopPropagation()}>
                         <Textarea
@@ -238,7 +252,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                         <div className="flex gap-1 shrink-0 items-center">
                           <Button
                             type="button"
-                            onClick={(e) => handleSaveClick(item.id, e)}
+                            onClick={(e) => handleSaveClick(item.id, item.dateKey, e)}
                             className="w-7 h-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg flex items-center justify-center cursor-pointer transition-colors active:scale-95 border-none"
                             title="Lưu"
                           >
@@ -264,11 +278,10 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                         >
                           {item.title}
                         </span>
-
                         {/* Category badge tag */}
                         {item.categoryTitle && (
                           <span
-                            className="text-[9px] px-1.5 py-0.2 rounded border font-extrabold uppercase shrink-0 transition-opacity"
+                            className="text-[9px] px-1.5 py-0.2 rounded border font-extrabold  shrink-0 transition-opacity"
                             style={{
                               borderColor: item.categoryAccentHex ? `${item.categoryAccentHex}30` : '#e2e8f0',
                               color: item.categoryAccentHex || '#64748b',
@@ -286,15 +299,15 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                   <TableCell className="py-3 text-left">
                     {item.isCompleted && item.checkedByName ? (
                       <div className="inline-flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-100/80 px-2 py-0.5 rounded-lg select-none">
-                        <span className="w-4 h-4 rounded-full bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center text-[9px] font-black uppercase shrink-0">
+                        <span className="w-4 h-4 rounded-full bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center text-[9px] font-black  shrink-0">
                           {item.checkedByName.trim().charAt(0)}
                         </span>
-                        <span className="text-[10px] font-extrabold text-slate-500 truncate max-w-[110px]" title={item.checkedByName}>
+                        <span className="text-sm font-extrabold text-slate-500 truncate max-w-[110px]" title={item.checkedByName}>
                           {item.checkedByName}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-[10px] font-bold text-slate-300 select-none">--</span>
+                      <span className="text-sm font-bold text-slate-300 select-none">--</span>
                     )}
                   </TableCell>
 
@@ -324,12 +337,12 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                   <TableCell className="py-3 text-center">
                     <span
                       className={cn(
-                        "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg text-center inline-block min-w-[65px] select-none border",
+                        "text-[9px] font-black  tracking-wider px-2 py-0.5 rounded-lg text-center inline-block min-w-[65px] select-none border",
                         item.isCompleted
                           ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
                           : isLate
-                          ? "bg-rose-50 text-rose-600 border-rose-100/50 animate-pulse"
-                          : "bg-slate-50 text-slate-400 border-slate-200/30"
+                            ? "bg-rose-50 text-rose-600 border-rose-100/50 animate-pulse"
+                            : "bg-slate-50 text-slate-400 border-slate-200/30"
                       )}
                     >
                       {item.isCompleted ? 'Đã xong' : isLate ? 'Quá hạn' : 'Chưa làm'}
@@ -368,7 +381,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
 
                         {permissions.canDelete && (
                           <DropdownMenuItem
-                            onClick={(e) => handleDeleteClick(item.id, e)}
+                            onClick={(e) => handleDeleteClick(item.id, item.dateKey, e)}
                             className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 cursor-pointer gap-2"
                           >
                             <Trash2 className="w-3.5 h-3.5 text-rose-400" />
@@ -379,8 +392,8 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                         {item.isCompleted && (
                           <>
                             <DropdownMenuSeparator className="bg-slate-100" />
-                            <div className="p-2 text-[10px] text-slate-400 text-left space-y-0.5">
-                              <div className="font-extrabold text-slate-500 uppercase flex items-center gap-1 text-[9px]">
+                            <div className="p-2 text-sm text-slate-400 text-left space-y-0.5">
+                              <div className="font-extrabold text-slate-500  flex items-center gap-1 text-[9px]">
                                 <Award className="w-3 h-3 text-emerald-500" />
                                 <span>Hoàn thành</span>
                               </div>
@@ -411,7 +424,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
         description={`Bỏ hoàn thành công việc "${uncheckTarget?.title || ''}" lúc này sẽ làm nó bị TRỄ HẠN do thời gian hiện tại đã quá giờ quy định (${uncheckTarget?.timeLimit || ''}). Bạn có chắc chắn muốn bỏ hoàn thành?`}
         onConfirm={() => {
           if (uncheckTarget) {
-            onToggleItem(uncheckTarget.id);
+            onToggleItem(uncheckTarget.id, uncheckTarget.dateKey);
           }
           setUncheckTarget(null);
         }}

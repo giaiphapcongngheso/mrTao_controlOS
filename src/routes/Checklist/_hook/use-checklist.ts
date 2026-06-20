@@ -488,8 +488,8 @@ export function useChecklist({
 
 
 
-  const handleToggleChecklistItem = useCallback(async (itemId: string) => {
-    const found = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
+  const handleToggleChecklistItem = useCallback(async (itemId: string, dateKey?: string) => {
+    const found = findSnapshotTaskById(dataStateRef.current.snapshots, itemId, dateKey);
     if (!found) {
       toastError(`Không tìm thấy công việc với ID: ${itemId}`);
       return;
@@ -644,8 +644,8 @@ export function useChecklist({
     await handleCreateTodayChecklistBatch(roleCode, categoryId, checklistName, [{ title: taskTitle }]);
   }, [handleCreateTodayChecklistBatch]);
 
-  const handleDeleteChecklistItem = useCallback(async (itemId: string) => {
-    const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
+  const handleDeleteChecklistItem = useCallback(async (itemId: string, dateKey?: string) => {
+    const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId, dateKey);
     if (snapshotFound) {
       const err = guardAction(permissions, 'canDelete', snapshotFound.task, `công việc "${snapshotFound.task.title}"`);
       if (err) {
@@ -694,13 +694,13 @@ export function useChecklist({
     updateLocalState,
   ]);
 
-  const handleUpdateChecklistItem = useCallback(async (itemId: string, updates: Partial<ChecklistItem>) => {
+  const handleUpdateChecklistItem = useCallback(async (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => {
     const safeTitle = updates.title?.trim();
     if (updates.title !== undefined && !safeTitle) {
       return;
     }
 
-    const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId);
+    const snapshotFound = findSnapshotTaskById(dataStateRef.current.snapshots, itemId, dateKey);
     if (snapshotFound) {
       const err = guardAction(permissions, 'canUpdate', snapshotFound.task, `công việc "${snapshotFound.task.title}"`);
       if (err) {

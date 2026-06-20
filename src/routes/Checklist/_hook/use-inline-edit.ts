@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ChecklistItem } from '../../../types/checklist.types';
 
 interface UseInlineEditProps {
-  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
-  onDeleteChecklistItem?: (itemId: string) => Promise<void>;
+  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => Promise<void>;
+  onDeleteChecklistItem?: (itemId: string, dateKey?: string) => Promise<void>;
 }
 
 /**
@@ -20,14 +20,14 @@ export function useInlineEdit({
   /**
    * Save individual item edits
    */
-  const handleInlineSave = async (itemId: string) => {
+  const handleInlineSave = async (itemId: string, dateKey?: string) => {
     if (!editItemTitle.trim()) return;
     try {
       if (onUpdateChecklistItem) {
         await onUpdateChecklistItem(itemId, {
           title: editItemTitle.trim(),
           timeLimit: editItemTimeLimit || undefined,
-        });
+        }, dateKey);
       }
       setEditingItemId(null);
     } catch (err) {
@@ -38,10 +38,10 @@ export function useInlineEdit({
   /**
    * Delete an individual checklist item
    */
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteItem = async (itemId: string, dateKey?: string) => {
     try {
       if (onDeleteChecklistItem) {
-        await onDeleteChecklistItem(itemId);
+        await onDeleteChecklistItem(itemId, dateKey);
       }
     } catch (err) {
       console.error('Lỗi khi xóa công việc:', err);

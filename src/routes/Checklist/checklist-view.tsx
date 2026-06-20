@@ -17,7 +17,7 @@ import {
   ChecklistErrorBanner,
   ChecklistCreateDialog,
 } from './shared';
-import { TodayTab, ProcessTab, TemplateTab } from './tabs';
+import { TodayTab, ProcessTab, TemplateTab, HistoryTab } from './tabs';
 import {
   useFilteredCategories,
   useChecklistDialog,
@@ -34,7 +34,7 @@ interface ChecklistViewProps {
   historySnapshots?: import('../../types/checklist.types').ChecklistDocument[];
   historyLoading?: boolean;
   onFetchHistory?: (from: string, to: string, roleCode: string) => Promise<void>;
-  onToggleItem: (itemId: string) => void;
+  onToggleItem: (itemId: string, dateKey?: string) => void;
   roleOptions: Array<{ code: string; name: string }>;
   defaultRoleCode: string;
   onCreateRoleChecklist: (roleCode: string, categoryId: string, checklistName: string, taskTitle: string) => void;
@@ -58,8 +58,8 @@ interface ChecklistViewProps {
     tasks: Array<{ id?: string; title: string; timeLimit?: string }>;
   } | null>;
   onDeleteCategory?: (id: string) => Promise<void>;
-  onDeleteChecklistItem?: (itemId: string) => Promise<void>;
-  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>) => Promise<void>;
+  onDeleteChecklistItem?: (itemId: string, dateKey?: string) => Promise<void>;
+  onUpdateChecklistItem?: (itemId: string, updates: Partial<ChecklistItem>, dateKey?: string) => Promise<void>;
   pendingTemplateSync?: {
     templateTitle: string;
     snapshotTitle: string;
@@ -311,11 +311,13 @@ export default function ChecklistView({
         onOpenCreateTemplate={() => setEditingTemplateId('new')}
       />
 
-      <ChecklistConfigBar
-        subTab={subTab}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-      />
+      {subTab === 'history' ? null : (
+        <ChecklistConfigBar
+          subTab={subTab}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+      )}
 
       {/* ── Tab Content Routing ────────────────────────── */}
       {subTab === 'checklist_template' ? (
@@ -347,9 +349,20 @@ export default function ChecklistView({
           isCreatingProcess={isCreatingProcess}
           onCloseCreatingProcess={handleCloseCreatingProcess}
         />
+      ) : subTab === 'history' ? (
+        <HistoryTab
+          historySnapshots={historySnapshots}
+          templates={templates}
+          roleOptions={roleOptions}
+          historyLoading={historyLoading}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          selectedRoleCode={selectedRoleCode}
+          onRoleCodeChange={setDialogRoleCode}
+        />
       ) : (
         <TodayTab
-          filteredCategories={subTab === 'today' ? filteredCategoriesWithExtraFilters : filteredCategories}
+          filteredCategories={filteredCategoriesWithExtraFilters}
           historyDateGroups={historyDateGroups}
           permissions={permissions}
           isLoading={isLoading}

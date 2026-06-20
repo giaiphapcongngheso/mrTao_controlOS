@@ -138,195 +138,197 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
       </div>
 
       {/* ── Line 2: Filters Horizontal Block (Card container) ── */}
-      <div className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-end gap-3.5 justify-between">
-          {subTab === 'checklist_template' ? (
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-              {/* Lọc Vai trò */}
-              <div className="flex flex-col gap-1 text-left min-w-[150px] flex-1 sm:flex-none">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Vai trò</span>
-                <CustomSelect
-                  value={templateFilterRole}
-                  onChangeValue={(value) => setTemplateFilterRole?.(String(value))}
-                  options={[
-                    { label: 'Tất cả vai trò', value: 'all' },
-                    ...roleOptions.map((role) => ({
-                      label: role.name,
-                      value: role.code,
-                    }))
-                  ]}
-                  clearable={false}
-                  className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
-                />
-              </div>
-
-              {/* Lọc Tần suất */}
-              <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tần suất</span>
-                <CustomSelect
-                  value={templateFilterFrequency}
-                  onChangeValue={(value) => setTemplateFilterFrequency?.(String(value))}
-                  options={[
-                    { label: 'Tất cả tần suất', value: 'all' },
-                    { label: 'Hàng ngày', value: 'daily' },
-                    { label: 'Hàng tuần', value: 'weekly' },
-                    { label: 'Hàng tháng', value: 'monthly' }
-                  ]}
-                  clearable={false}
-                  className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
-                />
-              </div>
-
-              {/* Lọc Trạng thái */}
-              <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Trạng thái</span>
-                <CustomSelect
-                  value={templateFilterStatus}
-                  onChangeValue={(value) => setTemplateFilterStatus?.(String(value))}
-                  options={[
-                    { label: 'Tất cả trạng thái', value: 'all' },
-                    { label: 'Đang dùng', value: 'active' },
-                    { label: 'Tạm ẩn', value: 'hidden' }
-                  ]}
-                  clearable={false}
-                  className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
-                />
-              </div>
-
-              {/* Tìm kiếm nhanh */}
-              <div className="flex flex-col gap-1 text-left flex-1 min-w-[200px]">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tìm kiếm nhanh</span>
-                <div className="relative w-full">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Tìm kiếm mẫu checklist..."
-                    value={templateSearchTerm}
-                    onChange={(e) => setTemplateSearchTerm?.(e.target.value)}
-                    clearable={false}
-                    className="w-full pl-10 pr-4 h-9.5 text-xs font-bold bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl transition-all placeholder:text-slate-400 placeholder:text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-              {/* Filter 1: Date (Only for today/history tabs) */}
-              {(subTab === 'today' || subTab === 'history') && (
-                <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Ngày</span>
-                  <DatePicker
-                    value={selectedDate}
-                    onChange={(date) => date && setSelectedDate(date)}
-                    clearable={false}
-                    size="sm"
-                    className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
-                  />
-                </div>
-              )}
-
-              {/* Filter 2: Role Selection */}
-              {showRoleSelect && (
+      {subTab !== 'history' && (
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex flex-col lg:flex-row lg:items-end gap-3.5 justify-between">
+            {subTab === 'checklist_template' ? (
+              <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                {/* Lọc Vai trò */}
                 <div className="flex flex-col gap-1 text-left min-w-[150px] flex-1 sm:flex-none">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Vai trò</span>
                   <CustomSelect
-                    value={selectedRoleCode}
-                    onChangeValue={(value) => setSelectedRoleCode(String(value))}
-                    options={roleOptions.map((role) => ({
-                      label: role.name,
-                      value: role.code,
-                    }))}
+                    value={templateFilterRole}
+                    onChangeValue={(value) => setTemplateFilterRole?.(String(value))}
+                    options={[
+                      { label: 'Tất cả vai trò', value: 'all' },
+                      ...roleOptions.map((role) => ({
+                        label: role.name,
+                        value: role.code,
+                      }))
+                    ]}
                     clearable={false}
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
-              )}
 
-              {/* Filter 3: Performer Selection */}
-              {subTab === 'today' && (
-                <div className="flex flex-col gap-1 text-left min-w-[160px] flex-1 sm:flex-none">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Người thực hiện</span>
+                {/* Lọc Tần suất */}
+                <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tần suất</span>
                   <CustomSelect
-                    value={selectedPerformer}
-                    onChangeValue={(value) => setSelectedPerformer(String(value))}
-                    options={performerOptions}
+                    value={templateFilterFrequency}
+                    onChangeValue={(value) => setTemplateFilterFrequency?.(String(value))}
+                    options={[
+                      { label: 'Tất cả tần suất', value: 'all' },
+                      { label: 'Hàng ngày', value: 'daily' },
+                      { label: 'Hàng tuần', value: 'weekly' },
+                      { label: 'Hàng tháng', value: 'monthly' }
+                    ]}
                     clearable={false}
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
-              )}
 
-              {/* Filter 4: Status Selection */}
-              {subTab === 'today' && (
+                {/* Lọc Trạng thái */}
                 <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Trạng thái</span>
                   <CustomSelect
-                    value={selectedStatus}
-                    onChangeValue={(value) => setSelectedStatus(String(value))}
-                    options={statusOptions}
+                    value={templateFilterStatus}
+                    onChangeValue={(value) => setTemplateFilterStatus?.(String(value))}
+                    options={[
+                      { label: 'Tất cả trạng thái', value: 'all' },
+                      { label: 'Đang dùng', value: 'active' },
+                      { label: 'Tạm ẩn', value: 'hidden' }
+                    ]}
                     clearable={false}
                     className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                   />
                 </div>
-              )}
 
-              {/* Search bar */}
-              <div className="flex flex-col gap-1 text-left flex-1 min-w-[200px]">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tìm kiếm nhanh</span>
-                <div className="relative w-full">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder={
-                      subTab === 'process'
-                        ? 'Tìm kiếm quy trình chuẩn...'
-                        : subTab === 'history'
-                        ? 'Tìm kiếm lịch sử công việc...'
-                        : 'Tìm theo tên việc, mô tả...'
-                    }
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    clearable={false}
-                    className="w-full pl-10 pr-4 h-9.5 text-xs font-bold bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl transition-all placeholder:text-slate-400 placeholder:text-xs"
-                  />
+                {/* Tìm kiếm nhanh */}
+                <div className="flex flex-col gap-1 text-left flex-1 min-w-[200px]">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tìm kiếm nhanh</span>
+                  <div className="relative w-full">
+                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="text"
+                      placeholder="Tìm kiếm mẫu checklist..."
+                      value={templateSearchTerm}
+                      onChange={(e) => setTemplateSearchTerm?.(e.target.value)}
+                      clearable={false}
+                      className="w-full pl-10 pr-4 h-9.5 text-xs font-bold bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl transition-all placeholder:text-slate-400 placeholder:text-xs"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                {/* Filter 1: Date (Only for today/history tabs) */}
+                {(subTab === 'today' || subTab === 'history') && (
+                  <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Ngày</span>
+                    <DatePicker
+                      value={selectedDate}
+                      onChange={(date) => date && setSelectedDate(date)}
+                      clearable={false}
+                      size="sm"
+                      className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
+                    />
+                  </div>
+                )}
 
-          {/* Action Button: Sync or Create Template */}
-          {subTab === 'checklist_template' ? (
-            canCreate && onOpenCreateTemplate && (
-              <div className="flex flex-col gap-1 items-start lg:items-center shrink-0 self-start lg:self-auto animate-in fade-in duration-200">
-                <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Tạo mới</span>
-                <Button
-                  type="button"
-                  onClick={onOpenCreateTemplate}
-                  className="h-9.5 px-4 bg-[#C21A1A] hover:bg-[#A81515] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 shrink-0"
-                >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Tạo mẫu mới</span>
-                </Button>
+                {/* Filter 2: Role Selection */}
+                {showRoleSelect && (
+                  <div className="flex flex-col gap-1 text-left min-w-[150px] flex-1 sm:flex-none">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Vai trò</span>
+                    <CustomSelect
+                      value={selectedRoleCode}
+                      onChangeValue={(value) => setSelectedRoleCode(String(value))}
+                      options={roleOptions.map((role) => ({
+                        label: role.name,
+                        value: role.code,
+                      }))}
+                      clearable={false}
+                      className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Filter 3: Performer Selection */}
+                {subTab === 'today' && (
+                  <div className="flex flex-col gap-1 text-left min-w-[160px] flex-1 sm:flex-none">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Người thực hiện</span>
+                    <CustomSelect
+                      value={selectedPerformer}
+                      onChangeValue={(value) => setSelectedPerformer(String(value))}
+                      options={performerOptions}
+                      clearable={false}
+                      className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Filter 4: Status Selection */}
+                {subTab === 'today' && (
+                  <div className="flex flex-col gap-1 text-left min-w-[140px] flex-1 sm:flex-none">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Trạng thái</span>
+                    <CustomSelect
+                      value={selectedStatus}
+                      onChangeValue={(value) => setSelectedStatus(String(value))}
+                      options={statusOptions}
+                      clearable={false}
+                      className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Search bar */}
+                <div className="flex flex-col gap-1 text-left flex-1 min-w-[200px]">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">Tìm kiếm nhanh</span>
+                  <div className="relative w-full">
+                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="text"
+                      placeholder={
+                        subTab === 'process'
+                          ? 'Tìm kiếm quy trình chuẩn...'
+                          : subTab === 'history'
+                          ? 'Tìm kiếm lịch sử công việc...'
+                          : 'Tìm theo tên việc, mô tả...'
+                      }
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      clearable={false}
+                      className="w-full pl-10 pr-4 h-9.5 text-xs font-bold bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 rounded-xl transition-all placeholder:text-slate-400 placeholder:text-xs"
+                    />
+                  </div>
+                </div>
               </div>
-            )
-          ) : (
-            onRefresh && (
-              <div className="flex flex-col gap-1 items-start lg:items-center shrink-0 self-start lg:self-auto">
-                <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Đồng bộ</span>
-                <Button
-                  type="button"
-                  onClick={onRefresh}
-                  disabled={isRefreshing}
-                  className="h-9.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>Đồng bộ</span>
-                </Button>
-              </div>
-            )
-          )}
+            )}
+
+            {/* Action Button: Sync or Create Template */}
+            {subTab === 'checklist_template' ? (
+              canCreate && onOpenCreateTemplate && (
+                <div className="flex flex-col gap-1 items-start lg:items-center shrink-0 self-start lg:self-auto animate-in fade-in duration-200">
+                  <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Tạo mới</span>
+                  <Button
+                    type="button"
+                    onClick={onOpenCreateTemplate}
+                    className="h-9.5 px-4 bg-[#C21A1A] hover:bg-[#A81515] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 shrink-0"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>Tạo mẫu mới</span>
+                  </Button>
+                </div>
+              )
+            ) : (
+              onRefresh && (
+                <div className="flex flex-col gap-1 items-start lg:items-center shrink-0 self-start lg:self-auto">
+                  <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Đồng bộ</span>
+                  <Button
+                    type="button"
+                    onClick={onRefresh}
+                    disabled={isRefreshing}
+                    className="h-9.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <span>Đồng bộ</span>
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 });
