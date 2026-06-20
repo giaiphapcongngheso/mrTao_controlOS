@@ -1,25 +1,20 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Plus,
   Calendar,
   CheckCircle2,
-  AlertCircle,
-  MoreVertical,
-  Check,
   Zap,
   Send,
   Circle,
   Play,
   Clock,
   ListTodo,
-  User,
   ClipboardList,
-  AlignLeft,
-  Building,
   Pencil,
   Trash2,
   AlertTriangle,
   Eye,
+  AlertCircle,
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { TaskItem, TaskRequestType, TaskStatus, SubTask } from '../../types/tasks.types';
@@ -40,6 +35,8 @@ import { cn } from '@shared/lib/utils';
 import { ModuleHeader } from '@shared/components';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
 import { ActionStack } from '@shared/components/custom/action-stack';
+import { toastSuccess, toastError } from '../../shared/lib/toast';
+import { Input } from '../../../share/ui/input';
 import { TaskCreateModal } from './components/task-create-modal';
 import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
 import { TaskDetailModal } from './components/task-detail-modal';
@@ -49,9 +46,10 @@ import { TaskKanbanView } from './components/task-kanban-view';
 import { TaskCalendarView } from './components/task-calendar-view';
 import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 import { isTaskOverdue, parseTaskDeadline, getDeadlineUrgency, getUrgencyLabel, getUrgencyBadgeClass } from './_hook/use-task-deadline';
+import { generateTaskCode, stripHtmlAndTruncate } from './constants/task-meta';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  eachDayOfInterval, format, isSameDay, isSameMonth, isToday, addMonths, subMonths,
+  eachDayOfInterval, format, isSameMonth, isToday, addMonths, subMonths,
 } from 'date-fns';
 
 interface TasksViewProps {
@@ -132,44 +130,7 @@ const getStatusTheme = (status: TaskStatus) => {
   }
 };
 
-const generateTaskCode = (task: TaskItem) => {
-  const deptCode = task.department
-    ? task.department
-      .split(' ')
-      .map((w) => w.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 4)
-    : 'GEN';
 
-  let dateStr = '2026-05-29';
-  const targetDate = task.createdAt || task.deadline || '';
-  const dateMatch = targetDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (dateMatch) {
-    dateStr = `${dateMatch[3]}-${dateMatch[2]}${dateMatch[1]}`;
-  } else {
-    const dateMatch2 = targetDate.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (dateMatch2) {
-      dateStr = `${dateMatch2[1]}-${dateMatch2[2]}${dateMatch2[3]}`;
-    }
-  }
-
-  const indexStr = task.id ? task.id.slice(-2).toUpperCase() : '01';
-  return `CV-${deptCode}-${dateStr}-${indexStr}`;
-};
-
-const stripHtmlAndTruncate = (htmlStr?: string, maxLen: number = 100) => {
-  if (!htmlStr) return '';
-  const cleanText = htmlStr
-    .replace(/<\/?[^>]+(>|$)/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim();
-  if (cleanText.length <= maxLen) return cleanText;
-  return cleanText.substring(0, maxLen) + '...';
-};
 
 // ============ RIGHT SIDEBAR COMPONENTS (Mockup Section 8) ============
 
@@ -435,12 +396,13 @@ export default function TasksView({
         },
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc tên..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              clearable={false}
+              className="font-medium"
             />
           ),
         },
@@ -456,12 +418,13 @@ export default function TasksView({
         ),
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc mô tả..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              clearable={false}
+              className="font-medium"
             />
           ),
         },
@@ -481,18 +444,21 @@ export default function TasksView({
         },
         meta: {
           filterElement: (column) => {
-            const val = (column.getFilterValue() as string) ?? 'all';
+            const val = (column.getFilterValue() as string) ?? '';
             return (
-              <select
-                value={val}
-                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-              >
-                <option value="all">Tất cả</option>
-                <option value="high">Cao</option>
-                <option value="medium">Trung bình</option>
-                <option value="low">Thấp</option>
-              </select>
+              <CustomSelect
+                options={[
+                  { label: 'Tất cả', value: 'all' },
+                  { label: 'Cao', value: 'high' },
+                  { label: 'Trung bình', value: 'medium' },
+                  { label: 'Thấp', value: 'low' },
+                ]}
+                value={val || 'all'}
+                onChangeValue={(v) => column.setFilterValue(v === 'all' ? undefined : v)}
+                placeholder="Tất cả"
+                clearable={false}
+                size="sm"
+              />
             );
           },
         },
@@ -514,19 +480,22 @@ export default function TasksView({
         },
         meta: {
           filterElement: (column) => {
-            const val = (column.getFilterValue() as string) ?? 'all';
+            const val = (column.getFilterValue() as string) ?? '';
             return (
-              <select
-                value={val}
-                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-              >
-                <option value="all">Tất cả</option>
-                <option value="not_started">Chưa làm</option>
-                <option value="in_progress">Đang làm</option>
-                <option value="waiting">Chờ duyệt</option>
-                <option value="completed">Hoàn thành</option>
-              </select>
+              <CustomSelect
+                options={[
+                  { label: 'Tất cả', value: 'all' },
+                  { label: 'Chưa làm', value: 'not_started' },
+                  { label: 'Đang làm', value: 'in_progress' },
+                  { label: 'Chờ duyệt', value: 'waiting' },
+                  { label: 'Hoàn thành', value: 'completed' },
+                ]}
+                value={val || 'all'}
+                onChangeValue={(v) => column.setFilterValue(v === 'all' ? undefined : v)}
+                placeholder="Tất cả"
+                clearable={false}
+                size="sm"
+              />
             );
           },
         },
@@ -548,12 +517,13 @@ export default function TasksView({
         },
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc người phụ trách..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              clearable={false}
+              className="font-medium"
             />
           ),
         },
@@ -569,12 +539,13 @@ export default function TasksView({
         ),
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc bộ phận..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              clearable={false}
+              className="font-medium"
             />
           ),
         },
@@ -624,12 +595,13 @@ export default function TasksView({
         },
         meta: {
           filterElement: (column) => (
-            <input
-              type="text"
+            <Input
+              size="sm"
               placeholder="Lọc hạn..."
               value={(column.getFilterValue() as string) ?? ''}
               onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
+              clearable={false}
+              className="font-medium"
             />
           ),
         },
@@ -712,9 +684,6 @@ export default function TasksView({
     [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask]
   );
 
-  // Toast Notification State
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
   // Filter tasks based on current user roles & permissions
   const visibleTasks = useMemo(() => {
     const isManager = canUpdate || canCreate;
@@ -725,39 +694,26 @@ export default function TasksView({
     );
   }, [tasks, canUpdate, canCreate, currentUser]);
 
-  // Auto disappear toast notifications
-  useEffect(() => {
-    if (toastMessage) {
-      const t = setTimeout(() => setToastMessage(null), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [toastMessage]);
-
-
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-  }, []);
-
 
   const handleCreateTask = useCallback(async (taskPayload: TaskRequestType) => {
     try {
       await onAddTask(taskPayload);
       setIsAddingTask(false);
-      showToast("🎉 Đã lưu và giao việc mới thành công!");
+      toastSuccess("Đã lưu và giao việc mới thành công!");
     } catch {
-      showToast("Không thể lưu công việc. Vui lòng thử lại.");
+      toastError("Không thể lưu công việc. Vui lòng thử lại.");
     }
-  }, [onAddTask, showToast]);
+  }, [onAddTask]);
 
   const handleQuickDelegate = useCallback(async (taskPayload: TaskRequestType) => {
     try {
       await onAddTask(taskPayload);
       setQuickDelegateOpen(false);
-      showToast(`✈️ Đã kích hoạt Giao nhanh cho nhân viên ${taskPayload.assignee}!`);
+      toastSuccess(`Đã kích hoạt Giao nhanh cho nhân viên ${taskPayload.assignee}!`);
     } catch {
-      showToast("Không thể giao nhanh công việc. Vui lòng thử lại.");
+      toastError("Không thể giao nhanh công việc. Vui lòng thử lại.");
     }
-  }, [onAddTask, showToast]);
+  }, [onAddTask]);
 
 
   // Filter computation
@@ -899,13 +855,7 @@ export default function TasksView({
   return (
     <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:flex md:flex-col md:overflow-hidden md:pb-0 md:pr-0 font-sans text-sm text-slate-650 min-w-0 w-full overflow-x-hidden">
 
-      {/* 1. NOTIFICATION TOAST SUCCESS STATUS */}
-      {toastMessage && (
-        <div className="fixed bottom-5 left-5 z-55 flex items-center gap-2.5 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-xl text-sm font-bold font-sans max-w-sm transition-all animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
+
 
       <ModuleHeader
         title="Điều phối công việc Chi nhánh"
@@ -1036,13 +986,15 @@ export default function TasksView({
                 className="font-semibold"
               />
             </div>
-            <button
+            <Button
               type="button"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 whitespace-nowrap"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
               Bộ lọc
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -1078,27 +1030,45 @@ export default function TasksView({
         {/* Filter dropdowns (Mockup: Vai trò, Người phụ trách, Trạng thái, Thời gian) */}
         {!isMobile && (
           <div className="flex items-center gap-2 flex-wrap ml-auto">
-            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
-              <option>Chọn vai trò</option>
-              {roles?.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-            </select>
-            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
-              <option>Chọn người</option>
-              {staffMembers?.map((s) => <option key={s.id} value={s.fullName}>{s.fullName}</option>)}
-            </select>
-            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
-              <option>Tất cả</option>
-              <option value="not_started">Chưa làm</option>
-              <option value="in_progress">Đang làm</option>
-              <option value="waiting">Chờ duyệt</option>
-              <option value="completed">Hoàn thành</option>
-            </select>
-            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
-              <option>Chọn khoảng thời gian</option>
-              <option>Hôm nay</option>
-              <option>Tuần này</option>
-              <option>Tháng này</option>
-            </select>
+            <div className="w-36">
+              <CustomSelect
+                options={roles?.map((role) => ({ label: role.name, value: role.id })) ?? []}
+                placeholder="Chọn vai trò"
+                size="sm"
+              />
+            </div>
+            <div className="w-36">
+              <CustomSelect
+                options={staffMembers?.map((s) => ({ label: s.fullName, value: s.fullName })) ?? []}
+                placeholder="Chọn người"
+                size="sm"
+              />
+            </div>
+            <div className="w-36">
+              <CustomSelect
+                options={[
+                  { label: 'Tất cả', value: 'all' },
+                  { label: 'Chưa làm', value: 'not_started' },
+                  { label: 'Đang làm', value: 'in_progress' },
+                  { label: 'Chờ duyệt', value: 'waiting' },
+                  { label: 'Hoàn thành', value: 'completed' },
+                ]}
+                placeholder="Tất cả"
+                size="sm"
+                clearable={false}
+              />
+            </div>
+            <div className="w-44">
+              <CustomSelect
+                options={[
+                  { label: 'Hôm nay', value: 'today' },
+                  { label: 'Tuần này', value: 'week' },
+                  { label: 'Tháng này', value: 'month' },
+                ]}
+                placeholder="Chọn khoảng thời gian"
+                size="sm"
+              />
+            </div>
           </div>
         )}
 
@@ -1193,7 +1163,7 @@ export default function TasksView({
                                 const selectedIds = selectedRows.map((r) => r.original.id);
                                 await Promise.all(selectedIds.map((id) => onUpdateTaskStatus(id, st)));
                                 table.resetRowSelection();
-                                showToast(`🔄 Đã cập nhật ${count} công việc sang "${statusMeta[st].text}"`);
+                                toastSuccess(`Đã cập nhật ${count} công việc sang "${statusMeta[st].text}"`);
                               }}
                             >
                               {statusMeta[st].text}
@@ -1267,9 +1237,9 @@ export default function TasksView({
             try {
               await onUpdateTask(editingTask.id, values);
               setEditingTask(null);
-              showToast("🎉 Đã cập nhật công việc thành công!");
+              toastSuccess("Đã cập nhật công việc thành công!");
             } catch {
-              showToast("Không thể cập nhật công việc. Vui lòng thử lại.");
+              toastError("Không thể cập nhật công việc. Vui lòng thử lại.");
             }
           } else {
             await handleCreateTask(values);
@@ -1302,9 +1272,9 @@ export default function TasksView({
             if (viewingTask && viewingTask.id === taskId) {
               setViewingTask(prev => prev ? { ...prev, helpers } : null);
             }
-            showToast("👥 Đã cập nhật danh sách người phụ giúp!");
+            toastSuccess("Đã cập nhật danh sách người phụ giúp!");
           } catch {
-            showToast("Không thể cập nhật người phụ giúp. Vui lòng thử lại.");
+            toastError("Không thể cập nhật người phụ giúp. Vui lòng thử lại.");
           }
         }}
         onUpdateSubtasks={onUpdateSubtasks ? async (taskId, subtasks) => {
@@ -1316,7 +1286,7 @@ export default function TasksView({
               setViewingTask(prev => prev ? { ...prev, subtasks, progress } : null);
             }
           } catch {
-            showToast("Không thể cập nhật checklist. Vui lòng thử lại.");
+            toastError("Không thể cập nhật checklist. Vui lòng thử lại.");
           }
         } : undefined}
         onUpdateStatus={async (taskId, status) => {
@@ -1326,9 +1296,9 @@ export default function TasksView({
             if (viewingTask && viewingTask.id === taskId) {
               setViewingTask(prev => prev ? { ...prev, status } : null);
             }
-            showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[status].text}"`);
+            toastSuccess(`Cập nhật trạng thái sang: "${statusMeta[status].text}"`);
           } catch {
-            showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+            toastError("Không thể cập nhật trạng thái. Vui lòng thử lại.");
           }
         }}
         onUpdateTaskFields={async (taskId, fields) => {
@@ -1337,9 +1307,9 @@ export default function TasksView({
             if (viewingTask && viewingTask.id === taskId) {
               setViewingTask(prev => prev ? { ...prev, ...fields } : null);
             }
-            showToast("✅ Đã cập nhật thông tin công việc!");
+            toastSuccess("Đã cập nhật thông tin công việc!");
           } catch {
-            showToast("Không thể cập nhật công việc. Vui lòng thử lại.");
+            toastError("Không thể cập nhật công việc. Vui lòng thử lại.");
           }
         }}
         isSaving={isSaving}
@@ -1364,9 +1334,9 @@ export default function TasksView({
             try {
               await onDeleteTask(taskToDelete.id);
               setTaskToDelete(null);
-              showToast("🗑️ Đã xóa công việc thành công!");
+              toastSuccess("Đã xóa công việc thành công!");
             } catch {
-              showToast("Không thể xóa công việc. Vui lòng thử lại.");
+              toastError("Không thể xóa công việc. Vui lòng thử lại.");
             }
           }
         }}

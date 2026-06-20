@@ -33,6 +33,8 @@ import { CustomMultiSelect } from '../../../../share/components/custom/custom-mu
 import type { StaffMember } from '../../../types/staff.types';
 import { getRoleFriendlyName } from '../../../constants';
 import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { sanitizeHtml } from '../../../shared/lib/sanitize-html';
+import { generateTaskCode } from '../constants/task-meta';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -94,31 +96,7 @@ const activityActionLabels: Record<string, string> = {
   attachment_added: 'đính kèm tệp'
 };
 
-const generateTaskCode = (task: TaskItem) => {
-  const deptCode = task.department
-    ? task.department
-      .split(' ')
-      .map((w) => w.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 4)
-    : 'GEN';
 
-  let dateStr = '2026-06-06';
-  const targetDate = task.createdAt || task.deadline || '';
-  const dateMatch = targetDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (dateMatch) {
-    dateStr = `${dateMatch[3]}-${dateMatch[2]}${dateMatch[1]}`;
-  } else {
-    const dateMatch2 = targetDate.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (dateMatch2) {
-      dateStr = `${dateMatch2[1]}-${dateMatch2[2]}${dateMatch2[3]}`;
-    }
-  }
-
-  const indexStr = task.id ? task.id.slice(-2).toUpperCase() : '01';
-  return `CV-${deptCode}-${dateStr}-${indexStr}`;
-};
 
 const formatSubtaskTime = (isoString?: string) => {
   if (!isoString) return '—';
@@ -194,14 +172,14 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
     const timestampStr = new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
     const newComment: TaskComment = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: crypto.randomUUID(),
       author: currentUser.fullName,
       content: commentInput.trim(),
       createdAt: timestampStr
     };
 
     const newActivity: ActivityEntry = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: crypto.randomUUID(),
       action: 'comment_added',
       actor: currentUser.fullName,
       detail: commentInput.trim().slice(0, 50) + (commentInput.trim().length > 50 ? '...' : ''),
@@ -232,7 +210,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
       const timestampStr = new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
       const newAttachment: TaskAttachment = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: crypto.randomUUID(),
         name: file.name,
         url: base64Data,
         type: file.type,
@@ -242,7 +220,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
       };
 
       const newActivity: ActivityEntry = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: crypto.randomUUID(),
         action: 'attachment_added',
         actor: currentUser.fullName,
         detail: file.name,
@@ -610,7 +588,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
                         [&_p]:mb-2 [&_p]:leading-relaxed
                         [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
                         [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
-              dangerouslySetInnerHTML={{ __html: task.notes || '<span class="italic text-slate-400 font-medium">Không có ghi chú...</span>' }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(task.notes || '<span class="italic text-slate-400 font-medium">Không có ghi chú...</span>') }}
             />
           </div>
 

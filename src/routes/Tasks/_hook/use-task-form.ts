@@ -50,8 +50,8 @@ export const DEFAULT_TASK_FORM_VALUES: TaskFormValues = {
 
 export const DEFAULT_QUICK_DELEGATE_FORM_VALUES: TaskQuickDelegateFormValues = {
   title: '',
-  assignee: 'Lê Văn C',
-  department: 'Kho',
+  assignee: '',
+  department: '',
 };
 
 /**

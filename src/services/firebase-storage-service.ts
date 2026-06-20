@@ -120,3 +120,32 @@ export async function uploadChecklistItemImage(file: File, itemId: string): Prom
   return getDownloadURL(snapshot.ref);
   */
 }
+
+// Maximum file size for task attachments (500KB to stay safely under Firestore 1MB doc limit)
+const MAX_TASK_ATTACHMENT_SIZE = 500 * 1024;
+
+/**
+ * Upload a task attachment file.
+ * - Images: Compressed to base64 JPEG
+ * - Other files: Raw base64 (with size limit enforcement)
+ * @throws Error if file exceeds MAX_TASK_ATTACHMENT_SIZE (for non-image files)
+ */
+export async function uploadTaskAttachment(file: File): Promise<string> {
+  // Images get compressed automatically
+  if (file.type.startsWith('image/')) {
+    return compressAndConvertToBase64(file);
+  }
+
+  // Non-image files: enforce size limit to protect Firestore
+  if (file.size > MAX_TASK_ATTACHMENT_SIZE) {
+    throw new Error(`FILE_TOO_LARGE: Tệp ${file.name} vượt quá ${Math.round(MAX_TASK_ATTACHMENT_SIZE / 1024)}KB. Vui lòng chọn tệp nhỏ hơn.`);
+  }
+
+  // Read non-image file as base64
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
