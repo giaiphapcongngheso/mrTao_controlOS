@@ -49,6 +49,23 @@ function getActionTone(actionType: SystemLog['actionType']) {
   }
 }
 
+function getActionLabel(actionType: SystemLog['actionType']) {
+  switch (actionType) {
+    case 'CREATE':
+      return 'Tạo mới';
+    case 'UPDATE':
+      return 'Cập nhật';
+    case 'DELETE':
+      return 'Xóa';
+    case 'SYNC':
+      return 'Đồng bộ';
+    case 'RESET':
+      return 'Đặt lại';
+    default:
+      return actionType === 'OTHER' ? 'Khác' : actionType;
+  }
+}
+
 const columns: ColumnDef<SystemLog>[] = [
   {
     accessorKey: 'timestamp',
@@ -95,7 +112,7 @@ const columns: ColumnDef<SystemLog>[] = [
       const log = row.original;
       return (
         <span className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border border-solid ${getActionTone(log.actionType)}`}>
-          {log.actionType}
+          {getActionLabel(log.actionType)}
         </span>
       );
     },
@@ -142,8 +159,17 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
   }, [logs]);
 
   const actionSelectOptions = useMemo(() => {
+    const actionLabels: Record<string, string> = {
+      ALL: 'Tất cả hành động',
+      CREATE: 'Tạo mới',
+      UPDATE: 'Cập nhật',
+      DELETE: 'Xóa',
+      SYNC: 'Đồng bộ',
+      RESET: 'Đặt lại',
+      OTHER: 'Khác',
+    };
     return actionOptions.map((opt) => ({
-      label: opt === 'ALL' ? 'Tất cả hành động' : opt,
+      label: actionLabels[opt] ?? opt,
       value: opt,
     }));
   }, []);

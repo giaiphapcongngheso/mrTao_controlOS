@@ -1,13 +1,25 @@
 import React, { useCallback } from 'react';
 import { Target, Award } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '../../../../share/ui/dialog';
-import { Button } from '../../../shared/components/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '../../../../share/ui/dialog';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
+import { Button } from '../../../../share/ui/button';
 import { Label } from '../../../../share/ui/label';
 import { Input } from '../../../../share/ui/input';
 import { formatValue } from '../kpi-utils';
 import type { KPIConfig } from '../../../types/kpi.types';
 
 export type ConfigDialogMode = 'create' | 'edit' | 'view';
+
+const unitOptions = [
+  { label: 'VNĐ', value: 'VNĐ' },
+  { label: 'Đơn', value: 'Đơn' },
+  { label: 'Khách', value: 'Khách' },
+  { label: 'Đánh giá', value: 'Đánh giá' },
+  { label: 'Ca', value: 'Ca' },
+  { label: 'Máy', value: 'Máy' },
+  { label: 'Ngày', value: 'Ngày' },
+  { label: '%', value: '%' },
+];
 
 interface ConfigDialogProps {
   open: boolean;
@@ -84,7 +96,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
   const handleTargetChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setFormTarget(e.target.value), []);
   const handleWeightChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setFormWeight(e.target.value), []);
   const handleProofChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setFormProof(e.target.value), []);
-  const handleUnitChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => setFormUnit(e.target.value), []);
+  const handleUnitChange = useCallback((val: string | number) => setFormUnit(String(val)), []);
 
   const title =
     mode === 'view' ? 'Chi tiết chỉ số KPI'
@@ -133,21 +145,14 @@ export const ConfigDialog = React.memo(function ConfigDialog({
             <div className="grid grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-sm font-bold text-slate-600 tracking-wide">Đơn vị đo lường</Label>
-                <select
+                <CustomSelect
+                  options={unitOptions}
                   value={formUnit}
-                  onChange={handleUnitChange}
+                  onChangeValue={handleUnitChange}
                   disabled={isViewMode}
-                  className="w-full h-9 px-3 border border-slate-200 rounded-md text-sm font-semibold outline-none focus:border-[#C21A1A] focus:ring-2 focus:ring-red-100 transition-all bg-white cursor-pointer text-slate-700 disabled:opacity-75 disabled:bg-slate-150"
-                >
-                  <option value="VNĐ">VNĐ</option>
-                  <option value="Đơn">Đơn</option>
-                  <option value="Khách">Khách</option>
-                  <option value="Đánh giá">Đánh giá</option>
-                  <option value="Ca">Ca</option>
-                  <option value="Máy">Máy</option>
-                  <option value="Ngày">Ngày</option>
-                  <option value="%">%</option>
-                </select>
+                  clearable={false}
+                  className="w-full text-slate-700 font-semibold text-sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -221,21 +226,21 @@ export const ConfigDialog = React.memo(function ConfigDialog({
           </div>
 
           {/* Actions */}
-          <div className="pt-4 flex items-center justify-end gap-2.5">
+          <DialogFooter className="pt-4 gap-2.5">
             <DialogClose asChild>
               <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
                 {isViewMode ? 'Đóng' : 'Hủy bỏ'}
               </Button>
             </DialogClose>
             {!isViewMode && (
-              <button
+              <Button
                 type="submit"
                 className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-sm"
               >
                 {mode === 'edit' ? 'Lưu thay đổi' : 'Tạo chỉ số'}
-              </button>
+              </Button>
             )}
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

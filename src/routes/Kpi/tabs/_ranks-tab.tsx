@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { StaffMember } from '../../../types/staff.types';
+import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import type { KPIConfig, KPIDailyValue, StaffRank } from '../../../types/kpi.types';
 import { LeaderboardTable } from '../components/_leaderboard-table';
 import { StaffDetailCard } from '../components/_staff-detail-card';
 import { KpiSparklineChart } from '../components/_kpi-sparkline-chart';
-import { PeriodSelector } from '../components/_period-selector';
 import {
   normalizeRole,
   calculateDynamicStaffRanks,
@@ -12,10 +11,12 @@ import {
   calculateRevenueStats,
   calculatePeriodMonths,
   getDaysInMonthCount,
+  getPreviousMonthYear,
   type RanksTimeframe,
 } from '../kpi-utils';
 
 interface RanksTabProps {
+  roles: StaffRole[];
   staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   kpiDailyValues: KPIDailyValue[];
@@ -23,6 +24,7 @@ interface RanksTabProps {
 }
 
 export const RanksTab = React.memo(function RanksTab({
+  roles,
   staffMembers,
   kpiConfigs,
   kpiDailyValues,
@@ -94,6 +96,57 @@ export const RanksTab = React.memo(function RanksTab({
     return calculateRevenueStats(selectedStaff.id, selectedStaff.role, kpiConfigs, kpiDailyValues, periodMonths);
   }, [kpiConfigs, kpiDailyValues, selectedStaff, periodMonths]);
 
+  // Previous period months (for growth calculation)
+  const prevPeriodMonths = useMemo(() => {
+    if (ranksTimeframe === 'month') {
+      return [getPreviousMonthYear(ranksMonth)];
+    } else if (ranksTimeframe === 'quarter') {
+      const prevQ = ranksQuarter === 1 ? 4 : ranksQuarter - 1;
+      const prevY = ranksQuarter === 1 ? ranksYear - 1 : ranksYear;
+      return calculatePeriodMonths('quarter', ranksMonth, prevQ, prevY);
+    } else {
+      // year
+      return calculatePeriodMonths('year', ranksMonth, ranksQuarter, ranksYear - 1);
+    }
+  }, [ranksTimeframe, ranksMonth, ranksQuarter, ranksYear]);
+
+  // Previous period revenue stats
+  const prevRevenueStats = useMemo(() => {
+    if (!selectedStaff) return { totalTarget: 0, totalActual: 0, pct: 0, hasRevenue: false };
+    return calculateRevenueStats(selectedStaff.id, selectedStaff.role, kpiConfigs, kpiDailyValues, prevPeriodMonths);
+  }, [kpiConfigs, kpiDailyValues, selectedStaff, prevPeriodMonths]);
+
+  // Revenue growth calculation
+  const revenueGrowth = useMemo(() => {
+    const current = periodRevenueStats.totalActual;
+    const prev = prevRevenueStats.totalActual;
+    
+    let label = '';
+    if (ranksTimeframe === 'month') {
+      const prevMStr = prevPeriodMonths[0];
+      label = `T${prevMStr.split('-')[1]}/${prevMStr.split('-')[0]}`;
+    } else if (ranksTimeframe === 'quarter') {
+      const prevQ = ranksQuarter === 1 ? 4 : ranksQuarter - 1;
+      const prevY = ranksQuarter === 1 ? ranksYear - 1 : ranksYear;
+      label = `Quý ${prevQ}/${prevY}`;
+    } else {
+      label = `Năm ${ranksYear - 1}`;
+    }
+
+    if (prev <= 0) {
+      return { pct: 0, isGrow: true, label };
+    }
+    
+    const diff = current - prev;
+    const pct = (diff / prev) * 100;
+
+    return {
+      pct: Math.abs(pct),
+      isGrow: diff >= 0,
+      label,
+    };
+  }, [periodRevenueStats.totalActual, prevRevenueStats.totalActual, ranksTimeframe, prevPeriodMonths, ranksQuarter, ranksYear]);
+
   // Period KPIs
   const periodKpis = useMemo(() => {
     if (!selectedStaff) return [];
@@ -120,27 +173,24 @@ export const RanksTab = React.memo(function RanksTab({
 
   return (
     <div className="space-y-4">
-      {/* Period selector */}
-      <PeriodSelector
-        timeframe={ranksTimeframe}
-        onTimeframeChange={handleTimeframeChange}
-        ranksMonth={ranksMonth}
-        onRanksMonthChange={handleMonthChange}
-        ranksQuarter={ranksQuarter}
-        onRanksQuarterChange={handleQuarterChange}
-        ranksYear={ranksYear}
-        onRanksYearChange={handleYearChange}
-      />
-
       {/* Content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Left: Leaderboard */}
         <div className="lg:col-span-5">
           <LeaderboardTable
+            roles={roles}
             ranks={dynamicRanks}
             selectedStaffId={selectedStaffId}
             onSelectStaff={handleSelectStaff}
             periodLabel={periodLabel}
+            ranksTimeframe={ranksTimeframe}
+            onTimeframeChange={handleTimeframeChange}
+            ranksMonth={ranksMonth}
+            onRanksMonthChange={handleMonthChange}
+            ranksQuarter={ranksQuarter}
+            onRanksQuarterChange={handleQuarterChange}
+            ranksYear={ranksYear}
+            onRanksYearChange={handleYearChange}
           />
         </div>
 
@@ -149,6 +199,7 @@ export const RanksTab = React.memo(function RanksTab({
           {selectedStaff && (
             <>
               <StaffDetailCard
+                roles={roles}
                 staff={selectedStaff}
                 score={score}
                 ranksTimeframe={ranksTimeframe}
@@ -157,6 +208,7 @@ export const RanksTab = React.memo(function RanksTab({
                 ranksMonth={ranksMonth}
                 ranksQuarter={ranksQuarter}
                 ranksYear={ranksYear}
+                revenueGrowth={revenueGrowth}
               />
 
               {/* Sparkline chart (month view only) */}

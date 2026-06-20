@@ -68,9 +68,9 @@ export default function KpiView({
       />
 
       {/* Month selector + Sub tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Pill tabs */}
-        <div className="bg-slate-100/90 backdrop-blur-md p-1 rounded-full flex items-center gap-1 w-fit shadow-xs border border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0">
+        {/* Underline tabs */}
+        <div className="flex items-center gap-6 md:gap-8 -mb-px">
           {SUB_TABS.map(tab => (
             <SubTabButton
               key={tab.key}
@@ -84,12 +84,12 @@ export default function KpiView({
         </div>
 
         {/* Month picker */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pb-2">
           <Calendar className="w-4 h-4 text-slate-400" />
           <select
             value={selectedMonthYear}
             onChange={handleMonthYearChange}
-            className="px-3 h-9 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all cursor-pointer focus:outline-none"
+            className="px-3 h-8 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-all cursor-pointer focus:outline-none"
           >
             {monthOptions.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -101,6 +101,7 @@ export default function KpiView({
       {/* Tab Content */}
       {activeSubTab === 'ranks' && (
         <RanksTab
+          roles={roles}
           staffMembers={staffMembers}
           kpiConfigs={kpiConfigs}
           kpiDailyValues={kpiDailyValues}
@@ -151,10 +152,10 @@ const SubTabButton = React.memo(function SubTabButton({
   return (
     <button
       onClick={handleClick}
-      className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
+      className={`flex items-center gap-1.5 px-0.5 pb-2.5 pt-2 text-sm font-bold bg-transparent rounded-none border-t-0 border-l-0 border-r-0 border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
         isActive
-          ? 'bg-white text-slate-800 border border-slate-200/50 shadow-xs'
-          : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+          ? 'border-[#C21A1A] text-[#C21A1A]'
+          : 'border-transparent text-slate-500 hover:text-slate-800'
       }`}
     >
       {icon}

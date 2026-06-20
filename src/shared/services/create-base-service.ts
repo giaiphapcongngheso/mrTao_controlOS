@@ -118,6 +118,47 @@ function resourceToCollectionName(resourcePath: string): string {
     .replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+// ─── Log Friendly Helpers ───────────────────────────────────────────────────
+
+function getFriendlyTargetName(target: string, id?: string, _payload?: any): string {
+  const baseName = target.toLowerCase();
+  if (target === 'Checklist' && id) {
+    const parts = id.split(/[-_]/);
+    if (parts.length >= 3) {
+      const dateStr = parts[1];
+      const roleCode = parts[2];
+      if (dateStr && roleCode && dateStr.length === 6) {
+        const formattedDate = `${dateStr.slice(0, 2)}/${dateStr.slice(2, 4)}/20${dateStr.slice(4, 6)}`;
+        return `${baseName} vai trò ${roleCode} ngày ${formattedDate}`;
+      }
+    }
+  }
+  return baseName;
+}
+
+function getChangedFieldsString(payload?: any): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const keys = Object.keys(payload).filter(
+    (k) => k !== 'updatedAt' && k !== 'updatedBy' && k !== 'id' && k !== 'createdAt' && k !== 'storeId'
+  );
+  if (keys.length === 0) return '';
+
+  const keyLabels: Record<string, string> = {
+    tasks: 'danh sách công việc',
+    status: 'trạng thái',
+    title: 'tiêu đề',
+    description: 'mô tả',
+    fullName: 'họ tên',
+    phone: 'số điện thoại',
+    role: 'vai trò',
+    internalNotes: 'ghi chú nội bộ',
+    isCompleted: 'hoàn thành',
+  };
+
+  const translatedKeys = keys.map((k) => keyLabels[k] || k);
+  return ` (Cập nhật: ${translatedKeys.join(', ')})`;
+}
+
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
 export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
@@ -171,7 +212,8 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
             const nameField = (payload && typeof payload === 'object')
               ? (payload as any).name || (payload as any).title || (payload as any).fullName || (payload as any).code || (payload as any).username || ''
               : '';
-            details = `Đã tạo ${autoLog.target.toLowerCase()}${nameField ? ` "${nameField}"` : ''}`;
+            const targetName = getFriendlyTargetName(autoLog.target, undefined, payload);
+            details = `Đã tạo ${targetName}${nameField ? ` "${nameField}"` : ''}`;
           }
         }
 
@@ -207,7 +249,9 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
             const nameField = (payload && typeof payload === 'object')
               ? (payload as any).name || (payload as any).title || (payload as any).fullName || (payload as any).code || (payload as any).username || ''
               : '';
-            details = `Đã cập nhật ${autoLog.target.toLowerCase()}${nameField ? ` "${nameField}"` : ''} (ID: ${id})`;
+            const targetName = getFriendlyTargetName(autoLog.target, id, payload);
+            const changedFields = getChangedFieldsString(payload);
+            details = `Đã cập nhật ${targetName}${nameField ? ` "${nameField}"` : ''}${changedFields} (ID: ${id})`;
           }
         }
 
@@ -241,7 +285,8 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
             details = autoLog.resolveDetails('DELETE', id, undefined) || '';
           }
           if (!details) {
-            details = `Đã xóa ${autoLog.target.toLowerCase()} (ID: ${id})`;
+            const targetName = getFriendlyTargetName(autoLog.target, id, undefined);
+            details = `Đã xóa ${targetName} (ID: ${id})`;
           }
         }
 

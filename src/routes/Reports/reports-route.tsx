@@ -4,15 +4,11 @@ import { useAppStore } from '../../stores/app-store';
 
 export default function ReportsRoute() {
   const currentUser = useAppStore((state) => state.currentUser);
-  const { dailyReport, stats, todayChecklistItems, tasks, issues } = useAppShellState();
+  const { dailyReport } = useAppShellState();
 
   return (
     <ReportsView
       dailyReport={dailyReport}
-      stats={stats}
-      checklistItems={todayChecklistItems}
-      tasks={tasks}
-      issues={issues}
       currentUser={currentUser}
     />
   );

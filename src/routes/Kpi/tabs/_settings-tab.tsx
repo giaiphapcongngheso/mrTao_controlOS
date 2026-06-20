@@ -5,6 +5,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '.
 import { Button } from '../../../shared/components/button';
 import { Alert, AlertTitle, AlertDescription } from '../../../../share/ui/alert';
 import { ConfigDialog, type ConfigDialogMode } from '../components/_config-dialog';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { normalizeRole, formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
 import type { StaffRole } from '../../../types/staff.types';
@@ -40,6 +41,10 @@ export const SettingsTab = React.memo(function SettingsTab({
 
   // Derived
   const daysInMonthCount = getDaysInMonthCount(selectedMonthYear);
+  const selectedRoleName = useMemo(() => {
+    const roleObj = roles.find(r => r.code === selectedSettingRole);
+    return roleObj ? roleObj.name : selectedSettingRole;
+  }, [roles, selectedSettingRole]);
 
   const filteredConfigs = useMemo(
     () => kpiConfigs.filter(
@@ -95,8 +100,15 @@ export const SettingsTab = React.memo(function SettingsTab({
     }
   }, [deleteTarget, onDeleteConfig]);
 
-  const handleRoleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSettingRole(e.target.value);
+  const roleOptions = useMemo(() => {
+    return roles.map(role => ({
+      label: role.name,
+      value: role.code
+    }));
+  }, [roles]);
+
+  const handleRoleChangeValue = useCallback((val: string | number) => {
+    setSelectedSettingRole(String(val));
   }, []);
 
   const handleConfigSubmit = useCallback(async (data: {
@@ -154,19 +166,15 @@ export const SettingsTab = React.memo(function SettingsTab({
 
             <div className="flex items-center gap-3">
               {/* Role selector */}
-              <div className="relative min-w-[200px]">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500 uppercase">Vai trò</span>
-                <select
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-500 uppercase shrink-0">Vai trò:</span>
+                <CustomSelect
+                  options={roleOptions}
                   value={selectedSettingRole}
-                  onChange={handleRoleChange}
-                  className="w-full bg-slate-50 border border-slate-200 font-bold text-sm pl-20 pr-8 py-2.5 rounded-xl text-slate-700 focus:outline-none cursor-pointer appearance-none"
-                >
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.code}>
-                      {role.code} ({role.name})
-                    </option>
-                  ))}
-                </select>
+                  onChangeValue={handleRoleChangeValue}
+                  clearable={false}
+                  className="w-[220px] text-slate-700 font-bold text-sm bg-slate-50"
+                />
               </div>
 
               <Button onClick={handleOpenAddDialog} className="font-bold cursor-pointer h-[38px] rounded-xl text-sm">
@@ -177,7 +185,7 @@ export const SettingsTab = React.memo(function SettingsTab({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-6 space-y-6">
+        <CardContent className="pt-0 space-y-4">
           {/* Copy from previous month banner */}
           {showCopyBanner && (
             <Alert className="bg-gradient-to-r from-red-50 to-amber-50 border-red-200/60">
@@ -257,7 +265,7 @@ export const SettingsTab = React.memo(function SettingsTab({
         open={isConfigDialogOpen}
         onOpenChange={setIsConfigDialogOpen}
         mode={configDialogMode}
-        selectedRole={selectedSettingRole}
+        selectedRole={selectedRoleName}
         selectedMonthYear={selectedMonthYear}
         daysInMonthCount={daysInMonthCount}
         config={editingConfig}

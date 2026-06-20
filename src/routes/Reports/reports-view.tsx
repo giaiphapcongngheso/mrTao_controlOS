@@ -11,24 +11,17 @@ import {
   TableHeader,
   TableRow,
 } from '../../../share/ui';
-import { ChecklistItem } from '../../types/checklist.types';
-import { type SOPIssue, isOpenSopIssue } from '../../types/issues.types';
 import { DailyReport } from '../../types/reports.types';
-import { TaskItem } from '../../types/tasks.types';
-import { KPIStats } from '../../types/today.types';
 import { reportsDailyService, type ReportSubmission } from '../../services/reports-service';
 import { notificationsService } from '../../services/notifications-service';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import ReportForm, { type ReportFormState, type ReportPeriod, type ReportStatus } from './components/report-form';
 import { useDailyReportQuery } from './_hook/use-reports';
+import { useReportMetrics } from './_hook/use-report-metrics';
 
 interface ReportsViewProps {
   dailyReport: DailyReport;
-  stats?: KPIStats;
-  checklistItems?: ChecklistItem[];
-  tasks?: TaskItem[];
-  issues?: SOPIssue[];
   currentUser?: { fullName: string; role: string; roleCode?: string; username?: string; avatar?: string } | null;
 }
 
@@ -60,6 +53,13 @@ const DEFAULT_FORM_STATE: ReportFormState = {
   status: 'green',
   notes: '',
   saveStatus: 'idle',
+  reportDate: new Date().toISOString().slice(0, 10),
+  shift: 'Ca sáng (06:00 - 14:00)',
+  department: 'Cửa hàng Bình Thạnh',
+  reporter: '',
+  highlightIssues: [],
+  promises: [],
+  attachments: [],
 };
 
 const ITEMS_PER_PAGE = 5;
@@ -72,10 +72,6 @@ function formatCurrency(amount: number): string {
 
 export default function ReportsView({
   dailyReport,
-  stats,
-  checklistItems = [],
-  tasks = [],
-  issues = [],
   currentUser,
 }: ReportsViewProps) {
   const [reportTab, setReportTab] = useState<ReportPeriod>('day');
@@ -90,71 +86,61 @@ export default function ReportsView({
   const [reportForm, setReportForm] = useState<ReportFormState>(DEFAULT_FORM_STATE);
   const reportsQuery = useDailyReportQuery();
 
-  const totalChecklist = useMemo(() => checklistItems.length || 28, [checklistItems.length]);
-  const completedChecklist = useMemo(
-    () => checklistItems.filter((item) => item.isCompleted).length || 26,
-    [checklistItems],
-  );
-  const checklistPercentage = useMemo(() => {
-    if (totalChecklist <= 0) {
-      return 0;
-    }
-    return Math.round((completedChecklist / totalChecklist) * 100);
-  }, [completedChecklist, totalChecklist]);
-
-  const liveMetrics = useMemo(
-    () => ({
-      delayedCount: tasks.filter((task) => task.status !== 'completed').length,
-      sopErrorsCount: issues.filter(isOpenSopIssue).length,
-      complaintsCount: stats?.customerComplaintsCount ?? 0,
-      staffIssuesCount: stats?.lateStaffCount ?? 0,
-    }),
-    [issues, stats?.customerComplaintsCount, stats?.lateStaffCount, tasks],
-  );
+  // Query metrics directly from Firestore services
+  const todayDateKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const {
+    metrics: liveReportMetrics,
+    isLoading: isMetricsLoading,
+    refetch: refetchMetrics,
+  } = useReportMetrics({
+    storeId: dailyReport.storeId,
+    dateKey: todayDateKey,
+    enabled: true,
+  });
 
   const activePeriodMetrics = useMemo(() => {
     const fallback = FALLBACK_PERIOD_METRICS[reportTab];
     if (reportTab === 'day') {
-      return {
-        revenue: dailyReport.revenue || fallback.revenue,
-        billCount: dailyReport.billCount || fallback.billCount,
-      };
+      // Prefer live metrics revenue, fallback to dailyReport, then hardcode
+      const revenue = liveReportMetrics.revenue || dailyReport.revenue || fallback.revenue;
+      const billCount = liveReportMetrics.billCount || dailyReport.billCount || fallback.billCount;
+      return { revenue, billCount };
     }
     return fallback;
-  }, [dailyReport.billCount, dailyReport.revenue, reportTab]);
+  }, [dailyReport.billCount, dailyReport.revenue, liveReportMetrics.billCount, liveReportMetrics.revenue, reportTab]);
 
   const defaultStatus = useMemo<ReportStatus>(() => {
     if (
-      liveMetrics.delayedCount > 3 ||
-      liveMetrics.sopErrorsCount > 2 ||
-      liveMetrics.complaintsCount > 1
+      liveReportMetrics.delayedCount > 3 ||
+      liveReportMetrics.sopErrorsCount > 2 ||
+      liveReportMetrics.complaintsCount > 1
     ) {
       return 'red';
     }
     if (
-      liveMetrics.delayedCount > 0 ||
-      liveMetrics.sopErrorsCount > 0 ||
-      liveMetrics.complaintsCount > 0 ||
-      liveMetrics.staffIssuesCount > 0
+      liveReportMetrics.delayedCount > 0 ||
+      liveReportMetrics.sopErrorsCount > 0 ||
+      liveReportMetrics.complaintsCount > 0 ||
+      liveReportMetrics.staffIssuesCount > 0
     ) {
       return 'yellow';
     }
     return 'green';
-  }, [liveMetrics]);
+  }, [liveReportMetrics]);
 
   const defaultNotes = useMemo(() => {
     const issuesText: string[] = [];
-    if (liveMetrics.delayedCount > 0) issuesText.push(`${liveMetrics.delayedCount} việc trễ`);
-    if (liveMetrics.sopErrorsCount > 0) issuesText.push(`${liveMetrics.sopErrorsCount} lỗi SOP`);
-    if (liveMetrics.complaintsCount > 0) issuesText.push(`${liveMetrics.complaintsCount} khiếu nại`);
-    if (liveMetrics.staffIssuesCount > 0) issuesText.push(`${liveMetrics.staffIssuesCount} vấn đề nhân sự`);
+    if (liveReportMetrics.delayedCount > 0) issuesText.push(`${liveReportMetrics.delayedCount} việc trễ`);
+    if (liveReportMetrics.sopErrorsCount > 0) issuesText.push(`${liveReportMetrics.sopErrorsCount} lỗi SOP`);
+    if (liveReportMetrics.complaintsCount > 0) issuesText.push(`${liveReportMetrics.complaintsCount} khiếu nại`);
+    if (liveReportMetrics.staffIssuesCount > 0) issuesText.push(`${liveReportMetrics.staffIssuesCount} vấn đề nhân sự`);
 
     const revenueLabel = new Intl.NumberFormat('vi-VN').format(activePeriodMetrics.revenue);
     if (issuesText.length > 0) {
       return `Doanh thu đạt khoảng ${revenueLabel}đ, còn ${issuesText.join(', ')} cần xử lý.`;
     }
-    return `Báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} ổn định. Doanh thu khoảng ${revenueLabel}đ, hoàn thành ${checklistPercentage}% checklist.`;
-  }, [activePeriodMetrics.revenue, checklistPercentage, liveMetrics, reportTab]);
+    return `Báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} ổn định. Doanh thu khoảng ${revenueLabel}đ, hoàn thành ${liveReportMetrics.checklistPercentage}% checklist.`;
+  }, [activePeriodMetrics.revenue, liveReportMetrics, reportTab]);
 
   const canSubmitReport = useMemo(
     () => permissions.canCreate || permissions.canUpdate,
@@ -286,8 +272,18 @@ export default function ReportsView({
   }, []);
 
   const handleOpenReportForm = useCallback(() => {
+    setReportForm((prev) => ({
+      ...prev,
+      reportDate: new Date().toISOString().slice(0, 10),
+      shift: 'Ca sáng (06:00 - 14:00)',
+      department: 'Cửa hàng Bình Thạnh',
+      reporter: currentUser?.fullName || 'Trần Tấn Phát',
+      highlightIssues: [],
+      promises: [],
+      attachments: [],
+    }));
     setIsReportFormOpen(true);
-  }, []);
+  }, [currentUser?.fullName]);
 
   const handleChangeFormOpen = useCallback((open: boolean) => {
     setIsReportFormOpen(open);
@@ -334,17 +330,25 @@ export default function ReportsView({
       status: reportForm.status,
       revenue: activePeriodMetrics.revenue,
       billCount: activePeriodMetrics.billCount,
-      checklistPct: checklistPercentage,
-      checklistRatio: `${completedChecklist}/${totalChecklist}`,
-      delayedCount: liveMetrics.delayedCount,
-      sopErrorsCount: liveMetrics.sopErrorsCount,
-      complaintsCount: liveMetrics.complaintsCount,
-      staffIssuesCount: liveMetrics.staffIssuesCount,
+      checklistPct: liveReportMetrics.checklistPercentage,
+      checklistRatio: liveReportMetrics.checklistRatio,
+      delayedCount: liveReportMetrics.delayedCount,
+      sopErrorsCount: liveReportMetrics.sopErrorsCount,
+      complaintsCount: liveReportMetrics.complaintsCount,
+      staffIssuesCount: liveReportMetrics.staffIssuesCount,
       notes: reportForm.notes || defaultNotes,
-      actor: actorName,
+      actor: reportForm.reporter || actorName,
       approvalStatus: 'pending',
       createdAt: nowIso,
       updatedAt: nowIso,
+
+      reportDate: reportForm.reportDate,
+      shift: reportForm.shift,
+      department: reportForm.department,
+      reporter: reportForm.reporter,
+      highlightIssues: reportForm.highlightIssues,
+      promises: reportForm.promises,
+      attachments: reportForm.attachments,
     };
 
     try {
@@ -406,22 +410,16 @@ export default function ReportsView({
     activePeriodMetrics.billCount,
     activePeriodMetrics.revenue,
     canSubmitReport,
-    checklistPercentage,
-    completedChecklist,
     currentUser?.fullName,
     currentUser?.role,
     dailyReport.storeId,
     defaultNotes,
-    liveMetrics.complaintsCount,
-    liveMetrics.delayedCount,
-    liveMetrics.sopErrorsCount,
-    liveMetrics.staffIssuesCount,
+    liveReportMetrics,
     permissions.canUpdate,
     reportForm.notes,
     reportForm.status,
     reportTab,
     submittedReports,
-    totalChecklist,
     triggerToast,
   ]);
 
@@ -680,18 +678,22 @@ export default function ReportsView({
         metrics={{
           revenue: activePeriodMetrics.revenue,
           billCount: activePeriodMetrics.billCount,
-          checklistPercentage,
-          checklistRatio: `${completedChecklist}/${totalChecklist}`,
-          delayedCount: liveMetrics.delayedCount,
-          sopErrorsCount: liveMetrics.sopErrorsCount,
-          complaintsCount: liveMetrics.complaintsCount,
-          staffIssuesCount: liveMetrics.staffIssuesCount,
+          checklistPercentage: liveReportMetrics.checklistPercentage,
+          checklistRatio: liveReportMetrics.checklistRatio,
+          delayedCount: liveReportMetrics.delayedCount,
+          sopErrorsCount: liveReportMetrics.sopErrorsCount,
+          complaintsCount: liveReportMetrics.complaintsCount,
+          staffIssuesCount: liveReportMetrics.staffIssuesCount,
         }}
+        isMetricsLoading={isMetricsLoading}
         formatCurrency={formatCurrency}
         onOpenChange={handleChangeFormOpen}
         onUpdateForm={handleUpdateReportForm}
         onSaveDraft={handleSaveDraft}
         onSubmit={handleSendReport}
+        onPeriodChange={handleReportTabChange}
+        onRefreshMetrics={refetchMetrics}
+        currentUser={currentUser}
       />
     </div>
   );

@@ -34,6 +34,7 @@ export interface ModulePermissions {
   canUpdate: boolean;
   canDelete: boolean;
   canApprove: boolean;
+  canExport: boolean;
 }
 
 const DEFAULT_PERMISSIONS: ModulePermissions = {
@@ -42,6 +43,7 @@ const DEFAULT_PERMISSIONS: ModulePermissions = {
   canUpdate: false,
   canDelete: false,
   canApprove: false,
+  canExport: false,
 };
 
 const FULL_PERMISSIONS: ModulePermissions = {
@@ -50,6 +52,7 @@ const FULL_PERMISSIONS: ModulePermissions = {
   canUpdate: true,
   canDelete: true,
   canApprove: true,
+  canExport: true,
 };
 
 // ─── Hook: Single Module Permissions ─────────────────────────────────────────
@@ -89,8 +92,8 @@ export function useModulePermissions(
     const normalizedModule = normalizeAccessCode(moduleCode);
     const permRow = allPermissions.find(
       (row) =>
-        normalizeAccessCode(row.roleCode) === roleCode &&
-        normalizeAccessCode(row.module) === normalizedModule,
+          normalizeAccessCode(row.roleCode) === roleCode &&
+          normalizeAccessCode(row.module) === normalizedModule,
     );
 
     return {
@@ -99,6 +102,7 @@ export function useModulePermissions(
       canUpdate: !!permRow?.canUpdate,
       canDelete: !!permRow?.canDelete,
       canApprove: !!permRow?.canApprove,
+      canExport: !!permRow?.canExport,
     };
   }, [currentUser, isOwner, moduleCode, permissionsQuery.data]);
 

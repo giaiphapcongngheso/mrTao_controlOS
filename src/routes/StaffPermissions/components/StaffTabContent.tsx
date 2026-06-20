@@ -137,6 +137,11 @@ export function StaffTabContent({
             <div className="space-y-0.5 text-left">
               <div className="text-sm font-black text-slate-900 leading-snug">{staff.fullName}</div>
               <div className="text-xs font-semibold text-slate-500">{staff.id} · @{staff.username}</div>
+              {staff.internalNotes && (
+                <div className="mt-1 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100/50 inline-block truncate max-w-[220px]" title={staff.internalNotes}>
+                  📝 {staff.internalNotes}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -440,6 +445,17 @@ export function StaffTabContent({
                       {staffForm.id ? "Chỉ nhập nếu bạn muốn cập nhật mật khẩu mới cho nhân sự này." : "Mật khẩu dùng để đăng nhập vào Mr Tao OS."}
                     </p>
                   </div>
+                </div>
+
+                {/* Trường Ghi chú nội bộ */}
+                <div className="space-y-1.5 text-left md:col-span-2 border-t border-slate-100 pt-4">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ghi chú nội bộ (Chỉ quản trị hiển thị)</Label>
+                  <textarea
+                    value={staffForm.internalNotes || ''}
+                    onChange={(event) => setStaffForm((prev) => ({ ...prev, internalNotes: event.target.value }))}
+                    placeholder="Nhập ghi chú hoặc thông tin nội bộ của nhân sự này..."
+                    className="w-full min-h-[80px] max-h-[160px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition duration-200 focus:outline-none focus:border-emerald-500 focus:ring-emerald-500/10 focus:ring-4 placeholder:text-slate-350"
+                  />
                 </div>
               </div>
 

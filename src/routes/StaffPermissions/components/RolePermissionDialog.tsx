@@ -36,8 +36,12 @@ interface RolePermissionDialogProps {
   readonly onOpenChange: (open: boolean) => void;
   /** Pass a role to edit; leave null/undefined for "create new" mode. */
   readonly editingRole?: StaffRole | null;
+  /** Pass a role to clone permissions from. */
+  readonly cloningRole?: StaffRole | null;
   /** All existing permission rows (used to pre-fill form when editing). */
   readonly existingPermissions: RolePermissionRow[];
+  /** All existing roles (used for selecting copy/clone source). */
+  readonly roles: StaffRole[];
   /** All existing role codes (used for uniqueness validation). */
   readonly existingRoleCodes: string[];
   /** Default storeId for new records. */
@@ -80,6 +84,7 @@ function buildInitialPermissions(
       canUpdate: existing?.canUpdate ?? false,
       canDelete: existing?.canDelete ?? false,
       canApprove: existing?.canApprove ?? false,
+      canExport: existing?.canExport ?? false,
     };
   });
 }
@@ -94,7 +99,9 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
   open,
   onOpenChange,
   editingRole,
+  cloningRole,
   existingPermissions,
+  roles,
   existingRoleCodes,
   storeId: _storeId,
   isOwner,
@@ -113,24 +120,24 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
   } = useForm<RolePermissionFormValues>({
     resolver: zodResolver(rolePermissionFormSchema),
     defaultValues: {
-      name: editingRole?.name ?? '',
-      code: editingRole?.code ?? '',
+      name: editingRole ? editingRole.name : (cloningRole ? `Sao chép từ ${cloningRole.name}` : ''),
+      code: editingRole ? editingRole.code : (cloningRole ? `${cloningRole.code}_COPY` : ''),
       status: editingRole?.status ?? 'active',
-      permissions: buildInitialPermissions(existingPermissions, editingRole),
+      permissions: buildInitialPermissions(existingPermissions, editingRole || cloningRole),
     },
   });
 
-  // Reset form when dialog opens with different role
+  // Reset form when dialog opens with different role or cloning role
   React.useEffect(() => {
     if (open) {
       reset({
-        name: editingRole?.name ?? '',
-        code: editingRole?.code ?? '',
+        name: editingRole ? editingRole.name : (cloningRole ? `Sao chép từ ${cloningRole.name}` : ''),
+        code: editingRole ? editingRole.code : (cloningRole ? `${cloningRole.code}_COPY` : ''),
         status: editingRole?.status ?? 'active',
-        permissions: buildInitialPermissions(existingPermissions, editingRole),
+        permissions: buildInitialPermissions(existingPermissions, editingRole || cloningRole),
       });
     }
-  }, [open, editingRole, existingPermissions, reset]);
+  }, [open, editingRole, cloningRole, existingPermissions, reset]);
 
   const permissions = watch('permissions');
 
@@ -159,6 +166,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
         canUpdate: value,
         canDelete: value,
         canApprove: value,
+        canExport: value,
       };
       setValue('permissions', updated, { shouldDirty: true });
     },
@@ -323,7 +331,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
         >
           {/* ---- Role Info ---- */}
           <div className="shrink-0 grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5 text-left sm:col-span-2">
+            <div className={`space-y-1.5 text-left ${isEditMode ? 'sm:col-span-2' : 'sm:col-span-1'}`}>
               <Label className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
                 Tên vai trò <span className="text-rose-500">*</span>
               </Label>
@@ -353,6 +361,36 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
                 <p className="text-xs font-semibold text-rose-500">{errors.code.message}</p>
               )}
             </div>
+
+            {!isEditMode && (
+              <div className="space-y-1.5 text-left">
+                <Label className="text-[11px] font-black uppercase tracking-[0.18em] text-sky-700 font-bold">
+                  Sao chép quyền từ vai trò
+                </Label>
+                <select
+                  className="w-full h-[46px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-400 focus-visible:border-sky-400 focus-visible:ring-sky-100 cursor-pointer"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const sourceRoleCode = e.target.value;
+                    if (!sourceRoleCode) return;
+                    const sourceRole = roles.find((r) => r.code === sourceRoleCode);
+                    if (sourceRole) {
+                      const sourcePerms = buildInitialPermissions(existingPermissions, sourceRole);
+                      setValue('permissions', sourcePerms, { shouldDirty: true });
+                    }
+                  }}
+                >
+                  <option value="">-- Chọn vai trò nguồn --</option>
+                  {roles
+                    .filter((r) => r.status === 'active')
+                    .map((r) => (
+                      <option key={r.id} value={r.code}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* ---- Permissions Table ---- */}

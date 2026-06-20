@@ -47,7 +47,13 @@ export const getKpiStatus = (actual: number, pct: number): KpiStatusInfo => {
     return { text: 'Chưa nhập', colorClass: 'text-slate-400 bg-slate-50 border-slate-200' };
   }
   if (pct >= 1) {
-    return { text: 'Đạt', colorClass: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
+    return { text: 'Đạt tốt', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+  }
+  if (pct >= 0.91) {
+    return { text: 'Đạt', colorClass: 'text-emerald-600 bg-emerald-50/50 border-emerald-100' };
+  }
+  if (pct >= 0.80) {
+    return { text: 'Cần cải thiện', colorClass: 'text-amber-600 bg-amber-50 border-amber-200' };
   }
   return { text: 'Chưa đạt', colorClass: 'text-rose-600 bg-rose-50 border-rose-200' };
 };
@@ -205,6 +211,7 @@ export const calculateDynamicStaffRanks = (
 export interface PeriodKpiDetail {
   id: string;
   kpiName: string;
+  goalName: string;
   unit: string;
   weight: number;
   target: number;
@@ -229,6 +236,7 @@ export const calculatePeriodKpis = (
 
   const groups: Record<string, {
     kpiName: string;
+    goalName: string;
     unit: string;
     weight: number;
     totalTarget: number;
@@ -246,6 +254,7 @@ export const calculatePeriodKpis = (
     if (!groups[key]) {
       groups[key] = {
         kpiName: config.kpiName,
+        goalName: config.goalName || '',
         unit: config.unit,
         weight: config.weight,
         totalTarget: config.monthlyTarget,
@@ -268,6 +277,7 @@ export const calculatePeriodKpis = (
     return {
       id: g.kpiName + '_' + g.unit,
       kpiName: g.kpiName,
+      goalName: g.goalName,
       unit: g.unit,
       weight: avgWeight,
       target: g.totalTarget,

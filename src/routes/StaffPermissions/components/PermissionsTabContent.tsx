@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Shield, Trash2 } from 'lucide-react';
+import { Shield, Trash2, Copy } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { CustomTable } from '../../../../share/components/custom-table';
@@ -54,15 +54,17 @@ export function PermissionsTabContent({
   // ---- Dialog state ----
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<StaffRole | null>(null);
+  const [cloningRole, setCloningRole] = useState<StaffRole | null>(null);
 
   // Sync with external open state (header button)
-  const isDialogOpen = dialogOpen || externalCreateOpen;
+  const isDialogOpen = dialogOpen || externalCreateOpen || Boolean(cloningRole);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
       setDialogOpen(open);
       if (!open) {
         setEditingRole(null);
+        setCloningRole(null);
         onExternalCreateOpenChange?.(false);
       }
     },
@@ -71,6 +73,11 @@ export function PermissionsTabContent({
 
   const handleOpenEdit = useCallback((role: StaffRole) => {
     setEditingRole(role);
+    setDialogOpen(true);
+  }, []);
+
+  const handleOpenClone = useCallback((role: StaffRole) => {
+    setCloningRole(role);
     setDialogOpen(true);
   }, []);
 
@@ -204,6 +211,14 @@ export function PermissionsTabContent({
             <button
               type="button"
               disabled={!isOwner}
+              onClick={() => handleOpenClone(row.original)}
+              className="inline-flex items-center gap-1 rounded-2xl border border-emerald-200 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            >
+              <Copy className="h-3.5 w-3.5" /> Nhân bản
+            </button>
+            <button
+              type="button"
+              disabled={!isOwner}
               onClick={() => handleDelete(row.original)}
               className="inline-flex items-center gap-1 rounded-2xl border border-red-200 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
@@ -213,7 +228,7 @@ export function PermissionsTabContent({
         ),
       },
     ],
-    [isOwner, getRoleRows, totalEnabledByRole, handleOpenEdit, handleDelete],
+    [isOwner, getRoleRows, totalEnabledByRole, handleOpenEdit, handleOpenClone, handleDelete],
   );
 
   return (
@@ -265,7 +280,9 @@ export function PermissionsTabContent({
         open={isDialogOpen}
         onOpenChange={handleOpenChange}
         editingRole={editingRole}
+        cloningRole={cloningRole}
         existingPermissions={permissionRows}
+        roles={roles}
         existingRoleCodes={existingRoleCodes}
         storeId={storeId}
         isOwner={isOwner}

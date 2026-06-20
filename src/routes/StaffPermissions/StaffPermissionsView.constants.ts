@@ -9,6 +9,7 @@ export const DEFAULT_STAFF_FORM: StaffFormState = {
   status: 'active',
   email: '',
   password: '',
+  internalNotes: '',
 };
 
 export const PERMISSION_FIELDS: Array<{ key: PermissionField; label: string }> = [
@@ -17,6 +18,7 @@ export const PERMISSION_FIELDS: Array<{ key: PermissionField; label: string }> =
   { key: 'canUpdate', label: 'Sửa' },
   { key: 'canDelete', label: 'Xóa' },
   { key: 'canApprove', label: 'Duyệt' },
+  { key: 'canExport', label: 'Xuất file' },
 ];
 
 export const DEFAULT_PERMISSION_FORM: PermissionFormState = {
@@ -27,6 +29,7 @@ export const DEFAULT_PERMISSION_FORM: PermissionFormState = {
   canUpdate: false,
   canDelete: false,
   canApprove: false,
+  canExport: false,
 };
 
 export const DEFAULT_ROLE_FORM: RoleFormState = {

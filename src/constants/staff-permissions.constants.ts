@@ -22,6 +22,7 @@ export const MODULE_CODE = {
   SO_TAY: 'SO_TAY',
   MARKETING: 'MARKETING',
   KHO_HANG: 'KHO_HANG',
+  NHAN_SU: 'NHAN_SU',
 } as const;
 
 export type ModuleCode = (typeof MODULE_CODE)[keyof typeof MODULE_CODE];
@@ -52,6 +53,7 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
   [MODULE_CODE.SO_TAY]: { key: 'SO_TAY', name: 'Sổ tay', icon: '📔', desc: 'Mục lục tra cứu nhanh quy trình thẩm định 18 bước, cẩm nang đào tạo.' },
   [MODULE_CODE.MARKETING]: { key: 'MARKETING', name: 'Marketing', icon: '📣', desc: 'Quản lý chiến dịch marketing, khuyến mãi, truyền thông thương hiệu.' },
   [MODULE_CODE.KHO_HANG]: { key: 'KHO_HANG', name: 'Kho hàng', icon: '📦', desc: 'Quản lý tồn kho, nhập xuất hàng, kiểm kê và theo dõi hàng hóa.' },
+  [MODULE_CODE.NHAN_SU]: { key: 'NHAN_SU', name: 'Nhân sự', icon: '👥', desc: 'Quản lý thông tin tài khoản nhân sự, phân quyền và lịch sử hoạt động.' },
 };
 
 /** Fallback metadata for custom/unknown modules. */

@@ -6,7 +6,7 @@ export interface StaffPermissionsViewProps {
   } | null;
 }
 
-export type PermissionField = 'canView' | 'canCreate' | 'canUpdate' | 'canDelete' | 'canApprove';
+export type PermissionField = 'canView' | 'canCreate' | 'canUpdate' | 'canDelete' | 'canApprove' | 'canExport';
 
 export type ActiveTab = 'staff' | 'permissions' | 'logs';
 
@@ -21,6 +21,7 @@ export interface StaffFormState {
   status: 'active' | 'inactive';
   email: string;
   password?: string;
+  internalNotes?: string;
 }
 
 export interface PermissionFormState {
@@ -31,6 +32,7 @@ export interface PermissionFormState {
   canUpdate: boolean;
   canDelete: boolean;
   canApprove: boolean;
+  canExport: boolean;
 }
 
 export interface RoleFormState {

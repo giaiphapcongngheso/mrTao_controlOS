@@ -481,6 +481,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         joinedDate: existingStaff?.joinedDate || new Date().toISOString().slice(0, 10),
         email: authEmail,
         firebaseUid,
+        internalNotes: staffForm.internalNotes?.trim() || '',
       };
 
       await staffService.update(payload.id, payload, {
@@ -542,6 +543,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       status: staff.status,
       email: staff.email || '',
       password: '',
+      internalNotes: staff.internalNotes || '',
     });
     setShowAddStaffForm(true);
   }, []);

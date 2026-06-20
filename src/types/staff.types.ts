@@ -18,6 +18,7 @@ export interface StaffMember {
   position?: string;
   employeeCode?: string;
   avatar?: string;
+  internalNotes?: string;
 }
 
 export interface RolePermissionRow {
@@ -31,6 +32,7 @@ export interface RolePermissionRow {
   canUpdate: boolean;
   canDelete: boolean;
   canApprove: boolean;
+  canExport?: boolean;
 }
 
 export interface StaffRole {

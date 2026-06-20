@@ -111,7 +111,7 @@ export function assertNotDeleted(entity: { deletedAt?: string | null; id?: strin
 
 // ─── Permission Action Types ─────────────────────────────────────────────────
 
-export type PermissionAction = 'canView' | 'canCreate' | 'canUpdate' | 'canDelete' | 'canApprove';
+export type PermissionAction = 'canView' | 'canCreate' | 'canUpdate' | 'canDelete' | 'canApprove' | 'canExport';
 
 /**
  * Unified guard function: checks permission + soft-delete status in ONE call.
@@ -139,6 +139,7 @@ export function guardAction(
       canUpdate: 'chỉnh sửa',
       canDelete: 'xóa',
       canApprove: 'phê duyệt',
+      canExport: 'xuất file',
     };
     return `Bạn không có quyền ${actionLabels[action]} ${label || 'dữ liệu này'}.`;
   }

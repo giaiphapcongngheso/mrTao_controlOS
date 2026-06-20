@@ -38,10 +38,6 @@ const ChecklistHeader = React.memo(function ChecklistHeader({
       <div className="absolute -top-16 -right-16 w-36 h-36 bg-red-500/5 rounded-full blur-xl pointer-events-none"></div>
       
       <div className="relative z-10 flex flex-col gap-1 text-left">
-        {/* Breadcrumb */}
-        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider select-none">
-          MR.TẢO OS &gt; Quy trình &amp; Checklist &gt; {getSubTabName(subTab)}
-        </div>
         
         <div className="flex gap-3.5 items-center mt-1">
           <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-red-50 border border-red-100/50 text-[#C21A1A] shrink-0 select-none flex items-center justify-center">
