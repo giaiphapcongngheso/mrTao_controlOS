@@ -139,15 +139,15 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden font-sans">
       <Table className="w-full">
-        <TableHeader className="bg-white select-none">
+        <TableHeader className="bg-slate-50 select-none">
           <TableRow className="border-b border-slate-100 hover:bg-transparent">
-            <TableHead className="w-[8%] text-center text-sm !font-semibold !bg-white !text-slate-700">Chọn</TableHead>
-            <TableHead className="w-[12%] text-left text-sm !font-semibold !bg-white !text-slate-700">Giờ chốt</TableHead>
-            <TableHead className="w-[40%] text-left text-sm !font-semibold !bg-white !text-slate-700">Việc cần làm</TableHead>
-            <TableHead className="w-[18%] text-left text-sm !font-semibold !bg-white !text-slate-700">Người thực hiện</TableHead>
-            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-white !text-slate-700">Minh chứng</TableHead>
-            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-white !text-slate-700">Trạng thái</TableHead>
-            <TableHead className="w-[2%] text-center !bg-white !text-slate-700"></TableHead>
+            <TableHead className="w-[8%] text-center text-sm !font-semibold !bg-slate-50 !text-slate-800">Chọn</TableHead>
+            <TableHead className="w-[12%] text-left text-sm !font-semibold !bg-slate-50 !text-slate-800">Giờ chốt</TableHead>
+            <TableHead className="w-[40%] text-left text-sm !font-semibold !bg-slate-50 !text-slate-800">Việc cần làm</TableHead>
+            <TableHead className="w-[18%] text-left text-sm !font-semibold !bg-slate-50 !text-slate-800">Người thực hiện</TableHead>
+            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-slate-50 !text-slate-800">Minh chứng</TableHead>
+            <TableHead className="w-[10%] text-center text-sm !font-semibold !bg-slate-50 !text-slate-800">Trạng thái</TableHead>
+            <TableHead className="w-[2%] text-center !bg-slate-50 !text-slate-800"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, Award, Check, CheckCircle2, ChevronDown, ChevronUp, Circle, Clock, Edit2, FileText, Image, Info, Plus, Smile, Trash2, X, Camera, Upload, User, Loader2, Paperclip } from 'lucide-react';
-import { Button, Card, ScrollArea, Textarea, Input } from '../../../../share/ui';
+import { Button, Card, ScrollArea, Textarea, Input, Sheet, SheetContent, SheetTitle } from '../../../../share/ui';
 import { DeleteConfirm } from '../../../../share/components/delete-confirm';
 import { Badge } from '../../../../share/ui/badge';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
@@ -67,12 +67,8 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     }
   }, [item]);
 
-  if (!item) return null;
-
-  const roleName = roleOptions.find((r) => r.code === item.roleCode)?.name || item.roleCode || 'N/A';
-  const imageUrls = item.imageUrls || [];
-
-  const handleBlurSave = async () => {
+  const handleBlurSave = React.useCallback(async () => {
+    if (!item) return;
     const trimmed = titleValue.trim();
     if (!trimmed || trimmed === item.title) return;
     try {
@@ -80,9 +76,10 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [item, titleValue, onUpdateItem]);
 
-  const handleTimeLimitChange = async (date: Date | undefined) => {
+  const handleTimeLimitChange = React.useCallback(async (date: Date | undefined) => {
+    if (!item) return;
     const newTime = formatDateToTime(date);
     if (newTime === item.timeLimit) return;
     try {
@@ -90,23 +87,26 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [item, onUpdateItem]);
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = React.useCallback(() => {
+    if (!item) return;
     onToggleItem(item.id, item.dateKey);
-  };
+  }, [item, onToggleItem]);
 
-  const triggerFileInput = () => {
+  const triggerFileInput = React.useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!item) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     try {
       const url = await uploadChecklistItemImage(file, item.id);
+      const imageUrls = item.imageUrls || [];
       const nextUrls = [...imageUrls, url];
       await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
     } catch (error) {
@@ -118,34 +118,42 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
         fileInputRef.current.value = '';
       }
     }
-  };
+  }, [item, onUpdateItem]);
 
-  const handleDeleteImage = async (urlToDelete: string, e: React.MouseEvent) => {
+  const handleDeleteImage = React.useCallback(async (urlToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!item) return;
+    const imageUrls = item.imageUrls || [];
     const nextUrls = imageUrls.filter((url) => url !== urlToDelete);
     try {
       await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [item, onUpdateItem]);
 
-  const handleDeleteTaskClick = () => {
+  const handleDeleteTaskClick = React.useCallback(() => {
+    if (!item) return;
     onClose();
     onConfirmDeleteItem(item.id, item.title, item.dateKey);
-  };
+  }, [item, onClose, onConfirmDeleteItem]);
+
+  if (!item) return null;
+
+  const roleName = roleOptions.find((r) => r.code === item.roleCode)?.name || item.roleCode || 'N/A';
+  const imageUrls = item.imageUrls || [];
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent
-          showCloseButton={false}
-          className="!p-0 !border-0 overflow-hidden max-w-lg rounded-2xl bg-white shadow-2xl font-sans"
+      <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md md:max-w-lg !p-0 !border-0 overflow-y-auto bg-white shadow-2xl font-sans h-full flex flex-col"
         >
-          <DialogTitle className="sr-only">Checklist Details</DialogTitle>
+          <SheetTitle className="sr-only">Checklist Details</SheetTitle>
           
           {/* Header with red brand gradient */}
-          <div className="bg-gradient-to-br from-[#C21A1A] via-[#B01717] to-[#9A1212] p-6 text-white relative rounded-t-2xl shadow-inner">
+          <div className="bg-gradient-to-br from-[#C21A1A] via-[#B01717] to-[#9A1212] p-6 text-white relative rounded-t-none shadow-inner shrink-0">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70 block mb-1">
               CHI TIẾT CHECKLIST
             </span>
@@ -172,7 +180,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-5 bg-white text-left">
+          <div className="p-6 space-y-5 bg-white text-left flex-1 overflow-y-auto">
             {/* 2-column Grid of Info Cards */}
             <div className="grid grid-cols-2 gap-4">
               {/* Role Info Card */}
@@ -333,7 +341,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
           </div>
 
           {/* Footer Action Buttons */}
-          <div className="p-5 border-t border-slate-100/80 flex items-center justify-between bg-slate-50/30 rounded-b-2xl">
+          <div className="p-5 border-t border-slate-100/80 flex items-center justify-between bg-slate-50/30 rounded-b-none shrink-0">
             <Button
               type="button"
               onClick={handleDeleteTaskClick}
@@ -351,8 +359,8 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
               ĐÓNG LẠI
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Lightbox Zoom Dialog */}
       {activeZoomUrl && (

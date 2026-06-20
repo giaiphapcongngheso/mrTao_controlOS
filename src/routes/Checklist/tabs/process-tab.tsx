@@ -247,6 +247,7 @@ const ProcessTab = React.memo(function ProcessTab({
         <div className={cn("w-full min-w-0 transition-all duration-300", showDetailPane ? "lg:col-span-4" : "lg:col-span-8")}>
           <ProcessContentArea
             processes={processes}
+            roleOptions={roleOptions}
             isLoading={isLoading}
             canCreate={permissions.canCreate}
             canUpdate={permissions.canUpdate}

@@ -34,6 +34,7 @@ export const RESOURCE_PATH = {
   MARKETING_CAMPAIGNS: '/marketing_campaigns',
   CUSTOMERS: '/customers',
   CUSTOMER_SYNC_LOGS: '/customer_sync_logs',
+  TASK_TEMPLATES: '/task_templates',
 } as const;
 
 export type ResourcePath = (typeof RESOURCE_PATH)[keyof typeof RESOURCE_PATH];

@@ -692,7 +692,7 @@ export const HistoryTab = React.memo(function HistoryTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         {/* 2.1 Bảng lịch sử bên trái */}
-        <div className="lg:col-span-8 min-w-0 [&_th]:!bg-white [&_th]:!text-slate-400 [&_th]:font-semibold [&_th]:border-b [&_th]:border-slate-100/50 [&_th]:normal-case [&_th_div]:!text-slate-400 [&_th_svg]:!text-slate-350 [&_th]:text-sm [&_th]:tracking-wide [&_th]:px-4 [&_tr]:border-b [&_tr]:border-slate-50 [&_tr:hover]:bg-slate-50/40 [&_td]:py-3.5">
+        <div className="lg:col-span-8 min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:font-semibold [&_th]:border-b [&_th]:border-slate-100/50 [&_th]:normal-case [&_th_div]:!text-slate-800 [&_th_svg]:!text-slate-500 [&_th]:text-sm [&_th]:tracking-wide [&_th]:px-4 [&_tr]:border-b [&_tr]:border-slate-50 [&_tr:hover]:bg-slate-50/40 [&_td]:py-3.5">
           <CustomTable
             columns={columns}
             data={filteredRows}
@@ -711,56 +711,131 @@ export const HistoryTab = React.memo(function HistoryTab({
         <div className="hidden lg:block lg:col-span-4 h-full">
           {!selectedRow ? (
             /* ──────── TỔNG QUAN LỊCH SỬ (DEFAULT) ──────── */
-            <Card className="bg-white border border-slate-100 rounded-[22px] shadow-[0_8px_30px_rgb(0,0,0,0.015)] p-6 space-y-5">
-              <div className="flex items-center gap-2.5 border-b border-slate-100/80 pb-4">
-                <div className="p-2 bg-indigo-50 border border-indigo-100/50 rounded-xl text-indigo-600 shadow-2xs">
-                  <Award className="w-4 h-4 stroke-[2.5]" />
+            <Card className="bg-white border border-slate-100/80 rounded-[22px] shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden">
+              {/* ── Header with gradient accent ── */}
+              <div className="relative px-5 pt-5 pb-4">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400 rounded-t-[22px]" />
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl text-white shadow-md shadow-indigo-200/50">
+                    <Award className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[13px] font-bold text-slate-800 tracking-tight">Tổng quan lịch sử</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{kpiStats.total} lượt thực hiện</p>
+                  </div>
                 </div>
-                <h3 className="text-sm font-semibold uppercase text-slate-800 tracking-wider">Tổng quan lịch sử</h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-3.5">
-                <KpiStatsCard
-                  title="Tổng lượt"
-                  value={kpiStats.total}
-                  icon={ClipboardList}
-                  variant="default"
-                  className="col-span-2"
-                />
-                <KpiStatsCard
-                  title="Đúng hạn"
-                  value={kpiStats.completedOnTime}
-                  subtitle={`${kpiStats.onTimePercent}%`}
-                  icon={CheckCircle2}
-                  variant="success"
-                />
-                <KpiStatsCard
-                  title="Quá hạn"
-                  value={kpiStats.completedLate}
-                  subtitle={`${kpiStats.latePercent}%`}
-                  icon={AlertCircle}
-                  variant="warning"
-                />
-                <KpiStatsCard
-                  title="Hiệu suất"
-                  value={`${kpiStats.avgCompletion}%`}
-                  subtitle="Tỷ lệ hoàn thành TB"
-                  icon={Award}
-                  variant="info"
-                  className="col-span-2"
-                />
+              {/* ── Donut (left) + Legend Bars (right) ── */}
+              <div className="flex items-center gap-4 px-5 py-3">
+                {/* Donut Chart */}
+                <div className="relative w-[110px] h-[110px] shrink-0">
+                  <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90 drop-shadow-sm">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#f1f5f9" strokeWidth="3.2" />
+                    <circle
+                      cx="18" cy="18" r="14" fill="none"
+                      stroke="#34d399" strokeWidth="3.2"
+                      strokeDasharray={`${kpiStats.onTimePercent * 0.88} ${88 - kpiStats.onTimePercent * 0.88}`}
+                      strokeDashoffset="0" strokeLinecap="round"
+                      className="transition-all duration-700 ease-out"
+                    />
+                    <circle
+                      cx="18" cy="18" r="14" fill="none"
+                      stroke="#fbbf24" strokeWidth="3.2"
+                      strokeDasharray={`${kpiStats.latePercent * 0.88} ${88 - kpiStats.latePercent * 0.88}`}
+                      strokeDashoffset={`${-(kpiStats.onTimePercent * 0.88)}`} strokeLinecap="round"
+                      className="transition-all duration-700 ease-out"
+                    />
+                    <circle
+                      cx="18" cy="18" r="14" fill="none"
+                      stroke="#fb7185" strokeWidth="3.2"
+                      strokeDasharray={`${kpiStats.incompletePercent * 0.88} ${88 - kpiStats.incompletePercent * 0.88}`}
+                      strokeDashoffset={`${-((kpiStats.onTimePercent + kpiStats.latePercent) * 0.88)}`} strokeLinecap="round"
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-black text-slate-800 tabular-nums leading-none tracking-tight">{kpiStats.avgCompletion}%</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">Hiệu suất</span>
+                  </div>
+                </div>
+
+                {/* Legend + Progress Bars */}
+                <div className="flex-1 min-w-0 space-y-3">
+                  {/* On-time */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-200" />
+                        <span className="text-[10px] font-semibold text-slate-600">Đúng hạn</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-black text-slate-700 tabular-nums">{kpiStats.completedOnTime}</span>
+                        <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1 py-px rounded">{kpiStats.onTimePercent}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 rounded-full transition-all duration-700 ease-out" style={{ width: `${kpiStats.onTimePercent}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Late */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-200" />
+                        <span className="text-[10px] font-semibold text-slate-600">Quá hạn</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-black text-slate-700 tabular-nums">{kpiStats.completedLate}</span>
+                        <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-px rounded">{kpiStats.latePercent}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all duration-700 ease-out" style={{ width: `${kpiStats.latePercent}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Incomplete */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-400 shadow-sm shadow-rose-200" />
+                        <span className="text-[10px] font-semibold text-slate-600">Chưa xong</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-black text-slate-700 tabular-nums">{kpiStats.incomplete}</span>
+                        <span className="text-[8px] font-bold text-rose-500 bg-rose-50 px-1 py-px rounded">{kpiStats.incompletePercent}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-rose-400 to-rose-300 rounded-full transition-all duration-700 ease-out" style={{ width: `${kpiStats.incompletePercent}%` }} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Ứng dụng quản lý */}
-              <div className="p-5 bg-slate-50/50 border border-slate-100/80 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
-                  <span className="text-sm font-semibold text-slate-700">Ứng dụng quản lý</span>
+              {/* ── Gợi ý sử dụng ── */}
+              <div className="mx-5 mt-4 mb-5 p-4 bg-gradient-to-br from-slate-50 to-slate-50/30 border border-slate-100/60 rounded-xl">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-5 h-5 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <Info className="w-3 h-3 text-emerald-600 stroke-[2.5]" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Gợi ý sử dụng</span>
                 </div>
-                <ul className="text-[11px] font-semibold text-slate-450 space-y-2.5 pl-4 list-disc leading-relaxed">
-                  <li>Dùng để coaching nhân sự theo dữ liệu vận hành.</li>
-                  <li>Kiểm tra trách nhiệm và tính tuân thủ quy trình.</li>
-                  <li>Lập báo cáo đối soát chất lượng dịch vụ định kỳ.</li>
+                <ul className="text-[10.5px] font-medium text-slate-500 space-y-2 pl-1 leading-relaxed">
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
+                    <span>Coaching nhân sự theo dữ liệu vận hành</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
+                    <span>Kiểm tra trách nhiệm và tuân thủ quy trình</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
+                    <span>Đối soát chất lượng dịch vụ định kỳ</span>
+                  </li>
                 </ul>
               </div>
             </Card>

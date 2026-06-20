@@ -560,7 +560,7 @@ export default function ChecklistTemplateTabContent({
               showFilterRow={false}
               emptyMessage="Không có mẫu checklist nào phù hợp."
               tableMinWidth={900}
-              className="w-full min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-600 [&_th]:text-xs [&_th]:font-black rounded-xl border border-slate-200/90 shadow-3xs bg-white overflow-hidden"
+              className="w-full min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:text-xs [&_th]:font-black rounded-xl border border-slate-200/90 shadow-3xs bg-white overflow-hidden"
             />
           </div>
         </div>
@@ -955,7 +955,7 @@ export default function ChecklistTemplateTabContent({
                           emptyMessage="Chưa có đầu việc nào."
                           tableMinWidth={550}
                           enableInternalVerticalScroll={false}
-                          className="w-full border-0 shadow-none bg-transparent [&_th]:!bg-slate-50 [&_th]:!text-slate-500 [&_th]:text-[10px] [&_th]:font-black"
+                          className="w-full border-0 shadow-none bg-transparent [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:text-[10px] [&_th]:font-black"
                         />
                       </div>
                     </div>

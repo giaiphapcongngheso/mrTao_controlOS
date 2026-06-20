@@ -8,6 +8,7 @@ import { getChecklistColorMeta, resolveChecklistIcon } from '../checklist-meta';
 
 interface ProcessContentAreaProps {
   processes: ProcessDocument[];
+  roleOptions: Array<{ code: string; name: string }>;
   isLoading?: boolean;
   canCreate: boolean;
   canUpdate: boolean;
@@ -21,6 +22,7 @@ interface ProcessContentAreaProps {
 
 const ProcessContentArea = React.memo(function ProcessContentArea({
   processes,
+  roleOptions,
   isLoading = false,
   canCreate,
   canUpdate,
@@ -95,30 +97,30 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                 <Card
                   key={process.id}
                   onClick={handleCardClick}
-                  className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-none gap-0 py-0 transition-all duration-200 hover:border-slate-300 hover:shadow-3xs cursor-pointer flex flex-col select-none text-left"
+                  className="bg-white rounded-xl border border-slate-200/90 overflow-hidden shadow-none gap-0 py-0 transition-all duration-200 hover:border-slate-300 hover:shadow-3xs cursor-pointer flex flex-col select-none text-left"
                 >
-                  <CardHeader className="p-4 sm:p-4.5 items-center flex-row justify-between w-full min-w-0 gap-3">
+                  <CardHeader className="p-3 sm:p-3.5 items-center flex-row justify-between w-full min-w-0 gap-2.5">
                     {/* Left Side: Icon + Title & Metadata */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border", colorMeta.iconBg)}>
-                        <ProcessIcon className={cn("w-4.5 h-4.5", colorMeta.iconColor)} />
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border", colorMeta.iconBg)}>
+                        <ProcessIcon className={cn("w-4 h-4", colorMeta.iconColor)} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle className="text-sm font-black tracking-tight text-slate-800 truncate max-w-[240px]" title={process.title}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <CardTitle className="text-sm font-bold tracking-tight text-slate-800 truncate max-w-[220px]" title={process.title}>
                             {process.title}
                           </CardTitle>
-                          <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border leading-normal shrink-0", colorMeta.iconBg)}>
-                            {process.roleCode}
+                          <span className={cn("text-[8px] font-black uppercase tracking-wider px-1.5 py-px rounded-full border leading-normal shrink-0", colorMeta.iconBg)}>
+                            {roleOptions.find((r) => r.code.toUpperCase() === (process.roleCode || '').toUpperCase())?.name || process.roleCode}
                           </span>
                         </div>
                         {process.description && (
-                          <p className="text-[11px] text-slate-400 font-semibold mt-0.5 line-clamp-1 truncate" title={process.description}>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5 line-clamp-1 truncate" title={process.description}>
                             {process.description}
                           </p>
                         )}
                         
-                        <CardDescription className="mt-1 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                        <CardDescription className="mt-0.5 flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                           <span>{stepsCount} bước</span>
                           <span className="w-1 h-1 rounded-full bg-slate-200 shrink-0" />
                           <span>{tasksCount} nhiệm vụ</span>
@@ -127,11 +129,11 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                     </div>
 
                     {/* Right Side Actions */}
-                    <CardAction className="flex items-center gap-2 shrink-0 self-center" onClick={(event) => event.stopPropagation()}>
+                    <CardAction className="flex items-center gap-1.5 shrink-0 self-center" onClick={(event) => event.stopPropagation()}>
                       {/* Status badge */}
                       <span
                         className={cn(
-                          "text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border text-center select-none",
+                          "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border text-center select-none",
                           (process.status || 'active') === 'active'
                             ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
                             : "bg-slate-50 text-slate-400 border-slate-200/50"
@@ -147,9 +149,9 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                           size="icon"
                           tooltip="Chỉnh sửa quy trình"
                           onClick={handleOnEdit}
-                          className="w-7.5 h-7.5 rounded-lg bg-slate-50 border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 cursor-pointer active:scale-95"
+                          className="w-7 h-7 rounded-lg bg-slate-50 border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 cursor-pointer active:scale-95"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3" />
                         </Button>
                       )}
                       {canDelete && (
@@ -159,9 +161,9 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                           size="icon"
                           tooltip="Xóa quy trình"
                           onClick={handleOnDelete}
-                          className="w-7.5 h-7.5 rounded-lg bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 cursor-pointer active:scale-95"
+                          className="w-7 h-7 rounded-lg bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 cursor-pointer active:scale-95"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       )}
 
@@ -169,7 +171,7 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                         type="button"
                         variant="outline"
                         onClick={handleOnOpen}
-                        className="h-7.5 px-3.5 text-[10px] font-black uppercase tracking-wider rounded-lg border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-3xs"
+                        className="h-7 px-3 text-[9px] font-black uppercase tracking-wider rounded-lg border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-3xs"
                       >
                         Mở
                       </Button>

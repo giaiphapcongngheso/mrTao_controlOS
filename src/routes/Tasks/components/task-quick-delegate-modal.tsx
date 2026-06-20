@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { Send } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { cn } from '@shared/lib/utils';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 import {
   Button,
   Form,
@@ -77,13 +79,20 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
     form.setValue('department', staff.department || 'Kho', { shouldValidate: true, shouldDirty: true });
   }, [form]);
 
+  const isMobile = useIsMobile();
+
   if (!isOpen) return null;
 
   const isSubmitting = form.formState.isSubmitting;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-100">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-end md:items-center justify-center md:p-4 z-50 animate-in fade-in duration-100">
+      <div className={cn(
+        'bg-white flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden',
+        isMobile
+          ? 'w-full rounded-t-2xl p-4 max-h-[85vh] animate-in slide-in-from-bottom duration-200'
+          : 'rounded-2xl p-6 w-full max-w-sm max-h-[calc(100vh-2rem)]'
+      )}>
         <div className="flex justify-between items-center pb-2.5 border-b border-slate-150">
           <h3 className="text-xs font-black text-[#C21A1A] uppercase tracking-wider flex items-center gap-2">
             <Send className="w-3.5 h-3.5" />
@@ -133,7 +142,7 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
               <Label className="block text-[10px] font-black text-slate-400 uppercase">
                 Chọn người nhận nhanh
               </Label>
-              <div className="grid grid-cols-2 gap-2 text-xs max-h-48 overflow-y-auto pr-1">
+              <div className={cn('grid gap-2 text-xs max-h-48 overflow-y-auto pr-1', isMobile ? 'grid-cols-2' : 'grid-cols-2')}>
                 {staffMembers.length === 0 ? (
                   <div className="col-span-2 text-center py-4 text-slate-400 text-xs font-semibold">
                     Không có nhân sự nào trong ca trực

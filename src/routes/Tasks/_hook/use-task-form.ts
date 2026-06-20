@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { format } from 'date-fns';
-import type { TaskRequestType } from '../../../types/tasks.types';
+import type { TaskRequestType, SubTask } from '../../../types/tasks.types';
+
+const subtaskSchema = z.object({
+  id: z.string(),
+  title: z.string().trim().min(1),
+  completed: z.boolean(),
+  completedBy: z.string().optional(),
+  completedAt: z.string().optional(),
+});
 
 export const taskFormSchema = z.object({
   title: z.string().trim().min(1, 'Vui lòng nhập tên công việc'),
@@ -14,6 +22,7 @@ export const taskFormSchema = z.object({
   startDate: z.date().optional(),
   helpers: z.array(z.string()).optional(),
   link: z.string().trim().optional(),
+  subtasks: z.array(subtaskSchema).optional(),
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -36,6 +45,7 @@ export const DEFAULT_TASK_FORM_VALUES: TaskFormValues = {
   startDate: undefined,
   helpers: [],
   link: '',
+  subtasks: [],
 };
 
 export const DEFAULT_QUICK_DELEGATE_FORM_VALUES: TaskQuickDelegateFormValues = {
@@ -44,7 +54,17 @@ export const DEFAULT_QUICK_DELEGATE_FORM_VALUES: TaskQuickDelegateFormValues = {
   department: 'Kho',
 };
 
+/**
+ * Calculate progress from subtasks array.
+ */
+function calculateProgressFromSubtasks(subtasks?: SubTask[]): number | undefined {
+  if (!subtasks || subtasks.length === 0) return undefined;
+  const completed = subtasks.filter((s) => s.completed).length;
+  return Math.round((completed / subtasks.length) * 100);
+}
+
 export function taskFormToRequest(values: TaskFormValues): TaskRequestType {
+  const subtasks = values.subtasks?.filter((s) => s.title.trim().length > 0);
   return {
     title: values.title.trim(),
     department: values.department,
@@ -56,6 +76,8 @@ export function taskFormToRequest(values: TaskFormValues): TaskRequestType {
     startDate: values.startDate ? format(values.startDate, 'dd/MM/yyyy') : undefined,
     helpers: values.helpers,
     link: values.link,
+    subtasks: subtasks && subtasks.length > 0 ? subtasks : undefined,
+    progress: calculateProgressFromSubtasks(subtasks),
   };
 }
 

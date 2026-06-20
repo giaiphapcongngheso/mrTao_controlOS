@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Plus, Pencil, Bold, Italic, Underline, Heading, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Pencil, Bold, Italic, Underline, Heading, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, Trash2, ListChecks, X } from 'lucide-react';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { CustomMultiSelect } from '../../../../share/components/custom/custom-multi-select';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
@@ -15,15 +15,19 @@ import {
   FormMessage,
   Input,
 } from '@shared/ui';
-import type { TaskRequestType, TaskItem } from '../../../types/tasks.types';
+import { cn } from '@shared/lib/utils';
+import type { TaskRequestType, TaskItem, SubTask } from '../../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import { getRoleFriendlyName } from '../../../constants';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 import {
   DEFAULT_TASK_FORM_VALUES,
   taskFormSchema,
   taskFormToRequest,
   type TaskFormValues,
 } from '../_hook/use-task-form';
+import { TaskTemplatePicker } from './task-template-picker';
+import type { TaskTemplate } from '../../../types/task-template.types';
 
 function parseDeadlineStringToDate(deadline: string): Date {
   if (!deadline) return new Date();
@@ -98,6 +102,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
       startDate: parseDateStringToDate(initialValues.startDate),
       helpers: initialValues.helpers || [],
       link: initialValues.link || '',
+      subtasks: initialValues.subtasks || [],
     } : DEFAULT_TASK_FORM_VALUES,
   });
 
@@ -142,6 +147,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
           startDate: parseDateStringToDate(initialValues.startDate),
           helpers: initialValues.helpers || [],
           link: initialValues.link || '',
+          subtasks: initialValues.subtasks || [],
         });
       } else {
         form.reset(DEFAULT_TASK_FORM_VALUES);
@@ -215,8 +221,30 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   };
 
   const dialogWidthClass = React.useMemo(() => {
-    return 'max-w-3xl'; // We need plenty of width for side-by-side inputs and Rich Text toolbar
+    return 'max-w-3xl';
   }, []);
+
+  const isMobile = useIsMobile();
+
+  // Subtask local state for input
+  const [subtaskInput, setSubtaskInput] = useState('');
+  const currentSubtasks = form.watch('subtasks') || [];
+
+  const addSubtask = useCallback(() => {
+    const title = subtaskInput.trim();
+    if (!title) return;
+    const newSubtask: SubTask = {
+      id: crypto.randomUUID(),
+      title,
+      completed: false,
+    };
+    form.setValue('subtasks', [...currentSubtasks, newSubtask]);
+    setSubtaskInput('');
+  }, [subtaskInput, currentSubtasks, form]);
+
+  const removeSubtask = useCallback((id: string) => {
+    form.setValue('subtasks', currentSubtasks.filter(s => s.id !== id));
+  }, [currentSubtasks, form]);
 
   const handleSubmit = useCallback(async (values: TaskFormValues) => {
     await onSubmit(taskFormToRequest(values));
@@ -227,8 +255,13 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   const isSubmitting = form.formState.isSubmitting;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className={`bg-white rounded-2xl p-6 w-full ${dialogWidthClass} max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden transition-all duration-300 ease-in-out`}>
+    <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-end md:items-center justify-center md:p-4 z-50 animate-in fade-in duration-200">
+      <div className={cn(
+        'bg-white flex flex-col shadow-2xl space-y-4 text-left border border-slate-100 overflow-hidden transition-all duration-300 ease-in-out',
+        isMobile
+          ? 'w-full h-full rounded-t-2xl animate-in slide-in-from-bottom duration-300 p-4'
+          : `rounded-2xl p-6 w-full ${dialogWidthClass} max-h-[calc(100vh-2rem)]`
+      )}>
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
             {isEditing ? (
@@ -250,14 +283,38 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 flex flex-col flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+              {/* Template Picker (only when creating new) */}
+              {!isEditing && (
+                <TaskTemplatePicker
+                  onSelect={(tpl) => {
+                    form.setValue('title', tpl.defaultTitle);
+                    form.setValue('department', tpl.defaultDepartment);
+                    form.setValue('priority', tpl.defaultPriority);
+                    if (tpl.defaultNotes) form.setValue('notes', tpl.defaultNotes);
+                    if (tpl.defaultAssignee) form.setValue('assignee', tpl.defaultAssignee);
+                    const newSubtasks = tpl.defaultSubtasks.map((s, i) => ({
+                      id: crypto.randomUUID(),
+                      title: s.title,
+                      completed: false,
+                    }));
+                    form.setValue('subtasks', newSubtasks);
+                  }}
+                />
+              )}
+
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem className="space-y-1">
-                    <FormLabel isRequired className="block text-[10px] font-black text-slate-400 uppercase">
-                      Tên phần việc / Nhiệm vụ
-                    </FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel isRequired className="block text-[10px] font-black text-slate-400 uppercase">
+                        Tên công việc / Nhiệm vụ
+                      </FormLabel>
+                      <span className={cn('text-[10px] font-semibold', (field.value?.length || 0) > 100 ? 'text-rose-500' : 'text-slate-300')}>
+                        {field.value?.length || 0}/120
+                      </span>
+                    </div>
                     <FormControl>
                       <Input
                         {...field}
@@ -434,6 +491,67 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                   </FormItem>
                 )}
               />
+
+              {/* Subtasks / Checklist Section */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase">
+                  <span className="flex items-center gap-1.5">
+                    <ListChecks className="w-3.5 h-3.5" />
+                    Checklist công việc con ({currentSubtasks.length})
+                  </span>
+                </label>
+
+                {/* Add subtask input */}
+                <div className="flex gap-2">
+                  <Input
+                    value={subtaskInput}
+                    onChange={(e) => setSubtaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSubtask();
+                      }
+                    }}
+                    placeholder="Nhập mục checklist và nhấn Enter..."
+                    className="flex-1 bg-slate-50 border border-slate-200 focus:outline-[#C21A1A] px-3.5 py-2.5 text-xs font-semibold rounded-lg min-h-[44px]"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addSubtask}
+                    disabled={!subtaskInput.trim()}
+                    className="shrink-0 h-[44px] px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-40"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Subtask list */}
+                {currentSubtasks.length > 0 && (
+                  <div className="space-y-1">
+                    {currentSubtasks.map((subtask, idx) => (
+                      <div
+                        key={subtask.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-150 rounded-lg group min-h-[40px]"
+                      >
+                        <span className="text-[10px] font-bold text-slate-300 w-4 text-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 flex-1">
+                          {subtask.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSubtask(subtask.id)}
+                          className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity cursor-pointer p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <FormField
                 control={form.control}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { TaskItem, TaskRequestType, TaskStatus } from '../../types/tasks.types';
+import type { TaskItem, TaskRequestType, TaskStatus, SubTask } from '../../types/tasks.types';
 import TasksView from './TasksView';
 import {
   useCreateTaskMutation,
@@ -13,6 +13,7 @@ import { useAppStore } from '../../stores/app-store';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
+import { isTaskOverdue } from './_hook/use-task-deadline';
 
 interface TasksContainerProps {
   activeStoreId: string;
@@ -20,12 +21,7 @@ interface TasksContainerProps {
 }
 
 function isDelayedTask(task: TaskItem): boolean {
-  if (task.status === 'completed') {
-    return false;
-  }
-
-  const deadline = task.deadline.toLowerCase();
-  return deadline.includes('trễ') || deadline.includes('tre') || deadline.includes('08/05') || deadline.includes('overdue');
+  return isTaskOverdue(task);
 }
 
 export default function TasksContainer({
@@ -149,6 +145,22 @@ export default function TasksContainer({
     [updateTaskMutation],
   );
 
+  const handleUpdateSubtasks = useCallback(
+    async (taskId: string, subtasks: SubTask[]) => {
+      const completed = subtasks.filter((s) => s.completed).length;
+      const progress = subtasks.length > 0 ? Math.round((completed / subtasks.length) * 100) : undefined;
+      try {
+        await updateTaskMutation.mutateAsync({ taskId, input: { subtasks, progress } });
+        setErrorMessage(null);
+      } catch (error) {
+        console.error('Failed to update subtasks:', error);
+        setErrorMessage('Không thể cập nhật checklist. Vui lòng thử lại.');
+        throw error;
+      }
+    },
+    [updateTaskMutation],
+  );
+
   const queryErrorMessage = queryError
     ? 'Không thể tải danh sách công việc. Vui lòng thử lại.'
     : null;
@@ -172,9 +184,11 @@ export default function TasksContainer({
       onUpdateTaskStatus={handleUpdateTaskStatus}
       onDeleteTask={handleDeleteTask}
       onUpdateTask={handleUpdateTask}
+      onUpdateSubtasks={handleUpdateSubtasks}
       canCreate={permissions.canCreate}
       canUpdate={permissions.canUpdate}
       currentUser={currentUser}
     />
   );
 }
+

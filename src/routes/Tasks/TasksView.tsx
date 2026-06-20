@@ -18,25 +18,21 @@ import {
   Building,
   Pencil,
   Trash2,
+  AlertTriangle,
+  Eye,
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { TaskItem, TaskRequestType, TaskStatus } from '../../types/tasks.types';
+import { TaskItem, TaskRequestType, TaskStatus, SubTask } from '../../types/tasks.types';
 import type { StaffMember, StaffRole } from '../../types/staff.types';
 import type { UserSession } from '../../stores/app-store';
 import {
   Button,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   SearchInput,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  Card,
-  CardHeader,
-  CardContent,
   Checkbox,
 } from '@shared/ui';
 import { CustomTable } from '@shared/components';
@@ -47,6 +43,15 @@ import { TaskCreateModal } from './components/task-create-modal';
 import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
 import { TaskDetailModal } from './components/task-detail-modal';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
+import { TaskCardList } from './components/task-card-list';
+import { TaskKanbanView } from './components/task-kanban-view';
+import { TaskCalendarView } from './components/task-calendar-view';
+import { useIsMobile } from '../../shared/hooks/use-is-mobile';
+import { isTaskOverdue, parseTaskDeadline, getDeadlineUrgency, getUrgencyLabel, getUrgencyBadgeClass } from './_hook/use-task-deadline';
+import {
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  eachDayOfInterval, format, isSameDay, isSameMonth, isToday, addMonths, subMonths,
+} from 'date-fns';
 
 interface TasksViewProps {
   tasks: TaskItem[];
@@ -60,6 +65,7 @@ interface TasksViewProps {
   onUpdateTaskStatus: (taskId: string, status: TaskStatus) => void | Promise<void>;
   onDeleteTask: (taskId: string) => void | Promise<void>;
   onUpdateTask: (taskId: string, input: Partial<TaskRequestType>) => void | Promise<void>;
+  onUpdateSubtasks?: (taskId: string, subtasks: SubTask[]) => void | Promise<void>;
   canCreate?: boolean;
   canUpdate?: boolean;
   currentUser?: UserSession | null;
@@ -164,6 +170,177 @@ const stripHtmlAndTruncate = (htmlStr?: string, maxLen: number = 100) => {
   return cleanText.substring(0, maxLen) + '...';
 };
 
+// ============ RIGHT SIDEBAR COMPONENTS (Mockup Section 8) ============
+
+// Mini calendar widget for sidebar
+const MiniCalendarWidget = React.memo(function MiniCalendarWidget({
+  tasks,
+  onTaskClick,
+}: {
+  tasks: TaskItem[];
+  onTaskClick: (task: TaskItem) => void;
+}) {
+  const [month, setMonth] = useState(new Date());
+
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, TaskItem[]>();
+    for (const task of tasks) {
+      const date = parseTaskDeadline(task.deadline);
+      if (date) {
+        const key = format(date, 'yyyy-MM-dd');
+        const arr = map.get(key) || [];
+        arr.push(task);
+        map.set(key, arr);
+      }
+    }
+    return map;
+  }, [tasks]);
+
+  const days = useMemo(() => {
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calStart, end: calEnd });
+  }, [month]);
+
+  const handlePrev = useCallback(() => setMonth((m) => subMonths(m, 1)), []);
+  const handleNext = useCallback(() => setMonth((m) => addMonths(m, 1)), []);
+
+  return (
+    <div>
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" onClick={handlePrev} className="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 text-slate-400 cursor-pointer">
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+        <span className="text-[11px] font-black text-slate-700 capitalize">
+          Tháng {format(month, 'M, yyyy')}
+        </span>
+        <button type="button" onClick={handleNext} className="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 text-slate-400 cursor-pointer">
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
+          <div key={d} className="text-center text-[9px] font-bold text-slate-400 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 gap-px">
+        {days.map((day) => {
+          const key = format(day, 'yyyy-MM-dd');
+          const dayTasks = tasksByDate.get(key) || [];
+          const inMonth = isSameMonth(day, month);
+          const today = isToday(day);
+          const hasOverdue = dayTasks.some((t) => isTaskOverdue(t));
+
+          return (
+            <button
+              key={key}
+              type="button"
+              className={cn(
+                'w-full aspect-square flex flex-col items-center justify-center rounded-md text-[10px] font-bold transition-colors cursor-pointer relative',
+                today && 'bg-[#C21A1A] text-white font-black',
+                !today && inMonth && 'text-slate-700 hover:bg-slate-50',
+                !today && !inMonth && 'text-slate-300',
+              )}
+            >
+              {format(day, 'd')}
+              {dayTasks.length > 0 && (
+                <div className="flex gap-0.5 mt-0.5">
+                  {dayTasks.slice(0, 3).map((t) => (
+                    <span
+                      key={t.id}
+                      className={cn('w-1 h-1 rounded-full', hasOverdue ? 'bg-rose-500' : 'bg-blue-500')}
+                    />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+// Upcoming tasks list for sidebar
+const UpcomingTasksList = React.memo(function UpcomingTasksList({
+  tasks,
+  onTaskClick,
+}: {
+  tasks: TaskItem[];
+  onTaskClick: (task: TaskItem) => void;
+}) {
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    return tasks
+      .filter((t) => {
+        if (t.status === 'completed') return false;
+        const d = parseTaskDeadline(t.deadline);
+        if (!d) return false;
+        const diff = d.getTime() - now.getTime();
+        return diff > -7 * 24 * 60 * 60 * 1000; // include up to 7 days overdue
+      })
+      .sort((a, b) => {
+        const da = parseTaskDeadline(a.deadline)?.getTime() ?? 0;
+        const db = parseTaskDeadline(b.deadline)?.getTime() ?? 0;
+        return da - db;
+      })
+      .slice(0, 8);
+  }, [tasks]);
+
+  if (upcoming.length === 0) {
+    return (
+      <p className="text-xs text-slate-300 italic text-center py-6 font-medium">
+        Không có việc sắp đến hạn
+      </p>
+    );
+  }
+
+  const priorityDot: Record<string, string> = {
+    high: 'bg-rose-500',
+    medium: 'bg-amber-500',
+    low: 'bg-blue-400',
+  };
+
+  return (
+    <div className="divide-y divide-slate-50">
+      {upcoming.map((task) => {
+        const overdue = isTaskOverdue(task);
+        return (
+          <button
+            key={task.id}
+            type="button"
+            onClick={() => onTaskClick(task)}
+            className="w-full text-left flex items-start gap-2.5 py-2.5 px-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+          >
+            <span className={cn(
+              'w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
+              overdue ? 'bg-rose-500' : (priorityDot[task.priority] || 'bg-blue-400'),
+            )} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-slate-700 line-clamp-1 group-hover:text-[#C21A1A] transition-colors">
+                {task.title}
+              </p>
+              <span className={cn(
+                'text-[10px] font-semibold',
+                overdue ? 'text-rose-500' : 'text-slate-400',
+              )}>
+                {task.deadline}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+
 export default function TasksView({
   tasks,
   staffMembers = [],
@@ -176,12 +353,15 @@ export default function TasksView({
   onUpdateTaskStatus,
   onDeleteTask,
   onUpdateTask,
+  onUpdateSubtasks,
   canCreate = false,
   canUpdate = false,
   currentUser,
 }: TasksViewProps) {
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine' | 'late' | 'completed'>('all');
+  const [activeView, setActiveView] = useState<'list' | 'kanban' | 'calendar'>('list');
 
   // Modals controller
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -240,11 +420,18 @@ export default function TasksView({
         accessorKey: 'title',
         header: 'Tên công việc',
         size: 250,
-        cell: ({ row }) => (
-          <div className="font-medium text-slate-955 text-left text-sm leading-snug break-words">
-            {row.original.title}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const task = row.original;
+          return (
+            <button
+              type="button"
+              className="text-left font-medium text-slate-900 hover:text-[#C21A1A] hover:underline text-sm leading-snug break-words transition-colors cursor-pointer w-full focus:outline-none"
+              onClick={() => setViewingTask(task)}
+            >
+              {task.title}
+            </button>
+          );
+        },
         meta: {
           filterElement: (column) => (
             <input
@@ -394,8 +581,46 @@ export default function TasksView({
       {
         accessorKey: 'deadline',
         header: 'Hạn hoàn thành',
-        size: 180,
-        cell: ({ row }) => renderDeadline(row.original.deadline),
+        size: 200,
+        cell: ({ row }) => {
+          const task = row.original;
+          const urgency = getDeadlineUrgency(task);
+          const urgencyLabel = getUrgencyLabel(urgency);
+          const urgencyClass = getUrgencyBadgeClass(urgency);
+          const subtaskCount = task.subtasks?.length ?? 0;
+          const subtaskCompleted = task.subtasks?.filter((s) => s.completed).length ?? 0;
+          const progress = task.progress ?? 0;
+
+          return (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                {renderDeadline(task.deadline)}
+                {urgencyLabel && (
+                  <span className={cn(
+                    'inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap',
+                    urgencyClass,
+                  )}>
+                    {urgency === 'overdue' && <AlertTriangle className="w-2.5 h-2.5" />}
+                    {urgencyLabel}
+                  </span>
+                )}
+              </div>
+              {subtaskCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden max-w-[100px]">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    {subtaskCompleted}/{subtaskCount}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        },
         meta: {
           filterElement: (column) => (
             <input
@@ -411,7 +636,7 @@ export default function TasksView({
       {
         id: 'actions',
         header: 'Thao tác',
-        size: 150,
+        size: 220,
         cell: ({ row }) => {
           const task = row.original;
           return (
@@ -420,7 +645,17 @@ export default function TasksView({
                 size="sm"
                 type="button"
                 variant="outline"
-                className="h-7 text-sm px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                className="h-7 text-xs px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1 text-slate-700"
+                onClick={() => setViewingTask(task)}
+              >
+                <Eye className="w-3 h-3 text-slate-500" />
+                Xem
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                className="h-7 text-xs px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                 onClick={() => setEditingTask(task)}
               >
                 <Pencil className="w-3 h-3 text-slate-500" />
@@ -430,7 +665,7 @@ export default function TasksView({
                 size="sm"
                 type="button"
                 variant="ghost"
-                className="h-7 text-sm px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                className="h-7 text-xs px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
                 onClick={() => setTaskToDelete(task)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -444,7 +679,7 @@ export default function TasksView({
         },
       },
     ],
-    [renderDeadline, setEditingTask, setTaskToDelete]
+    [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask]
   );
 
   // Toast Notification State
@@ -508,7 +743,7 @@ export default function TasksView({
       return task.status === 'completed';
     }
     if (activeFilter === 'late') {
-      return task.status !== 'completed' && (task.deadline.toLowerCase().includes('trễ') || task.deadline.includes('08/05') || task.deadline.includes('Overdue'));
+      return isTaskOverdue(task);
     }
     if (activeFilter === 'mine') {
       return task.assignee === currentUser?.fullName;
@@ -537,54 +772,58 @@ export default function TasksView({
     const inProgress = visibleTasks.filter((t) => t.status === 'in_progress').length;
     const waiting = visibleTasks.filter((t) => t.status === 'waiting').length;
     const completed = visibleTasks.filter((t) => t.status === 'completed').length;
-    const overdue = visibleTasks.filter(
-      (t) =>
-        t.status !== 'completed' &&
-        (t.deadline.toLowerCase().includes('trễ') ||
-          t.deadline.includes('08/05') ||
-          t.deadline.includes('overdue')),
-    ).length;
+    const overdue = visibleTasks.filter((t) => isTaskOverdue(t)).length;
 
     return [
       {
         label: 'CHƯA KHỞI ĐỘNG',
         count: notStarted,
+        icon: Circle,
         wrapperClass: 'bg-white border-slate-200 shadow-2xs',
         labelColor: 'text-slate-400',
-        countColor: 'text-slate-950',
-        dotClass: 'bg-slate-400',
+        countColor: 'text-slate-800',
+        iconBg: 'bg-slate-100 text-slate-400',
+        dotColor: 'bg-slate-400',
       },
       {
         label: 'ĐANG THỰC HIỆN',
         count: inProgress,
+        icon: Play,
         wrapperClass: 'bg-blue-50/50 border-blue-100 shadow-2xs',
         labelColor: 'text-blue-600',
         countColor: 'text-blue-700',
-        dotClass: 'bg-blue-500 animate-pulse',
+        iconBg: 'bg-blue-100 text-blue-600',
+        dotColor: 'bg-blue-500',
       },
       {
-        label: 'CHỜ DUYỆT CA',
+        label: 'CHỜ DUYỆT',
         count: waiting,
+        icon: Clock,
         wrapperClass: 'bg-amber-50/50 border-amber-100 shadow-2xs',
         labelColor: 'text-amber-600',
         countColor: 'text-amber-700',
-        dotClass: 'bg-[#FFB800]',
+        iconBg: 'bg-amber-100 text-amber-600',
+        dotColor: 'bg-amber-500',
       },
       {
         label: 'HOÀN THÀNH',
         count: completed,
+        icon: CheckCircle2,
         wrapperClass: 'bg-emerald-50/40 border-emerald-150 shadow-2xs',
         labelColor: 'text-emerald-600',
-        countColor: 'text-[#00B050]',
-        dotClass: 'bg-[#00B050]',
+        countColor: 'text-emerald-700',
+        iconBg: 'bg-emerald-100 text-emerald-600',
+        dotColor: 'bg-emerald-500',
       },
       {
-        label: 'QUÁ HẠN CHỐT CA',
+        label: 'QUÁ HẠN',
         count: overdue,
-        wrapperClass: 'bg-rose-50 text-rose-800 border-rose-100 shadow-2xs col-span-2 md:col-span-1',
+        icon: AlertTriangle,
+        wrapperClass: 'bg-rose-50 border-rose-100 shadow-2xs',
         labelColor: 'text-rose-600',
         countColor: 'text-rose-700',
-        dotClass: 'bg-rose-600',
+        iconBg: 'bg-rose-100 text-rose-600',
+        dotColor: 'bg-rose-500',
       },
     ];
   }, [visibleTasks]);
@@ -696,98 +935,294 @@ export default function TasksView({
         </div>
       )}
 
-      {/* 3. CORE ANALYTICAL PILLS STRIP (NATIVE OVERVIEW STATS) */}
+      {/* 3. CORE ANALYTICAL PILLS STRIP (Mockup Section 3) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className={cn('p-4 rounded-xl border', stat.wrapperClass)}>
-            <p className={cn('text-sm font-black uppercase tracking-wider', stat.labelColor)}>{stat.label}</p>
-            <div className="flex items-center justify-between mt-1.5">
-              <span className={cn('text-xl font-black font-sans', stat.countColor)}>{stat.count}</span>
-              <span className={cn('w-1.5 h-1.5 rounded-full', stat.dotClass)}></span>
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className={cn('p-3.5 rounded-xl border flex items-center gap-3 relative', stat.wrapperClass)}>
+              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', stat.iconBg)}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-[10px] font-black uppercase tracking-wider leading-tight', stat.labelColor)}>{stat.label}</p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className={cn('text-2xl font-black font-sans leading-none', stat.countColor)}>{stat.count}</span>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400 mt-0.5 block">
+                  {visibleTasks.length > 0 ? `${Math.round((stat.count / visibleTasks.length) * 100)}% tổng việc` : ''}
+                </span>
+              </div>
+              {/* Dot indicator (mockup: small colored dot top-right) */}
+              <span className={cn('absolute top-3 right-3 w-2 h-2 rounded-full', stat.dotColor)} />
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* 4. FILTER CONTROLS & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
+      {/* 5. VIEW TABS ROW (Mockup Section 5: Danh sách/Kanban/Lịch + Search + Bộ lọc) */}
+      {!isMobile && (
+        <div className="flex items-center justify-between gap-4">
+          {/* View Tabs with underline */}
+          <div className="flex items-center gap-0.5 border-b-2 border-slate-100">
+            {([
+              { key: 'list' as const, label: 'Danh sách', icon: <ListTodo className="w-3.5 h-3.5" /> },
+              { key: 'kanban' as const, label: 'Kanban', icon: <ClipboardList className="w-3.5 h-3.5" /> },
+              { key: 'calendar' as const, label: 'Lịch', icon: <Calendar className="w-3.5 h-3.5" /> },
+            ]).map(({ key, label, icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveView(key)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 text-xs font-black tracking-wider transition-all cursor-pointer relative',
+                  activeView === key
+                    ? 'text-slate-900 after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[2px] after:bg-[#C21A1A] after:rounded-full'
+                    : 'text-slate-400 hover:text-slate-600',
+                )}
+              >
+                {icon}
+                <span>{label}</span>
+                {/* Badge count */}
+                <span className={cn(
+                  'text-[9px] font-black px-1.5 py-0 rounded-full min-w-[18px] text-center',
+                  activeView === key
+                    ? 'bg-[#C21A1A] text-white'
+                    : 'bg-slate-100 text-slate-400'
+                )}>
+                  {key === 'list' ? filteredTasks.length : key === 'kanban' ? filteredTasks.length : filteredTasks.length}
+                </span>
+              </button>
+            ))}
+          </div>
 
-        {/* Switch Filter Tab Segment */}
-        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full min-w-0 md:w-fit">
-          <TabsList className="!grid !h-auto !w-full grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 sm:!inline-flex sm:!w-auto sm:flex-row sm:flex-nowrap">
-            <TabsTrigger
-              value="all"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
+          {/* Right: Search + Filter button */}
+          <div className="flex items-center gap-2">
+            <div className="w-64">
+              <SearchInput
+                placeholder="Tìm kiếm công việc..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                className="font-semibold"
+              />
+            </div>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
             >
-              Tất cả ({visibleTasks.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="mine"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
-            >
-              Của tôi ({visibleTasks.filter(t => t.assignee === currentUser?.fullName).length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="late"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-rose-100/60 data-[state=active]:border data-[state=active]:border-rose-100 data-[state=active]:text-rose-700 text-slate-500 hover:text-rose-700 bg-transparent"
-            >
-              Trễ hạn ({visibleTasks.filter(t => t.status !== 'completed' && (t.deadline.toLowerCase().includes('trễ') || t.deadline.includes('08/05'))).length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
-              className="min-w-0 w-full px-2 sm:px-4 py-2 text-sm font-black rounded-lg transition-all cursor-pointer whitespace-nowrap border-b-0 data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-2xs text-slate-500 hover:text-slate-800 bg-transparent"
-            >
-              Đã hoàn thành ({visibleTasks.filter(t => t.status === 'completed').length})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+              Bộ lọc
+            </button>
+          </div>
+        </div>
+      )}
 
-        {/* Dynamic Live Text Input */}
-        <div className="md:w-80 w-full">
-          <SearchInput
-            placeholder="Tìm kiếm theo công việc, vai trò..."
-            value={searchTerm}
-            onChange={setSearchTerm}
-            className="font-semibold"
-          />
+      {/* FILTER ROW (Mockup: pills + dropdowns) */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 min-w-0">
+        {/* Filter pills row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {([
+            { key: 'all' as const, label: 'Tất cả', count: visibleTasks.length },
+            { key: 'mine' as const, label: 'Của tôi', count: visibleTasks.filter(t => t.assignee === currentUser?.fullName).length },
+            { key: 'late' as const, label: 'Trễ hạn', count: visibleTasks.filter(t => isTaskOverdue(t)).length, isRed: true },
+            { key: 'completed' as const, label: 'Hạn hoàn thành', count: visibleTasks.filter(t => t.status === 'completed').length },
+          ] as const).map(({ key, label, count, ...rest }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveFilter(key)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border whitespace-nowrap',
+                activeFilter === key
+                  ? ('isRed' in rest && rest.isRed)
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-white text-slate-800 border-slate-300 shadow-sm'
+                  : 'bg-transparent text-slate-400 border-transparent hover:text-slate-600',
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
+        {/* Filter dropdowns (Mockup: Vai trò, Người phụ trách, Trạng thái, Thời gian) */}
+        {!isMobile && (
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
+            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
+              <option>Chọn vai trò</option>
+              {roles?.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </select>
+            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
+              <option>Chọn người</option>
+              {staffMembers?.map((s) => <option key={s.id} value={s.fullName}>{s.fullName}</option>)}
+            </select>
+            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
+              <option>Tất cả</option>
+              <option value="not_started">Chưa làm</option>
+              <option value="in_progress">Đang làm</option>
+              <option value="waiting">Chờ duyệt</option>
+              <option value="completed">Hoàn thành</option>
+            </select>
+            <select className="h-8 px-2.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#C21A1A] cursor-pointer">
+              <option>Chọn khoảng thời gian</option>
+              <option>Hôm nay</option>
+              <option>Tuần này</option>
+              <option>Tháng này</option>
+            </select>
+          </div>
+        )}
+
+        {/* Mobile: search + view toggle */}
+        {isMobile && (
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1">
+              <SearchInput
+                placeholder="Tìm kiếm..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                className="font-semibold"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      <CustomTable<TaskItem>
-        columns={columns}
-        data={filteredTasks}
-        loading={isLoading}
-        enableFiltering={true}
-        showFilterRow={true}
-        enablePagination={true}
-        tableMinWidth={1500}
-        emptyMessage="Không tìm thấy nhiệm vụ nào. Vui lòng rà soát lại ký tự tìm kiếm hoặc bộ chuyển đổi trạng thái ở trên."
-        onRowClick={(row) => setViewingTask(row.original)}
-        className="flex-1 min-h-0 bg-white rounded-xl shadow-2xs border border-slate-200"
-        enableRowSelection={true}
-        bulkSelectionActions={(table) => {
-          const selectedRows = table.getFilteredSelectedRowModel().rows;
-          const count = selectedRows.length;
-          return (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
-              onClick={async () => {
-                if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không? Hành động này không thể hoàn tác.`)) {
-                  const selectedIds = selectedRows.map((r) => r.original.id);
-                  await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
-                  table.resetRowSelection();
-                }
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Xóa {count} mục đã chọn</span>
-            </Button>
-          );
-        }}
-      />
+      {/* VIEW RENDERING */}
+
+      {/* Mobile: always show Card List */}
+      {isMobile && (
+        <div className="flex-1 min-h-0 px-1">
+          <TaskCardList
+            tasks={filteredTasks}
+            onCardClick={setViewingTask}
+            onEdit={canUpdate ? setEditingTask : undefined}
+            onDelete={canUpdate ? setTaskToDelete : undefined}
+          />
+        </div>
+      )}
+
+      {/* MAIN CONTENT AREA (Mockup: Table + Right Sidebar) */}
+      {!isMobile && (
+        <div className={cn('flex gap-4', activeView === 'list' ? 'flex-row' : 'flex-col')}>
+          {/* Left: Table / Kanban / Calendar */}
+          <div className="flex-1 min-w-0">
+            {/* Desktop: List View (Table) */}
+            {activeView === 'list' && (
+              <CustomTable<TaskItem>
+                columns={columns}
+                data={filteredTasks}
+                loading={isLoading}
+                enableFiltering={true}
+                showFilterRow={true}
+                enablePagination={true}
+                tableMinWidth={1500}
+                emptyMessage="Không tìm thấy nhiệm vụ nào."
+                onRowClick={(row) => setViewingTask(row.original)}
+                className="flex-1 min-h-0 bg-white rounded-xl shadow-2xs border border-slate-200"
+                enableRowSelection={true}
+                bulkSelectionActions={(table) => {
+                  const selectedRows = table.getFilteredSelectedRowModel().rows;
+                  const count = selectedRows.length;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
+                        onClick={async () => {
+                          if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không?`)) {
+                            const selectedIds = selectedRows.map((r) => r.original.id);
+                            await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
+                            table.resetRowSelection();
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa {count} mục</span>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold border-slate-200"
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            <span>Đổi trạng thái</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44">
+                          <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">
+                            Chọn trạng thái mới
+                          </DropdownMenuLabel>
+                          {(['not_started', 'in_progress', 'waiting', 'completed'] as const).map((st) => (
+                            <DropdownMenuItem
+                              key={st}
+                              className="text-xs font-semibold cursor-pointer"
+                              onClick={async () => {
+                                const selectedIds = selectedRows.map((r) => r.original.id);
+                                await Promise.all(selectedIds.map((id) => onUpdateTaskStatus(id, st)));
+                                table.resetRowSelection();
+                                showToast(`🔄 Đã cập nhật ${count} công việc sang "${statusMeta[st].text}"`);
+                              }}
+                            >
+                              {statusMeta[st].text}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                }}
+              />
+            )}
+
+            {/* Desktop: Kanban View */}
+            {activeView === 'kanban' && (
+              <TaskKanbanView
+                tasks={filteredTasks}
+                onUpdateStatus={onUpdateTaskStatus}
+                onCardClick={setViewingTask}
+                isLoading={isLoading}
+              />
+            )}
+
+            {/* Desktop: Calendar View */}
+            {activeView === 'calendar' && (
+              <TaskCalendarView
+                tasks={filteredTasks}
+                onTaskClick={setViewingTask}
+              />
+            )}
+          </div>
+
+          {/* RIGHT SIDEBAR (Mockup Section 8: Lịch hôm nay + Việc sắp đến hạn) */}
+          {activeView === 'list' && (
+            <div className="w-[280px] shrink-0 space-y-3">
+              {/* Mini Calendar Widget */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/30">
+                  <h4 className="text-[11px] font-black text-slate-700">Lịch hôm nay</h4>
+                </div>
+                <div className="p-3">
+                  <MiniCalendarWidget tasks={filteredTasks} onTaskClick={setViewingTask} />
+                </div>
+              </div>
+
+              {/* Việc sắp đến hạn */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/30">
+                  <h4 className="text-[11px] font-black text-slate-700">Việc sắp đến hạn</h4>
+                  <button type="button" className="text-[10px] font-bold text-[#C21A1A] hover:underline cursor-pointer">Xem tất cả</button>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                  <UpcomingTasksList tasks={filteredTasks} onTaskClick={setViewingTask} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Manual Add/Edit Task Form Modal */}
       <TaskCreateModal
@@ -842,6 +1277,18 @@ export default function TasksView({
             showToast("Không thể cập nhật người phụ giúp. Vui lòng thử lại.");
           }
         }}
+        onUpdateSubtasks={onUpdateSubtasks ? async (taskId, subtasks) => {
+          try {
+            await onUpdateSubtasks(taskId, subtasks);
+            const completed = subtasks.filter(s => s.completed).length;
+            const progress = subtasks.length > 0 ? Math.round((completed / subtasks.length) * 100) : undefined;
+            if (viewingTask && viewingTask.id === taskId) {
+              setViewingTask(prev => prev ? { ...prev, subtasks, progress } : null);
+            }
+          } catch {
+            showToast("Không thể cập nhật checklist. Vui lòng thử lại.");
+          }
+        } : undefined}
         onUpdateStatus={async (taskId, status) => {
           try {
             await onUpdateTaskStatus(taskId, status);
@@ -852,6 +1299,17 @@ export default function TasksView({
             showToast(`🔄 Cập nhật trạng thái sang: "${statusMeta[status].text}"`);
           } catch {
             showToast("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+          }
+        }}
+        onUpdateTaskFields={async (taskId, fields) => {
+          try {
+            await onUpdateTask(taskId, fields);
+            if (viewingTask && viewingTask.id === taskId) {
+              setViewingTask(prev => prev ? { ...prev, ...fields } : null);
+            }
+            showToast("✅ Đã cập nhật thông tin công việc!");
+          } catch {
+            showToast("Không thể cập nhật công việc. Vui lòng thử lại.");
           }
         }}
         isSaving={isSaving}
