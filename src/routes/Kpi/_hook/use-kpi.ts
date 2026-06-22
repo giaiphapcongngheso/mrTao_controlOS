@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { kpiConfigService, kpiDailyValueService, kpiStaffRankService } from '../../../services/admin/kpi-service';
+import { kpiConfigService, kpiDailyValueService, kpiStaffRankService, kpiGoalService } from '../../../services/admin/kpi-service';
 import { roleService } from '../../../services/admin/role-service';
-import type { KPIConfig, KPIDailyValue, StaffRank } from '../../../types/kpi.types';
+import type { KPIConfig, KPIDailyValue, StaffRank, KPIGoal } from '../../../types/kpi.types';
 
 export const kpiQueryKeys = {
   staffRanks: ['kpi', 'staff-ranks'] as const,
   configs: ['kpi', 'configs'] as const,
   dailyValues: ['kpi', 'daily-values'] as const,
   roles: ['roles'] as const,
+  goals: ['kpi', 'goals'] as const,
 };
 
 export function useKpiRolesQuery() {
@@ -75,6 +76,33 @@ export function useSaveKpiDailyValueMutation() {
     mutationFn: (dailyValue: KPIDailyValue) => kpiDailyValueService.create(dailyValue),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.dailyValues });
+    },
+  });
+}
+
+export function useKpiGoalsQuery() {
+  return useQuery({
+    queryKey: kpiQueryKeys.goals,
+    queryFn: kpiGoalService.getAll,
+  });
+}
+
+export function useCreateKpiGoalMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (newGoal: KPIGoal) => kpiGoalService.create(newGoal),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.goals });
+    },
+  });
+}
+
+export function useDeleteKpiGoalMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (goalId: string) => kpiGoalService.delete(goalId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.goals });
     },
   });
 }

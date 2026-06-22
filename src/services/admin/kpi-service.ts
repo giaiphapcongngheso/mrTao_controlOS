@@ -1,4 +1,4 @@
-import type { StaffRank, KPIConfig, KPIDailyValue } from '../../types/kpi.types';
+import type { StaffRank, KPIConfig, KPIDailyValue, KPIGoal } from '../../types/kpi.types';
 import { createBaseService } from '../../shared/services/create-base-service';
 import { RESOURCE_PATH } from '../../constants/resource-paths';
 import { dataClient } from '../data-client';
@@ -19,5 +19,12 @@ export const kpiDailyValueService = createBaseService<KPIDailyValue, Partial<KPI
   client: dataClient,
   resource: RESOURCE_PATH.KPI_DAILY_VALUES,
   autoLog: { target: 'Giá trị KPI hàng ngày' },
+});
+
+export const kpiGoalService = createBaseService<KPIGoal, Partial<KPIGoal>>({
+  client: dataClient,
+  resource: RESOURCE_PATH.KPI_GOALS,
+  cacheTtlMs: 5 * 60 * 1000,
+  autoLog: { target: 'Nhóm mục tiêu KPI' },
 });
 

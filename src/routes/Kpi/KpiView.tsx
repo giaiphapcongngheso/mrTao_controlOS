@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Award, Calendar, Target } from 'lucide-react';
 import type { StaffRole, StaffMember } from '../../types/staff.types';
-import type { KPIConfig, KPIDailyValue } from '../../types/kpi.types';
+import type { KPIConfig, KPIDailyValue, KPIGoal } from '../../types/kpi.types';
 import { ModuleHeader } from '../../../share/components/module-header';
 import { RanksTab } from './tabs/_ranks-tab';
 import { EntryTab } from './tabs/_entry-tab';
@@ -19,6 +19,9 @@ interface KpiViewProps {
   onDeleteConfig: (configId: string) => Promise<any>;
   onSaveDailyValue: (val: KPIDailyValue) => Promise<any>;
   onSetTab: (tab: any) => void;
+  goals: KPIGoal[];
+  onCreateGoal: (name: string) => Promise<any>;
+  onDeleteGoal: (id: string) => Promise<any>;
 }
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
@@ -37,6 +40,9 @@ export default function KpiView({
   onDeleteConfig,
   onSaveDailyValue,
   onSetTab,
+  goals,
+  onCreateGoal,
+  onDeleteGoal,
 }: KpiViewProps) {
   // Global states
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('ranks');
@@ -127,6 +133,9 @@ export default function KpiView({
           onCreateConfig={onCreateConfig}
           onUpdateConfig={onUpdateConfig}
           onDeleteConfig={onDeleteConfig}
+          goals={goals}
+          onCreateGoal={onCreateGoal}
+          onDeleteGoal={onDeleteGoal}
         />
       )}
     </div>

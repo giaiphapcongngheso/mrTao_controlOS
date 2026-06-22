@@ -9,7 +9,7 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { normalizeRole, formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
 import type { StaffRole } from '../../../types/staff.types';
-import type { KPIConfig } from '../../../types/kpi.types';
+import type { KPIConfig, KPIGoal } from '../../../types/kpi.types';
 
 interface SettingsTabProps {
   roles: StaffRole[];
@@ -18,6 +18,9 @@ interface SettingsTabProps {
   onCreateConfig: (newConfig: KPIConfig) => Promise<any>;
   onUpdateConfig: (config: KPIConfig) => Promise<any>;
   onDeleteConfig: (configId: string) => Promise<any>;
+  goals: KPIGoal[];
+  onCreateGoal: (name: string) => Promise<any>;
+  onDeleteGoal: (id: string) => Promise<any>;
 }
 
 export const SettingsTab = React.memo(function SettingsTab({
@@ -27,6 +30,9 @@ export const SettingsTab = React.memo(function SettingsTab({
   onCreateConfig,
   onUpdateConfig,
   onDeleteConfig,
+  goals,
+  onCreateGoal,
+  onDeleteGoal,
 }: SettingsTabProps) {
   // Role selection
   const [selectedSettingRole, setSelectedSettingRole] = useState<string>(roles[0]?.code || '');
@@ -35,6 +41,11 @@ export const SettingsTab = React.memo(function SettingsTab({
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [configDialogMode, setConfigDialogMode] = useState<ConfigDialogMode>('create');
   const [editingConfig, setEditingConfig] = useState<KPIConfig | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+
+  // Goal category states
+  const [deletingGoal, setDeletingGoal] = useState<KPIGoal | null>(null);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -100,6 +111,24 @@ export const SettingsTab = React.memo(function SettingsTab({
     }
   }, [deleteTarget, onDeleteConfig]);
 
+  const handleAddNewGoal = useCallback(async (name: string) => {
+    await onCreateGoal(name);
+  }, [onCreateGoal]);
+
+  const handleDeleteGoalRequest = useCallback((name: string) => {
+    const goalObj = goals.find(g => g.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (goalObj) {
+      setDeletingGoal(goalObj);
+    }
+  }, [goals]);
+
+  const handleConfirmDeleteGoal = useCallback(async () => {
+    if (deletingGoal) {
+      await onDeleteGoal(deletingGoal.id);
+      setDeletingGoal(null);
+    }
+  }, [deletingGoal, onDeleteGoal]);
+
   const roleOptions = useMemo(() => {
     return roles.map(role => ({
       label: role.name,
@@ -119,38 +148,56 @@ export const SettingsTab = React.memo(function SettingsTab({
     weight: number;
     proofSource: string;
   }) => {
-    if (configDialogMode === 'edit' && editingConfig) {
-      const updatedConfig: KPIConfig = {
-        ...editingConfig,
-        ...data,
-        dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
-      };
-      await onUpdateConfig(updatedConfig);
-    } else {
-      const newConfig: KPIConfig = {
-        id: `${selectedSettingRole}_${Date.now()}`,
-        storeId: '',
-        role: selectedSettingRole,
-        ...data,
-        dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
-        month: selectedMonthYear,
-      };
-      await onCreateConfig(newConfig);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (configDialogMode === 'edit' && editingConfig) {
+        const updatedConfig: KPIConfig = {
+          ...editingConfig,
+          ...data,
+          dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
+        };
+        await onUpdateConfig(updatedConfig);
+      } else {
+        const newConfig: KPIConfig = {
+          id: `${selectedSettingRole}_${Date.now()}`,
+          storeId: '',
+          role: selectedSettingRole,
+          ...data,
+          dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
+          month: selectedMonthYear,
+        };
+        await onCreateConfig(newConfig);
+      }
+      setIsConfigDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to submit KPI config:', err);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsConfigDialogOpen(false);
-  }, [configDialogMode, editingConfig, selectedSettingRole, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig]);
+  }, [isSubmitting, configDialogMode, editingConfig, selectedSettingRole, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig]);
 
   const handleCopyFromPrevMonth = useCallback(async () => {
-    for (const prev of prevMonthConfigs) {
-      const newConfig: KPIConfig = {
-        ...prev,
-        id: `${prev.role}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        month: selectedMonthYear,
-        dailyTarget: Math.round(prev.monthlyTarget / daysInMonthCount),
-      };
-      await onCreateConfig(newConfig);
+    if (isCopying || prevMonthConfigs.length === 0) return;
+    setIsCopying(true);
+    try {
+      await Promise.all(
+        prevMonthConfigs.map(async (prev) => {
+          const newConfig: KPIConfig = {
+            ...prev,
+            id: `${prev.role}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            month: selectedMonthYear,
+            dailyTarget: Math.round(prev.monthlyTarget / daysInMonthCount),
+          };
+          await onCreateConfig(newConfig);
+        })
+      );
+    } catch (err) {
+      console.error('Failed to copy KPI configs:', err);
+    } finally {
+      setIsCopying(false);
     }
-  }, [prevMonthConfigs, selectedMonthYear, daysInMonthCount, onCreateConfig]);
+  }, [isCopying, prevMonthConfigs, selectedMonthYear, daysInMonthCount, onCreateConfig]);
 
   return (
     <>
@@ -199,9 +246,17 @@ export const SettingsTab = React.memo(function SettingsTab({
                 </span>
                 <Button
                   onClick={handleCopyFromPrevMonth}
-                  className="font-bold cursor-pointer h-8 px-4 rounded-lg text-sm bg-red-600 hover:bg-red-700 text-white"
+                  disabled={isCopying}
+                  className="font-bold cursor-pointer h-8 px-4 rounded-lg text-sm bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  Sao chép {prevMonthConfigs.length} chỉ số
+                  {isCopying ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Đang sao chép...
+                    </>
+                  ) : (
+                    `Sao chép ${prevMonthConfigs.length} chỉ số`
+                  )}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -270,6 +325,10 @@ export const SettingsTab = React.memo(function SettingsTab({
         daysInMonthCount={daysInMonthCount}
         config={editingConfig}
         onSubmit={handleConfigSubmit}
+        isSubmitting={isSubmitting}
+        goalOptions={goals.map(g => g.name)}
+        onAddGoal={handleAddNewGoal}
+        onDeleteGoal={handleDeleteGoalRequest}
       />
 
       {/* Delete confirmation */}
@@ -279,6 +338,16 @@ export const SettingsTab = React.memo(function SettingsTab({
         title="Xóa chỉ số KPI"
         description={`Bạn có chắc chắn muốn xóa chỉ số "${deleteTarget?.name || ''}"? Thao tác này sẽ ảnh hưởng tới tính toán điểm KPI.`}
         onConfirm={handleConfirmDelete}
+        variant="confirm"
+      />
+
+      {/* Goal delete confirmation */}
+      <ActionConfirmDialog
+        open={deletingGoal !== null}
+        onOpenChange={(open) => { if (!open) setDeletingGoal(null); }}
+        title="Xóa nhóm mục tiêu"
+        description={`Bạn có chắc chắn muốn xóa nhóm mục tiêu "${deletingGoal?.name || ''}"? Thao tác này chỉ xóa danh mục gợi ý, không ảnh hưởng tới các chỉ số KPI hiện tại đang dùng nhóm mục tiêu này.`}
+        onConfirm={handleConfirmDeleteGoal}
         variant="confirm"
       />
     </>
@@ -312,8 +381,18 @@ const ConfigTableRow = React.memo(function ConfigTableRow({
       <TableCell className="text-right font-sans text-slate-400 font-semibold text-sm">
         {formatValue(config.dailyTarget, config.unit)}
       </TableCell>
-      <TableCell className="text-right font-sans font-bold text-blue-600 text-sm">
-        {`${(config.weight * 100)}%`}
+      <TableCell className="text-right text-sm">
+        <div className="flex items-center justify-end gap-3">
+          <span className="font-sans font-bold text-slate-700 w-10 text-right">
+            {`${(config.weight * 100).toFixed(0)}%`}
+          </span>
+          <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/30">
+            <div 
+              className="h-full bg-[#C21A1A] rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(config.weight * 100, 100)}%` }}
+            />
+          </div>
+        </div>
       </TableCell>
       <TableCell className="text-slate-650 text-sm">{config.proofSource}</TableCell>
       <TableCell className="text-right">

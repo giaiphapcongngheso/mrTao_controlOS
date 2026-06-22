@@ -5,6 +5,7 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { Button } from '../../../../share/ui/button';
 import { Label } from '../../../../share/ui/label';
 import { Input } from '../../../../share/ui/input';
+import { CreatableCombobox } from '@shared/components/custom/creatable-combobox';
 import { formatValue } from '../kpi-utils';
 import type { KPIConfig } from '../../../types/kpi.types';
 
@@ -37,6 +38,10 @@ interface ConfigDialogProps {
     weight: number;
     proofSource: string;
   }) => Promise<void>;
+  isSubmitting?: boolean;
+  goalOptions: string[];
+  onAddGoal: (name: string) => Promise<void> | void;
+  onDeleteGoal: (name: string) => Promise<void> | void;
 }
 
 export const ConfigDialog = React.memo(function ConfigDialog({
@@ -48,7 +53,15 @@ export const ConfigDialog = React.memo(function ConfigDialog({
   daysInMonthCount,
   config,
   onSubmit,
+  isSubmitting = false,
+  goalOptions = [],
+  onAddGoal,
+  onDeleteGoal,
 }: ConfigDialogProps) {
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (isSubmitting) return;
+    onOpenChange(nextOpen);
+  }, [isSubmitting, onOpenChange]);
   const [formGoal, setFormGoal] = React.useState('');
   const [formKpi, setFormKpi] = React.useState('');
   const [formUnit, setFormUnit] = React.useState('VNĐ');
@@ -113,7 +126,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
     : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[700px] w-[95vw] max-h-[90vh] p-6 md:p-7 rounded-3xl border-0 shadow-xl bg-white/95 backdrop-blur-md overflow-y-auto text-left">
         <DialogHeader className="text-left pb-2">
           <DialogTitle className="text-base font-bold text-slate-900 tracking-wide">{title}</DialogTitle>
@@ -136,7 +149,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
                 placeholder="Ví dụ: Doanh số cá nhân đạt mục tiêu"
                 value={formKpi}
                 onChange={handleKpiChange}
-                disabled={isViewMode}
+                disabled={isViewMode || isSubmitting}
                 required
                 clearable={false}
               />
@@ -149,7 +162,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
                   options={unitOptions}
                   value={formUnit}
                   onChangeValue={handleUnitChange}
-                  disabled={isViewMode}
+                  disabled={isViewMode || isSubmitting}
                   clearable={false}
                   className="w-full text-slate-700 font-semibold text-sm"
                 />
@@ -162,7 +175,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
                   placeholder="Ví dụ: 45"
                   value={formWeight}
                   onChange={handleWeightChange}
-                  disabled={isViewMode}
+                  disabled={isViewMode || isSubmitting}
                   required
                   clearable={false}
                 />
@@ -184,13 +197,23 @@ export const ConfigDialog = React.memo(function ConfigDialog({
 
             <div className="flex flex-col gap-1.5">
               <Label className="text-sm font-bold text-slate-600 tracking-wide">Tên nhóm mục tiêu</Label>
-              <Input
-                placeholder="Ví dụ: Tăng kết quả kinh doanh"
-                value={formGoal}
-                onChange={handleGoalChange}
-                disabled={isViewMode}
-                clearable={false}
-              />
+              {isViewMode ? (
+                <Input value={formGoal} disabled clearable={false} />
+              ) : (
+                <CreatableCombobox
+                  value={formGoal}
+                  onValueChange={setFormGoal}
+                  options={goalOptions}
+                  onAddNew={onAddGoal}
+                  onDeleteOption={onDeleteGoal}
+                  placeholder="Chọn hoặc nhập nhóm mục tiêu"
+                  emptyHint="Gõ để tìm hoặc thêm nhóm mục tiêu mới"
+                  addNewText="Thêm nhóm mục tiêu"
+                  disabled={isSubmitting}
+                  containerClassName="h-9 rounded-xl text-slate-700 bg-white"
+                  className="text-xs"
+                />
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -200,7 +223,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
                 placeholder="Ví dụ: 450000000"
                 value={formTarget}
                 onChange={handleTargetChange}
-                disabled={isViewMode}
+                disabled={isViewMode || isSubmitting}
                 required
                 clearable={false}
               />
@@ -212,7 +235,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
                 placeholder="Ví dụ: KiotViet theo nhân viên"
                 value={formProof}
                 onChange={handleProofChange}
-                disabled={isViewMode}
+                disabled={isViewMode || isSubmitting}
                 clearable={false}
               />
             </div>
@@ -228,16 +251,29 @@ export const ConfigDialog = React.memo(function ConfigDialog({
           {/* Actions */}
           <DialogFooter className="pt-4 gap-2.5">
             <DialogClose asChild>
-              <Button type="button" variant="ghost" className="font-bold cursor-pointer h-10 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmitting}
+                className="font-bold cursor-pointer h-10 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {isViewMode ? 'Đóng' : 'Hủy bỏ'}
               </Button>
             </DialogClose>
             {!isViewMode && (
               <Button
                 type="submit"
-                className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-sm"
+                disabled={isSubmitting}
+                className="h-10 px-6 bg-[#C21A1A] hover:bg-[#A51414] active:scale-95 text-white font-bold rounded-xl shadow-md shadow-red-500/10 hover:shadow-lg hover:shadow-red-500/20 transition-all flex items-center justify-center cursor-pointer border-0 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {mode === 'edit' ? 'Lưu thay đổi' : 'Tạo chỉ số'}
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  mode === 'edit' ? 'Lưu thay đổi' : 'Tạo chỉ số'
+                )}
               </Button>
             )}
           </DialogFooter>

@@ -31,3 +31,10 @@ export interface KPIDailyValue {
   value: number;
 }
 
+export interface KPIGoal {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

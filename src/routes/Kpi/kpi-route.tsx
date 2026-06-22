@@ -10,6 +10,9 @@ import {
   useDeleteKpiConfigMutation,
   useSaveKpiDailyValueMutation,
   useKpiRolesQuery,
+  useKpiGoalsQuery,
+  useCreateKpiGoalMutation,
+  useDeleteKpiGoalMutation,
 } from './_hook/use-kpi';
 
 export default function KpiRoute() {
@@ -18,13 +21,16 @@ export default function KpiRoute() {
   const { data: kpiConfigs = [], isLoading: isConfigsLoading } = useKpiConfigsQuery();
   const { data: kpiDailyValues = [], isLoading: isDailyValuesLoading } = useKpiDailyValuesQuery();
   const { data: roles = [], isLoading: isRolesLoading } = useKpiRolesQuery();
+  const { data: goals = [], isLoading: isGoalsLoading } = useKpiGoalsQuery();
 
   const createConfigMutation = useCreateKpiConfigMutation();
   const updateConfigMutation = useUpdateKpiConfigMutation();
   const deleteConfigMutation = useDeleteKpiConfigMutation();
   const saveDailyValueMutation = useSaveKpiDailyValueMutation();
+  const createGoalMutation = useCreateKpiGoalMutation();
+  const deleteGoalMutation = useDeleteKpiGoalMutation();
 
-  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading) {
+  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading || isGoalsLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-sm font-semibold text-slate-500 animate-pulse">
@@ -49,6 +55,9 @@ export default function KpiRoute() {
       onDeleteConfig={(configId) => deleteConfigMutation.mutateAsync(configId)}
       onSaveDailyValue={(val) => saveDailyValueMutation.mutateAsync(val)}
       onSetTab={handleSetTab}
+      goals={goals}
+      onCreateGoal={(name) => createGoalMutation.mutateAsync({ id: `goal_${Date.now()}`, name })}
+      onDeleteGoal={(id) => deleteGoalMutation.mutateAsync(id)}
     />
   );
 }
