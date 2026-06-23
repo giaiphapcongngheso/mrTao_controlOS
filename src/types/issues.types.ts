@@ -24,6 +24,15 @@ export interface SOPIssue {
   process?: string;
   occurrence?: number;
   assignee?: string;
+  rootCause?: string;
+  proposedSolution?: string;
+  expectedBenefit?: {
+    timeSaved?: string;
+    costSaved?: string;
+    revenueIncrease?: string;
+    otherBenefit?: string;
+  };
+  attachments?: string[];
   createdAt?: string;
   updatedAt?: string;
   readConfirmedAt?: string;

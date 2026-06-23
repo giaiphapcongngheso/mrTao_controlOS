@@ -200,7 +200,7 @@ export const SettingsTab = React.memo(function SettingsTab({
   }, [isCopying, prevMonthConfigs, selectedMonthYear, daysInMonthCount, onCreateConfig]);
 
   return (
-    <>
+    <section className="space-y-4">
       <Card>
         <CardHeader className="border-b border-slate-100">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -350,7 +350,7 @@ export const SettingsTab = React.memo(function SettingsTab({
         onConfirm={handleConfirmDeleteGoal}
         variant="confirm"
       />
-    </>
+    </section>
   );
 });
 

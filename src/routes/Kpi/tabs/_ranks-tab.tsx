@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import type { KPIConfig, KPIDailyValue, StaffRank } from '../../../types/kpi.types';
+import { Card } from '../../../../share/ui/card';
 import { LeaderboardTable } from '../components/_leaderboard-table';
 import { StaffDetailCard } from '../components/_staff-detail-card';
 import { KpiSparklineChart } from '../components/_kpi-sparkline-chart';
@@ -195,9 +196,9 @@ export const RanksTab = React.memo(function RanksTab({
         </div>
 
         {/* Right: Staff detail */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7">
           {selectedStaff && (
-            <>
+            <Card className="p-5 md:p-6 space-y-2">
               <StaffDetailCard
                 roles={roles}
                 staff={selectedStaff}
@@ -213,17 +214,19 @@ export const RanksTab = React.memo(function RanksTab({
 
               {/* Sparkline chart (month view only) */}
               {ranksTimeframe === 'month' && staffConfigs.length > 0 && (
-                <KpiSparklineChart
-                  staffId={selectedStaff.id}
-                  configs={staffConfigs}
-                  activeChartKpiId={activeChartKpiId}
-                  onActiveKpiChange={handleChartKpiChange}
-                  ranksMonth={ranksMonth}
-                  daysInMonthCount={daysInMonthCount}
-                  kpiDailyValues={kpiDailyValues}
-                />
+                <div className="pt-2 border-t border-slate-100">
+                  <KpiSparklineChart
+                    staffId={selectedStaff.id}
+                    configs={staffConfigs}
+                    activeChartKpiId={activeChartKpiId}
+                    onActiveKpiChange={handleChartKpiChange}
+                    ranksMonth={ranksMonth}
+                    daysInMonthCount={daysInMonthCount}
+                    kpiDailyValues={kpiDailyValues}
+                  />
+                </div>
               )}
-            </>
+            </Card>
           )}
         </div>
       </div>

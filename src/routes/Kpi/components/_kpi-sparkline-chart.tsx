@@ -12,6 +12,17 @@ interface KpiSparklineChartProps {
   kpiDailyValues: KPIDailyValue[];
 }
 
+const formatYLabel = (val: number, unit: string) => {
+  if (unit === 'VNĐ' || unit === 'đ' || unit.toLowerCase() === 'vnd') {
+    if (val === 0) return '0 đ';
+    if (val >= 1000000000) return `${(val / 1000000000).toFixed(0)}B`;
+    if (val >= 1000000) return `${(val / 1000000).toFixed(0)}M`;
+    if (val >= 1000) return `${(val / 1000).toFixed(0)}K`;
+    return `${val} đ`;
+  }
+  return formatValue(val, unit);
+};
+
 export const KpiSparklineChart = React.memo(function KpiSparklineChart({
   staffId,
   configs,
@@ -64,8 +75,8 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
   const variancePct = lowValue > 0 ? (variance / lowValue) * 100 : (peakValue > 0 ? 100 : 0);
 
   // SVG Chart dimensions & coordinates
-  const paddingLeft = 65;
-  const paddingRight = 20;
+  const paddingLeft = 55;
+  const paddingRight = 10;
   const paddingTop = 25;
   const paddingBottom = 30;
   
@@ -138,10 +149,16 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
   return (
     <div className="space-y-4">
       {/* Header Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
-          Biểu đồ biến động hằng ngày (Tháng {monthNum})
-        </h4>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
+        <div className="flex flex-wrap items-center gap-4 text-left">
+          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            BIỂU ĐỒ BIẾN ĐỘNG HẰNG NGÀY
+          </h4>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+            <span className="w-2 h-2 rounded-full bg-[#C21A1A] inline-block" />
+            <span>Thực đạt ({targetKpi.unit})</span>
+          </div>
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 font-semibold">Chỉ số:</span>
@@ -158,27 +175,11 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
       </div>
 
       {/* Grid containing Summary Stats, Main Chart and Analysis Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        {/* Left/Middle Column: Sparkline Chart with Summary Stats */}
-        <div className="lg:col-span-2 space-y-3">
-          {/* Summary Stats Headers */}
-          <div className="grid grid-cols-3 gap-3 bg-white border border-slate-200 shadow-2xs rounded-xl p-3.5">
-            <div className="text-left space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Thực đạt TB ngày</span>
-              <span className="text-sm font-extrabold text-slate-800">{formatValue(avgActual, targetKpi.unit)}</span>
-            </div>
-            <div className="text-left space-y-0.5 border-l border-slate-100 pl-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đạt cao nhất (Đỉnh)</span>
-              <span className="text-sm font-extrabold text-[#C21A1A]">{formatValue(peakValue, targetKpi.unit)}</span>
-            </div>
-            <div className="text-left space-y-0.5 border-l border-slate-100 pl-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Hiệu suất tháng</span>
-              <span className="text-sm font-extrabold text-blue-600">{completionPct.toFixed(1)}%</span>
-            </div>
-          </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left/Middle Column: Sparkline Chart */}
+        <div className="lg:col-span-2 space-y-4">
           {/* SVG Line Chart Box */}
-          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl p-4 flex flex-col justify-between relative overflow-hidden h-[240px]">
+          <div className="p-1 flex flex-col justify-between relative overflow-hidden h-[240px]">
             {/* Interactive HTML Tooltip */}
             {hoveredIndex !== null && (
               <div 
@@ -190,7 +191,7 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                 }}
               >
                 <p className="border-b border-slate-700/50 pb-0.5 mb-0.5">Ngày {String(hoveredIndex + 1).padStart(2, '0')}/{monthNum}</p>
-                <p className="text-emerald-400">{formatValue(dailyValues[hoveredIndex], targetKpi.unit)}</p>
+                <p className="text-red-400">{formatValue(dailyValues[hoveredIndex], targetKpi.unit)}</p>
                 <p className="text-[10px] text-slate-400 font-semibold">Mục tiêu ngày: {formatValue(targetKpi.dailyTarget, targetKpi.unit)}</p>
               </div>
             )}
@@ -201,8 +202,8 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                 <defs>
                   {/* Spline Area Gradient */}
                   <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.18" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="#C21A1A" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#C21A1A" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
@@ -228,7 +229,7 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                         fontWeight="bold" 
                         textAnchor="end"
                       >
-                        {formatValue(val, targetKpi.unit)}
+                        {formatYLabel(val, targetKpi.unit)}
                       </text>
                     </g>
                   );
@@ -248,12 +249,12 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                 {/* Spline Area Fill */}
                 <path d={fillData} fill="url(#chartGrad)" />
 
-                {/* Spline Stroke Line (Green spline curve) */}
+                {/* Spline Stroke Line (Red spline curve) */}
                 <path 
                   d={pathData} 
                   fill="none" 
-                  stroke="#10b981" 
-                  strokeWidth="2.5" 
+                  stroke="#C21A1A" 
+                  strokeWidth="2.2" 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
                 />
@@ -268,8 +269,8 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                         cx={pt[0]} 
                         cy={pt[1]} 
                         r={isHovered ? 5.5 : 3.5} 
-                        fill={isHovered ? '#10b981' : '#ffffff'} 
-                        stroke="#10b981" 
+                        fill={isHovered ? '#C21A1A' : '#ffffff'} 
+                        stroke="#C21A1A" 
                         strokeWidth={isHovered ? 2.5 : 2} 
                         className="transition-all duration-150 cursor-pointer"
                       />
@@ -315,38 +316,26 @@ export const KpiSparklineChart = React.memo(function KpiSparklineChart({
                 })}
               </svg>
             </div>
-
-            {/* Legend block under SVG */}
-            <div className="flex justify-center items-center gap-6 text-xs font-bold text-slate-500 mt-2 z-10 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-0.5 border-t-2 border-dashed border-[#f43f5e] inline-block" />
-                <span>Mục tiêu ngày ({formatValue(targetKpi.dailyTarget, targetKpi.unit)})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-1 bg-[#10b981] rounded-full inline-block" />
-                <span>Thực đạt hàng ngày</span>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Right Column: Demand Analysis Panel */}
-        <div className="bg-white border border-slate-200 shadow-2xs rounded-xl overflow-hidden h-full flex flex-col justify-between">
-          <div className="border-b border-slate-100 px-4 py-3.5 bg-slate-50/20">
-            <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-left">Phân tích biến động</h5>
-          </div>
-          <div className="p-4 text-xs font-semibold text-slate-500 space-y-4 text-left flex-1 flex flex-col justify-around py-5">
+        <div className="lg:border-l lg:border-slate-100 lg:pl-6 space-y-4 text-left">
+          <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-left pb-2 border-b border-slate-100">
+            Phân tích biến động
+          </h5>
+          <div className="text-xs font-semibold text-slate-500 space-y-4 py-1">
             <div className="space-y-1">
               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ngày đạt cao nhất (Đỉnh)</span>
               <p className="text-sm font-extrabold text-slate-800">{peakDayStr}</p>
               <p className="text-xs font-bold text-[#C21A1A]">{formatValue(peakValue, targetKpi.unit)}</p>
             </div>
-            <div className="space-y-1 border-t border-slate-100 pt-3.5">
+            <div className="space-y-1 border-t border-slate-100 pt-3">
               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ngày đạt thấp nhất (Đáy)</span>
               <p className="text-sm font-extrabold text-slate-800">{lowDayStr}</p>
               <p className="text-xs font-bold text-amber-600">{formatValue(lowValue, targetKpi.unit)}</p>
             </div>
-            <div className="space-y-1 border-t border-slate-100 pt-3.5">
+            <div className="space-y-1 border-t border-slate-100 pt-3">
               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Biên độ dao động (Variance)</span>
               <p className="text-sm font-extrabold text-slate-800">
                 {formatValue(variance, targetKpi.unit)}

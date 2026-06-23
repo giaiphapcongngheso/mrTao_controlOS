@@ -1,43 +1,14 @@
 import React, { useState, useMemo, useCallback, useDeferredValue, useRef, useEffect } from 'react';
-import {
-  AlertTriangle,
-  Check,
-  FileCheck,
-  Plus,
-  X,
-  Pencil,
-  Trash2,
-  AlertOctagon,
-  HelpCircle,
-  Clock,
-  CheckCircle,
-  BookOpen,
-  ChevronDown,
-} from 'lucide-react';
-import type { ColumnDef } from '@tanstack/react-table';
-import type {
-  SOPIssue,
-  SOPIssueCategory,
-  SOPIssueStatus,
-  SOPIssueStatusFilter,
-} from '../../types/issues.types';
+import { AlertTriangle, Check, Plus, X, Trash2 } from 'lucide-react';
+import type { SOPIssue, SOPIssueStatus, SOPIssueStatusFilter } from '../../types/issues.types';
 import IssuesHeader from './components/issues-header';
 import MetricBentoCards from './components/metric-bento-cards';
-import SearchFilterSection from './components/search-filter-section';
-import IssueCard from './components/issue-card';
+import IssuesTabBar from './components/issues-tab-bar';
+import type { IssueCategoryFilter } from './components/issues-tab-bar';
+import IssuesOverviewTab from './components/issues-overview-tab';
 import IssueModal from './components/issue-modal';
-import {
-  ScrollArea,
-  Button,
-  PaginationBar,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  Checkbox,
-} from '@shared/ui';
+import { getIssueColumns } from './components/issues-columns';
+import { Button, PaginationBar, Checkbox } from '@shared/ui';
 import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { useAppStore } from '../../stores/app-store';
@@ -73,10 +44,14 @@ const IssuesView = React.memo(function IssuesView({
   onDismissError,
   onDismissSuccess,
 }: IssuesViewProps) {
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'all' | SOPIssueCategory>(
-    'all'
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<IssueCategoryFilter>(
+    'overview'
   );
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<SOPIssueStatusFilter>('all');
+  const [selectedPriority, setSelectedPriority] = useState<string>('all');
+  const [selectedProcess, setSelectedProcess] = useState<string>('all');
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
@@ -154,10 +129,10 @@ const IssuesView = React.memo(function IssuesView({
   }, [issues, issuesPerPage, notificationFocus, scrollToIssueCard]);
 
   // Compute category and status counts dynamically based on all loaded issues
-  const { 
-    sopCount, 
-    exceptionCount, 
-    riskCount, 
+  const {
+    sopCount,
+    exceptionCount,
+    riskCount,
     improvementCount,
     immediateCount,
     pendingCount,
@@ -199,16 +174,95 @@ const IssuesView = React.memo(function IssuesView({
     };
   }, [issues]);
 
+  // Trích xuất danh sách quy trình duy nhất từ issues để lọc
+  const processOptions = useMemo(() => {
+    const processes = Array.from(
+      new Set(issues.map((it) => it.process).filter(Boolean))
+    ) as string[];
+    return [
+      { label: 'Tất cả quy trình', value: 'all' },
+      ...processes.map((proc) => ({ label: proc, value: proc })),
+    ];
+  }, [issues]);
+
+  // Trích xuất danh sách người xử lý duy nhất từ issues để lọc
+  const assigneeOptions = useMemo(() => {
+    const assignees = Array.from(
+      new Set(issues.map((it) => it.assignee).filter(Boolean))
+    ) as string[];
+    return [
+      { label: 'Tất cả người xử lý', value: 'all' },
+      ...assignees.map((name) => ({ label: name, value: name })),
+    ];
+  }, [issues]);
+
+  // Trích xuất danh sách tháng duy nhất từ issues để lọc
+  const monthOptions = useMemo(() => {
+    const months = Array.from(
+      new Set(
+        issues
+          .map((it) => {
+            const dateStr = it.createdAt || it.date;
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+          })
+          .filter(Boolean)
+      )
+    ).sort().reverse() as string[];
+
+    return [
+      { label: 'Tất cả thời gian', value: 'all' },
+      ...months.map((m) => {
+        const [year, month] = m.split('-');
+        return { label: `Tháng ${month}/${year}`, value: m };
+      }),
+    ];
+  }, [issues]);
+
+  // Determine if the overview tab is active
+  const isOverviewTab = selectedCategoryFilter === 'overview';
+
   // Filter issues based on deferred search term, category pill and status filter
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
-      // 1. Category check
-      if (selectedCategoryFilter !== 'all' && issue.category !== selectedCategoryFilter) {
+      // 1. Category check (skip on overview tab — show all)
+      if (selectedCategoryFilter !== 'all' && selectedCategoryFilter !== 'overview' && issue.category !== selectedCategoryFilter) {
         return false;
       }
       // 2. Status check (from Top Bento Cards)
       if (selectedStatusFilter !== 'all' && issue.status !== selectedStatusFilter) {
         return false;
+      }
+      // 2.1 Priority check
+      if (selectedPriority !== 'all' && issue.severity !== selectedPriority) {
+        return false;
+      }
+      // 2.2 Process check
+      if (selectedProcess !== 'all' && issue.process !== selectedProcess) {
+        return false;
+      }
+      // 2.3 Assignee check
+      if (selectedAssignee !== 'all' && issue.assignee !== selectedAssignee) {
+        return false;
+      }
+      // 2.4 Month check
+      if (selectedMonth !== 'all') {
+        const dateStr = issue.createdAt || issue.date;
+        if (dateStr) {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            const issueMonth = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (issueMonth !== selectedMonth) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
       }
       // 3. Search check
       const rawSearch = deferredSearchTerm.toLowerCase();
@@ -224,7 +278,16 @@ const IssuesView = React.memo(function IssuesView({
 
       return titleMatch || actorMatch || descMatch || procMatch || assigneeMatch;
     });
-  }, [issues, selectedCategoryFilter, selectedStatusFilter, deferredSearchTerm]);
+  }, [
+    issues,
+    selectedCategoryFilter,
+    selectedStatusFilter,
+    selectedPriority,
+    selectedProcess,
+    selectedAssignee,
+    selectedMonth,
+    deferredSearchTerm,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filteredIssues.length / issuesPerPage));
 
@@ -303,7 +366,7 @@ const IssuesView = React.memo(function IssuesView({
 
   // Other callbacks wrapped in useCallback for React performance standards
   const handleSelectFilter = useCallback(
-    (filter: 'all' | SOPIssueCategory) => {
+    (filter: IssueCategoryFilter) => {
       setSelectedCategoryFilter(filter);
     },
     []
@@ -316,9 +379,29 @@ const IssuesView = React.memo(function IssuesView({
     []
   );
 
+  const handlePriorityChange = useCallback((val: string) => {
+    setSelectedPriority(val);
+  }, []);
+
+  const handleProcessChange = useCallback((val: string) => {
+    setSelectedProcess(val);
+  }, []);
+
+  const handleAssigneeChange = useCallback((val: string) => {
+    setSelectedAssignee(val);
+  }, []);
+
+  const handleMonthChange = useCallback((val: string) => {
+    setSelectedMonth(val);
+  }, []);
+
   const handleClearAllFilters = useCallback(() => {
     setSelectedCategoryFilter('all');
     setSelectedStatusFilter('all');
+    setSelectedPriority('all');
+    setSelectedProcess('all');
+    setSelectedAssignee('all');
+    setSelectedMonth('all');
     setSearchTerm('');
   }, []);
 
@@ -352,419 +435,15 @@ const IssuesView = React.memo(function IssuesView({
     setCurrentPage(1);
   }, []);
 
-  const columns = useMemo<ColumnDef<SOPIssue>[]>(
-    () => [
-      {
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && 'indeterminate')
-            }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-        size: 40,
-        meta: {
-          sticky: 'left',
-        },
-      },
-      {
-        accessorKey: 'category',
-        header: 'Phân loại',
-        size: 150,
-        cell: ({ row }) => {
-          const category = row.original.category;
-          const badgeStyles = {
-            exception: 'bg-amber-50 border-amber-100 text-amber-700',
-            risk: 'bg-purple-50 border-purple-100 text-purple-700',
-            improvement: 'bg-emerald-50 border-emerald-100 text-emerald-700',
-            sop_error: 'bg-rose-50 border-rose-100 text-[#C21A1A]',
-          };
-          const badgeTexts = {
-            exception: '📋 Ngoại lệ',
-            risk: '🛡️ Rủi ro',
-            improvement: '📈 Cải tiến',
-            sop_error: '⚠️ Lỗi SOP',
-          };
-          return (
-            <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-0.5 rounded-md border tracking-normal w-fit whitespace-nowrap", badgeStyles[category] || badgeStyles.sop_error)}>
-              {badgeTexts[category] || '⚠️ Lỗi SOP'}
-            </span>
-          );
-        },
-        meta: {
-          filterElement: (column) => {
-            const val = (column.getFilterValue() as string) ?? 'all';
-            return (
-              <select
-                value={val}
-                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-              >
-                <option value="all">Tất cả</option>
-                <option value="sop_error">Lỗi SOP</option>
-                <option value="exception">Ngoại lệ</option>
-                <option value="risk">Rủi ro</option>
-                <option value="improvement">Cải tiến</option>
-              </select>
-            );
-          },
-        },
-      },
-      {
-        accessorKey: 'severity',
-        header: 'Độ nghiêm trọng',
-        size: 150,
-        cell: ({ row }) => {
-          const sev = row.original.severity;
-          switch (sev) {
-            case 'High':
-              return (
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-rose-100 bg-rose-50/70 text-rose-600 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                  Cao
-                </span>
-              );
-            case 'Medium':
-              return (
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-amber-100 bg-amber-50/70 text-amber-600 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  Trung bình
-                </span>
-              );
-            case 'Low':
-              return (
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-md border border-slate-200 bg-slate-50/80 text-slate-500 px-2.5 py-0.5 shrink-0 w-fit whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-                  Thấp
-                </span>
-              );
-            default:
-              return null;
-          }
-        },
-        meta: {
-          filterElement: (column) => {
-            const val = (column.getFilterValue() as string) ?? 'all';
-            return (
-              <select
-                value={val}
-                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-              >
-                <option value="all">Tất cả</option>
-                <option value="High">Cao</option>
-                <option value="Medium">Trung bình</option>
-                <option value="Low">Thấp</option>
-              </select>
-            );
-          },
-        },
-      },
-      {
-        accessorKey: 'title',
-        header: 'Tên phiếu',
-        size: 250,
-        cell: ({ row }) => (
-          <div id={`issue-card-${row.original.id}`} className="font-medium text-slate-950 text-left text-sm leading-snug break-words">
-            {row.original.title}
-          </div>
-        ),
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc tên..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'description',
-        header: 'Diễn biến / Mô tả',
-        size: 285,
-        cell: ({ row }) => {
-          const desc = row.original.description;
-          const cleanText = desc ? desc.replace(/<\/?[^>]+(>|$)/g, "") : '';
-          const isImg = desc && desc.includes('<img');
-          return (
-            <div className="text-slate-800 font-normal text-sm text-left line-clamp-2 break-words max-w-sm whitespace-pre-line leading-relaxed font-sans">
-              {cleanText || <span className="text-slate-400 italic">Không có mô tả...</span>}
-              {isImg && (
-                <span className="inline-flex items-center gap-1 ml-1 text-sm font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
-                  🖼️ Ảnh
-                </span>
-              )}
-            </div>
-          );
-        },
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc mô tả..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'actor',
-        header: 'Bên liên quan',
-        size: 180,
-        cell: ({ row }) => (
-          <div className="text-slate-900 font-normal text-sm truncate text-left">
-            {row.original.actor || 'Hệ thống ca trực'}
-          </div>
-        ),
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc bên liên quan..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'process',
-        header: 'Quy trình',
-        size: 180,
-        cell: ({ row }) => (
-          <div className="text-slate-900 font-normal text-sm truncate text-left">
-            {row.original.process || 'Quy trình vận hành'}
-          </div>
-        ),
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc quy trình..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'assignee',
-        header: 'Người xử lý',
-        size: 190,
-        cell: ({ row }) => {
-          const assignee = row.original.assignee;
-          return (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-slate-100 text-sm flex items-center justify-center font-medium text-slate-600 border border-slate-200/50 uppercase shadow-3xs shrink-0">
-                {assignee?.charAt(0) || 'U'}
-              </div>
-              <span className="text-slate-900 font-normal truncate text-sm">{assignee || 'Quản lý cửa hàng'}</span>
-            </div>
-          );
-        },
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc người xử lý..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'date',
-        header: 'Lần xảy ra / Ngày',
-        size: 150,
-        cell: ({ row }) => {
-          const issue = row.original;
-          return (
-            <div className="flex flex-col gap-1.5 text-left py-0.5">
-              <span className="text-slate-900 font-normal text-sm shrink-0 leading-none">{issue.date}</span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C21A1A] bg-rose-50/70 border border-rose-100 px-1.5 py-0.5 rounded-md shrink-0 w-fit leading-none">
-                {issue.occurrence || 1} lần
-              </span>
-            </div>
-          );
-        },
-        meta: {
-          filterElement: (column) => (
-            <input
-              type="text"
-              placeholder="Lọc ngày..."
-              value={(column.getFilterValue() as string) ?? ''}
-              onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-              className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-            />
-          ),
-        },
-      },
-      {
-        accessorKey: 'status',
-        header: 'Trạng thái',
-        size: 180,
-        cell: ({ row }) => {
-          const issue = row.original;
-          const canUpdate = permissions.canUpdate;
-          
-          const badgeStyles = {
-            'Xử lý ngay': 'text-[#C21A1A] border-red-200 hover:bg-red-50/60',
-            'Chờ duyệt': 'text-amber-600 border-amber-200 hover:bg-amber-50/50',
-            'Đang triển khai': 'text-emerald-600 border-emerald-200 hover:bg-emerald-50/40',
-            'Đã xử lý': 'text-slate-650 border-slate-200 hover:bg-slate-50',
-          };
-          const badgeStyle = badgeStyles[issue.status] || badgeStyles['Chờ duyệt'];
-
-          const statusConfigs = [
-            { status: 'Xử lý ngay', label: 'Xử lý ngay', colorClass: 'text-[#C21A1A]', icon: AlertOctagon },
-            { status: 'Chờ duyệt', label: 'Chờ duyệt', colorClass: 'text-amber-600', icon: HelpCircle },
-            { status: 'Đang triển khai', label: 'Đang triển khai', colorClass: 'text-emerald-600', icon: Clock },
-            { status: 'Đã xử lý', label: 'Đã xử lý', colorClass: 'text-slate-600', icon: CheckCircle },
-          ] as const;
-
-          return (
-            <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    disabled={!canUpdate}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                       "font-semibold rounded-md border shadow-none px-2.5 py-0.5 h-7 text-sm flex items-center gap-1.5 w-fit whitespace-nowrap transition-all",
-                      canUpdate 
-                        ? badgeStyle 
-                        : 'opacity-50 border border-slate-200 text-slate-400 bg-slate-50'
-                    )}
-                  >
-                    <span>{issue.status}</span>
-                    <ChevronDown className="size-2.5 opacity-80" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200/80 rounded-xl shadow-lg p-1.5 z-40 text-slate-800">
-                  <DropdownMenuLabel className="px-2.5 py-1.5 font-bold text-slate-400 text-sm uppercase tracking-wider border-b border-slate-50 mb-1">
-                    Cập nhật xử lý
-                  </DropdownMenuLabel>
-                  {statusConfigs.map((cfg) => {
-                    const Icon = cfg.icon;
-                    return (
-                      <DropdownMenuItem
-                        key={cfg.status}
-                        onClick={() => onUpdateIssueStatus(issue.id, cfg.status)}
-                        className={cn(
-                          "px-2.5 py-1.5 rounded-md flex items-center justify-between font-bold text-sm cursor-pointer hover:bg-slate-50",
-                          cfg.colorClass
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <Icon className="size-3.5" />
-                          <span>{cfg.label}</span>
-                        </div>
-                        {issue.status === cfg.status && <Check className="size-3.5 stroke-[2.5]" />}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  <DropdownMenuSeparator className="bg-slate-100 my-1" />
-                  <DropdownMenuItem
-                    onClick={() => onConfirmIssueRead(issue.id)}
-                    className="px-2.5 py-1.5 hover:bg-emerald-50 rounded-md flex items-center justify-between text-emerald-600 font-bold text-sm cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <BookOpen className="size-3.5" />
-                      <span>Xác nhận đã đọc</span>
-                    </div>
-                    {issue.readConfirmedAt && <Check className="size-3.5 text-emerald-600 stroke-[2.5]" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
-        },
-        meta: {
-          filterElement: (column) => {
-            const val = (column.getFilterValue() as string) ?? 'all';
-            return (
-              <select
-                value={val}
-                onChange={(e) => column.setFilterValue(e.target.value === 'all' ? undefined : e.target.value)}
-                className="w-full h-8 text-sm px-2 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:border-[#C21A1A] font-medium"
-              >
-                <option value="all">Tất cả</option>
-                <option value="Xử lý ngay">Xử lý ngay</option>
-                <option value="Chờ duyệt">Chờ duyệt</option>
-                <option value="Đang triển khai">Đang triển khai</option>
-                <option value="Đã xử lý">Đã xử lý</option>
-              </select>
-            );
-          },
-        },
-      },
-      {
-        id: 'actions',
-        header: 'Thao tác',
-        size: 150,
-        cell: ({ row }) => {
-          const issue = row.original;
-          return (
-            <div className="flex items-center gap-1.5 justify-center" onClick={(e) => e.stopPropagation()}>
-              {permissions.canUpdate && (
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                  className="h-7 text-sm px-2 rounded-lg font-medium hover:bg-slate-50 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                  onClick={() => handleEditIssue(issue)}
-                >
-                  <Pencil className="w-3 h-3 text-slate-500" />
-                  Sửa
-                </Button>
-              )}
-              {permissions.canDelete && (
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  className="h-7 text-sm px-2 rounded-lg font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
-                  onClick={() => {
-                    if (window.confirm(`Bạn có chắc chắn muốn xóa phiếu "${issue.title}"?`)) {
-                       onDeleteIssue(issue.id);
-                    }
-                  }}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Xóa
-                </Button>
-              )}
-            </div>
-          );
-        },
-        meta: {
-          sticky: 'right',
-        },
-      },
-    ],
+  const columns = useMemo(
+    () =>
+      getIssueColumns({
+        permissions,
+        onUpdateIssueStatus,
+        onConfirmIssueRead,
+        onEditIssue: handleEditIssue,
+        onDeleteIssue,
+      }),
     [permissions, onUpdateIssueStatus, onConfirmIssueRead, handleEditIssue, onDeleteIssue]
   );
 
@@ -858,16 +537,7 @@ const IssuesView = React.memo(function IssuesView({
         </div>
       )}
 
-      <MetricBentoCards
-        selectedStatus={selectedStatusFilter}
-        onSelectStatus={handleSelectStatusFilter}
-        immediateCount={immediateCount}
-        pendingCount={pendingCount}
-        inProgressCount={inProgressCount}
-        resolvedCount={resolvedCount}
-      />
-
-      <SearchFilterSection
+      <IssuesTabBar
         selectedFilter={selectedCategoryFilter}
         onSelectFilter={handleSelectFilter}
         selectedStatus={selectedStatusFilter}
@@ -880,27 +550,53 @@ const IssuesView = React.memo(function IssuesView({
         riskCount={riskCount}
         improvementCount={improvementCount}
         onClearFilters={handleClearAllFilters}
+        selectedPriority={selectedPriority}
+        onPriorityChange={handlePriorityChange}
+        selectedProcess={selectedProcess}
+        onProcessChange={handleProcessChange}
+        selectedAssignee={selectedAssignee}
+        onAssigneeChange={handleAssigneeChange}
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
+        processOptions={processOptions}
+        assigneeOptions={assigneeOptions}
+        monthOptions={monthOptions}
       />
 
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col">
-        {/* On mobile: render table directly to scroll with page. On desktop: enable flex display to allow internal table scroll */}
-        <div className="block md:hidden">
-          {renderedCardList}
-        </div>
-        <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0">
-          {renderedCardList}
-        </div>
-      </div>
+      {isOverviewTab ? (
+        <IssuesOverviewTab issues={issues} />
+      ) : (
+        <>
+          <MetricBentoCards
+            selectedStatus={selectedStatusFilter}
+            onSelectStatus={handleSelectStatusFilter}
+            immediateCount={immediateCount}
+            pendingCount={pendingCount}
+            inProgressCount={inProgressCount}
+            resolvedCount={resolvedCount}
+          />
 
-      <PaginationBar
-        currentPage={currentPage}
-        totalPages={totalPages}
-        pageSize={issuesPerPage}
-        onPageChange={handleGoToPage}
-        onPageSizeChange={handlePageSizeChange}
-        totalCount={issues.length}
-        filteredCount={filteredIssues.length}
-      />
+          <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col">
+            {/* On mobile: render table directly to scroll with page. On desktop: enable flex display to allow internal table scroll */}
+            <div className="block md:hidden">
+              {renderedCardList}
+            </div>
+            <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0">
+              {renderedCardList}
+            </div>
+          </div>
+
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={issuesPerPage}
+            onPageChange={handleGoToPage}
+            onPageSizeChange={handlePageSizeChange}
+            totalCount={issues.length}
+            filteredCount={filteredIssues.length}
+          />
+        </>
+      )}
 
       {permissions.canCreate && (
         <Button

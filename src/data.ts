@@ -1,6 +1,5 @@
 import type { StaffRank, KPIConfig, KPIDailyValue } from './types/kpi.types';
 import type { DailyReport } from './types/reports.types';
-import type { StaffMember } from './types/staff.types';
 import type { KPIStats } from './types/today.types';
 
 export const DEFAULT_STORE_ID = 'store-mr-tao-q1';
@@ -32,13 +31,6 @@ export const DAILY_REPORT_DATA: DailyReport = {
   bestsellerCount: 6,
 };
 
-export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
-  { id: 'NV-001', fullName: 'Nguyễn Minh Đức', role: 'CHU_CUA_HANG', username: 'admin', phone: '0912345678', status: 'active', joinedDate: '2024-01-15' },
-  { id: 'NV-002', fullName: 'Nguyễn Văn A', role: 'SALES', username: 'sales', phone: '0987654321', status: 'active', joinedDate: '2024-03-10' },
-  { id: 'NV-003', fullName: 'Trần Thị B', role: 'KHO', username: 'tech', phone: '0901238899', status: 'active', joinedDate: '2024-05-18' },
-  { id: 'NV-004', fullName: 'Lê Hoàng C', role: 'CSKH', username: 'cskh', phone: '0933445566', status: 'active', joinedDate: '2025-02-22' },
-  { id: 'NV-005', fullName: 'Nguyễn Trường Giang', role: 'QUAN_LY', username: 'manager', phone: '0944556677', status: 'active', joinedDate: '2024-11-01' },
-].map((staff): StaffMember => ({ storeId: DEFAULT_STORE_ID, ...staff } as StaffMember));
 
 // KPI templates by role
 export const KPI_TEMPLATES_BY_ROLE: Record<string, Omit<KPIConfig, 'id' | 'storeId'>[]> = {
