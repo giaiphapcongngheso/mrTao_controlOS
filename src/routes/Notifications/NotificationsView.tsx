@@ -279,7 +279,11 @@ const NotificationListItem = React.memo(function NotificationListItem({
   onSubmitComment,
   onCommentDraftChange,
 }: NotificationListItemProps) {
-  const meta = notificationTypeMeta[item.type];
+  const meta = notificationTypeMeta[item.type] || {
+    icon: Bell,
+    dotClass: 'bg-slate-400',
+    badgeClass: 'border-slate-200 bg-slate-50 text-slate-700',
+  };
   const IconComp = meta.icon;
   const isPending = item.status === 'pending';
 
