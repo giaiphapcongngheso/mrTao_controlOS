@@ -914,9 +914,11 @@ export default function HandbookView() {
   const handleResetFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedCategory(null);
-    setSelectedFilter('all');
+    if (selectedFilter !== 'role') {
+      setSelectedFilter('all');
+    }
     setSelectedRoles([]);
-  }, []);
+  }, [selectedFilter]);
   const handleBackToList = useCallback(() => setActiveDocId(null), []);
   const handleFormPatch = useCallback((patch: Partial<HandbookFormState>) => {
     const patchKeys = Object.keys(patch) as Array<keyof HandbookFormState>;
@@ -983,7 +985,7 @@ export default function HandbookView() {
     [activeDoc],
   );
 
-  const isFilterActive = selectedFilter !== 'all' || Boolean(searchTerm) || Boolean(selectedCategory);
+  const isFilterActive = (selectedFilter !== 'all' && selectedFilter !== 'role') || Boolean(searchTerm) || Boolean(selectedCategory);
   const activeDocContent = activeDoc?.content || '';
   const activeDocIsRead = activeDoc ? Boolean(readDocs[activeDoc.id]) : false;
 
@@ -1132,20 +1134,7 @@ export default function HandbookView() {
             </div>
           </div>
 
-          {selectedFilter === 'role' && (
-            <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-200 bg-white">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-left">
-                Lọc theo vai trò áp dụng:
-              </span>
-              <CustomMultiSelect
-                options={rolesOptions}
-                selected={selectedRoles}
-                onChange={setSelectedRoles}
-                placeholder="Chọn một hoặc nhiều vai trò để lọc tài liệu..."
-                searchPlaceholder="Tìm vai trò..."
-              />
-            </div>
-          )}
+
 
           {isFilterActive && (
             <Card className="flex-row flex-wrap items-center justify-between gap-2 rounded-xl border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600 shadow-none">
@@ -1156,23 +1145,10 @@ export default function HandbookView() {
                     Danh mục: {selectedCategory}
                   </Badge>
                 )}
-                {selectedFilter !== 'all' && (
+                {selectedFilter !== 'all' && selectedFilter !== 'role' && (
                   <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700 border-slate-200">
-                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : selectedFilter === 'updated' ? 'Mới cập nhật' : 'Theo vai trò'}
+                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}
                   </Badge>
-                )}
-                {selectedFilter === 'role' && selectedRoles.length > 0 && (
-                  <>
-                    <span className="text-slate-400 font-normal">| Vai trò:</span>
-                    {selectedRoles.map((roleCode) => {
-                      const roleObj = roles.find((r) => r.code === roleCode);
-                      return (
-                        <Badge key={roleCode} variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-emerald-700 border-slate-200">
-                          {roleObj?.name || roleCode}
-                        </Badge>
-                      );
-                    })}
-                  </>
                 )}
                 {searchTerm && (
                   <Badge variant="outline" className="rounded bg-white px-2 py-0.5 font-sans text-emerald-700 border-slate-200">
