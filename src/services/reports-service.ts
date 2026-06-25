@@ -41,7 +41,7 @@ export interface ReportSubmission {
   staffIssuesCount: number;
   notes: string;
   actor: string;
-  approvalStatus: 'pending' | 'approved' | 'rejected';
+  approvalStatus: 'pending' | 'approved' | 'rejected' | 'supplement_requested';
   submittedAt?: string;
   submittedBy?: string;
   approvedAt?: string;
@@ -57,6 +57,7 @@ export interface ReportSubmission {
   highlightIssues?: HighlightIssue[];
   promises?: PromiseItem[];
   attachments?: AttachmentItem[];
+  managerComment?: string;
 }
 
 export const reportsDailyService = createBaseService<ReportSubmission, Partial<ReportSubmission>>({

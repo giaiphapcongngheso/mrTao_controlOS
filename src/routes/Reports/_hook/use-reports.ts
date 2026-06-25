@@ -12,3 +12,11 @@ export function useDailyReportQuery(options?: { enabled?: boolean }) {
     enabled: options?.enabled ?? true,
   });
 }
+
+export function useReportDetailQuery(reportId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [...reportsQueryKeys.daily, reportId],
+    queryFn: () => reportsDailyService.getById(reportId),
+    enabled: !!reportId && (options?.enabled ?? true),
+  });
+}

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileText, Search, Trash2, TrendingUp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, Search, Trash2, TrendingUp, Eye } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 import {
   Button,
   Input,
@@ -607,14 +608,24 @@ export default function ReportsView({
                       <p className="line-clamp-2">{report.notes}</p>
                     </TableCell>
                     <TableCell className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteReport(report.id)}
-                        className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                        title="Xóa báo cáo"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          to="/reports/$reportId"
+                          params={{ reportId: report.id }}
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-450 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                          title="Xem chi tiết & duyệt"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReport(report.id)}
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                          title="Xóa báo cáo"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

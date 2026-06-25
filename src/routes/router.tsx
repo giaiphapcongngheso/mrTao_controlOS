@@ -9,6 +9,7 @@ const LazyTasksRoute = lazy(() => import('./Tasks/tasks-route'));
 const LazyKpiRoute = lazy(() => import('./Kpi/kpi-route'));
 const LazyIssuesRoute = lazy(() => import('./Issues/issues-route'));
 const LazyReportsRoute = lazy(() => import('./Reports/reports-route'));
+const LazyReportDetailRoute = lazy(() => import('./Reports/report-detail-route'));
 const LazyHandbookView = lazy(() => import('./Handbook/HandbookView'));
 const LazyMarketingView = lazy(() => import('./marketing/marketing-view'));
 const LazyWarehouseView = lazy(() => import('./warehouse/warehouse-view'));
@@ -101,6 +102,12 @@ const reportsRoute = createRoute({
   component: withSuspense(LazyReportsRoute),
 });
 
+const reportDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'reports/$reportId',
+  component: withSuspense(LazyReportDetailRoute),
+});
+
 const handbookRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'handbook',
@@ -152,6 +159,7 @@ const routeTree = rootRoute.addChildren([
     kpiRoute,
     sopRoute,
     reportsRoute,
+    reportDetailRoute,
     handbookRoute,
     marketingRoute,
     warehouseRoute,
