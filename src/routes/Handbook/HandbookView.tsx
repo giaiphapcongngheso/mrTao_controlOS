@@ -332,12 +332,21 @@ export default function HandbookView() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<HandbookFilter>('all');
+  const [selectedFilter, setSelectedFilter] = useState<HandbookFilter>('role');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [handbookDocs, setHandbookDocs] = useState<HandbookDoc[]>([]);
   const [handbookCategories, setHandbookCategories] = useState<HandbookCategory[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const hasInitializedRoleRef = useRef(false);
+
+  useEffect(() => {
+    if (currentUser?.roleCode && !hasInitializedRoleRef.current) {
+      setSelectedRoles([currentUser.roleCode]);
+      hasInitializedRoleRef.current = true;
+    }
+  }, [currentUser?.roleCode]);
+
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
@@ -1084,6 +1093,13 @@ export default function HandbookView() {
             <Tabs value={selectedFilter} onValueChange={(value) => handleSetFilter(value as HandbookFilter)} className="shrink-0">
               <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-4 sm:gap-6 justify-start !h-auto overflow-x-auto scrollbar-none !border-none !shadow-none">
                 <TabsTrigger
+                  value="role"
+                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                >
+                  <span className="whitespace-nowrap">Theo vai trò</span>
+                </TabsTrigger>
+
+                <TabsTrigger
                   value="all"
                   className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
                 >
@@ -1102,13 +1118,6 @@ export default function HandbookView() {
                   className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
                 >
                   <span className="whitespace-nowrap">Cập nhật mới</span>
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="role"
-                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-                >
-                  <span className="whitespace-nowrap">Theo vai trò</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>

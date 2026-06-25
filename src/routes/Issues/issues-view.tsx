@@ -8,7 +8,7 @@ import type { IssueCategoryFilter } from './components/issues-tab-bar';
 import IssuesOverviewTab from './components/issues-overview-tab';
 import IssueModal from './components/issue-modal';
 import { getIssueColumns } from './components/issues-columns';
-import { Button, PaginationBar, Checkbox } from '@shared/ui';
+import { Button } from '@shared/ui';
 import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { useAppStore } from '../../stores/app-store';
@@ -57,8 +57,7 @@ const IssuesView = React.memo(function IssuesView({
   const [editingIssueId, setEditingIssueId] = useState<string | null>(null);
   const [dropdownId, setDropdownId] = useState<string | null>(null);
   const [highlightedIssueId, setHighlightedIssueId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [issuesPerPage, setIssuesPerPage] = useState(20);
+
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pendingNotificationFocusIdRef = useRef<string | null>(null);
@@ -115,18 +114,11 @@ const IssuesView = React.memo(function IssuesView({
       return;
     }
 
-    const filteredByTarget = issues.filter(
-      (issue) => issue.category === targetIssue.category && issue.status === targetIssue.status
-    );
-    const targetIndex = filteredByTarget.findIndex((issue) => issue.id === sourceId);
-    const nextPage = targetIndex >= 0 ? Math.floor(targetIndex / issuesPerPage) + 1 : 1;
-
     pendingNotificationFocusIdRef.current = sourceId;
     setSearchTerm('');
     setSelectedCategoryFilter(targetIssue.category);
     setSelectedStatusFilter(targetIssue.status);
-    setCurrentPage(nextPage);
-  }, [issues, issuesPerPage, notificationFocus, scrollToIssueCard]);
+  }, [issues, notificationFocus, scrollToIssueCard]);
 
   // Compute category and status counts dynamically based on all loaded issues
   const {
@@ -289,23 +281,9 @@ const IssuesView = React.memo(function IssuesView({
     deferredSearchTerm,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredIssues.length / issuesPerPage));
 
-  const paginatedIssues = useMemo(() => {
-    const start = (currentPage - 1) * issuesPerPage;
-    return filteredIssues.slice(start, start + issuesPerPage);
-  }, [currentPage, filteredIssues, issuesPerPage]);
 
-  useEffect(() => {
-    if (pendingNotificationFocusIdRef.current) {
-      return;
-    }
-    setCurrentPage(1);
-  }, [selectedCategoryFilter, selectedStatusFilter, deferredSearchTerm, issuesPerPage]);
 
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
-  }, [totalPages]);
 
   useEffect(() => {
     const pendingIssueId = pendingNotificationFocusIdRef.current;
@@ -322,7 +300,7 @@ const IssuesView = React.memo(function IssuesView({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [currentPage, paginatedIssues, scrollToIssueCard]);
+  }, [filteredIssues, scrollToIssueCard]);
 
   // Find initial data for modal edit mode
   const editingIssue = useMemo(() => {
@@ -409,30 +387,8 @@ const IssuesView = React.memo(function IssuesView({
     setSearchTerm(value);
   }, []);
 
-  const handleGoToPage = useCallback(
-    (page: number) => {
-      const nextPage = Math.min(Math.max(page, 1), totalPages);
-      setCurrentPage(nextPage);
-
-      if (scrollContainerRef.current) {
-        const viewport = scrollContainerRef.current.querySelector(
-          '[data-slot="scroll-area-viewport"]'
-        );
-        if (viewport) {
-          viewport.scrollTop = 0;
-        }
-      }
-    },
-    [totalPages]
-  );
-
   const handleToggleDropdown = useCallback((id: string | null) => {
     setDropdownId(id);
-  }, []);
-
-  const handlePageSizeChange = useCallback((pageSize: number) => {
-    setIssuesPerPage(pageSize);
-    setCurrentPage(1);
   }, []);
 
   const columns = useMemo(
@@ -451,11 +407,12 @@ const IssuesView = React.memo(function IssuesView({
     return (
       <CustomTable<SOPIssue>
         columns={columns}
-        data={paginatedIssues}
+        data={filteredIssues}
         loading={false}
         enableFiltering={true}
         showFilterRow={true}
-        enablePagination={false}
+        enablePagination={true}
+        pageSizeOptions={[10, 20, 50, 100]}
         tableMinWidth={1650}
         activeRowId={highlightedIssueId || undefined}
         getRowId={(row) => row.id}
@@ -488,7 +445,7 @@ const IssuesView = React.memo(function IssuesView({
     );
   }, [
     columns,
-    paginatedIssues,
+    filteredIssues,
     highlightedIssueId,
     handleEditIssue,
     permissions.canDelete,
@@ -586,15 +543,7 @@ const IssuesView = React.memo(function IssuesView({
             </div>
           </div>
 
-          <PaginationBar
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={issuesPerPage}
-            onPageChange={handleGoToPage}
-            onPageSizeChange={handlePageSizeChange}
-            totalCount={issues.length}
-            filteredCount={filteredIssues.length}
-          />
+
         </>
       )}
 
