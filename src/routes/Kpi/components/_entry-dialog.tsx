@@ -6,6 +6,7 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { Target, TrendingUp, CalendarDays, User, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatValue } from '../kpi-utils';
 import type { KPIConfig } from '../../../types/kpi.types';
+import { NumericInput } from '../../../../share/ui/numeric-input';
 
 interface EntryDialogProps {
   open: boolean;
@@ -45,8 +46,12 @@ export const EntryDialog = React.memo(function EntryDialog({
 
   const handleFormSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit();
-    onOpenChange(false);
+    try {
+      await onSubmit();
+      onOpenChange(false);
+    } catch (err) {
+      console.error('Không thể lưu giá trị KPI:', err);
+    }
   }, [onSubmit, onOpenChange]);
 
   const handleValueChange = useCallback(
@@ -216,6 +221,20 @@ const KpiEntryItem = React.memo(function KpiEntryItem({
 }) {
   const hasValue = value.trim() !== '' && value !== '0';
 
+  React.useEffect(() => {
+    if (shouldFocus) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`kpi-input-${config.id}`);
+        if (el) {
+          (el as HTMLInputElement).focus();
+          (el as HTMLInputElement).select();
+        }
+      }, 150);
+      onFocused();
+      return () => clearTimeout(timer);
+    }
+  }, [shouldFocus, config.id, onFocused]);
+
   return (
     <div className={`group relative rounded-xl border p-3 flex items-center gap-3 transition-all duration-200 ${
       hasValue
@@ -242,18 +261,12 @@ const KpiEntryItem = React.memo(function KpiEntryItem({
 
       {/* Input + Unit — chuẩn project Input style */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <input
-          type="text"
-          inputMode="decimal"
+        <NumericInput
+          id={`kpi-input-${config.id}`}
           placeholder="0"
           value={value}
-          ref={(el) => {
-            if (el && shouldFocus) {
-              setTimeout(() => el.focus(), 150);
-              onFocused();
-            }
-          }}
           onChange={onChange}
+          allowDecimal={true}
           className="w-[110px] h-9 px-2.5 bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-sans font-bold text-sm text-slate-900 rounded-xl outline-none transition-colors text-right placeholder:text-slate-300 placeholder:font-normal"
         />
         <span className="text-xs font-bold text-slate-400 w-7 shrink-0 text-center">{config.unit}</span>

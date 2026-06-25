@@ -17,6 +17,8 @@ import {
   getWeekTarget,
 } from '../kpi-utils';
 import { exportKpiReportToExcel } from '../../../services/admin/kpi-excel-service';
+import { useAppStore } from '../../../stores/app-store';
+import { toastError, toastSuccess } from '../../../shared/lib/toast';
 import type { StaffMember } from '../../../types/staff.types';
 import type { KPIConfig, KPIDailyValue } from '../../../types/kpi.types';
 
@@ -35,10 +37,33 @@ export const EntryTab = React.memo(function EntryTab({
   selectedMonthYear,
   onSaveDailyValue,
 }: EntryTabProps) {
+  const currentUser = useAppStore(state => state.currentUser);
+
   // Selection
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(
-    staffMembers.find(s => s.status === 'active')?.id || ''
-  );
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(() => {
+    const currentUserState = useAppStore.getState().currentUser;
+    if (currentUserState && staffMembers.length > 0) {
+      const matched = staffMembers.find(s =>
+        s.status === 'active' &&
+        (s.id === currentUserState.id || s.username.toLowerCase() === currentUserState.username.toLowerCase())
+      );
+      if (matched) return matched.id;
+    }
+    return staffMembers.find(s => s.status === 'active')?.id || '';
+  });
+
+  // Sync selectedStaffId with current user if not set yet or when staffMembers changes
+  React.useEffect(() => {
+    if (staffMembers.length > 0 && !selectedStaffId) {
+      const matched = staffMembers.find(s =>
+        s.status === 'active' &&
+        (s.id === currentUser?.id || s.username.toLowerCase() === currentUser?.username?.toLowerCase())
+      );
+      const defaultId = matched?.id || staffMembers.find(s => s.status === 'active')?.id || '';
+      setSelectedStaffId(defaultId);
+    }
+  }, [staffMembers, currentUser, selectedStaffId]);
+
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
 
   // View mode
@@ -106,12 +131,19 @@ export const EntryTab = React.memo(function EntryTab({
         };
         await onSaveDailyValue(payload);
       }
+      toastSuccess(
+        'Lưu số liệu KPI thành công',
+        `Đã ghi nhận số liệu ngày ${selectedDay.toString().padStart(2, '0')}/${selectedMonthYear.split('-')[1]} cho ${selectedStaff.fullName}`
+      );
       setSaveSuccessMsg(
         `Đã lưu thành công số liệu ngày ${selectedDay.toString().padStart(2, '0')}/${selectedMonthYear.split('-')[1]} cho ${selectedStaff.fullName}`
       );
       setTimeout(() => setSaveSuccessMsg(null), 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi khi lưu KPI ngày:', err);
+      const errMsg = err?.message || 'Không thể kết nối với máy chủ. Vui lòng kiểm tra lại.';
+      toastError('Lưu số liệu KPI thất bại', errMsg);
+      throw err;
     }
   }, [selectedStaff, selectedMonthYear, selectedDay, staffConfigs, entryValues, onSaveDailyValue]);
 

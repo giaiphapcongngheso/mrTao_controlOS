@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { TAB_ROUTE_MAP } from '../app-shell-state';
@@ -30,6 +31,22 @@ export default function KpiRoute() {
   const createGoalMutation = useCreateKpiGoalMutation();
   const deleteGoalMutation = useDeleteKpiGoalMutation();
 
+  // Filter out staff members with role 'CHU_CUA_HANG' (Chủ cửa hàng)
+  const filteredStaffMembers = useMemo(() => {
+    return staffMembers.filter((staff) => {
+      const roleCode = (staff.role || '').toUpperCase().replace(/_/g, '').trim();
+      return roleCode !== 'CHU_CUA_HANG' && roleCode !== 'CHUCUAHANG';
+    });
+  }, [staffMembers]);
+
+  // Filter out 'CHU_CUA_HANG' from available KPI roles
+  const filteredRoles = useMemo(() => {
+    return roles.filter((role) => {
+      const roleCode = (role.code || '').toUpperCase().replace(/_/g, '').trim();
+      return roleCode !== 'CHU_CUA_HANG' && roleCode !== 'CHUCUAHANG';
+    });
+  }, [roles]);
+
   if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading || isGoalsLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -46,8 +63,8 @@ export default function KpiRoute() {
 
   return (
     <KpiView
-      roles={roles}
-      staffMembers={staffMembers}
+      roles={filteredRoles}
+      staffMembers={filteredStaffMembers}
       kpiConfigs={kpiConfigs}
       kpiDailyValues={kpiDailyValues}
       onCreateConfig={(newConfig) => createConfigMutation.mutateAsync(newConfig)}

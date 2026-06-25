@@ -73,7 +73,16 @@ export function useDeleteKpiConfigMutation() {
 export function useSaveKpiDailyValueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dailyValue: KPIDailyValue) => kpiDailyValueService.create(dailyValue),
+    mutationFn: async (dailyValue: KPIDailyValue) => {
+      const cachedDailyValues = queryClient.getQueryData<KPIDailyValue[]>(kpiQueryKeys.dailyValues) || [];
+      const isExisting = cachedDailyValues.some(v => v.id === dailyValue.id);
+
+      if (isExisting) {
+        return await kpiDailyValueService.update(dailyValue.id, dailyValue);
+      } else {
+        return await kpiDailyValueService.create(dailyValue);
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: kpiQueryKeys.dailyValues });
     },
