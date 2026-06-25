@@ -17,6 +17,7 @@ export interface HandbookDoc {
   categoryKey?: string;
   sortOrder?: number;
   readAudits?: Record<string, HandbookReadAudit>;
+  roles?: string[];
   createdAt?: string;
   updatedAt?: string;
 }

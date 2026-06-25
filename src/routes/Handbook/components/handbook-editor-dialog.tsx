@@ -33,6 +33,7 @@ import type { HandbookCategoryRequestType } from '../../../types/handbook.types'
 import type { HandbookFormFieldErrors } from '../handbook-form-schema';
 import type { HandbookFormState } from '../handbook-view.types';
 import CategoryCreateMetaDialog from './category-create-meta-dialog';
+import { CustomMultiSelect, type MultiSelectOption } from '../../../../share/components/custom/custom-multi-select';
 
 interface HandbookEditorDialogProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ interface HandbookEditorDialogProps {
   formState: HandbookFormState;
   canManageCategories: boolean;
   categoryOptions: string[];
+  rolesOptions: MultiSelectOption[];
   errors: HandbookFormFieldErrors;
   onClose: () => void;
   onSave: () => void;
@@ -59,6 +61,7 @@ export default function HandbookEditorDialog({
   formState,
   canManageCategories,
   categoryOptions,
+  rolesOptions,
   errors,
   onClose,
   onSave,
@@ -113,6 +116,13 @@ export default function HandbookEditorDialog({
   const handleCategoryKeyChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onFormPatch({ categoryKey: event.target.value });
+    },
+    [onFormPatch],
+  );
+
+  const handleRolesChange = useCallback(
+    (value: string[]) => {
+      onFormPatch({ roles: value });
     },
     [onFormPatch],
   );
@@ -358,6 +368,37 @@ export default function HandbookEditorDialog({
                   <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />
                   <p className="mt-1 text-[10px] font-semibold text-slate-400">
                     Kho tài liệu gốc chứa văn bản có mộc và biểu mẫu đầy đủ trên mây.
+                  </p>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="w-full">
+            <FormField
+              control={form.control}
+              name="roles"
+              render={({ field }) => (
+                <FormItem className="grid gap-0">
+                  <FormLabel className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    VAI TRÒ ÁP DỤNG
+                  </FormLabel>
+                  <FormControl>
+                    <CustomMultiSelect
+                      options={rolesOptions}
+                      selected={field.value || []}
+                      onChange={(selected) => {
+                        handleRolesChange(selected);
+                        form.setValue('roles', selected);
+                      }}
+                      placeholder="Chọn vai trò áp dụng (mặc định tất cả)..."
+                      searchPlaceholder="Tìm vai trò..."
+                      className="text-xs"
+                    />
+                  </FormControl>
+                  <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />
+                  <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                    Tài liệu này sẽ được lọc hiển thị cho các vai trò được chọn.
                   </p>
                 </FormItem>
               )}

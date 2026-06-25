@@ -4,6 +4,7 @@ export interface HandbookFormState {
   summary: string;
   content: string;
   imageUrls: string[];
+  roles: string[];
   requiredRead: boolean;
   isUpdated: boolean;
   driveLink: string;

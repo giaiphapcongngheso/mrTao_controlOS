@@ -24,6 +24,9 @@ import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
 import { handbookCategoryService } from '../../services/handbook-category-service';
 import { uploadHandbookImage } from '../../services/firebase-storage-service';
+import { roleService } from '../../services/admin';
+import { CustomMultiSelect, type MultiSelectOption } from '../../../share/components/custom/custom-multi-select';
+import type { StaffRole } from '../../types/staff.types';
 import { useModulePermissions, isOwnerUser, normalizeAccessCode } from '../../shared/hooks/use-module-permissions';
 import {
   Alert,
@@ -81,7 +84,7 @@ interface HandbookDocWithMeta extends HandbookDoc {
   meta: UICardMetadata;
 }
 
-type HandbookFilter = 'all' | 'required' | 'updated';
+type HandbookFilter = 'all' | 'required' | 'updated' | 'role';
 
 const DEFAULT_PERMISSIONS: HandbookPermissions = {
   canCreate: false,
@@ -96,6 +99,7 @@ const EMPTY_FORM_STATE: HandbookFormState = {
   summary: '',
   content: '',
   imageUrls: [],
+  roles: [],
   requiredRead: false,
   isUpdated: false,
   driveLink: '',
@@ -332,6 +336,8 @@ export default function HandbookView() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [handbookDocs, setHandbookDocs] = useState<HandbookDoc[]>([]);
   const [handbookCategories, setHandbookCategories] = useState<HandbookCategory[]>([]);
+  const [roles, setRoles] = useState<StaffRole[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
@@ -390,9 +396,10 @@ export default function HandbookView() {
       setLoadErrorMessage(null);
 
       try {
-        const [docs, categories] = await Promise.all([
+        const [docs, categories, allRoles] = await Promise.all([
           handbookService.getAll(),
           handbookCategoryService.getAll(),
+          roleService.getAll().catch(() => [] as StaffRole[]),
         ]);
 
         if (cancelled) {
@@ -412,8 +419,11 @@ export default function HandbookView() {
           (a.name || '').localeCompare(b.name || '', 'vi'),
         );
 
+        const activeRoles = (allRoles || []).filter((r) => r.status !== 'inactive');
+
         setHandbookDocs(sortedDocs);
         setHandbookCategories(sortedCategories);
+        setRoles(activeRoles);
       } catch (error) {
         if (!cancelled) {
           console.error('Không thể tải dữ liệu handbook:', error);
@@ -472,6 +482,11 @@ export default function HandbookView() {
     return [...unique].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [handbookCategories, handbookDocs]);
 
+  const rolesOptions = useMemo<MultiSelectOption[]>(
+    () => roles.map((r) => ({ label: r.name, value: r.code })),
+    [roles],
+  );
+
   const currentReadKey = currentUser?.id || currentUser?.username || '';
   const readDocs = useMemo(() => {
     const map: Record<string, boolean> = {};
@@ -514,10 +529,16 @@ export default function HandbookView() {
       if (selectedFilter === 'updated') {
         return Boolean(doc.isUpdated);
       }
+      if (selectedFilter === 'role') {
+        if (selectedRoles.length > 0) {
+          return Array.isArray(doc.roles) && doc.roles.some((r) => selectedRoles.includes(r));
+        }
+        return true;
+      }
 
       return true;
     });
-  }, [processedDocs, searchTerm, selectedCategory, selectedFilter]);
+  }, [processedDocs, searchTerm, selectedCategory, selectedFilter, selectedRoles]);
 
   const activeDoc = useMemo(
     () => processedDocs.find((doc) => doc.id === activeDocId) || null,
@@ -593,6 +614,7 @@ export default function HandbookView() {
       imageUrls: Array.isArray(doc.imageUrls)
         ? Array.from(new Set(doc.imageUrls.filter(Boolean)))
         : [],
+      roles: Array.isArray(doc.roles) ? doc.roles : [],
       requiredRead: Boolean(doc.requiredRead),
       isUpdated: Boolean(doc.isUpdated),
       driveLink: doc.driveLink || '',
@@ -764,6 +786,7 @@ export default function HandbookView() {
       summary,
       content,
       imageUrls,
+      roles: validated.data.roles || [],
       requiredRead: validated.data.requiredRead,
       isUpdated: validated.data.isUpdated,
       updatedAt: nowIso,
@@ -883,6 +906,7 @@ export default function HandbookView() {
     setSearchTerm('');
     setSelectedCategory(null);
     setSelectedFilter('all');
+    setSelectedRoles([]);
   }, []);
   const handleBackToList = useCallback(() => setActiveDocId(null), []);
   const handleFormPatch = useCallback((patch: Partial<HandbookFormState>) => {
@@ -1063,7 +1087,7 @@ export default function HandbookView() {
                   value="all"
                   className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
                 >
-                  <span className="whitespace-nowrap">Tất cả tài liệu</span>
+                  <span className="whitespace-nowrap">Thư viện</span>
                 </TabsTrigger>
 
                 <TabsTrigger
@@ -1079,6 +1103,13 @@ export default function HandbookView() {
                 >
                   <span className="whitespace-nowrap">Cập nhật mới</span>
                 </TabsTrigger>
+
+                <TabsTrigger
+                  value="role"
+                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                >
+                  <span className="whitespace-nowrap">Theo vai trò</span>
+                </TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -1092,6 +1123,21 @@ export default function HandbookView() {
             </div>
           </div>
 
+          {selectedFilter === 'role' && (
+            <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-200 bg-white">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-left">
+                Lọc theo vai trò áp dụng:
+              </span>
+              <CustomMultiSelect
+                options={rolesOptions}
+                selected={selectedRoles}
+                onChange={setSelectedRoles}
+                placeholder="Chọn một hoặc nhiều vai trò để lọc tài liệu..."
+                searchPlaceholder="Tìm vai trò..."
+              />
+            </div>
+          )}
+
           {isFilterActive && (
             <Card className="flex-row flex-wrap items-center justify-between gap-2 rounded-xl border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600 shadow-none">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1103,8 +1149,21 @@ export default function HandbookView() {
                 )}
                 {selectedFilter !== 'all' && (
                   <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700 border-slate-200">
-                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}
+                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : selectedFilter === 'updated' ? 'Mới cập nhật' : 'Theo vai trò'}
                   </Badge>
+                )}
+                {selectedFilter === 'role' && selectedRoles.length > 0 && (
+                  <>
+                    <span className="text-slate-400 font-normal">| Vai trò:</span>
+                    {selectedRoles.map((roleCode) => {
+                      const roleObj = roles.find((r) => r.code === roleCode);
+                      return (
+                        <Badge key={roleCode} variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-bold text-emerald-700 border-slate-200">
+                          {roleObj?.name || roleCode}
+                        </Badge>
+                      );
+                    })}
+                  </>
                 )}
                 {searchTerm && (
                   <Badge variant="outline" className="rounded bg-white px-2 py-0.5 font-sans text-emerald-700 border-slate-200">
@@ -1472,6 +1531,7 @@ export default function HandbookView() {
         formState={formState}
         canManageCategories={canManageCategories}
         categoryOptions={categoryOptions}
+        rolesOptions={rolesOptions}
         errors={formErrors}
         onClose={handleDialogClose}
         onSave={() => {
