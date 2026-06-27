@@ -36,6 +36,9 @@ export const RESOURCE_PATH = {
   CUSTOMERS: '/customers',
   CUSTOMER_SYNC_LOGS: '/customer_sync_logs',
   TASK_TEMPLATES: '/task_templates',
+  PLANS: '/plans',
+  PLAN_DAY_SCHEDULES: '/plan_day_schedules',
+  PLAN_LIVE_INDICATORS: '/plan_live_indicators',
 } as const;
 
 export type ResourcePath = (typeof RESOURCE_PATH)[keyof typeof RESOURCE_PATH];

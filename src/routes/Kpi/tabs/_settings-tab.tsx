@@ -7,12 +7,12 @@ import { Alert, AlertTitle, AlertDescription } from '../../../../share/ui/alert'
 import { ConfigDialog, type ConfigDialogMode } from '../components/_config-dialog';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
-import { normalizeRole, formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
-import type { StaffRole } from '../../../types/staff.types';
+import { formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
+import type { StaffMember } from '../../../types/staff.types';
 import type { KPIConfig, KPIGoal } from '../../../types/kpi.types';
 
 interface SettingsTabProps {
-  roles: StaffRole[];
+  staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   selectedMonthYear: string;
   onCreateConfig: (newConfig: KPIConfig) => Promise<any>;
@@ -24,7 +24,7 @@ interface SettingsTabProps {
 }
 
 export const SettingsTab = React.memo(function SettingsTab({
-  roles,
+  staffMembers,
   kpiConfigs,
   selectedMonthYear,
   onCreateConfig,
@@ -34,8 +34,8 @@ export const SettingsTab = React.memo(function SettingsTab({
   onCreateGoal,
   onDeleteGoal,
 }: SettingsTabProps) {
-  // Role selection
-  const [selectedSettingRole, setSelectedSettingRole] = useState<string>(roles[0]?.code || '');
+  // Staff selection (instead of role)
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(staffMembers[0]?.id || '');
 
   // Dialog states
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
@@ -52,17 +52,17 @@ export const SettingsTab = React.memo(function SettingsTab({
 
   // Derived
   const daysInMonthCount = getDaysInMonthCount(selectedMonthYear);
-  const selectedRoleName = useMemo(() => {
-    const roleObj = roles.find(r => r.code === selectedSettingRole);
-    return roleObj ? roleObj.name : selectedSettingRole;
-  }, [roles, selectedSettingRole]);
+  const selectedStaffName = useMemo(() => {
+    const staffObj = staffMembers.find(s => s.id === selectedStaffId);
+    return staffObj ? staffObj.fullName : selectedStaffId;
+  }, [staffMembers, selectedStaffId]);
 
   const filteredConfigs = useMemo(
     () => kpiConfigs.filter(
-      c => normalizeRole(c.role) === normalizeRole(selectedSettingRole) &&
+      c => c.staffId === selectedStaffId &&
            (c.month || '2026-06') === selectedMonthYear
     ),
-    [kpiConfigs, selectedSettingRole, selectedMonthYear]
+    [kpiConfigs, selectedStaffId, selectedMonthYear]
   );
 
   const totalWeight = useMemo(
@@ -74,10 +74,10 @@ export const SettingsTab = React.memo(function SettingsTab({
   const prevMonthConfigs = useMemo(() => {
     const prevMonth = getPreviousMonthYear(selectedMonthYear);
     return kpiConfigs.filter(
-      c => normalizeRole(c.role) === normalizeRole(selectedSettingRole) &&
+      c => c.staffId === selectedStaffId &&
            (c.month || '2026-06') === prevMonth
     );
-  }, [kpiConfigs, selectedSettingRole, selectedMonthYear]);
+  }, [kpiConfigs, selectedStaffId, selectedMonthYear]);
 
   const showCopyBanner = filteredConfigs.length === 0 && prevMonthConfigs.length > 0;
 
@@ -129,15 +129,17 @@ export const SettingsTab = React.memo(function SettingsTab({
     }
   }, [deletingGoal, onDeleteGoal]);
 
-  const roleOptions = useMemo(() => {
-    return roles.map(role => ({
-      label: role.name,
-      value: role.code
-    }));
-  }, [roles]);
+  const staffOptions = useMemo(() => {
+    return staffMembers
+      .filter(s => s.status === 'active')
+      .map(staff => ({
+        label: staff.fullName,
+        value: staff.id
+      }));
+  }, [staffMembers]);
 
-  const handleRoleChangeValue = useCallback((val: string | number) => {
-    setSelectedSettingRole(String(val));
+  const handleStaffChangeValue = useCallback((val: string | number) => {
+    setSelectedStaffId(String(val));
   }, []);
 
   const handleConfigSubmit = useCallback(async (data: {
@@ -160,9 +162,9 @@ export const SettingsTab = React.memo(function SettingsTab({
         await onUpdateConfig(updatedConfig);
       } else {
         const newConfig: KPIConfig = {
-          id: `${selectedSettingRole}_${Date.now()}`,
+          id: `${selectedStaffId}_${Date.now()}`,
           storeId: '',
-          role: selectedSettingRole,
+          staffId: selectedStaffId,
           ...data,
           dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
           month: selectedMonthYear,
@@ -175,7 +177,7 @@ export const SettingsTab = React.memo(function SettingsTab({
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, configDialogMode, editingConfig, selectedSettingRole, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig]);
+  }, [isSubmitting, configDialogMode, editingConfig, selectedStaffId, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig]);
 
   const handleCopyFromPrevMonth = useCallback(async () => {
     if (isCopying || prevMonthConfigs.length === 0) return;
@@ -185,7 +187,7 @@ export const SettingsTab = React.memo(function SettingsTab({
         prevMonthConfigs.map(async (prev) => {
           const newConfig: KPIConfig = {
             ...prev,
-            id: `${prev.role}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            id: `${prev.staffId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             month: selectedMonthYear,
             dailyTarget: Math.round(prev.monthlyTarget / daysInMonthCount),
           };
@@ -205,20 +207,20 @@ export const SettingsTab = React.memo(function SettingsTab({
         <CardHeader className="border-b border-slate-100">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="text-left">
-              <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH KPI THEO VAI TRÒ</CardTitle>
+              <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH KPI THEO NHÂN VIÊN</CardTitle>
               <CardDescription className="text-sm font-semibold text-slate-500 mt-1">
-                Thiết lập các chỉ số, target tháng and trọng số áp dụng chung cho toàn bộ nhân sự theo vai trò.
+                Thiết lập các chỉ số, target tháng và trọng số riêng cho từng nhân viên.
               </CardDescription>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Role selector */}
+              {/* Staff selector */}
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-500 uppercase shrink-0">Vai trò:</span>
+                <span className="text-sm font-bold text-slate-500 uppercase shrink-0">Nhân viên:</span>
                 <CustomSelect
-                  options={roleOptions}
-                  value={selectedSettingRole}
-                  onChangeValue={handleRoleChangeValue}
+                  options={staffOptions}
+                  value={selectedStaffId}
+                  onChangeValue={handleStaffChangeValue}
                   clearable={false}
                   className="w-[220px] text-slate-700 font-bold text-sm bg-slate-50"
                 />
@@ -284,7 +286,7 @@ export const SettingsTab = React.memo(function SettingsTab({
                   {filteredConfigs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-6 text-slate-500 font-bold text-sm">
-                        Vị trí này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
+                        Nhân viên này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -307,7 +309,7 @@ export const SettingsTab = React.memo(function SettingsTab({
               <span>Tổng số chỉ số: {filteredConfigs.length}</span>
               <span className={`flex items-center gap-1 ${totalWeight === 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
                 <Sparkles className="w-4 h-4 shrink-0" />
-                Tổng trọng số vị trí: {(totalWeight * 100).toFixed(0)}%
+                Tổng trọng số nhân viên: {(totalWeight * 100).toFixed(0)}%
                 {totalWeight !== 1 && ' (Khuyên dùng: Đảm bảo tổng trọng số đạt 100%)'}
               </span>
             </div>
@@ -320,7 +322,7 @@ export const SettingsTab = React.memo(function SettingsTab({
         open={isConfigDialogOpen}
         onOpenChange={setIsConfigDialogOpen}
         mode={configDialogMode}
-        selectedRole={selectedRoleName}
+        selectedStaffName={selectedStaffName}
         selectedMonthYear={selectedMonthYear}
         daysInMonthCount={daysInMonthCount}
         config={editingConfig}

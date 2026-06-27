@@ -51,6 +51,7 @@ interface HandbookEditorDialogProps {
   onUploadImages: (files: File[]) => Promise<string[]>;
   onAddCategory: (payload: HandbookCategoryRequestType) => Promise<void>;
   onDeleteCategory?: (name: string) => Promise<void>;
+  getCategoryIcon?: (name: string) => React.ComponentType<{ className?: string }> | null;
 }
 
 export default function HandbookEditorDialog({
@@ -69,6 +70,7 @@ export default function HandbookEditorDialog({
   onUploadImages,
   onAddCategory,
   onDeleteCategory,
+  getCategoryIcon,
 }: HandbookEditorDialogProps) {
   const [isCategoryMetaOpen, setIsCategoryMetaOpen] = useState(false);
   const [pendingCategoryName, setPendingCategoryName] = useState('');
@@ -324,6 +326,7 @@ export default function HandbookEditorDialog({
                       addNewText="Thêm danh mục"
                       containerClassName={`h-9 rounded-xl ${errors.category ? 'border-rose-400 bg-rose-50/30' : ''}`}
                       className="text-xs"
+                      getOptionIcon={getCategoryIcon}
                     />
                   </FormControl>
                   <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />

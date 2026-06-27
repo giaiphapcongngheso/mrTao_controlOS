@@ -11,7 +11,7 @@ export interface StaffRank {
 export interface KPIConfig {
   id: string; // Document ID
   storeId: string;
-  role: string; // Vị trí áp dụng (SALES, KỸ_THUẬT, QUAN_LY, etc.)
+  staffId: string; // ID nhân viên áp dụng cụ thể
   goalName: string;
   kpiName: string;
   unit: string;

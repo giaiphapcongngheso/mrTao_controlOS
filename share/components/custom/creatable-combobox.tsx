@@ -25,6 +25,7 @@ export type CreatableComboboxProps = {
   addNewText?: string;
   className?: string;
   containerClassName?: string;
+  getOptionIcon?: (value: string) => React.ComponentType<{ className?: string }> | null | undefined;
 };
 
 export function CreatableCombobox({
@@ -39,6 +40,7 @@ export function CreatableCombobox({
   addNewText,
   className,
   containerClassName,
+  getOptionIcon,
 }: CreatableComboboxProps) {
 
   const [open, setOpen] = useState(false);
@@ -108,6 +110,10 @@ export function CreatableCombobox({
             }
           }}
         >
+          {(() => {
+            const ActiveIcon = getOptionIcon && value ? getOptionIcon(value) : null;
+            return ActiveIcon ? <ActiveIcon className="ml-3 h-4 w-4 text-slate-500 shrink-0" /> : null;
+          })()}
           <Input
             ref={inputRef}
             value={inputValue}
@@ -147,35 +153,39 @@ export function CreatableCombobox({
             onWheel={(e) => e.stopPropagation()}
           >
             <CommandGroup>
-              {filteredSuggestions.map((s) => (
-                <CommandItem
-                  key={s}
-                  value={s}
-                  onSelect={() => handleSelect(s)}
-                  className="flex items-center justify-between group/item w-full"
-                >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <Check
-                      className={cn('mr-2 h-4 w-4 shrink-0', inputValue === s ? 'opacity-100' : 'opacity-0')}
-                    />
-                    <span className="truncate">{s}</span>
-                  </div>
-                  {onDeleteOption && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        void onDeleteOption(s);
-                      }}
-                      className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-rose-50 hover:text-rose-600 rounded transition-all text-slate-400 shrink-0"
-                      title="Xóa"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </CommandItem>
-              ))}
+              {filteredSuggestions.map((s) => {
+                const IconComponent = getOptionIcon ? getOptionIcon(s) : null;
+                return (
+                  <CommandItem
+                    key={s}
+                    value={s}
+                    onSelect={() => handleSelect(s)}
+                    className="flex items-center justify-between group/item w-full"
+                  >
+                    <div className="flex items-center flex-1 min-w-0">
+                      <Check
+                        className={cn('mr-2 h-4 w-4 shrink-0', inputValue === s ? 'opacity-100' : 'opacity-0')}
+                      />
+                      {IconComponent && <IconComponent className="mr-2 h-4 w-4 text-slate-500 shrink-0" />}
+                      <span className="truncate">{s}</span>
+                    </div>
+                    {onDeleteOption && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          void onDeleteOption(s);
+                        }}
+                        className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-rose-50 hover:text-rose-600 rounded transition-all text-slate-400 shrink-0"
+                        title="Xóa"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
           {(!inputValue || (!isValueInSuggestions && inputValue && onAddNew)) && (

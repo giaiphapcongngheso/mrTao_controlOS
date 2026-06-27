@@ -8,7 +8,6 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { KpiStatusBadge } from '../components/_kpi-status-badge';
 import { EntryDialog } from '../components/_entry-dialog';
 import {
-  normalizeRole,
   getDaysInMonthCount,
   buildDaysArray,
   formatValue,
@@ -90,7 +89,7 @@ export const EntryTab = React.memo(function EntryTab({
   const staffConfigs = useMemo(() => {
     if (!selectedStaff) return [];
     return kpiConfigs.filter(c =>
-      normalizeRole(c.role) === normalizeRole(selectedStaff.role) &&
+      c.staffId === selectedStaff.id &&
       (c.month || '2026-06') === selectedMonthYear
     );
   }, [kpiConfigs, selectedStaff, selectedMonthYear]);

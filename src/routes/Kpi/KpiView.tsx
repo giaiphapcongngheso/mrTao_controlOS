@@ -127,7 +127,7 @@ export default function KpiView({
 
       {activeSubTab === 'settings' && (
         <SettingsTab
-          roles={roles}
+          staffMembers={staffMembers}
           kpiConfigs={kpiConfigs}
           selectedMonthYear={selectedMonthYear}
           onCreateConfig={onCreateConfig}

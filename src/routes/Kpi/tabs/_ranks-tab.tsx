@@ -6,7 +6,6 @@ import { LeaderboardTable } from '../components/_leaderboard-table';
 import { StaffDetailCard } from '../components/_staff-detail-card';
 import { KpiSparklineChart } from '../components/_kpi-sparkline-chart';
 import {
-  normalizeRole,
   calculateDynamicStaffRanks,
   calculatePeriodKpis,
   calculateRevenueStats,
@@ -75,7 +74,7 @@ export const RanksTab = React.memo(function RanksTab({
   const staffConfigs = useMemo(() => {
     if (!selectedStaff) return [];
     return kpiConfigs.filter(c =>
-      normalizeRole(c.role) === normalizeRole(selectedStaff.role) &&
+      c.staffId === selectedStaff.id &&
       (c.month || '2026-06') === ranksMonth
     );
   }, [kpiConfigs, selectedStaff, ranksMonth]);
@@ -94,7 +93,7 @@ export const RanksTab = React.memo(function RanksTab({
   // Period revenue stats
   const periodRevenueStats = useMemo(() => {
     if (!selectedStaff) return { totalTarget: 0, totalActual: 0, pct: 0, hasRevenue: false };
-    return calculateRevenueStats(selectedStaff.id, selectedStaff.role, kpiConfigs, kpiDailyValues, periodMonths);
+    return calculateRevenueStats(selectedStaff.id, kpiConfigs, kpiDailyValues, periodMonths);
   }, [kpiConfigs, kpiDailyValues, selectedStaff, periodMonths]);
 
   // Previous period months (for growth calculation)
@@ -114,7 +113,7 @@ export const RanksTab = React.memo(function RanksTab({
   // Previous period revenue stats
   const prevRevenueStats = useMemo(() => {
     if (!selectedStaff) return { totalTarget: 0, totalActual: 0, pct: 0, hasRevenue: false };
-    return calculateRevenueStats(selectedStaff.id, selectedStaff.role, kpiConfigs, kpiDailyValues, prevPeriodMonths);
+    return calculateRevenueStats(selectedStaff.id, kpiConfigs, kpiDailyValues, prevPeriodMonths);
   }, [kpiConfigs, kpiDailyValues, selectedStaff, prevPeriodMonths]);
 
   // Revenue growth calculation
@@ -151,7 +150,7 @@ export const RanksTab = React.memo(function RanksTab({
   // Period KPIs
   const periodKpis = useMemo(() => {
     if (!selectedStaff) return [];
-    return calculatePeriodKpis(selectedStaff.id, selectedStaff.role, kpiConfigs, kpiDailyValues, periodMonths);
+    return calculatePeriodKpis(selectedStaff.id, kpiConfigs, kpiDailyValues, periodMonths);
   }, [kpiConfigs, kpiDailyValues, selectedStaff, periodMonths]);
 
   // Period label

@@ -25,6 +25,7 @@ import {
   Wrench,
   SlidersHorizontal,
   Clock,
+  LayoutGrid,
 } from 'lucide-react';
 import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
@@ -571,6 +572,12 @@ export default function HandbookView() {
 
   const canConfirmRead = permissions.canUpdate || permissions.canApprove;
   const canManageCategories = permissions.canCreate || permissions.canUpdate;
+
+  const getCategoryIconComponent = useCallback((categoryName: string) => {
+    const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+    const config = getCategoryIconConfig(categoryName, categoryMeta);
+    return config?.icon || null;
+  }, [categoryByNormalizedName]);
 
   const filteredDocs = useMemo(() => {
     const normalizedSearch = normalizeText(searchTerm);
@@ -1171,20 +1178,20 @@ export default function HandbookView() {
                       onClick={() => setSelectedRoles([role.code])}
                       className={`flex flex-row items-center gap-3 rounded-2xl p-4 min-w-[200px] flex-1 cursor-pointer transition-all duration-200 border ${
                         isSelected
-                          ? 'border-red-200 bg-red-50/20 text-[#C21A1A] shadow-xs'
-                          : 'border-slate-200/80 bg-white text-slate-800 hover:bg-slate-50'
+                          ? 'border-[#C21A1A] bg-red-50/20 shadow-md'
+                          : 'border-slate-200/80 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300'
                       }`}
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        isSelected ? 'bg-red-100/50 text-[#C21A1A]' : `${role.iconBg} ${role.iconColor}`
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-200 ${
+                        isSelected ? 'bg-red-100 text-[#C21A1A]' : `${role.iconBg} ${role.iconColor}`
                       }`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="flex flex-col text-left">
-                        <span className={`text-[13px] font-extrabold ${isSelected ? 'text-[#C21A1A]' : 'text-slate-850'}`}>
+                        <span className={`text-[13px] font-extrabold transition-colors duration-200 ${isSelected ? 'text-[#C21A1A]' : 'text-slate-800'}`}>
                           {role.name}
                         </span>
-                        <span className={`text-[10px] font-semibold mt-0.5 ${isSelected ? 'text-red-700/80' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] font-semibold mt-0.5 transition-colors duration-200 ${isSelected ? 'text-red-700/80' : 'text-slate-400'}`}>
                           {role.docCount} tài liệu phải đọc
                         </span>
                       </div>
@@ -1205,18 +1212,29 @@ export default function HandbookView() {
                     onClick={() => setSubFilter('all')}
                     className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
                       subFilter === 'all'
-                        ? 'border-red-200 bg-red-50/10 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                        ? 'border-[#C21A1A] bg-red-50/20 shadow-md'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
                       <FileText className="h-4.5 w-4.5" />
                     </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-black text-slate-800 leading-none">
+                    <div className="flex flex-col text-left gap-0.5">
+                      <span className={`text-sm font-semibold transition-colors duration-200 ${
+                        subFilter === 'all' ? 'text-[#C21A1A]' : 'text-slate-500'
+                      }`}>
+                        Tổng tài liệu
+                      </span>
+                      <span className={`text-2xl font-black leading-none transition-colors duration-200 ${
+                        subFilter === 'all' ? 'text-[#C21A1A]' : 'text-slate-800'
+                      }`}>
                         {processedDocs.length}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 mt-1">Tổng tài liệu</span>
+                      <span className={`text-xs font-medium transition-colors duration-200 ${
+                        subFilter === 'all' ? 'text-red-700/80' : 'text-slate-400'
+                      }`}>
+                        Tài liệu
+                      </span>
                     </div>
                   </Card>
 
@@ -1225,18 +1243,29 @@ export default function HandbookView() {
                     onClick={() => setSubFilter('required')}
                     className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
                       subFilter === 'required'
-                        ? 'border-red-200 bg-red-50/10 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                        ? 'border-[#C21A1A] bg-red-50/20 shadow-md'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
                       <Shield className="h-4.5 w-4.5" />
                     </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-black text-slate-800 leading-none">
+                    <div className="flex flex-col text-left gap-0.5">
+                      <span className={`text-sm font-semibold transition-colors duration-200 ${
+                        subFilter === 'required' ? 'text-[#C21A1A]' : 'text-slate-500'
+                      }`}>
+                        Tài liệu bắt buộc
+                      </span>
+                      <span className={`text-2xl font-black leading-none transition-colors duration-200 ${
+                        subFilter === 'required' ? 'text-[#C21A1A]' : 'text-slate-800'
+                      }`}>
                         {processedDocs.filter((d) => d.requiredRead).length}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 mt-1">Tài liệu bắt buộc</span>
+                      <span className={`text-xs font-medium transition-colors duration-200 ${
+                        subFilter === 'required' ? 'text-red-700/80' : 'text-slate-400'
+                      }`}>
+                        Tài liệu
+                      </span>
                     </div>
                   </Card>
 
@@ -1245,18 +1274,29 @@ export default function HandbookView() {
                     onClick={() => setSubFilter('read')}
                     className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
                       subFilter === 'read'
-                        ? 'border-red-200 bg-red-50/10 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                        ? 'border-[#C21A1A] bg-red-50/20 shadow-md'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
                       <Check className="h-4.5 w-4.5 stroke-[3]" />
                     </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-black text-slate-800 leading-none">
+                    <div className="flex flex-col text-left gap-0.5">
+                      <span className={`text-sm font-semibold transition-colors duration-200 ${
+                        subFilter === 'read' ? 'text-[#C21A1A]' : 'text-slate-500'
+                      }`}>
+                        Đã đọc của tôi
+                      </span>
+                      <span className={`text-2xl font-black leading-none transition-colors duration-200 ${
+                        subFilter === 'read' ? 'text-[#C21A1A]' : 'text-slate-800'
+                      }`}>
                         {processedDocs.filter((d) => readDocs[d.id]).length}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 mt-1">Đã đọc của tôi</span>
+                      <span className={`text-xs font-medium transition-colors duration-200 ${
+                        subFilter === 'read' ? 'text-red-700/80' : 'text-slate-400'
+                      }`}>
+                        Tài liệu
+                      </span>
                     </div>
                   </Card>
 
@@ -1265,18 +1305,29 @@ export default function HandbookView() {
                     onClick={() => setSubFilter('updated')}
                     className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
                       subFilter === 'updated'
-                        ? 'border-red-200 bg-red-50/10 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                        ? 'border-[#C21A1A] bg-red-50/20 shadow-md'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-500">
                       <Clock className="h-4.5 w-4.5" />
                     </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-black text-slate-800 leading-none">
+                    <div className="flex flex-col text-left gap-0.5">
+                      <span className={`text-sm font-semibold transition-colors duration-200 ${
+                        subFilter === 'updated' ? 'text-[#C21A1A]' : 'text-slate-500'
+                      }`}>
+                        Mới cập nhật
+                      </span>
+                      <span className={`text-2xl font-black leading-none transition-colors duration-200 ${
+                        subFilter === 'updated' ? 'text-[#C21A1A]' : 'text-slate-800'
+                      }`}>
                         {processedDocs.filter((d) => d.isUpdated).length}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400 mt-1">Mới cập nhật (7 ngày)</span>
+                      <span className={`text-xs font-medium transition-colors duration-200 ${
+                        subFilter === 'updated' ? 'text-red-700/80' : 'text-slate-400'
+                      }`}>
+                        Tài liệu (7 ngày qua)
+                      </span>
                     </div>
                   </Card>
                 </div>
@@ -1320,29 +1371,35 @@ export default function HandbookView() {
                 <Button
                   type="button"
                   onClick={() => handleToggleCategory(null)}
-                  className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs ${
+                  className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs inline-flex items-center gap-1.5 ${
                     !selectedCategory
                       ? 'bg-[#C21A1A] text-white border-[#C21A1A] hover:bg-[#A81515] hover:text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#C21A1A]'
                   }`}
                 >
-                  Tất cả
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <span>Tất cả</span>
                 </Button>
 
                 {categoryOptions.map((categoryName) => {
                   const isSelected = selectedCategory === categoryName;
+                  const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
+                  const iconConfig = getCategoryIconConfig(categoryName, categoryMeta);
+                  const CategoryIcon = iconConfig?.icon || FileText;
+
                   return (
                     <Button
                       key={categoryName}
                       type="button"
                       onClick={() => handleToggleCategory(categoryName)}
-                      className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs ${
+                      className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs inline-flex items-center gap-1.5 ${
                         isSelected
                           ? 'bg-[#C21A1A] text-white border-[#C21A1A] hover:bg-[#A81515] hover:text-white'
                           : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#C21A1A]'
                       }`}
                     >
-                      {categoryName}
+                      <CategoryIcon className="h-3.5 w-3.5" />
+                      <span>{categoryName}</span>
                     </Button>
                   );
                 })}
@@ -1746,6 +1803,7 @@ export default function HandbookView() {
         onUploadImages={handleUploadImages}
         onAddCategory={handleCreateCategory}
         onDeleteCategory={handleDeleteCategory}
+        getCategoryIcon={getCategoryIconComponent}
       />
 
       <DeleteConfirm

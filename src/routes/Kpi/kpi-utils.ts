@@ -165,14 +165,12 @@ export const calculateDynamicStaffRanks = (
   const activeStaff = staffMembers.filter(s => s.status === 'active');
 
   const ranks = activeStaff.map((staff): StaffRank => {
-    const roleNorm = normalizeRole(staff.role);
-
     let totalScoreSum = 0;
     let monthsCount = 0;
 
     periodMonths.forEach(m => {
       const configs = kpiConfigs.filter(
-        c => normalizeRole(c.role) === roleNorm && (c.month || '2026-06') === m
+        c => c.staffId === staff.id && (c.month || '2026-06') === m
       );
 
       if (configs.length > 0) {
@@ -222,15 +220,12 @@ export interface PeriodKpiDetail {
 
 export const calculatePeriodKpis = (
   staffId: string,
-  staffRole: string,
   kpiConfigs: KPIConfig[],
   kpiDailyValues: KPIDailyValue[],
   periodMonths: string[]
 ): PeriodKpiDetail[] => {
-  const roleNorm = normalizeRole(staffRole);
-
   const configsInPeriod = kpiConfigs.filter(c =>
-    normalizeRole(c.role) === roleNorm &&
+    c.staffId === staffId &&
     periodMonths.includes(c.month || '2026-06')
   );
 
@@ -298,15 +293,12 @@ export interface RevenueStats {
 
 export const calculateRevenueStats = (
   staffId: string,
-  staffRole: string,
   kpiConfigs: KPIConfig[],
   kpiDailyValues: KPIDailyValue[],
   periodMonths: string[]
 ): RevenueStats => {
-  const roleNorm = normalizeRole(staffRole);
-
   const vnKpis = kpiConfigs.filter(c =>
-    normalizeRole(c.role) === roleNorm &&
+    c.staffId === staffId &&
     c.unit === 'VNĐ' &&
     periodMonths.includes(c.month || '2026-06')
   );

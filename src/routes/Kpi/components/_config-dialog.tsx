@@ -26,7 +26,7 @@ interface ConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: ConfigDialogMode;
-  selectedRole: string;
+  selectedStaffName: string;
   selectedMonthYear: string;
   daysInMonthCount: number;
   config: KPIConfig | null;
@@ -48,7 +48,7 @@ export const ConfigDialog = React.memo(function ConfigDialog({
   open,
   onOpenChange,
   mode,
-  selectedRole,
+  selectedStaffName,
   selectedMonthYear,
   daysInMonthCount,
   config,
@@ -117,9 +117,9 @@ export const ConfigDialog = React.memo(function ConfigDialog({
     : 'Thêm chỉ số KPI mới';
 
   const description =
-    mode === 'view' ? `Xem cấu hình chỉ số chung cho vị trí ${selectedRole}`
-    : mode === 'edit' ? `Cập nhật cấu hình chỉ số chung cho vị trí ${selectedRole}`
-    : `Tạo chỉ số KPI mới áp dụng chung cho vị trí ${selectedRole}`;
+    mode === 'view' ? `Xem cấu hình chỉ số cho nhân viên ${selectedStaffName}`
+    : mode === 'edit' ? `Cập nhật cấu hình chỉ số cho nhân viên ${selectedStaffName}`
+    : `Tạo chỉ số KPI mới cho nhân viên ${selectedStaffName}`;
 
   const estimatedDailyTarget = formTarget
     ? formatValue(Math.round((parseFloat(formTarget) || 0) / daysInMonthCount), formUnit)
@@ -183,8 +183,8 @@ export const ConfigDialog = React.memo(function ConfigDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-sm font-bold text-slate-600 tracking-wide">Vai trò áp dụng</Label>
-              <Input value={selectedRole} disabled clearable={false} />
+              <Label className="text-sm font-bold text-slate-600 tracking-wide">Nhân viên áp dụng</Label>
+              <Input value={selectedStaffName} disabled clearable={false} />
             </div>
           </div>
 
