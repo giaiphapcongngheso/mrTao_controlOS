@@ -6,21 +6,21 @@ interface PlanProgressRingProps {
   strokeWidth?: number;
   label?: string;
   subLabel?: string;
-  color?: string;      // stroke color
+  color?: string;      // stroke color (will auto-determine if not provided)
   trackColor?: string;
 }
 
 /**
  * SVG circular progress ring.
- * Matches the "Tiến độ 12 tuần: 71%" mockup.
+ * Upgraded to horizontal layout (flex-row) with dynamic coloring based on value.
  */
 const PlanProgressRing = React.memo(function PlanProgressRing({
   value,
-  size = 80,
-  strokeWidth = 6,
+  size = 64,
+  strokeWidth = 5,
   label,
   subLabel,
-  color = '#C21A1A',
+  color,
   trackColor = '#f1f5f9',
 }: PlanProgressRingProps) {
   const radius = (size - strokeWidth) / 2;
@@ -28,9 +28,16 @@ const PlanProgressRing = React.memo(function PlanProgressRing({
   const clampedValue = Math.max(0, Math.min(100, value));
   const offset = circumference - (clampedValue / 100) * circumference;
 
+  // Auto-determine color based on progress if not explicitly provided
+  const activeColor = color || (
+    clampedValue >= 75 ? '#10b981' : 
+    clampedValue >= 40 ? '#f59e0b' : 
+    '#C21A1A'
+  );
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex items-center gap-3 text-left w-full min-w-0">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg
           width={size}
           height={size}
@@ -52,7 +59,7 @@ const PlanProgressRing = React.memo(function PlanProgressRing({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke={color}
+            stroke={activeColor}
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={offset}
@@ -62,11 +69,15 @@ const PlanProgressRing = React.memo(function PlanProgressRing({
         </svg>
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-black text-slate-800 leading-none">{clampedValue}%</span>
+          <span className="text-base font-black text-slate-800 leading-none">{clampedValue}%</span>
         </div>
       </div>
-      {label && <span className="text-[11px] font-bold text-slate-600 text-center leading-tight">{label}</span>}
-      {subLabel && <span className="text-[10px] font-semibold text-slate-400 text-center">{subLabel}</span>}
+      {(label || subLabel) && (
+        <div className="flex flex-col gap-0.5 justify-center min-w-0 flex-1">
+          {label && <span className="text-sm font-bold text-slate-700 truncate block">{label}</span>}
+          {subLabel && <span className="text-sm font-semibold text-slate-500 leading-tight block">{subLabel}</span>}
+        </div>
+      )}
     </div>
   );
 });

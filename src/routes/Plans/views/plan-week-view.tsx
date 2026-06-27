@@ -1,23 +1,27 @@
 import React from 'react';
-import { Star, DollarSign, Clock, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent } from '../../../../share/ui/card';
+import { Star, DollarSign, Clock, CheckCircle2, Edit3, Link2 } from 'lucide-react';
 import type { PlanDocument } from '../../../types/plans.types';
 import PlanSummaryCard from '../shared/plan-summary-card';
 import PriorityTable from '../shared/priority-table';
 import { useWeekSummary } from '../_hooks/use-plan-metrics';
 import { formatCurrencyVN } from '../constants/plan-utils';
-import { WEEK_DAYS } from '../constants/plan-constants';
+import { WEEK_DAYS, REVIEW_FREQUENCY_LABELS } from '../constants/plan-constants';
+import { Button } from '../../../../share/ui/button';
 
 interface PlanWeekViewProps {
   plans: PlanDocument[];
+  onEditPlan: (plan: PlanDocument) => void;
 }
 
 /**
  * Weekly plan view (20/80) — priority table, day grid, meeting sidebar.
  * Matches mockup Screen 5.
- * Standardized with shared Card components and increased text sizes.
+ * Standardized with custom div containers and increased text sizes.
  */
-const PlanWeekView = React.memo(function PlanWeekView({ plans }: PlanWeekViewProps) {
+const PlanWeekView = React.memo(function PlanWeekView({ 
+  plans,
+  onEditPlan,
+}: PlanWeekViewProps) {
   const { weekPlan, priorityCount, behindCount, commitPercentage } = useWeekSummary(plans);
 
   if (!weekPlan) {
@@ -30,8 +34,36 @@ const PlanWeekView = React.memo(function PlanWeekView({ plans }: PlanWeekViewPro
 
   const priorities = weekPlan.priorities ?? [];
 
+  // Find parent month plan
+  const parentPlan = plans.find((p) => p.id === weekPlan.parentPlanId);
+
   return (
     <div className="space-y-4 text-slate-700">
+      {/* Header action panel */}
+      <div className="flex items-center justify-between bg-white border border-slate-100/80 rounded-2xl p-4 shadow-3xs">
+        <div className="flex items-center gap-2">
+          <Star className="w-5 h-5 text-[#C21A1A]" />
+          <div>
+            <h3 className="text-sm font-black text-slate-800 leading-tight">{weekPlan.name}</h3>
+            {parentPlan && (
+              <span className="text-xs font-bold text-blue-500 flex items-center gap-1 mt-0.5">
+                <Link2 className="w-3 h-3" /> Thuộc: {parentPlan.name}
+              </span>
+            )}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onEditPlan(weekPlan)}
+          className="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 gap-1.5 h-8"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+          Chỉnh sửa kế hoạch
+        </Button>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <PlanSummaryCard icon={Star} label="Ưu tiên tuần" value={priorityCount} subValue="việc" />
@@ -44,74 +76,85 @@ const PlanWeekView = React.memo(function PlanWeekView({ plans }: PlanWeekViewPro
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         <div className="space-y-4">
           {/* Priority table */}
-          <Card className="border border-slate-100/80 p-0 shadow-2xs bg-white rounded-2xl py-4">
-            <CardContent className="px-4 p-0">
-              <h4 className="text-sm font-black text-slate-700 mb-3">Bảng ưu tiên tuần</h4>
-              <PriorityTable priorities={priorities} showLinkedTasks />
-            </CardContent>
-          </Card>
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
+            <h4 className="text-sm font-black text-slate-700 mb-2">Bảng ưu tiên tuần</h4>
+            <PriorityTable priorities={priorities} showLinkedTasks />
+          </div>
 
           {/* Week day grid */}
-          <Card className="border border-slate-100/80 p-0 shadow-2xs bg-white rounded-2xl py-4">
-            <CardContent className="px-4 p-0">
-              <h4 className="text-sm font-black text-slate-700 mb-3">Kế hoạch theo ngày trong tuần</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {WEEK_DAYS.map((day) => (
-                  <div key={day.key} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 space-y-2 min-h-[100px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-600">{day.short}</span>
-                      <span className="text-xs font-semibold text-slate-400">{day.label}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="h-1.5 bg-slate-200/65 rounded-full w-full animate-pulse" />
-                      <div className="h-1.5 bg-slate-200/65 rounded-full w-3/4 animate-pulse" />
-                      <span className="text-xs font-semibold text-slate-300 block pt-1">Chưa có việc</span>
-                    </div>
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
+            <h4 className="text-sm font-black text-slate-700 mb-2">Kế hoạch theo ngày trong tuần</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {WEEK_DAYS.map((day) => (
+                <div key={day.key} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 space-y-2 min-h-[100px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-600">{day.short}</span>
+                    <span className="text-xs font-semibold text-slate-400">{day.label}</span>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="space-y-1">
+                    <div className="h-1.5 bg-slate-200/65 rounded-full w-full animate-pulse" />
+                    <div className="h-1.5 bg-slate-200/65 rounded-full w-3/4 animate-pulse" />
+                    <span className="text-xs font-semibold text-slate-300 block pt-1">Chưa có việc</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Right sidebar */}
         <div className="space-y-3">
           {/* Meeting 20/80 */}
-          <Card className="border border-slate-100/80 p-0 shadow-2xs bg-white rounded-2xl py-4">
-            <CardContent className="px-4 p-0 space-y-3">
-              <h4 className="text-sm font-black text-slate-700">Họp tuần 20/80</h4>
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
+            <h4 className="text-sm font-black text-slate-700">Họp tuần 20/80</h4>
 
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-xl bg-red-50">
-                  <span className="text-xs font-black text-[#C21A1A] block">1. Mục tiêu lớn nhất</span>
-                  <span className="text-xs font-semibold text-slate-600 mt-0.5 block leading-normal">
-                    {weekPlan.revenueTarget ? `Đạt ${formatCurrencyVN(weekPlan.revenueTarget)} doanh thu tuần` : 'Chưa thiết lập'}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-amber-50">
-                  <span className="text-xs font-black text-amber-600 block">2. Điểm nghẽn</span>
-                  <ul className="mt-1 space-y-0.5">
-                    {behindCount > 0 ? (
-                      <li className="text-xs font-semibold text-slate-500">• {behindCount} hạng mục đang chậm tiến độ</li>
-                    ) : (
-                      <li className="text-xs font-semibold text-slate-400">Không có điểm nghẽn</li>
-                    )}
-                  </ul>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-emerald-50">
-                  <span className="text-xs font-black text-emerald-600 block">3. Quyết định tuần</span>
-                  <span className="text-xs font-semibold text-slate-400 mt-0.5 block">Cập nhật sau họp tuần...</span>
-                </div>
+            <div className="space-y-2">
+              <div className="p-2.5 rounded-xl bg-red-50">
+                <span className="text-xs font-black text-[#C21A1A] block">1. Mục tiêu lớn nhất</span>
+                <span className="text-xs font-semibold text-slate-600 mt-0.5 block leading-normal">
+                  {weekPlan.revenueTarget ? `Đạt ${formatCurrencyVN(weekPlan.revenueTarget)} doanh thu tuần` : 'Chưa thiết lập'}
+                </span>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="p-2.5 rounded-xl bg-amber-50">
+                <span className="text-xs font-black text-amber-600 block">2. Điểm nghẽn</span>
+                <ul className="mt-1 space-y-0.5">
+                  {behindCount > 0 ? (
+                    <li className="text-xs font-semibold text-slate-500">• {behindCount} hạng mục đang chậm tiến độ</li>
+                  ) : (
+                    <li className="text-xs font-semibold text-slate-400">Không có điểm nghẽn</li>
+                  )}
+                </ul>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50">
+                <span className="text-xs font-black text-emerald-600 block">3. Quyết định tuần</span>
+                <span className="text-xs font-semibold text-slate-400 mt-0.5 block">Cập nhật sau họp tuần...</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Control Settings Info */}
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-2.5 text-xs font-semibold text-slate-500">
+            <h4 className="text-xs font-bold text-slate-750 block mb-1">Kiểm soát & Review</h4>
+            <div className="flex items-center justify-between">
+              <span>Người review</span>
+              <span className="text-slate-800 font-bold">{weekPlan.reviewerName || '—'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Tần suất review</span>
+              <span className="text-slate-800 font-bold">{REVIEW_FREQUENCY_LABELS[weekPlan.reviewFrequency] || '—'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Ngưỡng cảnh báo</span>
+              <span className="text-amber-600 font-bold">≥ {weekPlan.alertThreshold}%</span>
+            </div>
+          </div>
 
           {/* Week rules */}
-          <Card className="border border-slate-100/80 p-0 shadow-2xs bg-white rounded-2xl py-4">
-            <CardContent className="px-4 p-0 space-y-1.5">
-              <h4 className="text-xs font-bold text-slate-600">Luật tuần</h4>
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-3">
+            <h4 className="text-xs font-bold text-slate-600">Luật tuần</h4>
+            <div className="space-y-1.5">
               {[
                 'Không quá 5 ưu tiên',
                 'Ưu tiên phải đo được',
@@ -123,8 +166,8 @@ const PlanWeekView = React.memo(function PlanWeekView({ plans }: PlanWeekViewPro
                   <span className="text-xs font-semibold text-slate-400 leading-normal">{rule}</span>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

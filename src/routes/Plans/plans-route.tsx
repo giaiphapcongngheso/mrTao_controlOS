@@ -1,11 +1,18 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { CalendarRange, Plus } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, CalendarRange, Clock, Plus } from 'lucide-react';
 import { ModuleHeader } from '../../../share/components/module-header';
 import { Button } from '../../../share/ui/button';
 import { useAppShellState } from '../app-shell-state';
 import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
-import { usePlansQuery, useCreatePlanMutation, useLiveIndicatorsQuery, useDaySchedulesQuery } from './_hooks/use-plans';
-import type { PlanRequestType } from '../../types/plans.types';
+import { 
+  usePlansQuery, 
+  useCreatePlanMutation, 
+  useUpdatePlanMutation,
+  useSaveDayScheduleMutation,
+  useLiveIndicatorsQuery, 
+  useDaySchedulesQuery 
+} from './_hooks/use-plans';
+import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask } from '../../types/plans.types';
 
 import PlanDashboard from './views/plan-dashboard';
 import PlanMonthView from './views/plan-month-view';
@@ -15,17 +22,18 @@ import PlanCreateWizard from './create/plan-create-wizard';
 
 type PlanTab = 'dashboard' | 'month' | 'week' | 'day';
 
-const TAB_CONFIG: Array<{ key: PlanTab; label: string }> = [
-  { key: 'dashboard', label: 'Tổng quan' },
-  { key: 'month', label: 'Tháng' },
-  { key: 'week', label: 'Tuần' },
-  { key: 'day', label: 'Ngày' },
+const TAB_CONFIG = [
+  { key: 'dashboard' as const, label: 'Tổng quan', icon: LayoutDashboard },
+  { key: 'month' as const, label: 'Tháng', icon: CalendarDays },
+  { key: 'week' as const, label: 'Tuần', icon: CalendarRange },
+  { key: 'day' as const, label: 'Ngày', icon: Clock },
 ];
 
 export default function PlansRoute() {
   const { activeStoreId } = useAppShellState();
   const [activeTab, setActiveTab] = useState<PlanTab>('dashboard');
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PlanDocument | null>(null);
 
   // Data hooks
   const { items: plans, isLoading: isPlansLoading } = usePlansQuery(activeStoreId);
@@ -35,19 +43,67 @@ export default function PlansRoute() {
 
   // Mutations
   const createPlanMutation = useCreatePlanMutation(activeStoreId);
+  const updatePlanMutation = useUpdatePlanMutation(activeStoreId);
+  const saveDayScheduleMutation = useSaveDayScheduleMutation(activeStoreId);
 
   // Handlers
   const handleTabChange = useCallback((tab: PlanTab) => {
     setActiveTab(tab);
   }, []);
 
-  const handleCreatePlan = useCallback(async (data: PlanRequestType) => {
-    await createPlanMutation.mutateAsync(data);
-    setCreateSheetOpen(false);
-  }, [createPlanMutation]);
+  const handleSubmitPlan = useCallback(async (
+    data: PlanRequestType,
+    dayScheduleData?: { timeSlots: PlanTimeSlot[]; mitTasks: PlanMITTask[]; quickNotes: string[]; date: string }
+  ) => {
+    let savedPlanId = '';
+    if (editingPlan) {
+      // Update existing plan
+      await updatePlanMutation.mutateAsync({ planId: editingPlan.id, input: data });
+      savedPlanId = editingPlan.id;
+    } else {
+      // Create new plan
+      const result = await createPlanMutation.mutateAsync(data);
+      savedPlanId = result?.id ?? '';
+    }
 
-  const handleOpenCreate = useCallback(() => setCreateSheetOpen(true), []);
-  const handleCreateSheetChange = useCallback((open: boolean) => setCreateSheetOpen(open), []);
+    // Save corresponding day schedule if day-level data is provided
+    if (dayScheduleData && dayScheduleData.date) {
+      const existingSchedule = daySchedules.find(
+        (s) => s.date === dayScheduleData.date && (s.planId === savedPlanId || s.planId === '')
+      );
+      await saveDayScheduleMutation.mutateAsync({
+        scheduleId: existingSchedule?.id,
+        input: {
+          planId: savedPlanId,
+          date: dayScheduleData.date,
+          timeSlots: dayScheduleData.timeSlots,
+          mitTasks: dayScheduleData.mitTasks,
+          quickNotes: dayScheduleData.quickNotes,
+        },
+      });
+    }
+
+    setCreateSheetOpen(false);
+    setEditingPlan(null);
+  }, [editingPlan, createPlanMutation, updatePlanMutation, saveDayScheduleMutation, daySchedules]);
+
+  const handleEditPlan = useCallback((plan: PlanDocument) => {
+    setEditingPlan(plan);
+    setCreateSheetOpen(true);
+  }, []);
+
+  const handleOpenCreate = useCallback(() => {
+    setEditingPlan(null);
+    setCreateSheetOpen(true);
+  }, []);
+
+  const handleCreateSheetChange = useCallback((open: boolean) => {
+    setCreateSheetOpen(open);
+    if (!open) {
+      setEditingPlan(null);
+    }
+  }, []);
+
   const handleNavigateToMonth = useCallback(() => setActiveTab('month'), []);
   const handleNavigateToWeek = useCallback(() => setActiveTab('week'), []);
 
@@ -92,22 +148,29 @@ export default function PlansRoute() {
         </Button>
       </ModuleHeader>
 
-      {/* Tab switcher */}
-      <div className="flex items-center gap-1 bg-white rounded-2xl border border-slate-100 p-1.5 w-fit">
-        {TAB_CONFIG.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => handleTabChange(tab.key)}
-            className={`px-4 py-2 text-[12px] font-bold rounded-xl transition-all cursor-pointer ${
-              activeTab === tab.key
-                ? 'bg-[#C21A1A] text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Tab switcher style like checklist */}
+      <div className="border-b border-slate-200 pb-0 w-full mb-2">
+        <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
+          {TAB_CONFIG.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleTabChange(tab.key)}
+                className={`flex-none flex items-center gap-1.5 pb-3 text-sm font-bold bg-transparent transition-all border-b-2 cursor-pointer ${
+                  isActive
+                    ? 'border-b-[#C21A1A] text-[#C21A1A]'
+                    : 'border-b-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Active view */}
@@ -117,19 +180,23 @@ export default function PlansRoute() {
           indicators={indicators}
           onNavigateToMonth={handleNavigateToMonth}
           onNavigateToWeek={handleNavigateToWeek}
+          onEditPlan={handleEditPlan}
         />
       )}
-      {activeTab === 'month' && <PlanMonthView plans={plans} />}
-      {activeTab === 'week' && <PlanWeekView plans={plans} />}
-      {activeTab === 'day' && <PlanDayView plans={plans} daySchedules={daySchedules} />}
+      {activeTab === 'month' && <PlanMonthView plans={plans} onEditPlan={handleEditPlan} />}
+      {activeTab === 'week' && <PlanWeekView plans={plans} onEditPlan={handleEditPlan} />}
+      {activeTab === 'day' && <PlanDayView plans={plans} daySchedules={daySchedules} onEditPlan={handleEditPlan} />}
 
-      {/* Create Plan Sheet — renders independently, overlays over the current view */}
+      {/* Create/Edit Plan Sheet — renders independently, overlays over the current view */}
       <PlanCreateWizard
         open={createSheetOpen}
         onOpenChange={handleCreateSheetChange}
         staffMembers={staffOptions}
-        onSubmit={handleCreatePlan}
-        isSubmitting={createPlanMutation.isPending}
+        onSubmit={handleSubmitPlan}
+        isSubmitting={createPlanMutation.isPending || updatePlanMutation.isPending || saveDayScheduleMutation.isPending}
+        editPlan={editingPlan}
+        availablePlans={plans}
+        daySchedules={daySchedules}
       />
     </div>
   );

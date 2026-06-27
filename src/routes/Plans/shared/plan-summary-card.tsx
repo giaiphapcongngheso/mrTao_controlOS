@@ -15,7 +15,7 @@ interface PlanSummaryCardProps {
 /**
  * Reusable summary card used across Dashboard, Month, Week, Day views.
  * Displays icon + label + main value + optional sub-content.
- * Uses shared Card component and increased text sizes.
+ * Uses shared Card component, increased text sizes, and premium visual transitions.
  */
 const PlanSummaryCard = React.memo(function PlanSummaryCard({
   icon: Icon,
@@ -27,19 +27,19 @@ const PlanSummaryCard = React.memo(function PlanSummaryCard({
   children,
 }: PlanSummaryCardProps) {
   return (
-    <Card className="border border-slate-100/80 shadow-2xs flex flex-col gap-2 min-w-0 p-0 overflow-hidden bg-white rounded-2xl py-4">
+    <Card className="border border-slate-200/50 shadow-2xs flex flex-col gap-2 min-w-0 p-0 overflow-hidden bg-white rounded-2xl py-4 transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 cursor-default">
       <CardContent className="flex flex-col gap-2 p-0 px-4">
         <div className="flex items-center gap-2.5">
-          <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+          <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0 border border-slate-100/80 shadow-3xs`}>
             <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
           </div>
-          <span className="text-xs font-bold text-slate-500 leading-tight truncate">{label}</span>
+          <span className="text-sm font-bold text-slate-650 leading-tight truncate">{label}</span>
         </div>
         {value !== undefined && value !== null && (
-          <div className="flex items-end gap-2 min-w-0">
-            <span className="text-2xl font-black text-slate-800 leading-none tracking-tight">{value}</span>
+          <div className="flex items-end gap-1.5 min-w-0">
+            <span className="text-2xl font-black text-slate-850 leading-none tracking-tight">{value}</span>
             {subValue && (
-              <span className="text-xs font-semibold text-slate-400 pb-0.5 truncate">{subValue}</span>
+              <span className="text-sm font-semibold text-slate-500 pb-0.5 truncate">{subValue}</span>
             )}
           </div>
         )}
