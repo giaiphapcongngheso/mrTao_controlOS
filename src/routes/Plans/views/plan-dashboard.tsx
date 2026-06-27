@@ -8,6 +8,7 @@ import PlanProgressRing from '../shared/plan-progress-ring';
 import PlanAlertBanner from '../shared/plan-alert-banner';
 import { formatCurrencyVN, getQuarterLabel } from '../constants/plan-utils';
 import { INDICATOR_STATUS_CONFIG } from '../constants/plan-constants';
+import { useQuarterSummary, usePlanAlerts } from '../_hooks/use-plan-metrics';
 
 interface PlanDashboardProps {
   plans: PlanDocument[];
@@ -235,30 +236,5 @@ const PlanDashboard = React.memo(function PlanDashboard({
     </div>
   );
 });
-
-// Helper calculation functions from hooks
-function useQuarterSummary(plans: PlanDocument[]) {
-  return useMemo(() => {
-    const qPlans = plans.filter((p) => p.level === 'quarter');
-    const elapsedWeeks = 3; 
-    const totalWeeks = 12;
-    const overallProgress = qPlans.length > 0 ? Math.round(qPlans.reduce((sum, p) => sum + (p.progress || 0), 0) / qPlans.length) : 0;
-    return { overallProgress, elapsedWeeks, totalWeeks };
-  }, [plans]);
-}
-
-function usePlanAlerts(plan: PlanDocument | null) {
-  return useMemo(() => {
-    if (!plan) return [];
-    const alerts: Array<{ type: 'warning' | 'danger'; message: string }> = [];
-    if (plan.progress != null && plan.progress < 20) {
-      alerts.push({
-        type: 'warning',
-        message: 'Tiến độ kế hoạch Quý hiện tại đang chậm hơn so với dự kiến. Cần tập trung hành động đòn bẩy.',
-      });
-    }
-    return alerts;
-  }, [plan]);
-}
 
 export default PlanDashboard;

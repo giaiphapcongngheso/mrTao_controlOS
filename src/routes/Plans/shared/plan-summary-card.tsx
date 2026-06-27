@@ -7,7 +7,7 @@ interface PlanSummaryCardProps {
   iconColor?: string;
   iconBg?: string;
   label: string;
-  value: React.ReactNode;
+  value?: React.ReactNode;
   subValue?: string;
   children?: React.ReactNode;
 }
@@ -35,12 +35,14 @@ const PlanSummaryCard = React.memo(function PlanSummaryCard({
           </div>
           <span className="text-xs font-bold text-slate-500 leading-tight truncate">{label}</span>
         </div>
-        <div className="flex items-end gap-2 min-w-0">
-          <span className="text-2xl font-black text-slate-800 leading-none tracking-tight">{value}</span>
-          {subValue && (
-            <span className="text-xs font-semibold text-slate-400 pb-0.5 truncate">{subValue}</span>
-          )}
-        </div>
+        {value !== undefined && value !== null && (
+          <div className="flex items-end gap-2 min-w-0">
+            <span className="text-2xl font-black text-slate-800 leading-none tracking-tight">{value}</span>
+            {subValue && (
+              <span className="text-xs font-semibold text-slate-400 pb-0.5 truncate">{subValue}</span>
+            )}
+          </div>
+        )}
         {children && <div className="mt-1">{children}</div>}
       </CardContent>
     </Card>
