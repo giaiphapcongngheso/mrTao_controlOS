@@ -19,6 +19,12 @@ import {
   Shield,
   Trash2,
   User,
+  HelpCircle,
+  ShoppingCart,
+  DollarSign,
+  Wrench,
+  SlidersHorizontal,
+  Clock,
 } from 'lucide-react';
 import { MODULE_CODE } from '../../constants';
 import { handbookService } from '../../services/handbook-service';
@@ -333,6 +339,7 @@ export default function HandbookView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<HandbookFilter>('role');
+  const [subFilter, setSubFilter] = useState<'all' | 'required' | 'read' | 'updated'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [handbookDocs, setHandbookDocs] = useState<HandbookDoc[]>([]);
   const [handbookCategories, setHandbookCategories] = useState<HandbookCategory[]>([]);
@@ -496,6 +503,58 @@ export default function HandbookView() {
     [roles],
   );
 
+  const roleUIMap = useMemo(() => {
+    return roles.map((role) => {
+      const codeNormalized = normalizeAccessCode(role.code);
+      const nameNormalized = normalizeText(role.name);
+
+      let icon = User;
+      let iconBg = 'bg-purple-50 text-purple-600';
+      let iconColor = 'text-purple-600';
+
+      if (codeNormalized === 'CHU_CUA_HANG' || codeNormalized === 'OWNER' || nameNormalized.includes('chủ')) {
+        icon = User;
+        iconBg = 'bg-purple-100';
+        iconColor = 'text-purple-600';
+      } else if (codeNormalized === 'QUAN_LY' || codeNormalized === 'MANAGER' || nameNormalized.includes('quản lý')) {
+        icon = User;
+        iconBg = 'bg-rose-100';
+        iconColor = 'text-rose-600';
+      } else if (codeNormalized === 'KY_THUAT' || codeNormalized === 'TECHNICIAN' || nameNormalized.includes('kỹ thuật')) {
+        icon = Wrench;
+        iconBg = 'bg-blue-100';
+        iconColor = 'text-blue-600';
+      } else if (codeNormalized === 'BAN_HANG' || codeNormalized === 'SALES' || nameNormalized.includes('bán hàng')) {
+        icon = ShoppingCart;
+        iconBg = 'bg-emerald-100';
+        iconColor = 'text-emerald-600';
+      } else if (
+        codeNormalized === 'THU_NGAN' ||
+        codeNormalized === 'CASHIER' ||
+        codeNormalized === 'KHO' ||
+        nameNormalized.includes('thu ngân') ||
+        nameNormalized.includes('kho')
+      ) {
+        icon = DollarSign;
+        iconBg = 'bg-amber-100';
+        iconColor = 'text-amber-600';
+      }
+
+      // Đếm số lượng tài liệu thuộc vai trò này
+      const docCount = processedDocs.filter(
+        (doc) => Array.isArray(doc.roles) && doc.roles.some((r) => normalizeAccessCode(r) === codeNormalized)
+      ).length;
+
+      return {
+        ...role,
+        icon,
+        iconBg,
+        iconColor,
+        docCount,
+      };
+    });
+  }, [roles, processedDocs]);
+
   const currentReadKey = currentUser?.id || currentUser?.username || '';
   const readDocs = useMemo(() => {
     const map: Record<string, boolean> = {};
@@ -545,9 +604,21 @@ export default function HandbookView() {
         return true;
       }
 
+      if (selectedFilter === 'all') {
+        if (subFilter === 'required') {
+          return Boolean(doc.requiredRead);
+        }
+        if (subFilter === 'read') {
+          return Boolean(readDocs[doc.id]);
+        }
+        if (subFilter === 'updated') {
+          return Boolean(doc.isUpdated);
+        }
+      }
+
       return true;
     });
-  }, [processedDocs, searchTerm, selectedCategory, selectedFilter, selectedRoles]);
+  }, [processedDocs, searchTerm, selectedCategory, selectedFilter, selectedRoles, subFilter, readDocs]);
 
   const activeDoc = useMemo(
     () => processedDocs.find((doc) => doc.id === activeDocId) || null,
@@ -907,7 +978,10 @@ export default function HandbookView() {
     [],
   );
 
-  const handleSetFilter = useCallback((nextFilter: HandbookFilter) => setSelectedFilter(nextFilter), []);
+  const handleSetFilter = useCallback((nextFilter: HandbookFilter) => {
+    setSelectedFilter(nextFilter);
+    setSubFilter('all');
+  }, []);
   const handleToggleCategory = useCallback((categoryName: string | null) => {
     setSelectedCategory((prev) => (prev === categoryName ? null : categoryName));
   }, []);
@@ -918,6 +992,7 @@ export default function HandbookView() {
       setSelectedFilter('all');
     }
     setSelectedRoles([]);
+    setSubFilter('all');
   }, [selectedFilter]);
   const handleBackToList = useCallback(() => setActiveDocId(null), []);
   const handleFormPatch = useCallback((patch: Partial<HandbookFormState>) => {
@@ -998,109 +1073,39 @@ export default function HandbookView() {
         </Alert>
       )}
 
-      {activeDocId === null && (
-        <>
-          <Card className="rounded-2xl border-slate-200/80 p-5 shadow-xs gap-0">
-            <CardHeader className="p-0 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {activeDocId === null ? (
+        <section className="space-y-4">
+          {/* 1. Header lớn */}
+          <Card className="rounded-2xl border-none bg-transparent p-0 shadow-none gap-0">
+            <CardHeader className="p-0 pb-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 text-left">
-                <CardTitle className="flex items-center gap-2 text-[16px] font-bold text-slate-800">
-                  <BookOpen className="h-5 w-5 shrink-0 text-[#C21A1A]" />
-                  Sổ tay điều hành & hệ thống vận hành
+                <CardTitle className="text-[20px] sm:text-[22px] font-black text-slate-900 tracking-tight">
+                  Sổ tay vận hành & đào tạo nội bộ
                 </CardTitle>
-                <CardDescription className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
-                  Tập trung toàn bộ chuẩn SOP cốt lõi để tra cứu nhanh, đào tạo đồng nhất và vận hành cửa hàng đúng chuẩn.
+                <CardDescription className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                  {selectedFilter === 'role'
+                    ? 'Tìm đúng tài liệu theo đúng vai trò để biết rõ cần đọc gì và làm gì.'
+                    : 'Nơi tập trung toàn bộ thông tin quan trọng để mọi nhân sự tìm đúng tài liệu và biết phải làm gì.'}
                 </CardDescription>
               </div>
 
-              <CardAction className="col-start-auto row-span-auto row-start-auto self-auto justify-self-auto flex flex-wrap items-center gap-4 shrink-0">
-                {permissions.canCreate && (
-                  <Button
-                    type="button"
-                    onClick={openCreateEditor}
-                    className="hidden items-center gap-1.5 rounded-xl bg-[#C21A1A] hover:bg-[#A81515] hover:shadow-md sm:inline-flex cursor-pointer h-9 px-3.5 text-sm font-bold text-white transition-all"
-                  >
-                    <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                    <span>Thêm tài liệu mới</span>
-                  </Button>
-                )}
-
-                {/* <Badge variant="outline" className="gap-2 rounded-full border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Hệ thống tóm tắt tối ưu (SOP Lite)
-                </Badge> */}
+              <CardAction className="col-start-auto row-span-auto row-start-auto self-auto justify-self-auto flex items-center gap-3 shrink-0">
+                <Button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-50 hover:bg-red-100 text-[#C21A1A] cursor-pointer h-8 px-4 text-xs font-black transition-all border border-red-100/50"
+                  onClick={() => window.open('https://youtube.com', '_blank')}
+                >
+                  <HelpCircle className="h-4 w-4 shrink-0 text-[#C21A1A]" />
+                  <span>Trợ giúp & HD sử dụng</span>
+                </Button>
               </CardAction>
             </CardHeader>
           </Card>
 
-
-          <Card className="rounded-2xl border-slate-200/80 p-3 sm:p-4 shadow-sm gap-0">
-            <CardContent className="p-0 flex flex-row items-center gap-3 w-full overflow-hidden">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0 select-none">
-                <span className="hidden sm:inline">Danh mục SOP</span>
-                <span className="sm:hidden">Danh mục</span>
-              </div>
-              <div className="h-4 w-px bg-slate-200 shrink-0" />
-              <ScrollArea className="w-full flex-1">
-                <div className="flex items-center gap-2 pb-1">
-                  <Button
-                    type="button"
-                    onClick={() => handleToggleCategory(null)}
-                    className={`h-auto shrink-0 rounded-xl border px-3 py-1.5 text-[10px] font-black uppercase ${!selectedCategory
-                      ? 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                      : 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
-                      }`}
-                  >
-                    Tất cả danh mục
-                  </Button>
-
-                  {categoryOptions.map((categoryName) => {
-                    const isSelected = selectedCategory === categoryName;
-                    const categoryMeta = categoryByNormalizedName.get(normalizeText(categoryName));
-                    const config = getCategoryIconConfig(categoryName, categoryMeta);
-                    const CatIcon = config.icon;
-
-                    return (
-                      <Tooltip key={categoryName}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            onClick={() => handleToggleCategory(categoryName)}
-                            className={`h-auto shrink-0 rounded-xl border px-3 py-1.5 text-[10px] font-black uppercase transition-all ${isSelected
-                              ? config.filterActiveClass || 'bg-[#C21A1A] text-white shadow-xs hover:bg-[#A81515] hover:text-white'
-                              : config.filterIdleClass || 'border-slate-200/60 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-[#C21A1A]'
-                              }`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <span className={`rounded-md p-0.5 ${isSelected ? 'bg-white/20 text-white' : config.iconBg}`}>
-                                <CatIcon className={`h-3 w-3 ${isSelected ? 'text-white' : config.iconColor}`} />
-                              </span>
-                              <span>{categoryName}</span>
-                            </span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Lọc theo: {categoryName}</TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {activeDocId === null ? (
-        <section className="space-y-3">
-          <div className="border-b border-slate-200 pb-0 flex flex-row items-center justify-between gap-4 w-full overflow-hidden">
+          {/* 2. Dòng Tab chính + Lọc/Tìm kiếm */}
+          <div className="border-b border-slate-200 pb-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full overflow-hidden">
             <Tabs value={selectedFilter} onValueChange={(value) => handleSetFilter(value as HandbookFilter)} className="shrink-0">
               <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-4 sm:gap-6 justify-start !h-auto overflow-x-auto scrollbar-none !border-none !shadow-none">
-                <TabsTrigger
-                  value="role"
-                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-                >
-                  <span className="whitespace-nowrap">Theo vai trò</span>
-                </TabsTrigger>
-
                 <TabsTrigger
                   value="all"
                   className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
@@ -1109,33 +1114,243 @@ export default function HandbookView() {
                 </TabsTrigger>
 
                 <TabsTrigger
+                  value="role"
+                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                >
+                  <span className="whitespace-nowrap">Theo vai trò</span>
+                </TabsTrigger>
+
+                <TabsTrigger
                   value="required"
                   className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
                 >
                   <span className="whitespace-nowrap">Bắt buộc đọc</span>
                 </TabsTrigger>
-
-                <TabsTrigger
-                  value="updated"
-                  className="flex items-center gap-1.5 px-0 !pb-3 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-                >
-                  <span className="whitespace-nowrap">Cập nhật mới</span>
-                </TabsTrigger>
               </TabsList>
             </Tabs>
 
-            <div className="flex items-center gap-2 max-w-[140px] xs:max-w-[180px] sm:max-w-xs w-full shrink">
+            <div className="flex flex-row items-center gap-2 max-w-[500px] sm:max-w-md w-full shrink self-end sm:self-auto pb-2">
               <SearchInput
                 value={searchTerm}
                 onChange={setSearchTerm}
-                placeholder="Tìm tài liệu..."
-                className="rounded-xl bg-white border border-slate-200"
+                placeholder="Tìm tài liệu, quy trình..."
+                className="rounded-xl bg-white border border-slate-200 text-xs h-9 flex-1"
               />
+              <Button
+                variant="outline"
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-xl border-slate-250 bg-white text-slate-700 hover:bg-slate-50 h-9 px-3 text-xs font-bold shrink-0 cursor-pointer"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-slate-500" />
+                <span>{selectedFilter === 'role' ? 'Lọc vai trò' : 'Lọc danh mục'}</span>
+              </Button>
+              {permissions.canCreate && (
+                <Button
+                  type="button"
+                  onClick={openCreateEditor}
+                  className="inline-flex items-center gap-1 rounded-xl bg-[#C21A1A] hover:bg-[#A81515] hover:shadow-md cursor-pointer h-9 px-3 text-xs font-bold text-white transition-all shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                  <span className="hidden xs:inline">Thêm tài liệu mới</span>
+                  <span className="xs:hidden">Thêm</span>
+                </Button>
+              )}
             </div>
           </div>
 
+          {/* 3. Phân chia logic UI từng tab */}
+          {selectedFilter === 'role' && (
+            <ScrollArea className="w-full">
+              <div className="flex items-center gap-3 pb-3 pt-1 overflow-x-auto scrollbar-none">
+                {roleUIMap.map((role) => {
+                  const isSelected = selectedRoles.includes(role.code);
+                  const Icon = role.icon;
+                  return (
+                    <Card
+                      key={role.id}
+                      onClick={() => setSelectedRoles([role.code])}
+                      className={`flex flex-row items-center gap-3 rounded-2xl p-4 min-w-[200px] flex-1 cursor-pointer transition-all duration-200 border ${
+                        isSelected
+                          ? 'border-red-200 bg-red-50/20 text-[#C21A1A] shadow-xs'
+                          : 'border-slate-200/80 bg-white text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        isSelected ? 'bg-red-100/50 text-[#C21A1A]' : `${role.iconBg} ${role.iconColor}`
+                      }`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-[13px] font-extrabold ${isSelected ? 'text-[#C21A1A]' : 'text-slate-850'}`}>
+                          {role.name}
+                        </span>
+                        <span className={`text-[10px] font-semibold mt-0.5 ${isSelected ? 'text-red-700/80' : 'text-slate-400'}`}>
+                          {role.docCount} tài liệu phải đọc
+                        </span>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
 
+          {selectedFilter === 'all' && (
+            <div className="space-y-4 w-full">
+              {/* Cards thống kê + Lối vào nhanh */}
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-12 w-full">
+                <div className="md:col-span-9 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Card 1: Tổng tài liệu */}
+                  <Card
+                    onClick={() => setSubFilter('all')}
+                    className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
+                      subFilter === 'all'
+                        ? 'border-red-200 bg-red-50/10 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
+                      <FileText className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-slate-800 leading-none">
+                        {processedDocs.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 mt-1">Tổng tài liệu</span>
+                    </div>
+                  </Card>
 
+                  {/* Card 2: Bắt buộc đọc */}
+                  <Card
+                    onClick={() => setSubFilter('required')}
+                    className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
+                      subFilter === 'required'
+                        ? 'border-red-200 bg-red-50/10 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+                      <Shield className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-slate-800 leading-none">
+                        {processedDocs.filter((d) => d.requiredRead).length}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 mt-1">Tài liệu bắt buộc</span>
+                    </div>
+                  </Card>
+
+                  {/* Card 3: Đã đọc */}
+                  <Card
+                    onClick={() => setSubFilter('read')}
+                    className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
+                      subFilter === 'read'
+                        ? 'border-red-200 bg-red-50/10 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
+                      <Check className="h-4.5 w-4.5 stroke-[3]" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-slate-800 leading-none">
+                        {processedDocs.filter((d) => readDocs[d.id]).length}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 mt-1">Đã đọc của tôi</span>
+                    </div>
+                  </Card>
+
+                  {/* Card 4: Mới cập nhật */}
+                  <Card
+                    onClick={() => setSubFilter('updated')}
+                    className={`flex flex-row items-center gap-3 rounded-2xl p-3.5 cursor-pointer border transition-all duration-200 ${
+                      subFilter === 'updated'
+                        ? 'border-red-200 bg-red-50/10 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-500">
+                      <Clock className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-sm font-black text-slate-800 leading-none">
+                        {processedDocs.filter((d) => d.isUpdated).length}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 mt-1">Mới cập nhật (7 ngày)</span>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Hộp Lối vào nhanh */}
+                <div className="md:col-span-3">
+                  <Card
+                    onClick={() => {
+                      setSelectedFilter('role');
+                      if (currentUser?.roleCode) {
+                        setSelectedRoles([currentUser.roleCode]);
+                      }
+                    }}
+                    className="group flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-3.5 cursor-pointer hover:border-[#C21A1A] hover:shadow-md transition-all duration-200 h-full text-left"
+                  >
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 select-none">
+                      ⚡ Lối vào nhanh
+                    </span>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-[#C21A1A] group-hover:bg-[#C21A1A] group-hover:text-white transition-colors">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-extrabold text-slate-800 truncate group-hover:text-[#C21A1A] transition-colors">
+                            Mở quy trình theo vai trò
+                          </span>
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5 truncate">
+                            Xem tài liệu phù hợp công việc
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:translate-x-0.5 group-hover:text-[#C21A1A] transition-all" />
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Sub-tabs danh mục SOP bo tròn */}
+              <div className="flex items-center gap-2 pb-1 pt-1 overflow-x-auto scrollbar-none w-full border-t border-slate-100/50 mt-1">
+                <Button
+                  type="button"
+                  onClick={() => handleToggleCategory(null)}
+                  className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs ${
+                    !selectedCategory
+                      ? 'bg-[#C21A1A] text-white border-[#C21A1A] hover:bg-[#A81515] hover:text-white'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#C21A1A]'
+                  }`}
+                >
+                  Tất cả
+                </Button>
+
+                {categoryOptions.map((categoryName) => {
+                  const isSelected = selectedCategory === categoryName;
+                  return (
+                    <Button
+                      key={categoryName}
+                      type="button"
+                      onClick={() => handleToggleCategory(categoryName)}
+                      className={`h-8 shrink-0 rounded-full border px-4 py-1 text-xs font-black uppercase transition-all duration-200 cursor-pointer shadow-xs ${
+                        isSelected
+                          ? 'bg-[#C21A1A] text-white border-[#C21A1A] hover:bg-[#A81515] hover:text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#C21A1A]'
+                      }`}
+                    >
+                      {categoryName}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Kết quả lọc active */}
           {isFilterActive && (
             <Card className="flex-row flex-wrap items-center justify-between gap-2 rounded-xl border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-600 shadow-none">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1145,9 +1360,14 @@ export default function HandbookView() {
                     Danh mục: {selectedCategory}
                   </Badge>
                 )}
-                {selectedFilter !== 'all' && selectedFilter !== 'role' && (
+                {selectedFilter !== 'all' && (
                   <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700 border-slate-200">
-                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Mới cập nhật'}
+                    Bộ lọc: {selectedFilter === 'required' ? 'Bắt buộc đọc' : 'Theo vai trò'}
+                  </Badge>
+                )}
+                {selectedFilter === 'all' && subFilter !== 'all' && (
+                  <Badge variant="outline" className="rounded bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase text-blue-700 border-slate-200">
+                    Thống kê: {subFilter === 'required' ? 'Bắt buộc đọc' : subFilter === 'read' ? 'Đã đọc' : 'Mới cập nhật'}
                   </Badge>
                 )}
                 {searchTerm && (
