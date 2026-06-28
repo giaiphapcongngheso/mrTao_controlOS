@@ -1,13 +1,9 @@
 import React from 'react';
-import { Target, Star, CheckCircle2, AlertTriangle, Edit3, Link2 } from 'lucide-react';
+import { Target, Star, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
 import type { PlanDocument } from '../../../types/plans.types';
-import PlanSummaryCard from '../shared/plan-summary-card';
-import PriorityTable from '../shared/priority-table';
-import { PriorityStatusBadge } from '../shared/plan-status-badge';
+import { PlanSummaryCard, PriorityTable, PriorityStatusBadge } from './plan-widgets';
 import { useMonthSummary } from '../_hooks/use-plan-metrics';
-import { formatCurrencyVN, getMonthLabel } from '../constants/plan-utils';
-import { Button } from '../../../../share/ui/button';
-import { REVIEW_FREQUENCY_LABELS } from '../constants/plan-constants';
+import { formatCurrencyVN, getMonthLabel, REVIEW_FREQUENCY_LABELS } from '../plan-utils';
 
 interface PlanMonthViewProps {
   plans: PlanDocument[];
@@ -34,7 +30,6 @@ const PlanMonthView = React.memo(function PlanMonthView({
   }
 
   const priorities = monthPlan.priorities ?? [];
-  const monthLabel = getMonthLabel(monthPlan.startDate);
 
   // Find parent quarter plan
   const parentPlan = plans.find((p) => p.id === monthPlan.parentPlanId);
@@ -54,16 +49,6 @@ const PlanMonthView = React.memo(function PlanMonthView({
             )}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => onEditPlan(monthPlan)}
-          className="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 gap-1.5 h-8"
-        >
-          <Edit3 className="w-3.5 h-3.5" />
-          Chỉnh sửa kế hoạch
-        </Button>
       </div>
 
       {/* Summary cards */}

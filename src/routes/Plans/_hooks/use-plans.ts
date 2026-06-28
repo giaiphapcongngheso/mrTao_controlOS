@@ -192,3 +192,19 @@ export function useSaveLiveIndicatorMutation(storeId: string) {
     },
   });
 }
+
+export function useDeleteLiveIndicatorMutation(storeId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['deleteLiveIndicator', storeId],
+    mutationFn: async (indicatorId: string) => {
+      const now = new Date().toISOString();
+      return await planLiveIndicatorService.update(indicatorId, { deletedAt: now } as any);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: plansQueryKeys.liveIndicators });
+    },
+  });
+}
+

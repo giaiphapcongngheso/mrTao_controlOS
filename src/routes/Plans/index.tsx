@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { LayoutDashboard, CalendarDays, CalendarRange, Clock, Plus } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { LayoutDashboard, CalendarDays, CalendarRange, Clock, Plus, Edit3 } from 'lucide-react';
 import { ModuleHeader } from '../../../share/components/module-header';
 import { Button } from '../../../share/ui/button';
 import { useAppShellState } from '../app-shell-state';
@@ -10,15 +11,19 @@ import {
   useUpdatePlanMutation,
   useSaveDayScheduleMutation,
   useLiveIndicatorsQuery, 
-  useDaySchedulesQuery 
+  useDaySchedulesQuery,
+  useSaveLiveIndicatorMutation,
+  useDeleteLiveIndicatorMutation
 } from './_hooks/use-plans';
-import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask } from '../../types/plans.types';
+import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask, PlanLiveIndicator } from '../../types/plans.types';
+import type { PlanLiveIndicatorForm } from './components/form';
+import { formatDateVN } from './plan-utils';
 
-import PlanDashboard from './views/plan-dashboard';
-import PlanMonthView from './views/plan-month-view';
-import PlanWeekView from './views/plan-week-view';
-import PlanDayView from './views/plan-day-view';
-import PlanCreateWizard from './create/plan-create-wizard';
+import PlanDashboard from './components/plan-dashboard';
+import PlanMonthView from './components/plan-month-view';
+import PlanWeekView from './components/plan-week-view';
+import PlanDayView from './components/plan-day-view';
+import PlanForm from './components/form';
 
 type PlanTab = 'dashboard' | 'month' | 'week' | 'day';
 
@@ -31,6 +36,7 @@ const TAB_CONFIG = [
 
 export default function PlansRoute() {
   const { activeStoreId } = useAppShellState();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<PlanTab>('dashboard');
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlanDocument | null>(null);
@@ -45,6 +51,8 @@ export default function PlansRoute() {
   const createPlanMutation = useCreatePlanMutation(activeStoreId);
   const updatePlanMutation = useUpdatePlanMutation(activeStoreId);
   const saveDayScheduleMutation = useSaveDayScheduleMutation(activeStoreId);
+  const saveLiveIndicatorMutation = useSaveLiveIndicatorMutation(activeStoreId);
+  const deleteLiveIndicatorMutation = useDeleteLiveIndicatorMutation(activeStoreId);
 
   // Handlers
   const handleTabChange = useCallback((tab: PlanTab) => {
@@ -53,7 +61,8 @@ export default function PlansRoute() {
 
   const handleSubmitPlan = useCallback(async (
     data: PlanRequestType,
-    dayScheduleData?: { timeSlots: PlanTimeSlot[]; mitTasks: PlanMITTask[]; quickNotes: string[]; date: string }
+    dayScheduleData?: { timeSlots: PlanTimeSlot[]; mitTasks: PlanMITTask[]; quickNotes: string[]; date: string },
+    liveIndicatorsData?: PlanLiveIndicatorForm[]
   ) => {
     let savedPlanId = '';
     if (editingPlan) {
@@ -83,9 +92,39 @@ export default function PlansRoute() {
       });
     }
 
+    // Save live indicators if level === 'quarter' and data is provided
+    if (data.level === 'quarter' && liveIndicatorsData && savedPlanId) {
+      const currentIndicators = indicators.filter((ind) => ind.planId === savedPlanId && !ind.deletedAt);
+      
+      // Indicators to delete: in DB but not in current form list
+      const newIndicatorIds = new Set(liveIndicatorsData.map(ind => ind.id).filter(Boolean));
+      const toDelete = currentIndicators.filter(ind => !newIndicatorIds.has(ind.id));
+      
+      for (const ind of toDelete) {
+        await deleteLiveIndicatorMutation.mutateAsync(ind.id);
+      }
+
+      // Save or update indicators
+      for (const ind of liveIndicatorsData) {
+        const payload = {
+          planId: savedPlanId,
+          name: ind.name,
+          targetValue: ind.targetValue,
+          unit: ind.unit,
+          ownerId: ind.ownerId,
+          ownerName: ind.ownerName,
+          status: ind.status || 'near_target',
+        };
+        await saveLiveIndicatorMutation.mutateAsync({
+          indicatorId: ind.id,
+          input: payload,
+        });
+      }
+    }
+
     setCreateSheetOpen(false);
     setEditingPlan(null);
-  }, [editingPlan, createPlanMutation, updatePlanMutation, saveDayScheduleMutation, daySchedules]);
+  }, [editingPlan, createPlanMutation, updatePlanMutation, saveDayScheduleMutation, daySchedules, indicators, saveLiveIndicatorMutation, deleteLiveIndicatorMutation]);
 
   const handleEditPlan = useCallback((plan: PlanDocument) => {
     setEditingPlan(plan);
@@ -106,6 +145,78 @@ export default function PlansRoute() {
 
   const handleNavigateToMonth = useCallback(() => setActiveTab('month'), []);
   const handleNavigateToWeek = useCallback(() => setActiveTab('week'), []);
+
+  // Compute active plan for the current tab
+  const currentTabPlan = useMemo(() => {
+    if (activeTab === 'dashboard') {
+      return plans.find((p) => p.level === 'quarter' && p.status === 'active') ?? plans.find((p) => p.level === 'quarter') ?? null;
+    }
+    if (activeTab === 'month') {
+      return plans.find((p) => p.level === 'month' && p.status === 'active') ?? plans.find((p) => p.level === 'month') ?? null;
+    }
+    if (activeTab === 'week') {
+      return plans.find((p) => p.level === 'week' && p.status === 'active') ?? plans.find((p) => p.level === 'week') ?? null;
+    }
+    if (activeTab === 'day') {
+      const today = new Date().toISOString().split('T')[0];
+      return plans.find((p) => p.level === 'day' && p.startDate === today) ?? null;
+    }
+    return null;
+  }, [activeTab, plans]);
+
+  const weekPlan = useMemo(() => {
+    return plans.find((p) => p.level === 'week' && p.status === 'active') ?? plans.find((p) => p.level === 'week') ?? null;
+  }, [plans]);
+
+  const handleEditButtonClick = useCallback(() => {
+    if (activeTab === 'day' && !currentTabPlan) {
+      // Draft day plan template
+      const today = new Date().toISOString().split('T')[0];
+      handleEditPlan({
+        name: `Kế hoạch Ngày ${formatDateVN(today)}`,
+        level: 'day',
+        startDate: today,
+        endDate: today,
+        ownerId: '',
+        ownerName: '',
+        priorities: [],
+        reviewFrequency: 'daily',
+        reviewerId: '',
+        reviewerName: '',
+        alertThreshold: 80,
+        deviationAction: 'adjust_plan',
+        linkedModules: { checklist: true, tasks: true, kpi: true, reports: true },
+        status: 'draft',
+        progress: 0,
+        storeId: '',
+        parentPlanId: weekPlan?.id ?? '',
+      } as any);
+    } else if (currentTabPlan) {
+      handleEditPlan(currentTabPlan);
+    }
+  }, [activeTab, currentTabPlan, weekPlan, handleEditPlan]);
+
+  const handleViewDetailClick = useCallback(() => {
+    if (currentTabPlan) {
+      void navigate({ to: '/plans/$planId', params: { planId: currentTabPlan.id } });
+    }
+  }, [currentTabPlan, navigate]);
+
+  const editButtonConfig = useMemo(() => {
+    if (activeTab === 'dashboard') {
+      return { show: !!currentTabPlan, label: 'Chỉnh sửa kế hoạch Quý' };
+    }
+    if (activeTab === 'month') {
+      return { show: !!currentTabPlan, label: 'Chỉnh sửa kế hoạch Tháng' };
+    }
+    if (activeTab === 'week') {
+      return { show: !!currentTabPlan, label: 'Chỉnh sửa kế hoạch Tuần' };
+    }
+    if (activeTab === 'day') {
+      return { show: true, label: 'Chỉnh sửa lịch ngày' };
+    }
+    return { show: false, label: '' };
+  }, [activeTab, currentTabPlan]);
 
   // Staff members mapped for dropdowns
   const staffOptions = useMemo(
@@ -149,7 +260,7 @@ export default function PlansRoute() {
       </ModuleHeader>
 
       {/* Tab switcher style like checklist */}
-      <div className="border-b border-slate-200 pb-0 w-full mb-2">
+      <div className="border-b border-slate-200 pb-0 w-full mb-4 flex items-end justify-between gap-4">
         <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
           {TAB_CONFIG.map((tab) => {
             const Icon = tab.icon;
@@ -171,6 +282,32 @@ export default function PlansRoute() {
             );
           })}
         </div>
+
+        <div className="flex gap-2 mb-2.5 items-center shrink-0">
+          {currentTabPlan && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleViewDetailClick}
+              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-[#C21A1A] bg-red-50/50 border border-red-200 rounded-xl hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+            >
+              Xem chi tiết
+            </Button>
+          )}
+          {editButtonConfig.show && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleEditButtonClick}
+              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              {editButtonConfig.label}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Active view */}
@@ -188,15 +325,16 @@ export default function PlansRoute() {
       {activeTab === 'day' && <PlanDayView plans={plans} daySchedules={daySchedules} onEditPlan={handleEditPlan} />}
 
       {/* Create/Edit Plan Sheet — renders independently, overlays over the current view */}
-      <PlanCreateWizard
+      <PlanForm
         open={createSheetOpen}
         onOpenChange={handleCreateSheetChange}
         staffMembers={staffOptions}
         onSubmit={handleSubmitPlan}
-        isSubmitting={createPlanMutation.isPending || updatePlanMutation.isPending || saveDayScheduleMutation.isPending}
+        isSubmitting={createPlanMutation.isPending || updatePlanMutation.isPending || saveDayScheduleMutation.isPending || saveLiveIndicatorMutation.isPending}
         editPlan={editingPlan}
         availablePlans={plans}
         daySchedules={daySchedules}
+        indicators={indicators}
       />
     </div>
   );

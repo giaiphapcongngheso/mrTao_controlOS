@@ -14,7 +14,8 @@ const LazyHandbookView = lazy(() => import('./Handbook/HandbookView'));
 const LazyMarketingView = lazy(() => import('./marketing/marketing-view'));
 const LazyWarehouseView = lazy(() => import('./warehouse/warehouse-view'));
 const LazyStaffRoute = lazy(() => import('./StaffPermissions/staff-route'));
-const LazyPlansRoute = lazy(() => import('./Plans/plans-route'));
+const LazyPlansRoute = lazy(() => import('./Plans/index'));
+const LazyPlanDetailRoute = lazy(() => import('./Plans/plan-detail-route'));
 const LazyCustomersRoute = lazy(() => import('./Customers/customers-route'));
 const LazyNotificationsView = lazy(() => import('./Notifications/NotificationsView'));
 
@@ -138,6 +139,12 @@ const plansRoute = createRoute({
   component: withSuspense(LazyPlansRoute),
 });
 
+const planDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'plans/$planId',
+  component: withSuspense(LazyPlanDetailRoute),
+});
+
 const customersRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'customers',
@@ -165,6 +172,7 @@ const routeTree = rootRoute.addChildren([
     warehouseRoute,
     staffRoute,
     plansRoute,
+    planDetailRoute,
     customersRoute,
     notificationsRoute,
   ]),

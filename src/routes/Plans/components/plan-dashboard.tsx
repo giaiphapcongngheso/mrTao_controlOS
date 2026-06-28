@@ -3,12 +3,10 @@ import {
   Target,
   TrendingUp,
   Zap,
-  AlertTriangle,
   ArrowRight,
   Clock,
   CheckCircle2,
   CalendarDays,
-  CalendarRange,
   Layers,
   LineChart,
   UserPlus,
@@ -20,16 +18,21 @@ import {
   Coffee,
   Moon,
   Calendar,
-  Edit3,
   Shield
 } from 'lucide-react';
 import { Button } from '../../../../share/ui/button';
 import type { PlanDocument, PlanLiveIndicator } from '../../../types/plans.types';
-import PlanSummaryCard from '../shared/plan-summary-card';
-import PlanProgressRing from '../shared/plan-progress-ring';
-import PlanAlertBanner from '../shared/plan-alert-banner';
-import { formatCurrencyVN, getQuarterLabel } from '../constants/plan-utils';
-import { INDICATOR_STATUS_CONFIG, REVIEW_FREQUENCY_LABELS } from '../constants/plan-constants';
+import {
+  PlanSummaryCard,
+  PlanProgressRing,
+  PlanAlertBanner
+} from './plan-widgets';
+import {
+  formatCurrencyVN,
+  getQuarterLabel,
+  INDICATOR_STATUS_CONFIG,
+  REVIEW_FREQUENCY_LABELS
+} from '../plan-utils';
 import { useQuarterSummary, usePlanAlerts } from '../_hooks/use-plan-metrics';
 
 interface PlanDashboardProps {
@@ -94,22 +97,6 @@ const PlanDashboard = React.memo(function PlanDashboard({
 
   return (
     <div className="space-y-4 text-slate-700">
-      {/* Edit button for active quarter plan */}
-      {activePlan && (
-        <div className="flex items-center justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onEditPlan(activePlan)}
-            className="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 gap-1.5 h-8 px-3"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            Chỉnh sửa kế hoạch Quý
-          </Button>
-        </div>
-      )}
-
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <PlanSummaryCard icon={Target} label={`Mục tiêu phê duyệt ${quarterLabel}`}>
@@ -352,8 +339,8 @@ const PlanDashboard = React.memo(function PlanDashboard({
                 </div>
                 {activePlan.description && (
                   <div className="pt-2 border-t border-slate-100">
-                    <span className="text-xs text-slate-400 block mb-1">Mô tả cốt lõi</span>
-                    <span className="text-xs text-slate-600 font-semibold block leading-relaxed">{activePlan.description}</span>
+                     <span className="text-xs text-slate-400 block mb-1">Mô tả cốt lõi</span>
+                     <span className="text-xs text-slate-600 font-semibold block leading-relaxed">{activePlan.description}</span>
                   </div>
                 )}
                 {/* Linked Modules */}

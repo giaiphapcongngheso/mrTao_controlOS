@@ -7,7 +7,7 @@ import {
   getElapsedWeeks,
   isOverdue,
   filterPlansByLevel,
-} from '../constants/plan-utils';
+} from '../plan-utils';
 
 // ─── Plan Progress ───────────────────────────────────────────────────────────
 

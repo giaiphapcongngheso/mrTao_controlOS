@@ -1,12 +1,9 @@
 import React from 'react';
-import { Star, DollarSign, Clock, CheckCircle2, Edit3, Link2 } from 'lucide-react';
+import { Star, DollarSign, Clock, CheckCircle2, Link2 } from 'lucide-react';
 import type { PlanDocument } from '../../../types/plans.types';
-import PlanSummaryCard from '../shared/plan-summary-card';
-import PriorityTable from '../shared/priority-table';
+import { PlanSummaryCard, PriorityTable } from './plan-widgets';
 import { useWeekSummary } from '../_hooks/use-plan-metrics';
-import { formatCurrencyVN } from '../constants/plan-utils';
-import { WEEK_DAYS, REVIEW_FREQUENCY_LABELS } from '../constants/plan-constants';
-import { Button } from '../../../../share/ui/button';
+import { formatCurrencyVN, WEEK_DAYS, REVIEW_FREQUENCY_LABELS } from '../plan-utils';
 
 interface PlanWeekViewProps {
   plans: PlanDocument[];
@@ -52,16 +49,6 @@ const PlanWeekView = React.memo(function PlanWeekView({
             )}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => onEditPlan(weekPlan)}
-          className="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 gap-1.5 h-8"
-        >
-          <Edit3 className="w-3.5 h-3.5" />
-          Chỉnh sửa kế hoạch
-        </Button>
       </div>
 
       {/* Summary cards */}

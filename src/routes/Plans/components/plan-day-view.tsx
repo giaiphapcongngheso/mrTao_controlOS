@@ -1,10 +1,8 @@
 import React, { useMemo, useCallback } from 'react';
-import { Zap, UserCheck, AlertTriangle, Link2, ArrowRight, StickyNote, Edit3, Clock } from 'lucide-react';
+import { Zap, UserCheck, AlertTriangle, Link2, ArrowRight, StickyNote, Clock } from 'lucide-react';
 import type { PlanDocument, PlanDaySchedule } from '../../../types/plans.types';
-import PlanSummaryCard from '../shared/plan-summary-card';
-import { DaySlotStatusBadge } from '../shared/plan-status-badge';
-import { filterPlansByLevel, formatCurrencyVN, formatDateVN } from '../constants/plan-utils';
-import { Button } from '../../../../share/ui/button';
+import { PlanSummaryCard, DaySlotStatusBadge } from './plan-widgets';
+import { filterPlansByLevel, formatCurrencyVN, formatDateVN } from '../plan-utils';
 
 interface PlanDayViewProps {
   plans: PlanDocument[];
@@ -50,33 +48,6 @@ const PlanDayView = React.memo(function PlanDayView({
   const followUpCount = timeSlots.filter((s) => s.status === 'pending_review').length;
   const atRiskCount = timeSlots.filter((s) => s.status === 'not_started').length;
 
-  const handleEditClick = useCallback(() => {
-    if (dayPlan) {
-      onEditPlan(dayPlan);
-    } else {
-      // Create a draft day plan object for the wizard
-      onEditPlan({
-        name: `Kế hoạch Ngày ${formatDateVN(today)}`,
-        level: 'day',
-        startDate: today,
-        endDate: today,
-        ownerId: '',
-        ownerName: '',
-        priorities: [],
-        reviewFrequency: 'daily',
-        reviewerId: '',
-        reviewerName: '',
-        alertThreshold: 80,
-        deviationAction: 'adjust_plan',
-        linkedModules: { checklist: true, tasks: true, kpi: true, reports: true },
-        status: 'draft',
-        progress: 0,
-        storeId: '',
-        parentPlanId: weekPlan?.id ?? '',
-      } as any);
-    }
-  }, [dayPlan, today, weekPlan, onEditPlan]);
-
   return (
     <div className="space-y-4 text-slate-700">
       {/* Header action panel */}
@@ -94,16 +65,6 @@ const PlanDayView = React.memo(function PlanDayView({
             )}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleEditClick}
-          className="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 gap-1.5 h-8"
-        >
-          <Edit3 className="w-3.5 h-3.5" />
-          Chỉnh sửa lịch ngày
-        </Button>
       </div>
 
       {/* Summary cards */}
