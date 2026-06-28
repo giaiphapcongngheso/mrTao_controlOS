@@ -4,7 +4,7 @@ import type { TabType } from '../types/app.types';
 // before user clicks, eliminating lazy-load delay on first navigation.
 // Separated from router.tsx to avoid circular dependency with AppShell.
 export const ROUTE_PRELOAD_MAP: Partial<Record<TabType, () => Promise<unknown>>> = {
-  Today: () => import('./Today/today-route'),
+  Today: () => import('./Today/index'),
   Checklist: () => import('./Checklist/checklist-route'),
   Tasks: () => import('./Tasks/tasks-route'),
   KPI: () => import('./Kpi/kpi-route'),

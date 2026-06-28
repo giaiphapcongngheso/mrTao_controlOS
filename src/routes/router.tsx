@@ -3,7 +3,7 @@ import { safeLazy as lazy } from '../shared/lib/lazy';
 import { Navigate, createRootRoute, createRoute, createRouter, Outlet, createHashHistory } from '@tanstack/react-router';
 import AppShell from './AppShell';
 
-const LazyTodayRoute = lazy(() => import('./Today/today-route'));
+const LazyTodayRoute = lazy(() => import('./Today/index'));
 const LazyChecklistRoute = lazy(() => import('./Checklist/checklist-route'));
 const LazyTasksRoute = lazy(() => import('./Tasks/tasks-route'));
 const LazyKpiRoute = lazy(() => import('./Kpi/kpi-route'));

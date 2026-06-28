@@ -6,6 +6,7 @@ export interface KPIStats {
   sopErrorsCount: number;
   customerComplaintsCount: number;
   lateStaffCount: number;
+  status?: 'green' | 'yellow' | 'red';
 }
 
 export interface TimelineEvent {

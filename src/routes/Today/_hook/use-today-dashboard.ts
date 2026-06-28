@@ -162,18 +162,29 @@ export function useTodayDashboard(storeId: string): DashboardData {
         sopErrorsCount: report.sopErrorsCount ?? 0,
         customerComplaintsCount: report.complaintsCount ?? 0,
         lateStaffCount: 0, // Feature not developed
+        status: report.status ?? 'green',
       };
     }
 
     if (liveQuery.data) {
+      const live = liveQuery.data;
+      // Auto-compute status for live data
+      let liveStatus: 'green' | 'yellow' | 'red' = 'green';
+      if (live.checklistCompletion < 60 || live.sopErrorsCount > 2 || live.customerComplaintsCount > 0) {
+        liveStatus = 'red';
+      } else if (live.checklistCompletion < 90 || live.delayedTasksCount > 0 || live.sopErrorsCount > 0) {
+        liveStatus = 'yellow';
+      }
+
       return {
         storeId,
         todayRevenue: 0, // No revenue without report
-        checklistCompletion: liveQuery.data.checklistCompletion,
-        delayedTasksCount: liveQuery.data.delayedTasksCount,
-        sopErrorsCount: liveQuery.data.sopErrorsCount,
-        customerComplaintsCount: liveQuery.data.customerComplaintsCount,
+        checklistCompletion: live.checklistCompletion,
+        delayedTasksCount: live.delayedTasksCount,
+        sopErrorsCount: live.sopErrorsCount,
+        customerComplaintsCount: live.customerComplaintsCount,
         lateStaffCount: 0, // Feature not developed
+        status: liveStatus,
       };
     }
 
@@ -185,6 +196,7 @@ export function useTodayDashboard(storeId: string): DashboardData {
       sopErrorsCount: 0,
       customerComplaintsCount: 0,
       lateStaffCount: 0,
+      status: 'green',
     };
   }, [storeId, hasReport, reportQuery.data, liveQuery.data]);
 

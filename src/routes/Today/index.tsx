@@ -1,37 +1,32 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import {
   AlertOctagon,
   AlertTriangle,
   Check,
-  CheckCircle2,
   ChevronRight,
   TrendingUp,
   Users,
   Zap,
+  CheckCircle2,
 } from 'lucide-react';
 import type { TabType } from '../../types/app.types';
-import type { KPIStats, TimelineEvent } from '../../types/today.types';
-import type { PlanTargets } from './_hook/use-plan-targets';
+import type { TimelineEvent } from '../../types/today.types';
+import { TAB_ROUTE_MAP, useAppShellState } from '../app-shell-state';
+import { useTodayDashboard } from './_hook/use-today-dashboard';
+import { usePlanTargets } from './_hook/use-plan-targets';
+import { useTodayTimelineQuery } from './_hook/use-today';
+
+import { Card, CardHeader, CardTitle, CardAction, CardContent } from '../../../share/ui/card';
+import { cn } from '../../../share/lib/utils';
+
+// ─── Sub-types & Interfaces ───────────────────────────────────────────────────
 
 type TimelineVisual = {
   icon: 'check' | 'alert';
   iconClassName: string;
   descriptionClassName: string;
 };
-
-interface TodayViewProps {
-  stats: KPIStats;
-  timelineEvents: TimelineEvent[];
-  isStatsLoading?: boolean;
-  isTimelineLoading?: boolean;
-  statsErrorMessage?: string | null;
-  timelineErrorMessage?: string | null;
-  onSetTab: (tab: TabType) => void;
-  completedChecklistsCount: number;
-  totalChecklistsCount: number;
-  planTargets?: PlanTargets;
-  isFromReport?: boolean;
-}
 
 interface MetricCardProps {
   title: string;
@@ -41,7 +36,11 @@ interface MetricCardProps {
   valueClassName?: string;
   captionClassName?: string;
   onClick?: () => void;
+  accentColor?: 'green' | 'red' | 'amber' | 'blue' | 'rose' | 'slate' | 'violet';
+  illustration?: React.ReactNode;
 }
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function inferTimelineRoute(event: TimelineEvent): TabType | null {
   const text = `${event.title} ${event.description}`.toLowerCase();
@@ -101,43 +100,107 @@ function MetricCard({
   valueClassName = 'text-slate-800',
   captionClassName = 'text-slate-400',
   onClick,
+  accentColor = 'slate',
+  illustration,
 }: MetricCardProps) {
-  const className = [
-    'bg-white p-4.5 rounded-2xl border border-slate-200 text-left transition-colors',
-    onClick ? 'hover:border-slate-350 cursor-pointer' : '',
-  ].join(' ');
+  // Theme styling configurations
+  const themeClasses = {
+    green: {
+      border: 'border-l-[4px] border-l-emerald-500 hover:border-emerald-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(16,185,129,0.15)]',
+      bg: 'bg-white/80 hover:bg-emerald-50/10',
+    },
+    red: {
+      border: 'border-l-[4px] border-l-rose-500 hover:border-rose-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(244,63,94,0.15)]',
+      bg: 'bg-white/80 hover:bg-rose-50/10',
+    },
+    rose: {
+      border: 'border-l-[4px] border-l-rose-500 hover:border-rose-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(244,63,94,0.15)]',
+      bg: 'bg-white/80 hover:bg-rose-50/10',
+    },
+    amber: {
+      border: 'border-l-[4px] border-l-amber-500 hover:border-amber-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(245,158,11,0.15)]',
+      bg: 'bg-white/80 hover:bg-amber-50/10',
+    },
+    blue: {
+      border: 'border-l-[4px] border-l-blue-500 hover:border-blue-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(59,130,246,0.15)]',
+      bg: 'bg-white/80 hover:bg-blue-50/10',
+    },
+    violet: {
+      border: 'border-l-[4px] border-l-violet-500 hover:border-violet-400',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(139,92,246,0.15)]',
+      bg: 'bg-white/80 hover:bg-violet-50/10',
+    },
+    slate: {
+      border: 'border-l-[4px] border-l-slate-400 hover:border-slate-350',
+      shadow: 'hover:shadow-[0_12px_30px_-5px_rgba(100,116,139,0.1)]',
+      bg: 'bg-white/80 hover:bg-slate-50/20',
+    },
+  }[accentColor];
 
   return (
-    <div onClick={onClick} className={className}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-400">{title}</span>
-        {icon}
-      </div>
-      <div className="mt-3">
-        <h3 className={`text-[16px] font-bold font-sans leading-none ${valueClassName}`}>
+    <Card
+      onClick={onClick}
+      className={cn(
+        'p-0 gap-0 cursor-default select-none border-slate-200 text-left transition-all duration-300 ease-out py-3.5 shadow-xs relative overflow-hidden backdrop-blur-md group',
+        themeClasses.bg,
+        themeClasses.border,
+        themeClasses.shadow,
+        onClick && 'cursor-pointer hover:border-y-slate-300 hover:border-r-slate-300 hover:-translate-y-1',
+      )}
+    >
+      <CardHeader className="flex flex-row items-center justify-between p-0 px-4.5 pb-0.5 space-y-0 w-full min-h-0 relative z-10">
+        <CardTitle className="text-[13px] font-extrabold text-slate-500 leading-none tracking-wide">
+          {title}
+        </CardTitle>
+        <CardAction className="relative col-auto row-auto self-auto justify-self-auto m-0 shrink-0">
+          {icon}
+        </CardAction>
+      </CardHeader>
+      <CardContent className="p-0 px-4.5 w-full mt-2 flex-1 flex flex-col justify-between relative z-10">
+        <h3 className={`text-[21px] font-black font-sans leading-none tracking-tight ${valueClassName}`}>
           {value}
         </h3>
-        <p className={`text-[9.5px] mt-1 pt-1 border-t border-slate-100 ${captionClassName}`}>
+        <div className={`text-[11px] mt-2.5 pt-1.5 border-t border-slate-100 font-semibold ${captionClassName}`}>
           {caption}
-        </p>
-      </div>
-    </div>
+        </div>
+      </CardContent>
+      {/* Decorative illustration */}
+      {illustration && (
+        <div className="absolute -bottom-1 -right-1 pointer-events-none opacity-[0.22] group-hover:opacity-[0.38] transition-all duration-300 z-0 transform translate-y-1 translate-x-1 group-hover:scale-110">
+          {illustration}
+        </div>
+      )}
+    </Card>
   );
 }
 
-export default function TodayView({
-  stats,
-  timelineEvents,
-  isStatsLoading = false,
-  isTimelineLoading = false,
-  statsErrorMessage,
-  timelineErrorMessage,
-  onSetTab,
-  completedChecklistsCount,
-  totalChecklistsCount,
-  planTargets,
-  isFromReport = false,
-}: TodayViewProps) {
+// ─── Main Route Component ──────────────────────────────────────────────────────
+
+export default function TodayRoute() {
+  const navigate = useNavigate();
+  const { activeStoreId, tasks: appShellTasks } = useAppShellState();
+
+  // Load real data from Firestore / Reports
+  const dashboard = useTodayDashboard(activeStoreId);
+
+  // Targets from Plans
+  const planTargets = usePlanTargets(
+    activeStoreId,
+    dashboard.stats.checklistCompletion,
+    dashboard.stats.delayedTasksCount,
+    dashboard.stats.sopErrorsCount,
+    appShellTasks.length,
+  );
+
+  // Timeline with direct checklist subscription
+  const timelineQuery = useTodayTimelineQuery(activeStoreId);
+
+  // local states & formatting helpers
   const [currentDateString] = useState(() =>
     new Intl.DateTimeFormat('vi-VN', {
       weekday: 'long',
@@ -147,21 +210,27 @@ export default function TodayView({
     }).format(new Date()),
   );
 
+  const completedChecklistsCount = useMemo(() => {
+    return dashboard.todayChecklistItems.filter((item) => item.isCompleted).length;
+  }, [dashboard.todayChecklistItems]);
+
+  const totalChecklistsCount = dashboard.todayChecklistItems.length;
+
   const checklistPercent = totalChecklistsCount > 0
     ? Math.round((completedChecklistsCount / totalChecklistsCount) * 100)
-    : stats.checklistCompletion;
+    : dashboard.stats.checklistCompletion;
 
   const checklistRatio = totalChecklistsCount > 0
     ? `${completedChecklistsCount}/${totalChecklistsCount}`
     : `${checklistPercent}/100`;
 
   const timelineRows = useMemo(
-    () => timelineEvents.map((event) => ({
+    () => (timelineQuery.data ?? []).map((event) => ({
       event,
       route: inferTimelineRoute(event),
       visual: getTimelineVisual(event.status),
     })),
-    [timelineEvents],
+    [timelineQuery.data],
   );
 
   const formatCurrency = (amount: number) =>
@@ -169,123 +238,240 @@ export default function TodayView({
       .format(amount)
       .replace('₫', 'đ');
 
+  const storeStatus = dashboard.stats.status || 'green';
+
+  const statusMeta = useMemo(() => {
+    switch (storeStatus) {
+      case 'red':
+        return {
+          bgColor: 'bg-rose-50/50 border border-rose-200/80 shadow-[0_2px_12px_rgba(244,63,94,0.04)]',
+          textColor: 'text-rose-600',
+          titleColor: 'text-rose-800',
+          descColor: 'text-rose-600',
+          indicatorColor: 'bg-rose-500',
+          title: 'VẬN HÀNH RỦI RO / CÓ SỰ CỐ',
+          desc: 'Phát hiện sự cố nghiêm trọng hoặc tỷ lệ hoàn thành checklist thấp.',
+          iconBg: 'bg-rose-100/80 border border-rose-200/50 text-rose-600',
+          icon: <AlertOctagon className="w-4.5 h-4.5 animate-pulse" />,
+        };
+      case 'yellow':
+        return {
+          bgColor: 'bg-amber-50/50 border border-amber-200/80 shadow-[0_2px_12px_rgba(245,158,11,0.04)]',
+          textColor: 'text-amber-600',
+          titleColor: 'text-amber-800',
+          descColor: 'text-amber-600',
+          indicatorColor: 'bg-amber-500',
+          title: 'CẦN CHÚ Ý VẬN HÀNH',
+          desc: 'Có công việc trễ hạn hoặc lỗi SOP nhẹ chưa được xử lý.',
+          iconBg: 'bg-amber-100/80 border border-amber-200/50 text-amber-600',
+          icon: <AlertTriangle className="w-4.5 h-4.5" />,
+        };
+      case 'green':
+      default:
+        return {
+          bgColor: 'bg-emerald-50/50 border border-emerald-200/80 shadow-[0_2px_12px_rgba(16,185,129,0.04)]',
+          textColor: 'text-emerald-600',
+          titleColor: 'text-emerald-800',
+          descColor: 'text-emerald-600',
+          indicatorColor: 'bg-emerald-500',
+          title: 'VẬN HÀNH TIÊU CHUẨN',
+          desc: 'Mọi hoạt động và checklist đang được duy trì ổn định.',
+          iconBg: 'bg-emerald-100/80 border border-emerald-200/50 text-emerald-600',
+          icon: <Check className="w-4.5 h-4.5 stroke-[3px]" />,
+        };
+    }
+  }, [storeStatus]);
+
+  const handleSetTab = (tab: TabType) => {
+    void navigate({ to: TAB_ROUTE_MAP[tab] });
+  };
+
   return (
     <div className="space-y-3 text-left">
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+      {/* TRẠNG THÁI CỬA HÀNG */}
+      <div className="bg-white/80 backdrop-blur-md p-4.5 rounded-2xl border border-slate-200/60 shadow-xs space-y-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[#C21A1A]">TRẠNG THÁI CỬA HÀNG</span>
-          <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-[#C21A1A] rounded-full animate-ping" />
+          <span className="text-[13px] font-black text-slate-800 tracking-wider">TRẠNG THÁI CỬA HÀNG</span>
+          <span className="text-[10.5px] text-slate-500 font-bold flex items-center gap-1.5 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-100">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
             Đang đồng bộ
           </span>
         </div>
 
-        <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-              <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+        <div className={`p-4 ${statusMeta.bgColor} rounded-xl flex items-center justify-between gap-3 transition-all duration-500`}>
+          <div className="flex items-center gap-3.5">
+            <div className={`w-10 h-10 rounded-xl ${statusMeta.iconBg} flex items-center justify-center shrink-0 shadow-inner`}>
+              {dashboard.isLoading ? (
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                React.cloneElement(statusMeta.icon as any, { className: 'w-5 h-5' })
+              )}
             </div>
             <div>
-              <h3 className="font-bold text-xs text-slate-700">
-                {isStatsLoading ? 'Đang tải trạng thái vận hành...' : 'Dữ liệu vận hành hôm nay đã sẵn sàng'}
+              <h3 className={`font-black text-[14px] tracking-wide ${statusMeta.titleColor}`}>
+                {dashboard.isLoading ? 'Đang tải trạng thái vận hành...' : statusMeta.title}
               </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
-                {statsErrorMessage || `Cập nhật theo dữ liệu thật cho ${currentDateString}`}
+              <p className={`text-[11.5px] ${statusMeta.descColor} mt-1 font-bold opacity-95 leading-normal`}>
+                {dashboard.errorMessage || (dashboard.isLoading ? `Đang tính toán dữ liệu cho ${currentDateString}` : statusMeta.desc)}
               </p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* METRIC CARDS GRID */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
         <MetricCard
           title="Doanh thu hôm nay"
+          accentColor="green"
           icon={(
-            <span className="p-1 rounded-md bg-[#16C784]/10 text-[#16C784]" title="Doanh số phát sinh">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <span className="p-1.5 rounded-md bg-[#16C784]/10 text-[#16C784]" title="Doanh số phát sinh">
+              <TrendingUp className="w-5 h-5" />
             </span>
           )}
-          value={isStatsLoading ? <LoadingValue /> : formatCurrency(stats.todayRevenue)}
+          value={dashboard.isLoading ? <LoadingValue /> : formatCurrency(dashboard.stats.todayRevenue)}
           caption={
-            stats.todayRevenue > 0
-              ? (isFromReport ? 'Từ báo cáo cuối ngày' : 'Dữ liệu trực tiếp')
+            dashboard.stats.todayRevenue > 0
+              ? (dashboard.isFromReport ? 'Từ báo cáo cuối ngày' : 'Dữ liệu trực tiếp')
               : 'Chưa có dữ liệu doanh thu'
           }
           captionClassName={`font-extrabold flex items-center gap-0.5 ${
-            stats.todayRevenue > 0 ? 'text-[#16C784]' : 'text-slate-400'
+            dashboard.stats.todayRevenue > 0 ? 'text-[#16C784]' : 'text-slate-400'
           }`}
+          illustration={
+            <svg className="w-20 h-16 text-emerald-500" viewBox="0 0 100 50" fill="none">
+              <path d="M0,45 C20,40 40,20 60,25 C80,10 90,5 100,2" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
+              <path d="M0,45 C20,40 40,20 60,25 C80,10 90,5 100,2 L100,50 L0,50 Z" fill="currentColor" opacity="0.15" />
+            </svg>
+          }
         />
 
         <MetricCard
           title="Checklist hoàn thành"
+          accentColor={checklistPercent >= 90 ? 'green' : 'red'}
           icon={(
-            <span className="p-1 rounded-md bg-slate-100 text-[#C21A1A]">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className={`p-1.5 rounded-md ${checklistPercent >= 90 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+              <CheckCircle2 className="w-5 h-5" />
             </span>
           )}
           value={`${checklistPercent}%`}
           caption={`Chỉ số ${checklistRatio} việc`}
           valueClassName="text-slate-850"
           captionClassName="font-bold text-slate-400"
-          onClick={() => onSetTab('Checklist')}
+          onClick={() => handleSetTab('Checklist')}
+          illustration={
+            checklistPercent >= 90 ? (
+              <svg className="w-16 h-16 text-emerald-500" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+                <circle cx="50" cy="50" r="40" strokeWidth="7" strokeDasharray="6 4" />
+                <circle cx="50" cy="50" r="30" strokeWidth="3" />
+                <path d="M38,50 L46,58 L62,42" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg className="w-16 h-16 text-rose-500" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+                <circle cx="50" cy="50" r="40" strokeWidth="7" strokeDasharray="6 4" />
+                <circle cx="50" cy="50" r="30" strokeWidth="3" />
+                <path d="M38,38 L62,62 M62,38 L38,62" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
+          }
         />
 
         <MetricCard
           title="Việc trễ"
+          accentColor="rose"
           icon={(
-            <span className="p-1 rounded-md bg-rose-50 text-rose-600">
-              <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+            <span className="p-1.5 rounded-md bg-rose-50 text-rose-600">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
             </span>
           )}
-          value={isStatsLoading ? <LoadingValue className="bg-rose-100" /> : stats.delayedTasksCount}
+          value={dashboard.isLoading ? <LoadingValue className="bg-rose-100" /> : dashboard.stats.delayedTasksCount}
           caption="việc khẩn cấp"
           valueClassName="text-rose-600"
           captionClassName="font-extrabold text-rose-600 uppercase tracking-wider"
-          onClick={() => onSetTab('Tasks')}
+          onClick={() => handleSetTab('Tasks')}
+          illustration={
+            <svg className="w-16 h-16 text-rose-500 animate-pulse" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+              <path d="M25,85 L25,15 L75,35 L25,55" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="65" cy="65" r="20" strokeWidth="5" fill="white" />
+              <path d="M65,55 L65,65 L72,69" strokeWidth="4.5" strokeLinecap="round" />
+            </svg>
+          }
         />
 
         <MetricCard
           title="Lỗi SOP"
+          accentColor="amber"
           icon={(
-            <span className="p-1 rounded-md bg-[#FFB800]/10 text-[#FFB800]">
-              <AlertOctagon className="w-3.5 h-3.5" />
+            <span className="p-1.5 rounded-md bg-[#FFB800]/10 text-[#FFB800]">
+              <AlertOctagon className="w-5 h-5" />
             </span>
           )}
-          value={isStatsLoading ? <LoadingValue className="bg-amber-100" /> : stats.sopErrorsCount}
+          value={dashboard.isLoading ? <LoadingValue className="bg-amber-100" /> : dashboard.stats.sopErrorsCount}
           caption="lỗi phát sinh"
           valueClassName="text-[#FFB800]"
           captionClassName="font-extrabold text-[#FFB800] uppercase tracking-wider"
-          onClick={() => onSetTab('SOP')}
+          onClick={() => handleSetTab('SOP')}
+          illustration={
+            <svg className="w-16 h-16 text-amber-500" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+              <circle cx="38" cy="38" r="16" strokeWidth="5" />
+              <path d="M38,15 L38,22 M38,54 L38,61 M15,38 L22,38 M54,38 L61,38" strokeWidth="5" />
+              <circle cx="65" cy="65" r="12" strokeWidth="5" />
+              <path d="M65,48 L65,53 M65,77 L65,82 M48,65 L53,65 M77,65 L82,65" strokeWidth="4" />
+            </svg>
+          }
         />
 
         <MetricCard
           title="Khiếu nại"
+          accentColor="violet"
           icon={(
-            <span className="p-1 rounded-md bg-slate-100 text-slate-650">
-              <Zap className="w-3.5 h-3.5" />
+            <span className="p-1.5 rounded-md bg-violet-50 text-violet-600">
+              <Zap className="w-5 h-5" />
             </span>
           )}
-          value={isStatsLoading ? <LoadingValue /> : stats.customerComplaintsCount}
+          value={dashboard.isLoading ? <LoadingValue /> : dashboard.stats.customerComplaintsCount}
           caption="mới nhận"
-          captionClassName="font-bold text-emerald-600 border-[#16C784]/20"
-          onClick={() => onSetTab('SOP')}
+          captionClassName="font-bold text-violet-600 border-violet-100"
+          onClick={() => handleSetTab('SOP')}
+          illustration={
+            <svg className="w-16 h-16 text-violet-500" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+              <path d="M15,25 L35,25 L45,35 L85,35 L85,75 L15,75 Z" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M53,43 L43,55 L51,55 L47,67 L57,55 L49,55 Z" fill="currentColor" stroke="none" />
+            </svg>
+          }
         />
 
         <MetricCard
           title="Nhân sự vắng / vấn đề"
+          accentColor="slate"
           icon={(
-            <span className="p-1 rounded-md bg-blue-50 text-blue-600">
-              <Users className="w-3.5 h-3.5" />
+            <span className="p-1.5 rounded-md bg-blue-50 text-blue-600">
+              <Users className="w-5 h-5" />
             </span>
           )}
           value="—"
-          caption="Chưa phát triển"
+          caption={
+            <div className="flex flex-col text-slate-350">
+              <span>Tính năng chưa kích hoạt</span>
+              <span className="font-extrabold">Đang phát triển</span>
+            </div>
+          }
           valueClassName="text-slate-350"
-          captionClassName="font-extrabold text-slate-350 border-slate-100"
+          captionClassName="border-slate-100 mt-1 pt-1"
+          illustration={
+            <svg className="w-16 h-16 text-blue-500" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+              <circle cx="50" cy="35" r="14" strokeWidth="6" />
+              <path d="M20,75 C20,55 35,55 50,55 C65,55 80,55 80,75" strokeWidth="6" strokeLinecap="round" />
+              <circle cx="20" cy="30" r="10" strokeWidth="4" />
+              <circle cx="80" cy="30" r="10" strokeWidth="4" />
+            </svg>
+          }
         />
       </div>
 
+      {/* TIMELINE & SYSTEM GOALS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* TIMELINE SECTION */}
         <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
             <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -294,21 +480,21 @@ export default function TodayView({
             </h3>
             <button
               type="button"
-              onClick={() => onSetTab('Checklist')}
+              onClick={() => handleSetTab('Checklist')}
               className="text-xs font-black text-slate-400 hover:text-[#C21A1A] transition-colors"
             >
               Xem tất cả &gt;
             </button>
           </div>
 
-          {timelineErrorMessage && (
+          {timelineQuery.error && (
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold text-amber-700">
-              {timelineErrorMessage}
+              Không thể tải timeline hôm nay.
             </div>
           )}
 
           <div className="space-y-3">
-            {isTimelineLoading ? (
+            {timelineQuery.isLoading ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
@@ -357,7 +543,7 @@ export default function TodayView({
                   <button
                     key={`${event.storeId}-${event.time}-${event.title}`}
                     type="button"
-                    onClick={() => onSetTab(route)}
+                    onClick={() => handleSetTab(route)}
                     className={className}
                   >
                     {content}
@@ -379,6 +565,7 @@ export default function TodayView({
           </div>
         </div>
 
+        {/* SYSTEM GOALS SECTION */}
         <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
             <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -387,21 +574,21 @@ export default function TodayView({
             </h3>
             <button
               type="button"
-              onClick={() => onSetTab('KPI')}
+              onClick={() => handleSetTab('KPI')}
               className="text-xs font-black text-slate-400 hover:text-[#C21A1A] transition-colors"
             >
               Xem chi tiết &gt;
             </button>
           </div>
 
-          {planTargets?.isLoading ? (
+          {planTargets.isLoading ? (
             <div className="space-y-4 pt-1">
               <span className="block h-4 w-full animate-pulse rounded bg-slate-100" />
               <span className="block h-2.5 w-full animate-pulse rounded-full bg-slate-100" />
               <span className="block h-4 w-full animate-pulse rounded bg-slate-100 mt-4" />
               <span className="block h-2.5 w-full animate-pulse rounded-full bg-slate-100" />
             </div>
-          ) : planTargets && planTargets.hasPlan ? (
+          ) : planTargets.hasPlan ? (
             <div className="space-y-4 pt-1">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs">
@@ -453,6 +640,7 @@ export default function TodayView({
         </div>
       </div>
 
+      {/* FOOTER GENERAL RULES */}
       <div className="border-t border-slate-250/70 pt-4 mt-3">
         <div className="mb-3 text-left">
           <h2 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
