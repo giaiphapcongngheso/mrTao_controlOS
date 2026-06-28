@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { TabType } from '../../types/app.types';
 import type { KPIStats, TimelineEvent } from '../../types/today.types';
+import type { PlanTargets } from './_hook/use-plan-targets';
 
 type TimelineVisual = {
   icon: 'check' | 'alert';
@@ -28,6 +29,8 @@ interface TodayViewProps {
   onSetTab: (tab: TabType) => void;
   completedChecklistsCount: number;
   totalChecklistsCount: number;
+  planTargets?: PlanTargets;
+  isFromReport?: boolean;
 }
 
 interface MetricCardProps {
@@ -132,6 +135,8 @@ export default function TodayView({
   onSetTab,
   completedChecklistsCount,
   totalChecklistsCount,
+  planTargets,
+  isFromReport = false,
 }: TodayViewProps) {
   const [currentDateString] = useState(() =>
     new Intl.DateTimeFormat('vi-VN', {
@@ -201,8 +206,14 @@ export default function TodayView({
             </span>
           )}
           value={isStatsLoading ? <LoadingValue /> : formatCurrency(stats.todayRevenue)}
-          caption={<>vs hôm qua <span className="font-sans">↑ 18.6%</span></>}
-          captionClassName="font-extrabold text-[#16C784] flex items-center gap-0.5"
+          caption={
+            stats.todayRevenue > 0
+              ? (isFromReport ? 'Từ báo cáo cuối ngày' : 'Dữ liệu trực tiếp')
+              : 'Chưa có dữ liệu doanh thu'
+          }
+          captionClassName={`font-extrabold flex items-center gap-0.5 ${
+            stats.todayRevenue > 0 ? 'text-[#16C784]' : 'text-slate-400'
+          }`}
         />
 
         <MetricCard
@@ -267,11 +278,10 @@ export default function TodayView({
               <Users className="w-3.5 h-3.5" />
             </span>
           )}
-          value={isStatsLoading ? <LoadingValue className="bg-blue-100" /> : stats.lateStaffCount}
-          caption="người can thiệp"
-          valueClassName="text-blue-600"
-          captionClassName="font-extrabold text-blue-500 border-blue-100"
-          onClick={() => onSetTab('Today')}
+          value="—"
+          caption="Chưa phát triển"
+          valueClassName="text-slate-350"
+          captionClassName="font-extrabold text-slate-350 border-slate-100"
         />
       </div>
 
@@ -384,39 +394,62 @@ export default function TodayView({
             </button>
           </div>
 
-          <div className="space-y-4 pt-1">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">Doanh thu tháng 5</span>
-                <span className="font-sans text-[11px] text-slate-500">
-                  <span className="font-bold text-[#16C784]">235.6M</span> / 300M
-                </span>
-              </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
-                <div className="bg-[#16C784] h-full rounded-full transition-all duration-500" style={{ width: '78%' }} />
-              </div>
-              <div className="flex justify-between items-center text-[10px] font-semibold text-slate-400">
-                <span>Đạt ngân khoản:</span>
-                <span className="font-black text-[#16C784]">78%</span>
-              </div>
+          {planTargets?.isLoading ? (
+            <div className="space-y-4 pt-1">
+              <span className="block h-4 w-full animate-pulse rounded bg-slate-100" />
+              <span className="block h-2.5 w-full animate-pulse rounded-full bg-slate-100" />
+              <span className="block h-4 w-full animate-pulse rounded bg-slate-100 mt-4" />
+              <span className="block h-2.5 w-full animate-pulse rounded-full bg-slate-100" />
             </div>
+          ) : planTargets && planTargets.hasPlan ? (
+            <div className="space-y-4 pt-1">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700">Doanh thu {planTargets.monthLabel}</span>
+                  <span className="font-sans text-[11px] text-slate-500">
+                    <span className="font-bold text-[#16C784]">
+                      {planTargets.monthlyRevenueCurrent >= 1_000_000
+                        ? `${(planTargets.monthlyRevenueCurrent / 1_000_000).toFixed(1)}M`
+                        : planTargets.monthlyRevenueCurrent.toLocaleString('vi-VN')}
+                    </span>{' / '}
+                    {planTargets.monthlyRevenueTarget >= 1_000_000
+                      ? `${(planTargets.monthlyRevenueTarget / 1_000_000).toFixed(0)}M`
+                      : planTargets.monthlyRevenueTarget.toLocaleString('vi-VN')}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+                  <div className="bg-[#16C784] h-full rounded-full transition-all duration-500" style={{ width: `${planTargets.monthlyRevenuePercent}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-semibold text-slate-400">
+                  <span>Đạt ngân khoản:</span>
+                  <span className="font-black text-[#16C784]">{planTargets.monthlyRevenuePercent}%</span>
+                </div>
+              </div>
 
-            <div className="space-y-2 pt-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">Điểm vận hành trung bình</span>
-                <span className="font-sans text-[11px] text-slate-500">
-                  <span className="font-bold text-[#FFB800]">86</span> / 100
-                </span>
-              </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
-                <div className="bg-[#FFB800] h-full rounded-full transition-all duration-500" style={{ width: '86%' }} />
-              </div>
-              <div className="flex justify-between items-center text-[10px] font-semibold text-slate-400">
-                <span>Chỉ số SOP trung bình:</span>
-                <span className="font-black text-[#FFB800]">86%</span>
+              <div className="space-y-2 pt-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700">Điểm vận hành trung bình</span>
+                  <span className="font-sans text-[11px] text-slate-500">
+                    <span className="font-bold text-[#FFB800]">{planTargets.operatingScore}</span> / 100
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+                  <div className="bg-[#FFB800] h-full rounded-full transition-all duration-500" style={{ width: `${planTargets.operatingScore}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-semibold text-slate-400">
+                  <span>Chỉ số SOP trung bình:</span>
+                  <span className="font-black text-[#FFB800]">{planTargets.operatingScore}%</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center mt-2">
+              <p className="text-xs font-bold text-slate-500">Chưa có kế hoạch tháng này.</p>
+              <p className="mt-1 text-[10px] font-medium text-slate-400">
+                Tạo kế hoạch tháng trong tab Kế hoạch để hiển thị mục tiêu.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

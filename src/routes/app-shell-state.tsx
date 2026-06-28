@@ -2,7 +2,6 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import {
   DAILY_REPORT_DATA,
   DEFAULT_STORE_ID,
-  INITIAL_KPI_STATS,
   INITIAL_STAFF_RANKS,
 } from '../data';
 import type { ChecklistItem } from '../types/checklist.types';
@@ -74,7 +73,15 @@ interface AppShellStateValue {
 const AppShellStateContext = createContext<AppShellStateValue | null>(null);
 
 export function AppShellStateProvider({ children }: { children: React.ReactNode }) {
-  const [stats, setStats] = useState<KPIStats>(INITIAL_KPI_STATS);
+  const [stats, setStats] = useState<KPIStats>({
+    storeId: DEFAULT_STORE_ID,
+    todayRevenue: 0,
+    checklistCompletion: 0,
+    delayedTasksCount: 0,
+    sopErrorsCount: 0,
+    customerComplaintsCount: 0,
+    lateStaffCount: 0,
+  });
   const [todayChecklistItems, setTodayChecklistItems] = useState<ChecklistItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [staffRanks] = useState<StaffRank[]>(INITIAL_STAFF_RANKS);
