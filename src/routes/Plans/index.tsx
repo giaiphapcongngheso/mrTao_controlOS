@@ -18,6 +18,7 @@ import {
 import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask, PlanLiveIndicator } from '../../types/plans.types';
 import type { PlanLiveIndicatorForm } from './components/form';
 import { formatDateVN } from './plan-utils';
+import { toastSuccess, toastError } from '../../shared/lib/toast';
 
 import PlanDashboard from './components/plan-dashboard';
 import PlanMonthView from './components/plan-month-view';
@@ -65,65 +66,74 @@ export default function PlansRoute() {
     liveIndicatorsData?: PlanLiveIndicatorForm[]
   ) => {
     let savedPlanId = '';
-    if (editingPlan) {
-      // Update existing plan
-      await updatePlanMutation.mutateAsync({ planId: editingPlan.id, input: data });
-      savedPlanId = editingPlan.id;
-    } else {
-      // Create new plan
-      const result = await createPlanMutation.mutateAsync(data);
-      savedPlanId = result?.id ?? '';
-    }
-
-    // Save corresponding day schedule if day-level data is provided
-    if (dayScheduleData && dayScheduleData.date) {
-      const existingSchedule = daySchedules.find(
-        (s) => s.date === dayScheduleData.date && (s.planId === savedPlanId || s.planId === '')
-      );
-      await saveDayScheduleMutation.mutateAsync({
-        scheduleId: existingSchedule?.id,
-        input: {
-          planId: savedPlanId,
-          date: dayScheduleData.date,
-          timeSlots: dayScheduleData.timeSlots,
-          mitTasks: dayScheduleData.mitTasks,
-          quickNotes: dayScheduleData.quickNotes,
-        },
-      });
-    }
-
-    // Save live indicators if level === 'quarter' and data is provided
-    if (data.level === 'quarter' && liveIndicatorsData && savedPlanId) {
-      const currentIndicators = indicators.filter((ind) => ind.planId === savedPlanId && !ind.deletedAt);
-      
-      // Indicators to delete: in DB but not in current form list
-      const newIndicatorIds = new Set(liveIndicatorsData.map(ind => ind.id).filter(Boolean));
-      const toDelete = currentIndicators.filter(ind => !newIndicatorIds.has(ind.id));
-      
-      for (const ind of toDelete) {
-        await deleteLiveIndicatorMutation.mutateAsync(ind.id);
+    try {
+      if (editingPlan) {
+        // Update existing plan
+        await updatePlanMutation.mutateAsync({ planId: editingPlan.id, input: data });
+        savedPlanId = editingPlan.id;
+      } else {
+        // Create new plan
+        const result = await createPlanMutation.mutateAsync(data);
+        savedPlanId = result?.id ?? '';
       }
 
-      // Save or update indicators
-      for (const ind of liveIndicatorsData) {
-        const payload = {
-          planId: savedPlanId,
-          name: ind.name,
-          targetValue: ind.targetValue,
-          unit: ind.unit,
-          ownerId: ind.ownerId,
-          ownerName: ind.ownerName,
-          status: ind.status || 'near_target',
-        };
-        await saveLiveIndicatorMutation.mutateAsync({
-          indicatorId: ind.id,
-          input: payload,
+      // Save corresponding day schedule if day-level data is provided
+      if (dayScheduleData && dayScheduleData.date) {
+        const existingSchedule = daySchedules.find(
+          (s) => s.date === dayScheduleData.date && (s.planId === savedPlanId || s.planId === '')
+        );
+        await saveDayScheduleMutation.mutateAsync({
+          scheduleId: existingSchedule?.id,
+          input: {
+            planId: savedPlanId,
+            date: dayScheduleData.date,
+            timeSlots: dayScheduleData.timeSlots,
+            mitTasks: dayScheduleData.mitTasks,
+            quickNotes: dayScheduleData.quickNotes,
+          },
         });
       }
-    }
 
-    setCreateSheetOpen(false);
-    setEditingPlan(null);
+      // Save live indicators if level === 'quarter' and data is provided
+      if (data.level === 'quarter' && liveIndicatorsData && savedPlanId) {
+        const currentIndicators = indicators.filter((ind) => ind.planId === savedPlanId && !ind.deletedAt);
+        
+        // Indicators to delete: in DB but not in current form list
+        const newIndicatorIds = new Set(liveIndicatorsData.map(ind => ind.id).filter(Boolean));
+        const toDelete = currentIndicators.filter(ind => !newIndicatorIds.has(ind.id));
+        
+        for (const ind of toDelete) {
+          await deleteLiveIndicatorMutation.mutateAsync(ind.id);
+        }
+
+        // Save or update indicators
+        for (const ind of liveIndicatorsData) {
+          const payload = {
+            planId: savedPlanId,
+            name: ind.name,
+            targetValue: ind.targetValue,
+            unit: ind.unit,
+            ownerId: ind.ownerId,
+            ownerName: ind.ownerName,
+            status: ind.status || 'near_target',
+          };
+          await saveLiveIndicatorMutation.mutateAsync({
+            indicatorId: ind.id,
+            input: payload,
+          });
+        }
+      }
+
+      toastSuccess(editingPlan ? 'Cập nhật kế hoạch thành công!' : 'Tạo kế hoạch mới thành công!');
+      setCreateSheetOpen(false);
+      setEditingPlan(null);
+    } catch (err) {
+      console.error(err);
+      toastError(
+        editingPlan ? 'Cập nhật kế hoạch thất bại' : 'Tạo kế hoạch thất bại',
+        err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.'
+      );
+    }
   }, [editingPlan, createPlanMutation, updatePlanMutation, saveDayScheduleMutation, daySchedules, indicators, saveLiveIndicatorMutation, deleteLiveIndicatorMutation]);
 
   const handleEditPlan = useCallback((plan: PlanDocument) => {

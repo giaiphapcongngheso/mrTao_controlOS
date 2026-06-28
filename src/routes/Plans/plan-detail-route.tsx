@@ -13,6 +13,7 @@ import {
 } from './_hooks/use-plans';
 import PlanDetail from './components/detail';
 import PlanForm from './components/form';
+import { toastSuccess, toastError } from '../../shared/lib/toast';
 import type { PlanRequestType, PlanTimeSlot, PlanMITTask } from '../../types/plans.types';
 import type { PlanLiveIndicatorForm } from './components/form';
 
@@ -65,54 +66,63 @@ export default function PlanDetailRoute() {
   ) => {
     if (!plan) return;
 
-    // Update main plan
-    await updatePlanMutation.mutateAsync({ planId: plan.id, input: data });
+    try {
+      // Update main plan
+      await updatePlanMutation.mutateAsync({ planId: plan.id, input: data });
 
-    // Update corresponding day schedule if day-level data is provided
-    if (dayScheduleData && dayScheduleData.date) {
-      await saveDayScheduleMutation.mutateAsync({
-        scheduleId: daySchedule?.id,
-        input: {
-          planId: plan.id,
-          date: dayScheduleData.date,
-          timeSlots: dayScheduleData.timeSlots,
-          mitTasks: dayScheduleData.mitTasks,
-          quickNotes: dayScheduleData.quickNotes,
-        },
-      });
-    }
-
-    // Save live indicators if level === 'quarter' and data is provided
-    if (data.level === 'quarter' && liveIndicatorsData) {
-      const currentIndicators = indicators.filter((ind) => ind.planId === plan.id && !ind.deletedAt);
-      
-      // Indicators to delete: in DB but not in current form list
-      const newIndicatorIds = new Set(liveIndicatorsData.map(ind => ind.id).filter(Boolean));
-      const toDelete = currentIndicators.filter(ind => !newIndicatorIds.has(ind.id));
-      
-      for (const ind of toDelete) {
-        await deleteLiveIndicatorMutation.mutateAsync(ind.id);
-      }
-
-      // Save or update indicators
-      for (const ind of liveIndicatorsData) {
-        const payload = {
-          planId: plan.id,
-          name: ind.name,
-          targetValue: ind.targetValue,
-          unit: ind.unit,
-          ownerId: ind.ownerId,
-          ownerName: ind.ownerName,
-          status: ind.status || 'near_target',
-        };
-        await saveLiveIndicatorMutation.mutateAsync({
-          indicatorId: ind.id,
-          input: payload,
+      // Update corresponding day schedule if day-level data is provided
+      if (dayScheduleData && dayScheduleData.date) {
+        await saveDayScheduleMutation.mutateAsync({
+          scheduleId: daySchedule?.id,
+          input: {
+            planId: plan.id,
+            date: dayScheduleData.date,
+            timeSlots: dayScheduleData.timeSlots,
+            mitTasks: dayScheduleData.mitTasks,
+            quickNotes: dayScheduleData.quickNotes,
+          },
         });
       }
-    }
 
-    setEditSheetOpen(false);
+      // Save live indicators if level === 'quarter' and data is provided
+      if (data.level === 'quarter' && liveIndicatorsData) {
+        const currentIndicators = indicators.filter((ind) => ind.planId === plan.id && !ind.deletedAt);
+        
+        // Indicators to delete: in DB but not in current form list
+        const newIndicatorIds = new Set(liveIndicatorsData.map(ind => ind.id).filter(Boolean));
+        const toDelete = currentIndicators.filter(ind => !newIndicatorIds.has(ind.id));
+        
+        for (const ind of toDelete) {
+          await deleteLiveIndicatorMutation.mutateAsync(ind.id);
+        }
+
+        // Save or update indicators
+        for (const ind of liveIndicatorsData) {
+          const payload = {
+            planId: plan.id,
+            name: ind.name,
+            targetValue: ind.targetValue,
+            unit: ind.unit,
+            ownerId: ind.ownerId,
+            ownerName: ind.ownerName,
+            status: ind.status || 'near_target',
+          };
+          await saveLiveIndicatorMutation.mutateAsync({
+            indicatorId: ind.id,
+            input: payload,
+          });
+        }
+      }
+
+      toastSuccess('Cập nhật kế hoạch thành công!');
+      setEditSheetOpen(false);
+    } catch (err) {
+      console.error(err);
+      toastError(
+        'Cập nhật kế hoạch thất bại',
+        err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.'
+      );
+    }
   }, [plan, updatePlanMutation, saveDayScheduleMutation, daySchedule, indicators, saveLiveIndicatorMutation, deleteLiveIndicatorMutation]);
 
   const staffOptions = useMemo(
