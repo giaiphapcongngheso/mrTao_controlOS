@@ -286,3 +286,55 @@ html {
     display: none; /* Chrome/Safari */
   }
 }
+
+/* Dark mode global overrides for static/hardcoded color classes */
+.dark {
+  /* Background overrides */
+  .bg-white,
+  .bg-\[\#fff\],
+  .bg-\[\#ffffff\] {
+    background-color: var(--card) !important;
+  }
+  
+  .bg-slate-50,
+  .bg-gray-50,
+  .bg-slate-100,
+  .bg-gray-100,
+  .bg-\[\#F5F5F5\],
+  .bg-\[\#f8f9fb\] {
+    background-color: var(--muted) !important;
+  }
+
+  /* Border overrides */
+  .border-slate-100,
+  .border-slate-200,
+  .border-gray-100,
+  .border-gray-200,
+  .border-slate-200\/90,
+  .border-slate-200\/50,
+  .border-border\/60 {
+    border-color: var(--border) !important;
+  }
+
+  /* Text color overrides */
+  .text-slate-900,
+  .text-slate-800,
+  .text-slate-700,
+  .text-gray-900,
+  .text-gray-800,
+  .text-gray-700,
+  .text-black {
+    color: var(--foreground) !important;
+  }
+
+  .text-slate-650,
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400,
+  .text-gray-600,
+  .text-gray-500,
+  .text-gray-400 {
+    color: var(--muted-foreground) !important;
+  }
+}
+
