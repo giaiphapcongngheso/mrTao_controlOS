@@ -24,6 +24,7 @@ import { LogOut, Settings, User, ArrowLeftRight } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotificationBell } from './notification-bell';
+import { ModeToggle } from '@/components/mode-toggle';
 export function AppHeader() {
   const navigate = useNavigate();
   const { user, employeeInfo, organization } = useAuthStore();
@@ -127,6 +128,7 @@ export function AppHeader() {
           <ZoomControl className="hidden md:flex" />
           <LanguageSwitcher className="hidden lg:flex" />
           <NotificationBell />
+          <ModeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 cursor-pointer outline-none">

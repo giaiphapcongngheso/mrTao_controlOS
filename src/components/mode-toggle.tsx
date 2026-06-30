@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@shared/ui';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from 'next-themes';
 
 type Props = {
   className?: string;
