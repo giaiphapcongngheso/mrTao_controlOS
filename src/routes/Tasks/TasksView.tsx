@@ -765,50 +765,50 @@ export default function TasksView({
         label: 'CHƯA KHỞI ĐỘNG',
         count: notStarted,
         icon: Circle,
-        wrapperClass: 'bg-white border-slate-200 shadow-2xs',
-        labelColor: 'text-slate-400',
-        countColor: 'text-slate-800',
-        iconBg: 'bg-slate-100 text-slate-400',
+        wrapperClass: 'bg-card border-border shadow-2xs transition-colors duration-200',
+        labelColor: 'text-muted-foreground',
+        countColor: 'text-foreground',
+        iconBg: 'bg-muted text-muted-foreground',
         dotColor: 'bg-slate-400',
       },
       {
         label: 'ĐANG THỰC HIỆN',
         count: inProgress,
         icon: Play,
-        wrapperClass: 'bg-blue-50/50 border-blue-100 shadow-2xs',
-        labelColor: 'text-blue-600',
-        countColor: 'text-blue-700',
-        iconBg: 'bg-blue-100 text-blue-600',
+        wrapperClass: 'bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900/30 shadow-2xs transition-colors duration-200',
+        labelColor: 'text-blue-600 dark:text-blue-400',
+        countColor: 'text-blue-700 dark:text-blue-300',
+        iconBg: 'bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400',
         dotColor: 'bg-blue-500',
       },
       {
         label: 'CHỜ DUYỆT',
         count: waiting,
         icon: Clock,
-        wrapperClass: 'bg-amber-50/50 border-amber-100 shadow-2xs',
-        labelColor: 'text-amber-600',
-        countColor: 'text-amber-700',
-        iconBg: 'bg-amber-100 text-amber-600',
+        wrapperClass: 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/30 shadow-2xs transition-colors duration-200',
+        labelColor: 'text-amber-600 dark:text-amber-400',
+        countColor: 'text-amber-700 dark:text-amber-300',
+        iconBg: 'bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400',
         dotColor: 'bg-amber-500',
       },
       {
         label: 'HOÀN THÀNH',
         count: completed,
         icon: CheckCircle2,
-        wrapperClass: 'bg-emerald-50/40 border-emerald-150 shadow-2xs',
-        labelColor: 'text-emerald-600',
-        countColor: 'text-emerald-700',
-        iconBg: 'bg-emerald-100 text-emerald-600',
+        wrapperClass: 'bg-emerald-50/40 dark:bg-emerald-950/10 border-emerald-150 dark:border-emerald-900/30 shadow-2xs transition-colors duration-200',
+        labelColor: 'text-emerald-600 dark:text-emerald-400',
+        countColor: 'text-emerald-700 dark:text-emerald-300',
+        iconBg: 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400',
         dotColor: 'bg-emerald-500',
       },
       {
         label: 'QUÁ HẠN',
         count: overdue,
         icon: AlertTriangle,
-        wrapperClass: 'bg-rose-50 border-rose-100 shadow-2xs',
-        labelColor: 'text-rose-600',
-        countColor: 'text-rose-700',
-        iconBg: 'bg-rose-100 text-rose-600',
+        wrapperClass: 'bg-rose-50 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/30 shadow-2xs transition-colors duration-200',
+        labelColor: 'text-rose-600 dark:text-rose-400',
+        countColor: 'text-rose-700 dark:text-rose-300',
+        iconBg: 'bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400',
         dotColor: 'bg-rose-500',
       },
     ];
@@ -1118,7 +1118,7 @@ export default function TasksView({
                 tableMinWidth={1500}
                 emptyMessage="Không tìm thấy nhiệm vụ nào."
                 onRowClick={(row) => setViewingTask(row.original)}
-                className="flex-1 min-h-0 bg-white rounded-xl shadow-2xs border border-slate-200"
+                className="flex-1 min-h-0 bg-card rounded-xl shadow-2xs border border-border transition-colors duration-200"
                 enableRowSelection={true}
                 bulkSelectionActions={(table) => {
                   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -1200,9 +1200,9 @@ export default function TasksView({
           {activeView === 'list' && (
             <div className="w-[280px] shrink-0 space-y-3">
               {/* Mini Calendar Widget */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/30">
-                  <h4 className="text-[11px] font-black text-slate-700">Lịch hôm nay</h4>
+              <div className="bg-card rounded-xl border border-border shadow-2xs overflow-hidden transition-colors duration-200">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/20">
+                  <h4 className="text-[11px] font-black text-foreground">Lịch hôm nay</h4>
                 </div>
                 <div className="p-3">
                   <MiniCalendarWidget tasks={filteredTasks} onTaskClick={setViewingTask} />
@@ -1210,12 +1210,12 @@ export default function TasksView({
               </div>
 
               {/* Việc sắp đến hạn */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/30">
-                  <h4 className="text-[11px] font-black text-slate-700">Việc sắp đến hạn</h4>
+              <div className="bg-card rounded-xl border border-border shadow-2xs overflow-hidden transition-colors duration-200">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/20">
+                  <h4 className="text-[11px] font-black text-foreground">Việc sắp đến hạn</h4>
                   <button type="button" className="text-[10px] font-bold text-[#C21A1A] hover:underline cursor-pointer">Xem tất cả</button>
                 </div>
-                <div className="max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
                   <UpcomingTasksList tasks={filteredTasks} onTaskClick={setViewingTask} />
                 </div>
               </div>

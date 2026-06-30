@@ -33,23 +33,23 @@ export function ModuleHeader({
   return (
     <div
       className={cn(
-        'bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden',
+        'bg-card p-3.5 rounded-2xl border border-border shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden transition-colors duration-200',
         className,
       )}
     >
       {/* Decorative ambient background accent */}
-      <div className="absolute -top-16 -right-16 w-36 h-36 bg-slate-200/40 rounded-full blur-xl pointer-events-none"></div>
+      <div className="absolute -top-16 -right-16 w-36 h-36 bg-slate-200/40 dark:bg-slate-800/10 rounded-full blur-xl pointer-events-none"></div>
 
       <div className="relative z-10 flex gap-3 items-start text-left flex-1 min-w-0">
-        <span className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-black text-sm sm:text-lg shrink-0 select-none flex items-center justify-center">
+        <span className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted border border-border text-foreground font-black text-sm sm:text-lg shrink-0 select-none flex items-center justify-center">
           {icon || initials}
         </span>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 leading-tight break-words">
+          <h1 className="text-base sm:text-lg font-black tracking-tight text-foreground leading-tight break-words">
             {title}
           </h1>
           {description && (
-            <p className="hidden sm:block text-xs sm:text-sm md:text-base text-slate-400 font-bold mt-1 max-w-none leading-relaxed">
+            <p className="hidden sm:block text-xs sm:text-sm md:text-base text-muted-foreground font-bold mt-1 max-w-none leading-relaxed">
               {description}
             </p>
           )}
