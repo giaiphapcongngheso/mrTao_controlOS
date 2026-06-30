@@ -56,10 +56,10 @@ function AppFrameLayout({
   }, [onSelectTab]);
 
   return (
-    <div className="h-screen max-h-screen overflow-hidden bg-surface-bg flex justify-center w-full antialiased p-0">
+    <div className="h-screen max-h-screen overflow-hidden bg-surface-bg flex justify-center w-full antialiased p-0 transition-colors duration-200">
       <div className="w-full h-full flex flex-col md:flex-row p-0 gap-0 min-w-0">
-        <aside className="hidden md:flex flex-col w-[240px] bg-white border-r border-slate-200 shrink-0 sticky top-0 h-screen shadow-xs text-slate-700 py-5 px-4">
-          <div className="px-2 pb-4 mb-4 border-b border-slate-100 flex items-center justify-start">
+        <aside className="hidden md:flex flex-col w-[240px] bg-sidebar border-r border-sidebar-border shrink-0 sticky top-0 h-screen shadow-xs text-sidebar-foreground py-5 px-4 transition-colors duration-200">
+          <div className="px-2 pb-4 mb-4 border-b border-sidebar-border/60 flex items-center justify-start">
             <Logo size="sm" variant="dark" />
           </div>
 
@@ -75,11 +75,11 @@ function AppFrameLayout({
                     onMouseEnter={() => onPrefetchTab?.(link.key)}
                     className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-left text-sm font-semibold transition-all group cursor-pointer ${isSelected
                       ? 'bg-[#C21A1A] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-rose-50 hover:text-[#C21A1A] border border-transparent'
+                      : 'text-sidebar-foreground/80 hover:bg-[#C21A1A]/10 hover:text-[#C21A1A] border border-transparent'
                       }`}
                   >
                     <div className="flex items-center gap-3">
-                      <IconComp className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500 group-hover:text-[#C21A1A]'}`} />
+                      <IconComp className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-sidebar-foreground/60 group-hover:text-[#C21A1A]'}`} />
                       <span>{link.label}</span>
                     </div>
                     {!isSelected && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-[#C21A1A] transition-opacity translate-x-[-2px] group-hover:translate-x-0" />}
@@ -89,9 +89,9 @@ function AppFrameLayout({
             </nav>
           </ScrollArea>
 
-          <div className="pt-3 pb-1 border-t border-slate-100 flex flex-col items-center justify-center select-none text-center shrink-0">
-            <span className="text-[10.5px] font-bold text-slate-500 tracking-wide">Powered by NguyenTD</span>
-            <span className="text-[9.5px] text-slate-400 font-sans font-semibold mt-0.5">v{__APP_VERSION__}</span>
+          <div className="pt-3 pb-1 border-t border-sidebar-border/60 flex flex-col items-center justify-center select-none text-center shrink-0">
+            <span className="text-[10.5px] font-bold text-sidebar-foreground/50 tracking-wide">Powered by NguyenTD</span>
+            <span className="text-[9.5px] text-sidebar-foreground/40 font-sans font-semibold mt-0.5">v{__APP_VERSION__}</span>
           </div>
         </aside>
 
@@ -125,21 +125,21 @@ function AppFrameLayout({
               onClick={onCloseMobileMenu}
             />
 
-            <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-8px_32px_rgba(0,0,0,0.12)] z-50 p-5 pb-8 animate-in slide-in-from-bottom duration-250 flex flex-col border-t border-slate-200">
+            <div className="fixed bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-[0_-8px_32px_rgba(0,0,0,0.12)] z-50 p-5 pb-8 animate-in slide-in-from-bottom duration-250 flex flex-col border-t border-border transition-colors duration-200">
               <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 shrink-0" />
 
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-3.5 shrink-0">
+              <div className="flex items-center justify-between border-b border-border pb-3.5 mb-3.5 shrink-0">
                 <div className="flex items-center gap-3">
                   {currentUser?.avatar ? (
-                    <img src={currentUser.avatar} alt="Avatar" className="w-9 h-9 rounded-full border border-slate-200 object-cover" />
+                    <img src={currentUser.avatar} alt="Avatar" className="w-9 h-9 rounded-full border border-border object-cover" />
                   ) : (
                     <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs uppercase font-extrabold">
                       {currentUser?.fullName.charAt(0)}
                     </div>
                   )}
                   <div className="text-left font-sans">
-                    <span className="text-sm font-black text-slate-800 block leading-tight">{currentUser?.fullName}</span>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 leading-none">{currentUser?.role}</p>
+                    <span className="text-sm font-black text-foreground block leading-tight">{currentUser?.fullName}</span>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5 leading-none">{currentUser?.role}</p>
                   </div>
                 </div>
 
@@ -167,10 +167,10 @@ function AppFrameLayout({
                       }}
                       className={`flex items-center gap-3 p-3 rounded-xl text-left text-sm font-black transition-all cursor-pointer ${isSelected
                         ? 'bg-[#C21A1A] text-white shadow-xs'
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-150/50'
+                        : 'bg-muted text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground border border-border'
                         }`}
                     >
-                      <IconComp className={`w-4 h-4 shrink-0 col-span-1 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
+                      <IconComp className={`w-4 h-4 shrink-0 col-span-1 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
                       <span className="truncate">{link.label}</span>
                     </button>
                   );
@@ -188,21 +188,21 @@ function AppFrameLayout({
         )}
 
         <main className="flex-1 flex flex-col gap-0 min-h-0 min-w-0">
-          <header className="hidden md:flex items-center justify-between h-14 px-6 bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+          <header className="hidden md:flex items-center justify-between h-14 px-6 bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)] transition-colors duration-200">
             <div className="flex items-center gap-2.5 select-none">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">MR.TÁO OS</span>
+              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">MR.TÁO OS</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-350 stroke-[2.5]" />
-              <span className="text-sm font-bold text-slate-800 tracking-tight">{desktopTitle}</span>
+              <span className="text-sm font-bold text-foreground tracking-tight">{desktopTitle}</span>
             </div>
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-5 md:p-5 pb-20 md:pb-8 w-full space-y-3.5 font-sans text-sm text-slate-650 min-w-0 flex-1 min-h-0 overflow-y-auto">
+          <div className="p-5 md:p-5 pb-20 md:pb-8 w-full space-y-3.5 font-sans text-sm text-foreground/90 min-w-0 flex-1 min-h-0 overflow-y-auto transition-colors duration-200">
             {children}
           </div>
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 px-2 flex justify-around items-center z-45 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] rounded-t-2xl pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border h-16 px-2 flex justify-around items-center z-45 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] rounded-t-2xl pb-safe transition-colors duration-200">
           {visibleSidebarLinks
             .filter((link) => link.key === 'Today' || link.key === 'Checklist' || link.key === 'Tasks' || link.key === 'KPI')
             .map((link) => {
@@ -212,7 +212,7 @@ function AppFrameLayout({
                 <button
                   key={link.key}
                   onClick={() => handleSelectTab(link.key)}
-                  className={`flex flex-col items-center justify-center flex-1 h-full font-bold relative cursor-pointer ${isSelected ? 'text-[#C21A1A]' : 'text-slate-400'
+                  className={`flex flex-col items-center justify-center flex-1 h-full font-bold relative cursor-pointer ${isSelected ? 'text-[#C21A1A]' : 'text-muted-foreground'
                     }`}
                 >
                   <IconComp className="w-4.5 h-4.5 mb-1" />
@@ -224,7 +224,7 @@ function AppFrameLayout({
 
           <button
             onClick={onToggleMobileMenu}
-            className={`flex flex-col items-center justify-center flex-1 h-full font-bold relative cursor-pointer ${mobileMenuOpen ? 'text-[#C21A1A]' : 'text-slate-400'}`}
+            className={`flex flex-col items-center justify-center flex-1 h-full font-bold relative cursor-pointer ${mobileMenuOpen ? 'text-[#C21A1A]' : 'text-muted-foreground'}`}
           >
             <Layers className="w-4.5 h-4.5 mb-1" />
             <span className="text-[10px]">Menu</span>
