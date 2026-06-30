@@ -25,6 +25,7 @@ import { isOwnerUser, useAllowedModules } from '../shared/hooks/use-module-permi
 import AppFrameLayout, { type AppFrameLayoutLink } from './_components/AppFrameLayout';
 import HeaderProfilePopover from './_components/HeaderProfilePopover';
 import { NotificationsBellPopover } from './Notifications/NotificationsView';
+import { ModeToggle } from '../components/mode-toggle';
 import { AppShellStateProvider, TAB_ROUTE_MAP, getTabFromPath } from './app-shell-state';
 import { ROUTE_PRELOAD_MAP } from './route-preload';
 import { ensureAllRoleDailySnapshots } from '../services/ensure-daily-snapshots';
@@ -342,6 +343,7 @@ export default function AppShell() {
               {canViewTab('Notifications') && (
                 <NotificationsBellPopover activeTab={activeTab} onSelectTab={handleSelectTab} />
               )}
+              <ModeToggle />
               <HeaderProfilePopover
                 currentUser={currentUser}
                 enrichSession={enrichSessionWithDefaultFields}
