@@ -122,16 +122,29 @@ function mapFirebaseLoginError(error: unknown): InternalAuthError {
   );
 }
 
-function canFallbackToInternalPassword(
+async function hashSha256(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function canFallbackToInternalPassword(
   staff: StaffMember,
   password: string,
   authError: unknown,
-): boolean {
+): Promise<boolean> {
   if (staff.firebaseUid) {
     return false;
   }
 
-  if (!staff.password || staff.password !== password) {
+  if (!staff.password) {
+    return false;
+  }
+
+  const hashedPassword = await hashSha256(password);
+  if (staff.password !== hashedPassword) {
     return false;
   }
 
@@ -168,7 +181,7 @@ export async function authenticateWithInternalStaff({
   try {
     await signInWithFirebaseEmail(authEmail, password);
   } catch (error) {
-    if (canFallbackToInternalPassword(matchedStaff, password, error)) {
+    if (await canFallbackToInternalPassword(matchedStaff, password, error)) {
       usedInternalFallback = true;
     } else {
       throw mapFirebaseLoginError(error);

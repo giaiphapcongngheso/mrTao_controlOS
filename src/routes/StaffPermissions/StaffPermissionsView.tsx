@@ -42,7 +42,17 @@ import {
   toSortedStaff,
 } from './StaffPermissionsView.utils';
 import type { PermissionRowFormValues } from './role-permission-form-schema';
+import { staffFormSchema } from './staff-form-schema';
 
+
+
+export async function hashSha256(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export default function StaffPermissionsView({ currentUser }: StaffPermissionsViewProps) {
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -386,26 +396,18 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
     const isEditMode = Boolean(staffForm.id);
 
+    const validation = staffFormSchema(isEditMode).safeParse(staffForm);
+    if (!validation.success) {
+      const firstError = validation.error.issues[0]?.message || 'Dữ liệu không hợp lệ.';
+      toastError(firstError);
+      return;
+    }
+
     const fullName = staffForm.fullName.trim();
     const username = staffForm.username.trim();
     const password = staffForm.password;
     const selectedRoleCode = toRoleCode(staffForm.role);
     const selectedRole = roleByCode.get(selectedRoleCode);
-
-    if (!fullName || !username || (!isEditMode && !password)) {
-      toastError('Vui lòng nhập đủ họ tên, tên đăng nhập và mật khẩu.');
-      return;
-    }
-
-    if (!isEditMode && password && password.length < 6) {
-      toastError('Mật khẩu phải có ít nhất 6 ký tự.');
-      return;
-    }
-
-    if (isEditMode && password && password.length > 0 && password.length < 6) {
-      toastError('Mật khẩu mới phải có ít nhất 6 ký tự.');
-      return;
-    }
 
     if (!selectedRole) {
       toastError('Vai trò chưa tồn tại. Vui lòng tạo vai trò trước trong tab Phân quyền.');
@@ -439,10 +441,12 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         (Boolean(password) || authEmail !== currentAuthEmail);
 
       let firebaseUid = existingStaff?.firebaseUid || '';
+      let hashedPassword = existingStaff?.password || '';
 
       if (!isEditMode && password) {
         const authUser = await ensureFirebasePasswordUser(authEmail, password);
         firebaseUid = authUser.uid;
+        hashedPassword = await hashSha256(password);
       }
 
       if (shouldSyncExistingAuth) {
@@ -461,6 +465,9 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           allowCreate: Boolean(password),
         });
         firebaseUid = authUser.uid;
+        if (password) {
+          hashedPassword = await hashSha256(password);
+        }
       }
 
       const payload: StaffMember = {
@@ -481,6 +488,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         joinedDate: existingStaff?.joinedDate || new Date().toISOString().slice(0, 10),
         email: authEmail,
         firebaseUid,
+        password: hashedPassword,
         internalNotes: staffForm.internalNotes?.trim() || '',
       };
 

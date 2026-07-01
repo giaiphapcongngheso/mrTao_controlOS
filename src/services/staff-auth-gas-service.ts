@@ -3,7 +3,7 @@ const STAFF_AUTH_GAS_WEBAPP_URL =
 const STAFF_AUTH_GAS_TOKEN =
   import.meta.env.VITE_GAS_STAFF_AUTH_TOKEN ?? import.meta.env.VITE_GAS_SYNC_TOKEN ?? '';
 
-const STAFF_AUTH_GAS_TIMEOUT_MS = 20_000;
+const STAFF_AUTH_GAS_TIMEOUT_MS = 60_000;
 const STAFF_AUTH_GAS_ALLOWED_HOSTS = new Set([
   'script.google.com',
   'script.googleusercontent.com',
@@ -174,7 +174,11 @@ async function submitGasFormViaIframe(
         payload.data?.authEmail &&
         payload.data?.status
       ) {
-        finishWithSuccess(payload.data);
+        finishWithSuccess({
+          uid: payload.data.uid,
+          authEmail: payload.data.authEmail,
+          status: payload.data.status as 'created' | 'updated',
+        });
         return;
       }
 

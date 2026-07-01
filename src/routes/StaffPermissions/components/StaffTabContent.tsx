@@ -1,5 +1,5 @@
-import React, { Dispatch, FormEvent, SetStateAction, useMemo, useCallback } from 'react';
-import { CalendarDays, Lock, Mail, Phone, Search, Trash2, UserCheck, UserX, Users, X, Shield, User, UserPlus, Check } from 'lucide-react';
+import React, { Dispatch, FormEvent, SetStateAction, useMemo, useCallback, useState } from 'react';
+import { CalendarDays, Lock, Mail, Phone, Search, Trash2, UserCheck, UserX, Users, X, Shield, User, UserPlus, Check, Eye, EyeOff } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { getRoleFriendlyName } from '../../../constants';
@@ -51,6 +51,8 @@ export function StaffTabContent({
   onEditStaff,
 }: StaffTabContentProps) {
   const inactiveStaffCount = Math.max(totalStaff - activeStaffCount, 0);
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const getRoleName = useCallback(
     (roleCode: string) => {
@@ -432,17 +434,28 @@ export function StaffTabContent({
 
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mật khẩu tài khoản</Label>
-                    <Input
-                      type="password"
-                      value={staffForm.password || ''}
-                      onChange={(event) => setStaffForm((prev) => ({ ...prev, password: event.target.value }))}
-                      placeholder={staffForm.id ? "Để trống nếu không đổi" : "Tối thiểu 6 ký tự"}
-                      icon={<Lock className="h-4 w-4 text-slate-400" />}
-                      position="left"
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={staffForm.password || ''}
+                        onChange={(event) => setStaffForm((prev) => ({ ...prev, password: event.target.value }))}
+                        placeholder={staffForm.id ? "Để trống nếu không đổi" : "Tối thiểu 6 ký tự"}
+                        icon={<Lock className="h-4 w-4 text-slate-400" />}
+                        position="left"
+                        className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 transition cursor-pointer p-1.5 rounded-lg hover:bg-slate-100/80 flex items-center justify-center"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
-                      {staffForm.id ? "Chỉ nhập nếu bạn muốn cập nhật mật khẩu mới cho nhân sự này." : "Mật khẩu dùng để đăng nhập vào Mr Tao OS."}
+                      {staffForm.id
+                        ? "Chỉ nhập nếu bạn muốn cập nhật mật khẩu mới cho nhân sự này. Yêu cầu: Tối thiểu 6 ký tự, gồm ít nhất 1 chữ cái và 1 chữ số."
+                        : "Mật khẩu dùng để đăng nhập vào Mr Tao OS. Yêu cầu: Tối thiểu 6 ký tự, gồm ít nhất 1 chữ cái và 1 chữ số."}
                     </p>
                   </div>
                 </div>
