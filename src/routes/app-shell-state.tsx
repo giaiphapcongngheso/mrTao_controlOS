@@ -54,7 +54,14 @@ function normalizePathname(pathname: string): string {
 }
 
 export function getTabFromPath(pathname: string): TabType {
-  return PATH_TAB_MAP[normalizePathname(pathname)] ?? 'Today';
+  const normalized = normalizePathname(pathname);
+  if (normalized.startsWith('/reports')) {
+    return 'Reports';
+  }
+  if (normalized.startsWith('/plans')) {
+    return 'Plans';
+  }
+  return PATH_TAB_MAP[normalized] ?? 'Today';
 }
 
 interface AppShellStateValue {

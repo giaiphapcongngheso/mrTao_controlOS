@@ -26,6 +26,7 @@ import AppFrameLayout, { type AppFrameLayoutLink } from './_components/AppFrameL
 import HeaderProfilePopover from './_components/HeaderProfilePopover';
 import { NotificationsBellPopover } from './Notifications/NotificationsView';
 import { ModeToggle } from '../components/mode-toggle';
+import { ZoomControl } from '../components/custom/zoom-control';
 import { AppShellStateProvider, TAB_ROUTE_MAP, getTabFromPath } from './app-shell-state';
 import { ROUTE_PRELOAD_MAP } from './route-preload';
 import { ensureAllRoleDailySnapshots } from '../services/ensure-daily-snapshots';
@@ -259,10 +260,6 @@ export default function AppShell() {
   const allowedModuleSet = useMemo(() => new Set(allowedModules), [allowedModules]);
 
   const canViewTab = useCallback((tabKey: TabType) => {
-    if (tabKey === 'Today') {
-      return true;
-    }
-
     if (isOwner) {
       return true;
     }
@@ -343,6 +340,7 @@ export default function AppShell() {
               {canViewTab('Notifications') && (
                 <NotificationsBellPopover activeTab={activeTab} onSelectTab={handleSelectTab} />
               )}
+              <ZoomControl className="hidden md:flex" />
               <ModeToggle />
               <HeaderProfilePopover
                 currentUser={currentUser}
@@ -361,7 +359,38 @@ export default function AppShell() {
             </>
           }
         >
-          <Outlet />
+          {canViewTab(activeTab) ? (
+            <Outlet />
+          ) : (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-full mb-4">
+                <AlertTriangle className="w-12 h-12" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">
+                Không có quyền truy cập
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mb-6">
+                Tài khoản của bạn không được phân quyền để truy cập chức năng này. Vui lòng liên hệ quản trị viên hoặc quay lại trang chủ.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => {
+                    const firstTab = visibleSidebarLinks[0]?.key ?? 'Today';
+                    void handleSelectTab(firstTab);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  Quay lại trang khả dụng
+                </button>
+                <button
+                  onClick={handleLogoutClick}
+                  className="px-4 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-200 cursor-pointer transition-all"
+                >
+                  Đăng xuất ca trực
+                </button>
+              </div>
+            </div>
+          )}
         </AppFrameLayout>
       </AppShellStateProvider>
     </>
