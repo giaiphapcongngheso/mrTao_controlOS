@@ -72,6 +72,7 @@ export default function WarehouseView() {
         header: 'Mã hàng hóa',
         size: 120,
         meta: {
+          sticky: 'left',
           filterElement: (column) => (
             <input
               type="text"
@@ -98,6 +99,7 @@ export default function WarehouseView() {
         header: 'Tên & Ngành hàng',
         size: 260,
         meta: {
+          sticky: 'left',
           filterElement: (column) => (
             <input
               type="text"
@@ -699,6 +701,7 @@ export default function WarehouseView() {
             enablePagination={true}
             pageSizeOptions={[10, 20, 50, 100]}
             emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
+            tableMinWidth={800}
             className="h-[calc(100vh-340px)]"
             activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
             getRowId={(product) => String(product.id)}

@@ -177,6 +177,7 @@ export default function MarketingView() {
           </div>
         ),
         meta: {
+          sticky: 'left',
           filterElement: (column) => (
             <input
               type="text"
@@ -550,6 +551,7 @@ export default function MarketingView() {
         enablePagination={true}
         pageSizeOptions={[10, 20, 50, 100]}
         emptyMessage="Không tìm thấy chiến dịch marketing nào phù hợp."
+        tableMinWidth={900}
         className="h-[calc(100vh-365px)]"
       />
 

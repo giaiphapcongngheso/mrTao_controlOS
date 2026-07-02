@@ -56,6 +56,7 @@ export default function CustomersRoute() {
         header: 'Mã khách hàng',
         size: 130,
         meta: {
+          sticky: 'left',
           filterElement: (column) => (
             <Input
               size="sm"
@@ -81,6 +82,7 @@ export default function CustomersRoute() {
         header: 'Tên khách hàng',
         size: 200,
         meta: {
+          sticky: 'left',
           filterElement: (column) => (
             <Input
               size="sm"
@@ -570,6 +572,7 @@ export default function CustomersRoute() {
           enablePagination={true}
           pageSizeOptions={[10, 20, 50, 100]}
           emptyMessage="Chưa có khách hàng nào trong hệ thống hoặc không khớp với bộ lọc."
+          tableMinWidth={900}
           className="h-[calc(100vh-340px)]"
           getRowId={(c) => c.id}
         />
