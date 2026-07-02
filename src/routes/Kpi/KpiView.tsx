@@ -74,9 +74,9 @@ export default function KpiView({
       />
 
       {/* Month selector + Sub tabs */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0 min-w-0">
         {/* Underline tabs */}
-        <div className="flex items-center gap-6 md:gap-8 -mb-px">
+        <div className="flex items-center gap-6 md:gap-8 -mb-px overflow-x-auto whitespace-nowrap scrollbar-none w-full md:w-auto">
           {SUB_TABS.map(tab => (
             <SubTabButton
               key={tab.key}
@@ -161,7 +161,7 @@ const SubTabButton = React.memo(function SubTabButton({
   return (
     <button
       onClick={handleClick}
-      className={`flex items-center gap-1.5 px-0.5 pb-2.5 pt-2 text-sm font-bold bg-transparent rounded-none border-t-0 border-l-0 border-r-0 border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
+      className={`flex items-center gap-1.5 px-0.5 pb-2.5 pt-2 text-sm font-bold bg-transparent rounded-none border-t-0 border-l-0 border-r-0 border-b-2 transition-all duration-200 active:scale-95 cursor-pointer shrink-0 ${
         isActive
           ? 'border-[#C21A1A] text-[#C21A1A]'
           : 'border-transparent text-slate-500 hover:text-slate-800'

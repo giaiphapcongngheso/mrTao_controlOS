@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ColumnDef } from '@tanstack/react-table';
 import { CheckCheck, Shield, X } from 'lucide-react';
+import { cn } from '../../../../share/lib/utils';
 
 import {
   Button,
@@ -393,24 +394,99 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
             )}
           </div>
 
-          {/* ---- Permissions Table ---- */}
-          <div className="flex-1 min-h-0 flex flex-col max-h-[45vh]">
+          {/* ---- Permissions Table (Desktop) & Accordion (Mobile) ---- */}
+          <div className="flex-1 min-h-0 flex flex-col max-h-[45vh] md:max-h-[50vh]">
             <p className="mb-2 shrink-0 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
               Ma trận phân quyền
             </p>
-            <CustomTable<PermissionRowFormValues>
-              columns={columns}
-              data={permissions}
-              enablePagination={false}
-              enableSorting={false}
-              enableFiltering={false}
-              enableColumnResizing={false}
-              enableColumnVisibility={false}
-              showFilterRow={false}
-              emptyMessage="Không có module nào."
-              tableMinWidth={680}
-              className="flex-1 min-h-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
-            />
+            
+            {/* Desktop Table View */}
+            <div className="hidden md:block flex-1 min-h-0">
+              <CustomTable<PermissionRowFormValues>
+                columns={columns}
+                data={permissions}
+                enablePagination={false}
+                enableSorting={false}
+                enableFiltering={false}
+                enableColumnResizing={false}
+                enableColumnVisibility={false}
+                showFilterRow={false}
+                emptyMessage="Không có module nào."
+                tableMinWidth={680}
+                className="flex-1 min-h-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
+              />
+            </div>
+
+            {/* Mobile Accordion View */}
+            <div className="block md:hidden flex-1 overflow-y-auto space-y-2 pr-1 select-none">
+              {permissions.map((row, moduleIndex) => {
+                const meta = getModuleMeta(row.module);
+                return (
+                  <div key={row.module} className="border border-slate-150 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-slate-900/20">
+                    <details className="group">
+                      <summary className="flex items-center justify-between p-3.5 cursor-pointer font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-all list-none [&::-webkit-details-marker]:hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{meta.icon}</span>
+                          <span className="text-xs font-black uppercase tracking-wider">{meta.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 font-extrabold px-2 py-0.5 rounded-full">
+                            {PERMISSION_FIELDS.filter(f => row[f.key]).length} / 6
+                          </span>
+                          <span className="text-slate-400 group-open:rotate-180 transition-transform duration-200 text-xs">▼</span>
+                        </div>
+                      </summary>
+                      
+                      <div className="p-3.5 border-t border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-950/40 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-900">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cấp quyền nhanh:</span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={!isOwner}
+                              onClick={() => handleSetAll(moduleIndex, true)}
+                              className="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30 cursor-pointer active:scale-95 transition-all"
+                            >
+                              Bật tất cả
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!isOwner}
+                              onClick={() => handleSetAll(moduleIndex, false)}
+                              className="text-[10.5px] font-black uppercase tracking-wider text-slate-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-400 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer active:scale-95 transition-all"
+                            >
+                              Tắt tất cả
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {PERMISSION_FIELDS.map((field) => (
+                            <label
+                              key={field.key}
+                              className={cn(
+                                "flex items-center gap-2.5 p-2.5 border rounded-xl cursor-pointer transition-all active:scale-98 select-none",
+                                row[field.key]
+                                  ? "bg-sky-50/40 border-sky-200/80 text-sky-800 dark:bg-sky-950/20 dark:border-sky-900 dark:text-sky-400"
+                                  : "border-slate-100 hover:bg-slate-50/50 dark:border-slate-850 dark:hover:bg-slate-900/30 text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              <Checkbox
+                                checked={row[field.key]}
+                                disabled={!isOwner}
+                                onCheckedChange={() => handleToggle(moduleIndex, field.key)}
+                                className="h-5 w-5 rounded-md"
+                              />
+                              <span className="text-xs font-bold">{field.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* ---- Footer ---- */}

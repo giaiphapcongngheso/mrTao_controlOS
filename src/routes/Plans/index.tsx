@@ -270,7 +270,7 @@ export default function PlansRoute() {
       </ModuleHeader>
 
       {/* Tab switcher style like checklist */}
-      <div className="border-b border-slate-200 pb-0 w-full mb-4 flex items-end justify-between gap-4">
+      <div className="border-b border-slate-200 pb-0 w-full mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
           {TAB_CONFIG.map((tab) => {
             const Icon = tab.icon;

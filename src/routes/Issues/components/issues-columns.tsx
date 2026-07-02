@@ -197,6 +197,7 @@ export function getIssueColumns(config: IssueColumnsConfig): ColumnDef<SOPIssue>
         </div>
       ),
       meta: {
+        sticky: 'left',
         filterElement: (column) => (
           <input
             type="text"

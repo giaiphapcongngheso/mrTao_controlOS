@@ -397,6 +397,9 @@ const IssuesTable = React.memo(function IssuesTable({ issues }: { issues?: Highl
         accessorKey: 'issue',
         header: 'Vấn đề',
         cell: ({ row }) => <span className="font-bold text-slate-800">{row.original.issue}</span>,
+        meta: {
+          sticky: 'left',
+        },
       },
       {
         accessorKey: 'severity',
@@ -454,6 +457,7 @@ const IssuesTable = React.memo(function IssuesTable({ issues }: { issues?: Highl
           enableSorting={false}
           enablePagination={false}
           emptyMessage="Không ghi nhận vấn đề nổi bật nào trong ca/tuần làm việc."
+          tableMinWidth={750}
           className="text-xs"
         />
       </div>

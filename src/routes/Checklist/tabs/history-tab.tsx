@@ -396,6 +396,9 @@ export const HistoryTab = React.memo(function HistoryTab({
         </span>
       ),
       size: 100,
+      meta: {
+        sticky: 'left',
+      },
     },
     {
       accessorKey: 'roleName',
@@ -703,6 +706,7 @@ export const HistoryTab = React.memo(function HistoryTab({
             onRowClick={(row) => handleRowClick(row.original.id)}
             getRowId={(row) => row.id}
             emptyMessage="Không tìm thấy dữ liệu lịch sử nào phù hợp."
+            tableMinWidth={800}
             className="w-full text-left text-sm"
           />
         </div>

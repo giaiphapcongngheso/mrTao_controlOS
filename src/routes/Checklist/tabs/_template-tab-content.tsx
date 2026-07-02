@@ -218,6 +218,9 @@ export default function ChecklistTemplateTabContent({
       header: 'Tên checklist mẫu',
       accessorKey: 'title',
       size: 260,
+      meta: {
+        sticky: 'left',
+      },
       cell: ({ row }) => {
         const item = row.original;
         const colorMeta = getChecklistColorMeta(item.colorKey || 'rose');
