@@ -89,9 +89,11 @@ const KanbanColumn = React.memo(function KanbanColumn({
 const SortableKanbanCard = React.memo(function SortableKanbanCard({
   task,
   onCardClick,
+  onUpdateStatus,
 }: {
   task: TaskItem;
   onCardClick: (task: TaskItem) => void;
+  onUpdateStatus: (taskId: string, status: TaskStatus) => void | Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -178,6 +180,32 @@ const SortableKanbanCard = React.memo(function SortableKanbanCard({
               {task.assignee || 'Chưa phân công'}
             </span>
           </div>
+
+          {/* Quick status change for mobile only */}
+          <div className="flex md:hidden items-center justify-end gap-1.5 mt-3 border-t border-slate-100 dark:border-slate-800/60 pt-2">
+            <span className="text-[9px] font-bold text-slate-400 mr-auto uppercase tracking-wider">Chuyển sang:</span>
+            {COLUMNS.filter((col) => col.id !== task.status).map((col) => {
+              const ActionIcon = col.icon;
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  title={`Chuyển sang ${col.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onUpdateStatus(task.id, col.id);
+                  }}
+                  className={cn(
+                    "p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all text-slate-500 cursor-pointer",
+                    col.id === 'completed' && "hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-100 dark:hover:border-emerald-900",
+                    col.id === 'in_progress' && "hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900"
+                  )}
+                >
+                  <ActionIcon className="w-3 h-3" />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -205,10 +233,11 @@ export const TaskKanbanView = React.memo(function TaskKanbanView({
   onCardClick,
 }: TaskKanbanViewProps) {
   const [activeTask, setActiveTask] = React.useState<TaskItem | null>(null);
+  const [activeMobileTab, setActiveMobileTab] = React.useState<TaskStatus>('not_started');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   // Group tasks by status
@@ -269,31 +298,66 @@ export const TaskKanbanView = React.memo(function TaskKanbanView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Mobile Tab Navigation */}
+      <div className="flex md:hidden border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 p-1.5 rounded-xl mb-4 overflow-x-auto gap-1.5 scrollbar-none">
+        {COLUMNS.map((col) => {
+          const count = grouped[col.id].length;
+          const isSelected = activeMobileTab === col.id;
+          const Icon = col.icon;
+          return (
+            <button
+              key={col.id}
+              type="button"
+              onClick={() => setActiveMobileTab(col.id)}
+              className={cn(
+                "flex-1 min-w-[95px] flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer",
+                isSelected
+                  ? "bg-[#C21A1A] text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{col.title} ({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {COLUMNS.map((col) => {
           const columnTasks = grouped[col.id];
+          const isHiddenOnMobile = activeMobileTab !== col.id;
           return (
-            <KanbanColumn
+            <div
               key={col.id}
-              columnId={col.id}
-              title={col.title}
-              icon={col.icon}
-              colorClass={col.colorClass}
-              headerBg={col.headerBg}
-              count={columnTasks.length}
+              className={cn("md:block", isHiddenOnMobile ? "hidden" : "block")}
             >
-              <SortableContext items={columnTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                {columnTasks.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-[10px] text-slate-300 font-bold uppercase">
-                    Kéo thả task vào đây
-                  </div>
-                ) : (
-                  columnTasks.map((task) => (
-                    <SortableKanbanCard key={task.id} task={task} onCardClick={onCardClick} />
-                  ))
-                )}
-              </SortableContext>
-            </KanbanColumn>
+              <KanbanColumn
+                columnId={col.id}
+                title={col.title}
+                icon={col.icon}
+                colorClass={col.colorClass}
+                headerBg={col.headerBg}
+                count={columnTasks.length}
+              >
+                <SortableContext items={columnTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  {columnTasks.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-[10px] text-slate-300 font-bold uppercase">
+                      Kéo thả task vào đây
+                    </div>
+                  ) : (
+                    columnTasks.map((task) => (
+                      <SortableKanbanCard
+                        key={task.id}
+                        task={task}
+                        onCardClick={onCardClick}
+                        onUpdateStatus={onUpdateStatus}
+                      />
+                    ))
+                  )}
+                </SortableContext>
+              </KanbanColumn>
+            </div>
           );
         })}
       </div>
