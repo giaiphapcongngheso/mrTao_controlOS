@@ -3,6 +3,7 @@ export interface StaffPermissionsViewProps {
     fullName: string;
     role: string;
     user: string;
+    roleCode?: string;
   } | null;
 }
 

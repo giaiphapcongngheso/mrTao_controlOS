@@ -215,9 +215,9 @@ export const EntryTab = React.memo(function EntryTab({
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2 flex-nowrap shrink-0">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto shrink-0">
               {/* View toggle */}
-              <div className="bg-slate-100/80 p-1 rounded-full border border-slate-200 flex items-center gap-1 shadow-xs shrink-0">
+              <div className="bg-slate-100/80 p-1 rounded-full border border-slate-200 flex items-center gap-1 shadow-xs shrink-0 self-center md:self-auto">
                 <button onClick={handleViewModeMonth} className={pillClass(viewMode === 'month')}>
                   Tháng
                 </button>
@@ -232,8 +232,8 @@ export const EntryTab = React.memo(function EntryTab({
                   value={selectedWeekNum || 1}
                   onChangeValue={handleWeekSelectChange}
                   clearable={false}
-                  containerClassName="w-[180px] shrink-0"
-                  className="font-bold text-sm"
+                  containerClassName="w-full md:w-[180px] shrink-0"
+                  className="font-bold text-sm w-full"
                   options={[
                     { value: 1, label: 'Tuần 1 (01 - 07)' },
                     { value: 2, label: 'Tuần 2 (08 - 14)' },
@@ -249,8 +249,8 @@ export const EntryTab = React.memo(function EntryTab({
                 value={selectedStaffId}
                 onChangeValue={handleStaffChange}
                 clearable={false}
-                containerClassName="w-[200px] shrink-0"
-                className="font-bold text-sm"
+                containerClassName="w-full md:w-[200px] shrink-0"
+                className="font-bold text-sm w-full"
                 options={staffMembers.filter(s => s.status === 'active').map(s => ({
                   value: s.id,
                   label: `${s.fullName}`,
@@ -263,14 +263,14 @@ export const EntryTab = React.memo(function EntryTab({
                 onClick={handleExportExcel}
                 variant="outline"
                 size="sm"
-                className="font-bold cursor-pointer rounded-xl text-sm text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0"
+                className="w-full md:w-auto font-bold cursor-pointer rounded-xl text-sm text-emerald-700 border-emerald-200 hover:bg-emerald-50 shrink-0 justify-center h-9"
               >
                 <Download className="w-3.5 h-3.5" />
                 Excel
               </Button>
 
               {/* Entry dialog trigger */}
-              <Button onClick={handleOpenEntryDialog} size="sm" className="font-bold cursor-pointer rounded-xl text-sm shrink-0">
+              <Button onClick={handleOpenEntryDialog} size="sm" className="w-full md:w-auto font-bold cursor-pointer rounded-xl text-sm shrink-0 justify-center h-9">
                 <Plus className="w-3.5 h-3.5" />
                 Cập nhật
               </Button>

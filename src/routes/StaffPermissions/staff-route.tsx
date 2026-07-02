@@ -12,6 +12,7 @@ export default function StaffRoute() {
               fullName: currentUser.fullName,
               role: currentUser.role,
               user: currentUser.username,
+              roleCode: currentUser.roleCode,
             }
           : null
       }

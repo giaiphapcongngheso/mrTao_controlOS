@@ -63,9 +63,10 @@ export async function getCurrentFirebaseIdToken(forceRefresh = false): Promise<s
 
   return user.getIdToken(forceRefresh);
 }
+import { env } from './env.js';
 
 async function postToIdentityToolkit<T>(path: string, payload: Record<string, unknown>): Promise<T> {
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  const apiKey = env.VITE_FIREBASE_API_KEY;
   if (!apiKey) {
     throw new FirebaseIdentityToolkitError(
       'MISSING_API_KEY',

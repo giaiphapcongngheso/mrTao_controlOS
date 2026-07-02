@@ -76,9 +76,14 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
   const isOwner = Boolean(
     currentUser?.user === 'admin' ||
+    currentUser?.roleCode === 'CHU_CUA_HANG' ||
+    currentUser?.roleCode === 'QUAN_TRI_VIEN' ||
     currentUser?.role?.toLowerCase().includes('admin') ||
     currentUser?.role?.toLowerCase().includes('quan ly') ||
-    currentUser?.role?.toLowerCase().includes('quản lý'),
+    currentUser?.role?.toLowerCase().includes('quản lý') ||
+    currentUser?.role?.toLowerCase().includes('chu cua hang') ||
+    currentUser?.role?.toLowerCase().includes('chủ cửa hàng') ||
+    currentUser?.role?.toLowerCase().includes('owner')
   );
 
   const activeStaffCount = useMemo(

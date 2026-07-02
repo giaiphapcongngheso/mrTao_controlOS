@@ -213,20 +213,21 @@ export const SettingsTab = React.memo(function SettingsTab({
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
               {/* Staff selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full md:w-auto">
                 <span className="text-sm font-bold text-slate-500 uppercase shrink-0">Nhân viên:</span>
                 <CustomSelect
                   options={staffOptions}
                   value={selectedStaffId}
                   onChangeValue={handleStaffChangeValue}
                   clearable={false}
-                  className="w-[220px] text-slate-700 font-bold text-sm bg-slate-50"
+                  containerClassName="w-full md:w-[220px]"
+                  className="w-full text-slate-700 font-bold text-sm bg-slate-50"
                 />
               </div>
 
-              <Button onClick={handleOpenAddDialog} className="font-bold cursor-pointer h-[38px] rounded-xl text-sm">
+              <Button onClick={handleOpenAddDialog} className="w-full md:w-auto font-bold cursor-pointer h-[38px] rounded-xl text-sm justify-center">
                 <Plus className="w-4 h-4 mr-1" />
                 Thêm chỉ số KPI
               </Button>
@@ -268,8 +269,8 @@ export const SettingsTab = React.memo(function SettingsTab({
           <div className="space-y-3.5">
             <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-              <Table className="text-left text-sm">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs overflow-x-auto">
+              <Table className="text-left text-sm min-w-[800px]">
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
                     <TableHead className="text-sm font-bold text-slate-700">Mục tiêu chung</TableHead>
