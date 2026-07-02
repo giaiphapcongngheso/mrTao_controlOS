@@ -426,12 +426,18 @@ export function StaffTabContent({
                     <Input
                       type="email"
                       value={staffForm.email}
+                      disabled={Boolean(staffForm.id)}
                       onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
                       placeholder="nguyenvana@mrtaocoop.com"
                       icon={<Mail className="h-4 w-4 text-slate-400" />}
                       position="left"
                       className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4"
                     />
+                    {staffForm.id && (
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
+                        * Email đăng nhập được liên kết cố định với tài khoản Firebase và không thể sửa đổi.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5 text-left">
