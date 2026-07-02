@@ -29,6 +29,7 @@ interface StaffTabContentProps {
   readonly onDeleteStaff: (staff: StaffMember) => void;
   readonly setStaffForm: Dispatch<SetStateAction<StaffFormState>>;
   readonly onEditStaff?: (staff: StaffMember) => void;
+  readonly isSaving?: boolean;
 }
 
 export function StaffTabContent({
@@ -49,6 +50,7 @@ export function StaffTabContent({
   onDeleteStaff,
   setStaffForm,
   onEditStaff,
+  isSaving = false,
 }: StaffTabContentProps) {
   const inactiveStaffCount = Math.max(totalStaff - activeStaffCount, 0);
   const [showPassword, setShowPassword] = useState(false);
@@ -477,6 +479,7 @@ export function StaffTabContent({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={isSaving}
                   className="h-10 rounded-2xl border border-slate-200/80 bg-white px-4 text-xs font-extrabold text-slate-700 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
                   onClick={() => {
                     setStaffForm(DEFAULT_STAFF_FORM);
@@ -488,11 +491,17 @@ export function StaffTabContent({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!isOwner}
+                  disabled={!isOwner || isSaving}
                   className="h-10 rounded-2xl bg-emerald-600 px-5 text-xs font-black text-white hover:bg-emerald-700 transition duration-200 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-95 flex items-center gap-1.5"
                 >
-                  {staffForm.id ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
-                  {staffForm.id ? 'Cập nhật tài khoản' : 'Lưu nhân sự'}
+                  {isSaving ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  ) : staffForm.id ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <UserPlus className="h-3.5 w-3.5" />
+                  )}
+                  {isSaving ? 'Đang lưu...' : staffForm.id ? 'Cập nhật tài khoản' : 'Lưu nhân sự'}
                 </Button>
               </div>
             </form>

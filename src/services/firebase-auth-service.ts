@@ -4,6 +4,7 @@ import {
   setPersistence,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   type Auth,
   type AuthError,
 } from 'firebase/auth';
@@ -47,6 +48,11 @@ export async function signInWithFirebaseEmail(email: string, password: string) {
   const auth = getFirebaseAuth();
   await ensureSessionPersistence(auth);
   return signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function sendFirebasePasswordReset(email: string): Promise<void> {
+  const auth = getFirebaseAuth();
+  await sendPasswordResetEmail(auth, email);
 }
 
 export async function signOutFirebaseSession(): Promise<void> {

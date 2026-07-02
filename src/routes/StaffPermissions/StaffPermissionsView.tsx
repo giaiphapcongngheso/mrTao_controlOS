@@ -70,6 +70,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
   const [showAddStaffForm, setShowAddStaffForm] = useState(false);
   const [staffForm, setStaffForm] = useState<StaffFormState>(DEFAULT_STAFF_FORM);
+  const [isSavingStaff, setIsSavingStaff] = useState(false);
 
   // Dialog state for role creation (triggered from header button)
   const [showRoleDialog, setShowRoleDialog] = useState(false);
@@ -428,7 +429,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       toastError('Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.');
       return;
     }
-
+    
+    setIsSavingStaff(true);
     try {
       const existingStaff = isEditMode ? staffList.find((s) => s.id === staffForm.id) : null;
       const id = staffForm.id || nextStaffId(staffList);
@@ -459,6 +461,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           toastError(
             'Chưa cấu hình Apps Script cho cập nhật email hoặc mật khẩu nhân sự. Vui lòng kiểm tra VITE_GAS_STAFF_AUTH_URL.',
           );
+          setIsSavingStaff(false);
           return;
         }
 
@@ -543,6 +546,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       }
 
       toastError('Không thể cập nhật nhân sự. Vui lòng kiểm tra quyền ghi Firestore.');
+    } finally {
+      setIsSavingStaff(false);
     }
   };
 
@@ -749,6 +754,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           onDeleteStaff={(staff) => void handleDeleteStaff(staff)}
           setStaffForm={setStaffForm}
           onEditStaff={handleEditStaff}
+          isSaving={isSavingStaff}
         />
       ) : activeTab === 'permissions' ? (
         <PermissionsTabContent
