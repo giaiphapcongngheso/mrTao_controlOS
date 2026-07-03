@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Edit2, Eye, Sparkles, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../share/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import { Button } from '../../../shared/components/button';
 import { Alert, AlertTitle, AlertDescription } from '../../../../share/ui/alert';
 import { ConfigDialog, type ConfigDialogMode } from '../components/_config-dialog';
@@ -268,8 +269,9 @@ export const SettingsTab = React.memo(function SettingsTab({
           {/* Config table */}
           <div className="space-y-3.5">
             <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
-
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs overflow-x-auto">
+ 
+            {/* Desktop View */}
+            <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs overflow-x-auto">
               <Table className="text-left text-sm min-w-[800px]">
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -303,6 +305,54 @@ export const SettingsTab = React.memo(function SettingsTab({
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="block md:hidden space-y-3">
+              {filteredConfigs.length === 0 ? (
+                <div className="py-6 text-center text-slate-500 font-bold text-sm border border-dashed border-slate-200 rounded-xl">
+                  Nhân viên này chưa được cấu hình chỉ số KPI nào trong tháng {selectedMonthYear.split('-')[1]}/{selectedMonthYear.split('-')[0]}
+                </div>
+              ) : (
+                filteredConfigs.map((config, idx) => (
+                  <MobileCard key={config.id} delayIndex={idx} variant="bordered">
+                    <MobileCard.Header
+                      title={config.kpiName}
+                      badge={{
+                        text: `Trọng số: ${(config.weight * 100).toFixed(0)}%`,
+                        variant: 'info'
+                      }}
+                    />
+                    <MobileCard.Body className="p-3 space-y-2">
+                      <MobileCard.Grid
+                        cols={2}
+                        items={[
+                          { label: 'Mục tiêu chung', value: config.goalName },
+                          { label: 'Đơn vị tính', value: config.unit },
+                          { label: 'Target tháng', value: formatValue(config.monthlyTarget, config.unit) },
+                          { label: 'Target ngày', value: formatValue(config.dailyTarget, config.unit) },
+                          { label: 'Nguồn đối chứng', value: config.proofSource, fullWidth: true },
+                        ]}
+                      />
+                      {/* Action buttons footer */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 mt-2">
+                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-slate-500 hover:text-slate-800" onClick={() => handleOpenViewDialog(config)}>
+                          <Eye className="w-3.5 h-3.5 mr-1" />
+                          Xem
+                        </Button>
+                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-blue-600 hover:text-blue-800" onClick={() => handleOpenEditDialog(config)}>
+                          <Edit2 className="w-3.5 h-3.5 mr-1" />
+                          Sửa
+                        </Button>
+                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-red-600 hover:text-red-800" onClick={() => handleDeleteConfig(config)}>
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                          Xóa
+                        </Button>
+                      </div>
+                    </MobileCard.Body>
+                  </MobileCard>
+                ))
+              )}
             </div>
 
             {/* Weight summary */}

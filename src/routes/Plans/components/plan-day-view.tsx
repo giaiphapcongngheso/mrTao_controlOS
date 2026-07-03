@@ -2,7 +2,8 @@ import React, { useMemo, useCallback } from 'react';
 import { Zap, UserCheck, AlertTriangle, Link2, ArrowRight, StickyNote, Clock } from 'lucide-react';
 import type { PlanDocument, PlanDaySchedule } from '../../../types/plans.types';
 import { PlanSummaryCard, DaySlotStatusBadge } from './plan-widgets';
-import { filterPlansByLevel, formatCurrencyVN, formatDateVN } from '../plan-utils';
+import { MobileCard } from '@/src/components/custom/mobile-card';
+import { filterPlansByLevel, formatCurrencyVN, formatDateVN, DAY_SLOT_STATUS_CONFIG } from '../plan-utils';
 
 interface PlanDayViewProps {
   plans: PlanDocument[];
@@ -85,64 +86,126 @@ const PlanDayView = React.memo(function PlanDayView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-        {/* Main: Time-based schedule */}
-        <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
-          <h4 className="text-sm font-black text-slate-700 mb-2">Kế hoạch theo khung giờ</h4>
-          {timeSlots.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left table-fixed min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[100px]">Thời gian</th>
-                    <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[35%]">Việc cần làm</th>
-                    <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[150px]">Người phụ trách</th>
-                    <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[30%]">Kết quả kỳ vọng</th>
-                    <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[120px]">Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeSlots.map((slot) => (
-                    <tr key={slot.id} className="border-b border-slate-50 hover:bg-slate-50/10">
-                      <td className="py-3 px-2 align-middle">
-                        <span className="text-sm font-black text-slate-800">{slot.time}</span>
-                      </td>
-                      <td className="py-3 px-2 align-middle">
-                        <span className="text-sm font-bold text-slate-700 leading-snug block">{slot.task}</span>
-                        {slot.linkedModules?.length ? (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {slot.linkedModules.map((mod) => (
-                              <span key={mod} className="text-xs font-bold text-blue-500 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
-                                {mod}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="py-3 px-2 align-middle">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
-                            {slot.assigneeName?.charAt(0) || '?'}
-                          </div>
-                          <span className="text-sm font-semibold text-slate-500 truncate">{slot.assigneeName || '—'}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 align-middle">
-                        <span className="text-sm text-slate-500 line-clamp-2 leading-snug">{slot.expectedResult || '—'}</span>
-                      </td>
-                      <td className="py-3 px-2 align-middle">
-                        <DaySlotStatusBadge status={slot.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-8 text-center space-y-2">
-              <p className="text-sm font-bold text-slate-400">Chưa có lịch cho ngày này.</p>
-              <p className="text-xs font-semibold text-slate-350">Nhấp "Chỉnh sửa lịch ngày" để thiết lập MIT và lịch theo khung giờ.</p>
-            </div>
-          )}
+          {/* Time-based schedule */}
+          <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
+            <h4 className="text-sm font-black text-slate-700 mb-2">Kế hoạch theo khung giờ</h4>
+            {timeSlots.length > 0 ? (
+              <>
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left table-fixed min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[100px]">Thời gian</th>
+                        <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[35%]">Việc cần làm</th>
+                        <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[150px]">Người phụ trách</th>
+                        <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[30%]">Kết quả kỳ vọng</th>
+                        <th className="text-xs font-bold text-slate-400 uppercase py-2.5 px-2 w-[120px]">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {timeSlots.map((slot) => (
+                        <tr key={slot.id} className="border-b border-slate-50 hover:bg-slate-50/10">
+                          <td className="py-3 px-2 align-middle">
+                            <span className="text-sm font-black text-slate-800">{slot.time}</span>
+                          </td>
+                          <td className="py-3 px-2 align-middle">
+                            <span className="text-sm font-bold text-slate-700 leading-snug block">{slot.task}</span>
+                            {slot.linkedModules?.length ? (
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {slot.linkedModules.map((mod) => (
+                                  <span key={mod} className="text-xs font-bold text-blue-500 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
+                                    {mod}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="py-3 px-2 align-middle">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
+                                {slot.assigneeName?.charAt(0) || '?'}
+                              </div>
+                              <span className="text-sm font-semibold text-slate-500 truncate">{slot.assigneeName || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-2 align-middle">
+                            <span className="text-sm text-slate-500 line-clamp-2 leading-snug">{slot.expectedResult || '—'}</span>
+                          </td>
+                          <td className="py-3 px-2 align-middle">
+                            <DaySlotStatusBadge status={slot.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden space-y-3">
+                  {timeSlots.map((slot, idx) => {
+                    const statusConfig = DAY_SLOT_STATUS_CONFIG[slot.status];
+                    return (
+                      <MobileCard key={slot.id} delayIndex={idx} variant="bordered">
+                        <MobileCard.Header
+                          title={slot.task}
+                          avatar={
+                            <span className="text-xs font-black text-[#C21A1A] bg-red-50/60 border border-red-100/60 px-2 py-0.5 rounded-lg shrink-0">
+                              {slot.time}
+                            </span>
+                          }
+                          badge={{
+                            text: statusConfig.label,
+                            variant: slot.status === 'completed' ? 'success' : slot.status === 'in_progress' ? 'warning' : slot.status === 'pending_review' ? 'info' : 'error'
+                          }}
+                        />
+                        <MobileCard.Body className="p-3">
+                          <MobileCard.Grid
+                            cols={2}
+                            items={[
+                              {
+                                label: 'Phụ trách',
+                                value: (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="w-5 h-5 rounded-full bg-slate-200 border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-650 shrink-0">
+                                      {slot.assigneeName?.charAt(0) || '?'}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-350 truncate">{slot.assigneeName || '—'}</span>
+                                  </div>
+                                )
+                              },
+                              {
+                                label: 'Kết quả kỳ vọng',
+                                value: slot.expectedResult || '—',
+                                fullWidth: true
+                              },
+                              ...(slot.linkedModules?.length ? [{
+                                label: 'Module liên kết',
+                                value: (
+                                  <div className="flex gap-1 flex-wrap mt-0.5">
+                                    {slot.linkedModules.map((mod) => (
+                                      <span key={mod} className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
+                                        {mod}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ),
+                                fullWidth: true
+                              }] : [])
+                            ]}
+                          />
+                        </MobileCard.Body>
+                      </MobileCard>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="py-8 text-center space-y-2">
+                <p className="text-sm font-bold text-slate-400">Chưa có lịch cho ngày này.</p>
+                <p className="text-xs font-semibold text-slate-350">Nhấp "Chỉnh sửa lịch ngày" để thiết lập MIT và lịch theo khung giờ.</p>
+              </div>
+            )}
 
           {/* Quick target pipeline */}
           <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 overflow-x-auto">

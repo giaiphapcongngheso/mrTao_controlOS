@@ -7,6 +7,20 @@ import type { ChecklistPermissions, ChecklistViewCategory } from '../checklist-v
 import { isItemLate, formatCheckedAt } from '../checklist-utils';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { MobileCard, type CardAccentColor } from '../../../components/custom/mobile-card';
+
+const mapCategoryColorToAccent = (colorKey?: string): CardAccentColor => {
+  if (!colorKey) return 'none';
+  const key = colorKey.toLowerCase();
+  if (key.includes('red') || key.includes('rose') || key.includes('pink')) return 'red';
+  if (key.includes('emerald') || key.includes('green')) return 'green';
+  if (key.includes('teal')) return 'teal';
+  if (key.includes('blue') || key.includes('indigo') || key.includes('sky')) return 'blue';
+  if (key.includes('amber') || key.includes('orange') || key.includes('yellow')) return 'amber';
+  if (key.includes('slate') || key.includes('gray')) return 'slate';
+  return 'none';
+};
 
 const parseTimeToDate = (timeStr: string) => {
   if (!timeStr) return undefined;
@@ -56,6 +70,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
   onOpenDetail,
 }: ChecklistFlatTableProps) {
   const [uncheckTarget, setUncheckTarget] = useState<{ id: string; title: string; timeLimit: string; dateKey?: string } | null>(null);
+  const isMobile = useIsMobile();
 
   // Flatten tasks and sort by timeLimit chronologically
   const flatTasks = useMemo(() => {
@@ -135,6 +150,269 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
       void onDeleteItem(itemId, dateKey);
     }
   }, [onDeleteItem]);
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3 font-sans pb-4">
+        {flatTasks.length === 0 ? (
+          <div className="bg-white p-10 text-center rounded-2xl border border-slate-200 gap-3 py-10 shadow-none flex flex-col items-center justify-center">
+            <p className="text-sm font-semibold text-slate-500 italic">
+              Hôm nay không có công việc nào cần hoàn thành.
+            </p>
+          </div>
+        ) : (
+          flatTasks.map((item, index) => {
+            const isLate = isItemLate(item);
+            const isEditing = editState.editingItemId === item.id;
+            const hasImages = (item.imageUrls || []).length > 0;
+
+            if (isEditing) {
+              return (
+                <div
+                  key={item.id}
+                  className="bg-slate-50/75 p-4 rounded-2xl border border-slate-200 space-y-3 text-left animate-in fade-in duration-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Tên đầu việc</span>
+                    <Textarea
+                      rows={2}
+                      value={editState.editItemTitle}
+                      onChange={handleTitleChange}
+                      placeholder="Nhập tên đầu việc..."
+                      className="font-sans w-full min-h-[50px] py-1.5 resize-none overflow-hidden text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 focus:outline-none focus:border-slate-500 leading-normal"
+                    />
+                  </div>
+                  <div className="flex gap-3 items-center">
+                    <div className="flex-1 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Giờ chốt</span>
+                      <DatePicker
+                        value={parseTimeToDate(editState.editItemTimeLimit)}
+                        onChange={handleDatePickerChange}
+                        timeOnly={true}
+                        clearable={false}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 items-end pt-5 shrink-0">
+                      <Button
+                        type="button"
+                        onClick={(e) => handleSaveClick(item.id, item.dateKey, e)}
+                        className="h-8 px-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg flex items-center justify-center cursor-pointer transition-colors active:scale-95 border-none text-xs font-extrabold"
+                      >
+                        Lưu
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleCancelClick}
+                        className="h-8 px-3.5 bg-slate-200 hover:bg-slate-300 text-slate-650 rounded-lg flex items-center justify-center cursor-pointer transition-colors active:scale-95 border-none text-xs font-extrabold"
+                      >
+                        Hủy
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <MobileCard
+                key={item.id}
+                variant="bordered"
+                interactive={true}
+                delayIndex={index}
+                onClick={() => onOpenDetail(item)}
+                accentColor={mapCategoryColorToAccent(item.categoryAccentHex)}
+              >
+                <MobileCard.Header
+                  title={
+                    <span className={cn(
+                      "text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block",
+                      item.isCompleted && "line-through text-slate-400"
+                    )}>
+                      {item.title}
+                    </span>
+                  }
+                  subtitle={
+                    <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                      {item.categoryTitle}
+                    </span>
+                  }
+                  avatar={
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRowClick(item);
+                      }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all active:scale-90"
+                    >
+                      {item.isCompleted ? (
+                        <CheckSquare className="w-5 h-5 text-emerald-500 shrink-0" />
+                      ) : (
+                        <Square
+                          className={cn(
+                            "w-5 h-5 shrink-0 transition-colors",
+                            isLate ? "text-rose-500" : "text-slate-350"
+                          )}
+                        />
+                      )}
+                    </button>
+                  }
+                  badge={
+                    item.isCompleted
+                      ? { text: 'Đã xong', variant: 'success' }
+                      : isLate
+                      ? { text: 'Quá hạn', variant: 'error' }
+                      : { text: 'Chưa làm', variant: 'secondary' }
+                  }
+                  actions={
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          className="w-7 h-7 p-0 hover:bg-slate-100 rounded-lg flex items-center justify-center shrink-0 cursor-pointer active:scale-95 border-none"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40 font-sans" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem
+                          onClick={() => onOpenDetail(item)}
+                          className="text-slate-600 cursor-pointer gap-2"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Chi tiết & bằng chứng</span>
+                        </DropdownMenuItem>
+
+                        {!item.isCompleted && (
+                          <DropdownMenuItem
+                            onClick={(e) => triggerInlineEdit(item, e)}
+                            className="text-slate-600 cursor-pointer gap-2"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Chỉnh sửa</span>
+                          </DropdownMenuItem>
+                        )}
+
+                        {permissions.canDelete && (
+                          <DropdownMenuItem
+                            onClick={(e) => handleDeleteClick(item.id, item.dateKey, e)}
+                            className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 cursor-pointer gap-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Xóa đầu việc</span>
+                          </DropdownMenuItem>
+                        )}
+
+                        {item.isCompleted && (
+                          <>
+                            <DropdownMenuSeparator className="bg-slate-100" />
+                            <div className="p-2 text-[10px] text-slate-400 text-left space-y-0.5 select-none">
+                              <div className="font-extrabold text-slate-500 flex items-center gap-1 text-[9px]">
+                                <Award className="w-3.5 h-3.5 text-emerald-555 shrink-0" />
+                                <span>Hoàn thành</span>
+                              </div>
+                              <p className="truncate">Bởi: {item.checkedByName || 'Hệ thống'}</p>
+                              {item.checkedAt && (
+                                <p className="truncate">Lúc: {formatCheckedAt(item.checkedAt)}</p>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
+                />
+
+                <MobileCard.Grid
+                  items={[
+                    ...(item.timeLimit
+                      ? [
+                          {
+                            label: 'Giờ chốt',
+                            value: (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                {item.timeLimit}
+                              </span>
+                            ),
+                          },
+                        ]
+                      : []),
+                    ...(item.isCompleted && item.checkedByName
+                      ? [
+                          {
+                            label: 'Người làm',
+                            value: (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-650 bg-slate-50 border border-slate-100 rounded px-1.5 py-px max-w-[110px] truncate">
+                                {item.checkedByName}
+                              </span>
+                            ),
+                          },
+                        ]
+                      : []),
+                    {
+                      label: 'Minh chứng',
+                      value: (
+                        <span className={cn(
+                          "flex items-center gap-1 text-[11px] font-black border rounded px-1.5 py-px w-fit transition-all",
+                          hasImages
+                            ? "bg-blue-50 border-blue-200 text-blue-600"
+                            : "bg-slate-50 border-slate-200/60 text-slate-400"
+                        )}>
+                          <Paperclip className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>{(item.imageUrls || []).length}</span>
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+
+                <MobileCard.Footer
+                  actions={[
+                    {
+                      label: 'Chi tiết & Bằng chứng',
+                      onClick: () => onOpenDetail(item),
+                      variant: 'outline' as const,
+                      icon: <Eye className="w-3.5 h-3.5" />,
+                    },
+                    ...(!item.isCompleted
+                      ? [
+                          {
+                            label: 'Chỉnh sửa',
+                            onClick: (e: any) => triggerInlineEdit(item, e),
+                            variant: 'secondary' as const,
+                            icon: <Edit2 className="w-3.5 h-3.5" />,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              </MobileCard>
+            );
+          })
+        )}
+
+        {/* Confirmation for unchecking late items */}
+        <ActionConfirmDialog
+          open={uncheckTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setUncheckTarget(null);
+          }}
+          title="Bỏ hoàn thành công việc trễ hạn"
+          description={`Bỏ hoàn thành công việc "${uncheckTarget?.title || ''}" lúc này sẽ làm nó bị TRỄ HẠN do thời gian hiện tại đã quá giờ quy định (${uncheckTarget?.timeLimit || ''}). Bạn có chắc chắn muốn bỏ hoàn thành?`}
+          onConfirm={() => {
+            if (uncheckTarget) {
+              onToggleItem(uncheckTarget.id, uncheckTarget.dateKey);
+            }
+            setUncheckTarget(null);
+          }}
+          variant="confirm"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden font-sans">

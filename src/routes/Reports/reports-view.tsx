@@ -20,6 +20,8 @@ import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module
 import ReportForm, { type ReportFormState, type ReportPeriod, type ReportStatus } from './components/report-form';
 import { useDailyReportQuery } from './_hook/use-reports';
 import { useReportMetrics } from './_hook/use-report-metrics';
+import { useIsMobile } from '../../shared/hooks/use-is-mobile';
+import { MobileCard } from '../../components/custom/mobile-card';
 
 interface ReportsViewProps {
   dailyReport: DailyReport;
@@ -75,6 +77,7 @@ export default function ReportsView({
   dailyReport,
   currentUser,
 }: ReportsViewProps) {
+  const isMobile = useIsMobile();
   const [reportTab, setReportTab] = useState<ReportPeriod>('day');
   const [searchTerm, setSearchTerm] = useState('');
   const [showToast, setShowToast] = useState<ToastState>({ show: false, msg: '', type: 'success' });
@@ -548,98 +551,199 @@ export default function ReportsView({
             {totalItems} bản ghi
           </span>
         </div>
+        {isMobile ? (
+          <div className="p-4 space-y-3">
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="border border-slate-200 rounded-2xl p-4 space-y-3 animate-pulse bg-white">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-4 w-28 rounded" />
+                        <Skeleton className="h-3 w-20 rounded" />
+                      </div>
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-1">
+                        <Skeleton className="h-3 w-10 rounded" />
+                        <Skeleton className="h-4 w-20 rounded" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-3 w-10 rounded" />
+                        <Skeleton className="h-4 w-16 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : paginatedReports.length > 0 ? (
+              paginatedReports.map((report, index) => {
+                const badgeVariant = report.status === 'green' ? 'success' as const : report.status === 'yellow' ? 'warning' as const : 'error' as const;
+                const accent = report.status === 'green' ? 'green' as const : report.status === 'yellow' ? 'amber' as const : 'red' as const;
+                return (
+                  <MobileCard
+                    key={report.id}
+                    variant="bordered"
+                    interactive={true}
+                    delayIndex={index}
+                    accentColor={accent}
+                  >
+                    <MobileCard.Header
+                      title={
+                        <span className="text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block">
+                          {report.timestamp}
+                        </span>
+                      }
+                      subtitle={
+                        <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                          {report.actor}
+                        </span>
+                      }
+                      badge={{ text: STATUS_LABEL[report.status], variant: badgeVariant }}
+                    />
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Thời gian</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Người lập</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Trạng thái</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Doanh thu</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Checklist</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Sự cố</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Ghi chú</TableHead>
-                <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold text-right">Tác vụ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, index) => (
-                  <TableRow key={`loading-${index}`}>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-10 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : paginatedReports.length > 0 ? (
-                paginatedReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="text-sm font-semibold text-slate-700">{report.timestamp}</TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">{report.actor}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${
-                          report.status === 'green'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : report.status === 'yellow'
-                              ? 'bg-amber-50 text-amber-700'
-                              : 'bg-rose-50 text-rose-700'
-                        }`}
-                      >
-                        {STATUS_LABEL[report.status]}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
-                      {formatCurrency(report.revenue)}
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
-                      {report.checklistPct}% ({report.checklistRatio})
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-700">
-                      {`Trễ ${report.delayedCount} | SOP ${report.sopErrorsCount} | KN ${report.complaintsCount}`}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-650 max-w-[260px]">
-                      <p className="line-clamp-2">{report.notes}</p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <MobileCard.Grid
+                      items={[
+                        { label: 'Doanh thu', value: formatCurrency(report.revenue) },
+                        { label: 'Checklist', value: `${report.checklistPct}% (${report.checklistRatio})` },
+                        {
+                          label: 'Sự cố',
+                          value: `Trễ ${report.delayedCount} | SOP ${report.sopErrorsCount} | KN ${report.complaintsCount}`,
+                          fullWidth: true
+                        }
+                      ]}
+                    />
+
+                    {report.notes && (
+                      <div className="px-4 pb-3 text-left">
+                        <p className="text-[11px] font-bold text-slate-450 line-clamp-2 leading-relaxed">
+                          {report.notes}
+                        </p>
+                      </div>
+                    )}
+
+                    <MobileCard.Footer>
+                      <div className="flex items-center justify-between w-full pt-1 font-sans">
                         <Link
                           to="/reports/$reportId"
                           params={{ reportId: report.id }}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-450 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
-                          title="Xem chi tiết & duyệt"
+                          className="text-[11px] font-extrabold uppercase tracking-wider text-slate-650 bg-slate-100 hover:bg-slate-200 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Xem & Duyệt</span>
                         </Link>
                         <button
                           type="button"
                           onClick={() => handleDeleteReport(report.id)}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                          title="Xóa báo cáo"
+                          className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer border-none"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa</span>
                         </button>
                       </div>
+                    </MobileCard.Footer>
+                  </MobileCard>
+                );
+              })
+            ) : (
+              <div className="py-10 text-center text-sm italic text-slate-400">
+                Chưa có báo cáo nào cho kỳ này.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Thời gian</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Người lập</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Trạng thái</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Doanh thu</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Checklist</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Sự cố</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Ghi chú</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold text-right">Tác vụ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={`loading-${index}`}>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-10 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : paginatedReports.length > 0 ? (
+                  paginatedReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell className="text-sm font-semibold text-slate-700">{report.timestamp}</TableCell>
+                      <TableCell className="text-sm font-semibold text-slate-700">{report.actor}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${
+                            report.status === 'green'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : report.status === 'yellow'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-rose-50 text-rose-700'
+                          }`}
+                        >
+                          {STATUS_LABEL[report.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold text-slate-700">
+                        {formatCurrency(report.revenue)}
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold text-slate-700">
+                        {report.checklistPct}% ({report.checklistRatio})
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold text-slate-700">
+                        {`Trễ ${report.delayedCount} | SOP ${report.sopErrorsCount} | KN ${report.complaintsCount}`}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-650 max-w-[260px]">
+                        <p className="line-clamp-2">{report.notes}</p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            to="/reports/$reportId"
+                            params={{ reportId: report.id }}
+                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-450 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                            title="Xem chi tiết & duyệt"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReport(report.id)}
+                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                            title="Xóa báo cáo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-10 text-center text-sm italic text-slate-400">
+                      Chưa có báo cáo nào cho kỳ này.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm italic text-slate-400">
-                    Chưa có báo cáo nào cho kỳ này.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
         {totalPages > 1 && (
           <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm font-semibold text-slate-500">

@@ -2,8 +2,9 @@ import React from 'react';
 import { Star, DollarSign, Clock, CheckCircle2, Link2 } from 'lucide-react';
 import type { PlanDocument } from '../../../types/plans.types';
 import { PlanSummaryCard, PriorityTable } from './plan-widgets';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import { useWeekSummary } from '../_hooks/use-plan-metrics';
-import { formatCurrencyVN, WEEK_DAYS, REVIEW_FREQUENCY_LABELS } from '../plan-utils';
+import { formatCurrencyVN, WEEK_DAYS, REVIEW_FREQUENCY_LABELS, formatDateVN, PRIORITY_STATUS_CONFIG } from '../plan-utils';
 
 interface PlanWeekViewProps {
   plans: PlanDocument[];
@@ -65,7 +66,52 @@ const PlanWeekView = React.memo(function PlanWeekView({
           {/* Priority table */}
           <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5 space-y-4">
             <h4 className="text-sm font-black text-slate-700 mb-2">Bảng ưu tiên tuần</h4>
-            <PriorityTable priorities={priorities} showLinkedTasks />
+            <div className="hidden md:block">
+              <PriorityTable priorities={priorities} showLinkedTasks />
+            </div>
+            <div className="block md:hidden space-y-3">
+              {priorities.map((p, idx) => {
+                const statusConfig = PRIORITY_STATUS_CONFIG[p.status];
+                const linkedCount = p.linkedTaskIds?.length ?? 0;
+                return (
+                  <MobileCard key={p.id} delayIndex={idx} variant="bordered">
+                    <MobileCard.Header
+                      title={p.title}
+                      avatar={
+                        <div className="w-7 h-7 rounded-lg bg-[#C21A1A] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                          {p.order}
+                        </div>
+                      }
+                      badge={{
+                        text: statusConfig.label,
+                        variant: p.status === 'completed' ? 'success' : p.status === 'in_progress' ? 'warning' : p.status === 'warning' ? 'error' : 'info'
+                      }}
+                    />
+                    <MobileCard.Body className="p-3 space-y-2">
+                      <MobileCard.Grid
+                        cols={2}
+                        items={[
+                          { label: 'Chủ trì', value: p.ownerName },
+                          { label: 'Hạn chốt', value: formatDateVN(p.deadline) },
+                          { label: 'Kết quả cần đạt', value: p.expectedResult, fullWidth: true },
+                          ...(linkedCount > 0 ? [{
+                            label: 'Công việc liên kết',
+                            value: (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600">
+                                <Link2 className="w-3.5 h-3.5" />
+                                {linkedCount} công việc
+                              </span>
+                            ),
+                            fullWidth: true
+                          }] : [])
+                        ]}
+                      />
+                      <MobileCard.ProgressBar value={p.progress} label="Tiến độ" />
+                    </MobileCard.Body>
+                  </MobileCard>
+                );
+              })}
+            </div>
           </div>
 
           {/* Week day grid */}

@@ -45,6 +45,8 @@ import { CustomTable } from '../../../../share/components/custom-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { MobileCard, type CardAccentColor } from '../../../components/custom/mobile-card';
 
 // ── Interface Dòng Bảng Phẳng ──
 interface FlatHistoryRow {
@@ -231,6 +233,7 @@ export const HistoryTab = React.memo(function HistoryTab({
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   // ── 1. Biến đổi dữ liệu snapshot sang bảng phẳng ──
   const flatRows = useMemo(() => {
@@ -696,19 +699,96 @@ export const HistoryTab = React.memo(function HistoryTab({
 
         {/* 2.1 Bảng lịch sử bên trái */}
         <div className="lg:col-span-8 min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:font-semibold [&_th]:border-b [&_th]:border-slate-100/50 [&_th]:normal-case [&_th_div]:!text-slate-800 [&_th_svg]:!text-slate-500 [&_th]:text-sm [&_th]:tracking-wide [&_th]:px-4 [&_tr]:border-b [&_tr]:border-slate-50 [&_tr:hover]:bg-slate-50/40 [&_td]:py-3.5">
-          <CustomTable
-            columns={columns}
-            data={filteredRows}
-            loading={historyLoading}
-            enablePagination={false}
-            enableFiltering={false}
-            activeRowId={selectedRowId || undefined}
-            onRowClick={(row) => handleRowClick(row.original.id)}
-            getRowId={(row) => row.id}
-            emptyMessage="Không tìm thấy dữ liệu lịch sử nào phù hợp."
-            tableMinWidth={800}
-            className="w-full text-left text-sm"
-          />
+          {isMobile ? (
+            <div className="space-y-3 font-sans pb-4">
+              {filteredRows.length === 0 ? (
+                <div className="bg-white p-10 text-center rounded-2xl border border-slate-200 gap-3 py-10 shadow-none flex flex-col items-center justify-center">
+                  <p className="text-sm font-semibold text-slate-500 italic">
+                    Không tìm thấy dữ liệu lịch sử nào phù hợp.
+                  </p>
+                </div>
+              ) : (
+                filteredRows.map((row, index) => {
+                  const statusMap = {
+                    completed_on_time: { text: 'Đúng hạn', variant: 'success' as const },
+                    completed_late: { text: 'Quá hạn', variant: 'warning' as const },
+                    incomplete: { text: 'Chưa xong', variant: 'error' as const }
+                  };
+                  const statusInfo = statusMap[row.status] || { text: 'Không rõ', variant: 'secondary' as const };
+                  
+                  return (
+                    <MobileCard
+                      key={row.id}
+                      variant="bordered"
+                      interactive={true}
+                      delayIndex={index}
+                      onClick={() => handleRowClick(row.id)}
+                      accentColor={row.status === 'completed_on_time' ? 'green' : row.status === 'completed_late' ? 'amber' : 'red'}
+                    >
+                      <MobileCard.Header
+                        title={
+                          <span className="text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block">
+                            {row.checklistName}
+                          </span>
+                        }
+                        subtitle={
+                          <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                            {row.roleName}
+                          </span>
+                        }
+                        avatar={
+                          <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border",
+                            row.status === 'completed_on_time'
+                              ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                              : row.status === 'completed_late'
+                                ? "bg-amber-50 border-amber-100 text-amber-600"
+                                : "bg-rose-50 border-rose-100 text-rose-600"
+                          )}>
+                            <ClipboardList className="w-4.5 h-4.5" />
+                          </div>
+                        }
+                        badge={{ text: statusInfo.text, variant: statusInfo.variant }}
+                      />
+
+                      <MobileCard.Grid
+                        items={[
+                          { label: 'Ngày', value: row.dateFormatted },
+                          { label: 'Tiến độ', value: `${row.completedTasksCount}/${row.totalTasks} (${Math.round(row.completionRate)}%)` },
+                          { label: 'Người làm', value: row.performerName || 'N/A' }
+                        ]}
+                      />
+
+                      <MobileCard.Footer
+                        actions={[
+                          {
+                            label: 'Xem chi tiết',
+                            onClick: () => handleRowClick(row.id),
+                            variant: 'outline' as const,
+                            icon: <Eye className="w-3.5 h-3.5" />
+                          }
+                        ]}
+                      />
+                    </MobileCard>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            <CustomTable
+              columns={columns}
+              data={filteredRows}
+              loading={historyLoading}
+              enablePagination={false}
+              enableFiltering={false}
+              activeRowId={selectedRowId || undefined}
+              onRowClick={(row) => handleRowClick(row.original.id)}
+              getRowId={(row) => row.id}
+              emptyMessage="Không tìm thấy dữ liệu lịch sử nào phù hợp."
+              tableMinWidth={800}
+              className="w-full text-left text-sm"
+            />
+          )}
         </div>
 
         {/* 2.2 Sidebar động bên phải (Cố định trên Desktop, Ẩn và mở Drawer trên Mobile) */}

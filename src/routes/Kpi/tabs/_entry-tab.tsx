@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, Check, Download } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../share/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import { ScrollArea, ScrollBar } from '../../../shared/components/scroll-area';
 import { Button } from '../../../../share/ui/button';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
@@ -384,15 +385,16 @@ const ActionPlanTable = React.memo(function ActionPlanTable({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+        <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">
           BẢNG ACTION PLAN KPI CHI TIẾT ({viewMode === 'month' ? 'TÓM TẮT TUẦN' : '7 NGÀY CHI TIẾT'})
         </h4>
         {viewMode === 'month' && (
-          <span className="text-sm font-semibold text-slate-500">Click "Xem chi tiết" ở mỗi cột tuần để xem/sửa chi tiết từng ngày ➔</span>
+          <span className="text-sm font-semibold text-slate-500 hidden md:inline">Click "Xem chi tiết" ở mỗi cột tuần để xem/sửa chi tiết từng ngày ➔</span>
         )}
       </div>
 
-      <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+      {/* Desktop Table View */}
+      <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
         <ScrollArea className="w-full">
           <Table className="text-center font-sans text-sm">
             {viewMode === 'month' ? (
@@ -420,6 +422,122 @@ const ActionPlanTable = React.memo(function ActionPlanTable({
           </Table>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+      </div>
+
+      {/* Mobile Card List View */}
+      <div className="block md:hidden space-y-4">
+        {staffConfigs.map((config, idx) => {
+          const actuals = daysInMonth.map(day => {
+            const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+            const record = kpiDailyValues.find(
+              v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
+            );
+            return record ? record.value : 0;
+          });
+
+          const totalActual = actuals.reduce((sum, v) => sum + v, 0);
+          const pct = config.monthlyTarget > 0 ? (totalActual / config.monthlyTarget) : 0;
+          const pctStr = (pct * 100).toFixed(0) + '%';
+
+          return (
+            <MobileCard key={config.id} delayIndex={idx} variant="bordered">
+              <MobileCard.Header
+                title={config.kpiName}
+                badge={{
+                  text: `% Đạt: ${pctStr}`,
+                  variant: pct >= 0.95 ? 'success' : pct >= 0.7 ? 'warning' : 'error'
+                }}
+              />
+              <MobileCard.Body className="p-3 space-y-3">
+                <MobileCard.Grid
+                  cols={2}
+                  items={[
+                    {
+                      label: 'Mục tiêu tháng',
+                      value: `${config.monthlyTarget.toLocaleString()} ${config.unit}`,
+                    },
+                    {
+                      label: 'Thực tế đạt',
+                      value: `${totalActual.toLocaleString()} ${config.unit}`,
+                      valueClassName: 'font-sans font-bold text-amber-700',
+                    },
+                    {
+                      label: 'Mục tiêu ngày',
+                      value: `${config.dailyTarget.toLocaleString()} ${config.unit}`,
+                    },
+                    {
+                      label: 'Trọng số',
+                      value: `${(config.weight * 100).toFixed(0)}%`,
+                    }
+                  ]}
+                />
+
+                {viewMode === 'month' ? (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chi tiết theo tuần:</span>
+                    <div className="grid grid-cols-5 gap-1">
+                      {[1, 2, 3, 4, 5].map(week => {
+                        const weekAct = getWeekActual(config.id, week, daysInMonthCount, selectedMonthYear, selectedStaff.id, kpiDailyValues);
+                        return (
+                          <button
+                            key={week}
+                            onClick={() => onDrillToWeek(week)}
+                            className="flex flex-col items-center justify-center p-1 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 bg-white transition-all cursor-pointer"
+                          >
+                            <span className="text-[9px] font-black text-slate-500">T.{week}</span>
+                            <span className="text-[10px] font-bold text-slate-800 truncate w-full text-center">
+                              {weekAct > 0 ? weekAct.toLocaleString() : '-'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">7 ngày trong tuần {selectedWeekNum}:</span>
+                      <span className="text-[9px] font-semibold text-slate-400 leading-none">Chạm đúp để sửa số liệu ngày</span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {(() => {
+                        const weekDaysList = getWeekDays(selectedWeekNum || 1, daysInMonthCount);
+                        return weekDaysList.map(day => {
+                          const dateStr = `${selectedMonthYear}-${day.toString().padStart(2, '0')}`;
+                          const record = kpiDailyValues.find(
+                            v => v.staffId === selectedStaff.id && v.kpiConfigId === config.id && v.date === dateStr
+                          );
+                          const act = record ? record.value : 0;
+                          return (
+                            <button
+                              key={day}
+                              onDoubleClick={() => onCellDoubleClick(day, config.id)}
+                              onTouchStart={(e) => {
+                                // Simple touch double tap detection for mobile devices
+                                const nowTime = Date.now();
+                                const lastTouch = (e.currentTarget as any).lastTouch || 0;
+                                if (nowTime - lastTouch < 300) {
+                                  onCellDoubleClick(day, config.id);
+                                }
+                                (e.currentTarget as any).lastTouch = nowTime;
+                              }}
+                              className="flex flex-col items-center justify-center p-1 rounded-lg border border-slate-200 hover:border-amber-400 hover:bg-amber-50 bg-white transition-all cursor-pointer min-w-0"
+                            >
+                              <span className="text-[9px] font-black text-slate-400">N.{day}</span>
+                              <span className="text-[10px] font-bold text-slate-800 truncate w-full text-center">
+                                {act > 0 ? act.toLocaleString() : '-'}
+                              </span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </MobileCard.Body>
+            </MobileCard>
+          );
+        })}
       </div>
     </div>
   );

@@ -41,6 +41,8 @@ import {
 import { reportsDailyService, type ReportSubmission, type HighlightIssue, type PromiseItem, type AttachmentItem } from '../../services/reports-service';
 import { notificationsService } from '../../services/notifications-service';
 import { useReportDetailQuery, useDailyReportQuery } from './_hook/use-reports';
+import { useIsMobile } from '../../shared/hooks/use-is-mobile';
+import { MobileCard } from '../../components/custom/mobile-card';
 
 interface ReportDetailViewProps {
   reportId: string;
@@ -379,8 +381,8 @@ const NarrativeSection = React.memo(function NarrativeSection({ notes }: { notes
   );
 });
 
-// Sub-component: Highlight Issues Table
 const IssuesTable = React.memo(function IssuesTable({ issues }: { issues?: HighlightIssue[] }) {
+  const isMobile = useIsMobile();
   const columns = React.useMemo<ColumnDef<HighlightIssue>[]>(
     () => [
       {
@@ -443,27 +445,75 @@ const IssuesTable = React.memo(function IssuesTable({ issues }: { issues?: Highl
   );
 
   return (
-    <div className="space-y-3 text-left">
+    <div className="space-y-3 text-left font-sans">
       <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
         <AlertTriangle className="h-4.5 w-4.5 text-[#C21A1A]" />
         Vấn đề & hành động
       </h3>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <CustomTable
-          columns={columns}
-          data={issues || []}
-          enableFiltering={false}
-          enableColumnVisibility={false}
-          enableSorting={false}
-          enablePagination={false}
-          emptyMessage="Không ghi nhận vấn đề nổi bật nào trong ca/tuần làm việc."
-          tableMinWidth={750}
-          className="text-xs"
-        />
-      </div>
+      {isMobile ? (
+        <div className="space-y-3">
+          {!issues || issues.length === 0 ? (
+            <div className="bg-white p-6 text-center rounded-xl border border-slate-200 text-xs italic text-slate-400">
+              Không ghi nhận vấn đề nổi bật nào trong ca/tuần làm việc.
+            </div>
+          ) : (
+            issues.map((item, index) => {
+              const severityLabel = item.severity === 'high' ? 'Cao' : item.severity === 'medium' ? 'T.Bình' : 'Thấp';
+              const accent = item.severity === 'high' ? 'red' as const : item.severity === 'medium' ? 'amber' as const : 'slate' as const;
+              const badgeVariant = item.severity === 'high' ? 'warning' as const : 'success' as const;
+              const badgeText = item.severity === 'high' ? 'Đang theo dõi' : 'Đã xử lý';
+              
+              return (
+                <MobileCard
+                  key={index}
+                  variant="bordered"
+                  delayIndex={index}
+                  accentColor={accent}
+                >
+                  <MobileCard.Header
+                    title={
+                      <span className="text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block">
+                        {item.issue}
+                      </span>
+                    }
+                    subtitle={
+                      <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                        Mức độ: {severityLabel}
+                      </span>
+                    }
+                    badge={{ text: badgeText, variant: badgeVariant }}
+                  />
+
+                  <MobileCard.Grid
+                    items={[
+                      { label: 'Nguyên nhân', value: item.rootCause || 'N/A', fullWidth: true },
+                      { label: 'Khắc phục', value: item.action || 'N/A', fullWidth: true }
+                    ]}
+                  />
+                </MobileCard>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <CustomTable
+            columns={columns}
+            data={issues || []}
+            enableFiltering={false}
+            enableColumnVisibility={false}
+            enableSorting={false}
+            enablePagination={false}
+            emptyMessage="Không ghi nhận vấn đề nổi bật nào trong ca/tuần làm việc."
+            tableMinWidth={750}
+            className="text-xs"
+          />
+        </div>
+      )}
     </div>
   );
 });
+
 
 // Sub-component: Followup Checklist Promises
 const FollowupSection = React.memo(function FollowupSection({ promises }: { promises?: PromiseItem[] }) {

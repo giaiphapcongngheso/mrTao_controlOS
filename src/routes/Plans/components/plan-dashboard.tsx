@@ -21,6 +21,7 @@ import {
   Shield
 } from 'lucide-react';
 import { Button } from '../../../../share/ui/button';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import type { PlanDocument, PlanLiveIndicator } from '../../../types/plans.types';
 import {
   PlanSummaryCard,
@@ -103,7 +104,7 @@ const PlanDashboard = React.memo(function PlanDashboard({
           {activePlan?.revenueTarget ? (
             <div className="space-y-0.5">
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold text-slate-505">Doanh thu</span>
+                <span className="text-sm font-semibold text-slate-550">Doanh thu</span>
                 <span className="text-xl font-black text-slate-800">{formatCurrencyVN(activePlan.revenueTarget)}</span>
               </div>
               {activePlan.profitMarginTarget != null && activePlan.profitMarginTarget > 0 && (
@@ -220,57 +221,114 @@ const PlanDashboard = React.memo(function PlanDashboard({
           <div className="border border-slate-100/80 shadow-2xs bg-white rounded-2xl p-5">
             <h4 className="text-sm font-black text-slate-700 mb-4">Chỉ số sống còn phải nhìn mỗi ngày</h4>
             {indicators.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left table-fixed min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[32%]">Chỉ số</th>
-                      <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[22%]">Mục tiêu Q3</th>
-                      <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[16%]">Hôm nay</th>
-                      <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[15%]">Trạng thái</th>
-                      <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[15%]">Chủ sở hữu</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {indicators.map((ind) => {
-                      const statusConfig = INDICATOR_STATUS_CONFIG[ind.status];
-                      const { icon: IndicatorIcon, color: iconStyle } = getIndicatorIcon(ind.name);
-                      const isBelowTarget = ind.status === 'below_target';
-                      return (
-                        <tr key={ind.id} className="border-b border-slate-50 hover:bg-slate-50/10">
-                          <td className="py-3 px-2 text-sm font-bold text-slate-800">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${iconStyle}`}>
-                                <IndicatorIcon className="w-4 h-4" />
+              <>
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left table-fixed min-w-[600px]">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[32%]">Chỉ số</th>
+                        <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[22%]">Mục tiêu Q3</th>
+                        <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[16%]">Hôm nay</th>
+                        <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[15%]">Trạng thái</th>
+                        <th className="text-xs font-bold text-slate-455 py-2.5 px-2 w-[15%]">Chủ sở hữu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {indicators.map((ind) => {
+                        const statusConfig = INDICATOR_STATUS_CONFIG[ind.status];
+                        const { icon: IndicatorIcon, color: iconStyle } = getIndicatorIcon(ind.name);
+                        const isBelowTarget = ind.status === 'below_target';
+                        return (
+                          <tr key={ind.id} className="border-b border-slate-50 hover:bg-slate-50/10">
+                            <td className="py-3 px-2 text-sm font-bold text-slate-800">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${iconStyle}`}>
+                                  <IndicatorIcon className="w-4 h-4" />
+                                </div>
+                                <span className="truncate">{ind.name}</span>
                               </div>
-                              <span className="truncate">{ind.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-2 text-sm font-semibold text-slate-500">
-                            ≥ {ind.targetValue} {ind.unit}
-                          </td>
-                          <td className={`py-3 px-2 text-sm font-bold ${isBelowTarget ? 'text-red-500' : 'text-slate-800'}`}>
-                            {ind.currentValue} {ind.unit}
-                          </td>
-                          <td className="py-3 px-2">
-                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${statusConfig.bgColor} ${statusConfig.color}`}>
-                              {statusConfig.label}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 rounded-full bg-slate-200 border border-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0 overflow-hidden">
-                                {ind.ownerName?.charAt(0)}
+                            </td>
+                            <td className="py-3 px-2 text-sm font-semibold text-slate-500">
+                              ≥ {ind.targetValue} {ind.unit}
+                            </td>
+                            <td className={`py-3 px-2 text-sm font-bold ${isBelowTarget ? 'text-red-500' : 'text-slate-800'}`}>
+                              {ind.currentValue} {ind.unit}
+                            </td>
+                            <td className="py-3 px-2">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${statusConfig.bgColor} ${statusConfig.color}`}>
+                                {statusConfig.label}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-full bg-slate-200 border border-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0 overflow-hidden">
+                                  {ind.ownerName?.charAt(0)}
+                                </div>
+                                <span className="text-xs font-semibold text-slate-655 truncate">{ind.ownerName}</span>
                               </div>
-                              <span className="text-xs font-semibold text-slate-655 truncate">{ind.ownerName}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden space-y-3">
+                  {indicators.map((ind, idx) => {
+                    const statusConfig = INDICATOR_STATUS_CONFIG[ind.status];
+                    const { icon: IndicatorIcon, color: iconStyle } = getIndicatorIcon(ind.name);
+                    const isBelowTarget = ind.status === 'below_target';
+
+                    return (
+                      <MobileCard key={ind.id} delayIndex={idx} variant="bordered">
+                        <MobileCard.Header
+                          title={ind.name}
+                          avatar={
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${iconStyle}`}>
+                              <IndicatorIcon className="w-4.5 h-4.5" />
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          }
+                          badge={{
+                            text: statusConfig.label,
+                            variant: ind.status === 'above_target' ? 'success' : ind.status === 'below_target' ? 'error' : 'warning'
+                          }}
+                        />
+                        <MobileCard.Body className="p-3">
+                          <MobileCard.Grid
+                            cols={2}
+                            items={[
+                              {
+                                label: 'Mục tiêu Q3',
+                                value: `≥ ${ind.targetValue} ${ind.unit}`,
+                              },
+                              {
+                                label: 'Hôm nay',
+                                value: `${ind.currentValue} ${ind.unit}`,
+                                valueClassName: isBelowTarget ? 'text-red-500' : 'text-slate-900 dark:text-slate-150',
+                              },
+                              {
+                                label: 'Chủ sở hữu',
+                                value: (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="w-5 h-5 rounded-full bg-slate-200 border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
+                                      {ind.ownerName?.charAt(0)}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{ind.ownerName}</span>
+                                  </div>
+                                ),
+                                fullWidth: true,
+                              }
+                            ]}
+                          />
+                        </MobileCard.Body>
+                      </MobileCard>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="py-8 text-center text-sm font-semibold text-slate-350">
                 Chưa có chỉ số nào. Thêm chỉ số sống để theo dõi hàng ngày.

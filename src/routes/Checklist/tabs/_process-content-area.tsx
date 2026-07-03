@@ -5,6 +5,8 @@ import { DeleteConfirm } from '../../../../share/components/delete-confirm';
 import type { ProcessDocument } from '../../../types/checklist.types';
 import { cn } from '../../../../share/lib/utils';
 import { getChecklistColorMeta, resolveChecklistIcon } from '../checklist-meta';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { MobileCard, type CardAccentColor } from '../../../components/custom/mobile-card';
 
 interface ProcessContentAreaProps {
   processes: ProcessDocument[];
@@ -20,6 +22,18 @@ interface ProcessContentAreaProps {
   onOpenDetail: (process: ProcessDocument) => void;
 }
 
+const mapCategoryColorToAccent = (colorKey?: string): CardAccentColor => {
+  if (!colorKey) return 'none';
+  const key = colorKey.toLowerCase();
+  if (key.includes('red') || key.includes('rose') || key.includes('pink')) return 'red';
+  if (key.includes('emerald') || key.includes('green')) return 'green';
+  if (key.includes('teal')) return 'teal';
+  if (key.includes('blue') || key.includes('indigo') || key.includes('sky')) return 'blue';
+  if (key.includes('amber') || key.includes('orange') || key.includes('yellow')) return 'amber';
+  if (key.includes('slate') || key.includes('gray')) return 'slate';
+  return 'none';
+};
+
 const ProcessContentArea = React.memo(function ProcessContentArea({
   processes,
   roleOptions,
@@ -34,6 +48,7 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
   onOpenDetail,
 }: ProcessContentAreaProps) {
   const [deleteTarget, setDeleteTarget] = React.useState<ProcessDocument | null>(null);
+  const isMobile = useIsMobile();
 
   const handleDeleteClick = React.useCallback((process: ProcessDocument, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,7 +94,7 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
               </div>
             </Card>
           ) : (
-            processes.map((process) => {
+            processes.map((process, index) => {
               const colorMeta = getChecklistColorMeta(process.colorKey || 'rose');
               const ProcessIcon = resolveChecklistIcon(process.iconName || 'Layers');
               const stepsCount = process.steps.length;
@@ -92,6 +107,79 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
               const handleOnDelete = (e: React.MouseEvent) => handleDeleteClick(process, e);
               const handleOnEdit = (e: React.MouseEvent) => handleEditClick(process, e);
               const handleOnOpen = (e: React.MouseEvent) => handleOpenClick(process, e);
+
+              if (isMobile) {
+                return (
+                  <MobileCard
+                    key={process.id}
+                    variant="bordered"
+                    interactive={true}
+                    delayIndex={index}
+                    onClick={handleCardClick}
+                    accentColor={mapCategoryColorToAccent(process.colorKey)}
+                  >
+                    <MobileCard.Header
+                      title={
+                        <span className="text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block">
+                          {process.title}
+                        </span>
+                      }
+                      subtitle={
+                        <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                          {roleOptions.find((r) => r.code.toUpperCase() === (process.roleCode || '').toUpperCase())?.name || process.roleCode}
+                        </span>
+                      }
+                      avatar={
+                        <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border", colorMeta.iconBg)}>
+                          <ProcessIcon className={cn("w-4.5 h-4.5", colorMeta.iconColor)} />
+                        </span>
+                      }
+                      badge={
+                        (process.status || 'active') === 'active'
+                          ? { text: 'Đang dùng', variant: 'success' }
+                          : { text: 'Tạm ẩn', variant: 'secondary' }
+                      }
+                    />
+
+                    <MobileCard.Grid
+                      items={[
+                        { label: 'Số bước', value: `${stepsCount} bước` },
+                        { label: 'Nhiệm vụ', value: `${tasksCount} nhiệm vụ` }
+                      ]}
+                    />
+
+                    {process.description && (
+                      <div className="px-4 pb-3 text-left">
+                        <p className="text-[11px] font-bold text-slate-450 line-clamp-2 leading-relaxed">
+                          {process.description}
+                        </p>
+                      </div>
+                    )}
+
+                    <MobileCard.Footer
+                      actions={[
+                        {
+                          label: 'Mở chi tiết',
+                          onClick: handleOnOpen,
+                          variant: 'outline' as const,
+                        },
+                        ...(canUpdate ? [{
+                          label: 'Sửa',
+                          onClick: handleOnEdit,
+                          variant: 'secondary' as const,
+                          icon: <Edit2 className="w-3.5 h-3.5" />
+                        }] : []),
+                        ...(canDelete ? [{
+                          label: 'Xóa',
+                          onClick: handleOnDelete,
+                          variant: 'danger' as const,
+                          icon: <Trash2 className="w-3.5 h-3.5" />
+                        }] : [])
+                      ]}
+                    />
+                  </MobileCard>
+                );
+              }
 
               return (
                 <Card
@@ -115,7 +203,6 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                           </span>
                         </div>
 
-                        
                         <CardDescription className="mt-0.5 flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                           <span>{stepsCount} bước</span>
                           <span className="w-1 h-1 rounded-full bg-slate-200 shrink-0" />
@@ -167,7 +254,7 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                         type="button"
                         variant="outline"
                         onClick={handleOnOpen}
-                        className="h-7 px-3 text-[9px] font-black uppercase tracking-wider rounded-lg border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-3xs"
+                        className="h-7 px-3 text-[9px] font-black uppercase tracking-wider rounded-lg border-slate-200 text-slate-650 hover:text-slate-900 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-3xs"
                       >
                         Mở
                       </Button>

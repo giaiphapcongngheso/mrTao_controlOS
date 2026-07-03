@@ -2,11 +2,12 @@ import React, { useCallback } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
 import { Avatar, AvatarImage, AvatarFallback } from '../../../../share/ui/avatar';
 import { ClassificationBadge } from './_classification-badge';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import type { StaffRank } from '../../../types/kpi.types';
 import type { StaffRole } from '../../../types/staff.types';
 
 import { PeriodSelector } from './_period-selector';
-import type { RanksTimeframe } from '../kpi-utils';
+import { type RanksTimeframe, translateClassification } from '../kpi-utils';
 
 interface LeaderboardTableProps {
   roles: StaffRole[];
@@ -69,63 +70,119 @@ export const LeaderboardTable = React.memo(function LeaderboardTable({
 
       {/* Table */}
       <div className="p-2">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12 text-center text-sm font-bold text-slate-700">Hạng</TableHead>
-              <TableHead className="text-sm font-bold text-slate-700">Nhân viên</TableHead>
-              <TableHead className="text-right text-sm font-bold text-slate-700">Tổng điểm</TableHead>
-              <TableHead className="text-right text-sm font-bold text-slate-700">Xếp loại</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ranks.map((rank, idx) => {
-              const isSelected = selectedStaffId === rank.staffId;
-              return (
-                <TableRow
-                  key={rank.staffId}
-                  onClick={() => handleRowClick(rank.staffId)}
-                  className={`cursor-pointer hover:bg-slate-50/70 ${isSelected ? 'bg-slate-50 font-semibold border-l-4 border-l-[#C21A1A]' : ''}`}
-                >
-                  {/* Rank number */}
-                  <TableCell className="text-center font-sans text-sm">
-                    <RankBadge rank={idx + 1} />
-                  </TableCell>
+        {/* Desktop View */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-center text-sm font-bold text-slate-700">Hạng</TableHead>
+                <TableHead className="text-sm font-bold text-slate-700">Nhân viên</TableHead>
+                <TableHead className="text-right text-sm font-bold text-slate-700">Tổng điểm</TableHead>
+                <TableHead className="text-right text-sm font-bold text-slate-700">Xếp loại</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ranks.map((rank, idx) => {
+                const isSelected = selectedStaffId === rank.staffId;
+                return (
+                  <TableRow
+                    key={rank.staffId}
+                    onClick={() => handleRowClick(rank.staffId)}
+                    className={`cursor-pointer hover:bg-slate-50/70 ${isSelected ? 'bg-slate-50 font-semibold border-l-4 border-l-[#C21A1A]' : ''}`}
+                  >
+                    {/* Rank number */}
+                    <TableCell className="text-center font-sans text-sm">
+                      <RankBadge rank={idx + 1} />
+                    </TableCell>
 
-                  {/* Staff info */}
-                  <TableCell>
-                    {(() => {
-                      const roleObj = roles.find(r => r.code === rank.role);
-                      const roleDisplay = roleObj ? roleObj.name : rank.role;
-                      return (
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="w-7 h-7">
-                            <AvatarImage src={rank.avatar} />
-                            <AvatarFallback className="text-xs font-bold">{rank.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="text-left">
-                            <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
-                            <span className="text-xs font-semibold text-slate-500">Vai trò: {roleDisplay}</span>
+                    {/* Staff info */}
+                    <TableCell>
+                      {(() => {
+                        const roleObj = roles.find(r => r.code === rank.role);
+                        const roleDisplay = roleObj ? roleObj.name : rank.role;
+                        return (
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="w-7 h-7">
+                              <AvatarImage src={rank.avatar} />
+                              <AvatarFallback className="text-xs font-bold">{rank.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="text-left">
+                              <p className="text-sm font-bold text-slate-800 leading-tight">{rank.name}</p>
+                              <span className="text-xs font-semibold text-slate-500">Vai trò: {roleDisplay}</span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-                  </TableCell>
+                        );
+                      })()}
+                    </TableCell>
 
-                  {/* Score */}
-                  <TableCell className="text-right font-sans font-bold text-slate-800 text-sm">
-                    {rank.score}%
-                  </TableCell>
+                    {/* Score */}
+                    <TableCell className="text-right font-sans font-bold text-slate-800 text-sm">
+                      {rank.score}%
+                    </TableCell>
 
-                  {/* Classification */}
-                  <TableCell className="text-right">
-                    <ClassificationBadge classification={rank.classification} />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {/* Classification */}
+                    <TableCell className="text-right">
+                      <ClassificationBadge classification={rank.classification} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden space-y-2">
+          {ranks.map((rank, idx) => {
+            const isSelected = selectedStaffId === rank.staffId;
+            const roleObj = roles.find(r => r.code === rank.role);
+            const roleDisplay = roleObj ? roleObj.name : rank.role;
+
+            return (
+              <MobileCard
+                key={rank.staffId}
+                delayIndex={idx}
+                variant="bordered"
+                accentColor={isSelected ? 'brand' : 'none'}
+                accentPosition={isSelected ? 'left' : 'none'}
+                interactive={true}
+                onClick={() => handleRowClick(rank.staffId)}
+                className="cursor-pointer"
+              >
+                <MobileCard.Header
+                  title={rank.name}
+                  avatar={
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={rank.avatar} />
+                      <AvatarFallback className="text-xs font-bold">{rank.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  }
+                  subtitle={`Vai trò: ${roleDisplay}`}
+                  badge={{
+                    text: translateClassification(rank.classification),
+                    variant: rank.classification === 'excellent' || rank.classification === 'good' ? 'success' : rank.classification === 'pass' ? 'warning' : 'error'
+                  }}
+                />
+                <MobileCard.Body className="p-3">
+                  <MobileCard.Grid
+                    cols={2}
+                    items={[
+                      {
+                        label: 'Hạng thi đua',
+                        value: <RankBadge rank={idx + 1} />,
+                      },
+                      {
+                        label: 'Tổng điểm KPI',
+                        value: `${rank.score}%`,
+                        valueClassName: 'font-sans font-bold text-slate-900 dark:text-slate-150 text-sm'
+                      }
+                    ]}
+                  />
+                </MobileCard.Body>
+              </MobileCard>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
