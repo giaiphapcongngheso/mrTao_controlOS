@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronUp, MoreVertical, AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
