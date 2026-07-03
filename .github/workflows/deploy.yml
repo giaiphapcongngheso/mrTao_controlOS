@@ -20,6 +20,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,6 +103,7 @@ jobs:
         run: cp dist/index.html dist/404.html
 
       - name: Deploy Firestore indexes
+        timeout-minutes: 5
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN || vars.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID }}
@@ -123,6 +125,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Commit version bump
+        timeout-minutes: 5
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
