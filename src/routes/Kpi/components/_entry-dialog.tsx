@@ -85,7 +85,7 @@ export const EntryDialog = React.memo(function EntryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-[660px] sm:max-w-[660px] p-0 rounded-[22px] bg-white border border-slate-200 shadow-2xl text-left font-sans overflow-hidden"
+        className="w-[95vw] sm:w-full max-w-[660px] sm:max-w-[660px] p-0 rounded-[22px] bg-white border border-slate-200 shadow-2xl text-left font-sans overflow-hidden"
       >
         {/* ── Header — đồng bộ chuẩn project ── */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100">
@@ -131,7 +131,7 @@ export const EntryDialog = React.memo(function EntryDialog({
         </div>
 
         {/* ── KPI Entries ── */}
-        <form onSubmit={handleFormSubmit} className="flex flex-col">
+        <form onSubmit={handleFormSubmit} className="flex flex-col w-full min-w-0">
           <div className="px-5 py-4">
             {/* Section header */}
             <div className="flex items-center justify-between mb-3">
