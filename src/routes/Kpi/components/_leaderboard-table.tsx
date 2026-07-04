@@ -45,6 +45,10 @@ export const LeaderboardTable = React.memo(function LeaderboardTable({
     [onSelectStaff]
   );
 
+  const totalCalculatedPayout = React.useMemo(() => {
+    return ranks.reduce((sum, r) => sum + (r.calculatedPayout || 0), 0);
+  }, [ranks]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
       {/* Header */}
@@ -79,6 +83,7 @@ export const LeaderboardTable = React.memo(function LeaderboardTable({
                 <TableHead className="text-sm font-bold text-slate-700">Nhân viên</TableHead>
                 <TableHead className="text-right text-sm font-bold text-slate-700">Tổng điểm</TableHead>
                 <TableHead className="text-right text-sm font-bold text-slate-700">Xếp loại</TableHead>
+                <TableHead className="text-right text-sm font-bold text-slate-700">Tiền KPI nhận</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,9 +129,28 @@ export const LeaderboardTable = React.memo(function LeaderboardTable({
                     <TableCell className="text-right">
                       <ClassificationBadge classification={rank.classification} />
                     </TableCell>
+
+                    {/* Payout */}
+                    <TableCell className="text-right font-sans font-bold text-[#C21A1A] text-sm">
+                      {rank.calculatedPayout ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(rank.calculatedPayout) : '0 ₫'}
+                    </TableCell>
                   </TableRow>
                 );
               })}
+
+              {/* Total Payout Row */}
+              {ranks.length > 0 && (
+                <TableRow className="bg-slate-50 border-t border-slate-200">
+                  <TableCell colSpan={2} className="text-left font-bold text-slate-700 text-sm py-3">
+                    Tổng chi trả cả cửa hàng
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-slate-400">--</TableCell>
+                  <TableCell className="text-right font-semibold text-slate-400">--</TableCell>
+                  <TableCell className="text-right font-sans font-extrabold text-[#C21A1A] text-sm py-3">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalCalculatedPayout)}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -175,6 +199,12 @@ export const LeaderboardTable = React.memo(function LeaderboardTable({
                         label: 'Tổng điểm KPI',
                         value: `${rank.score}%`,
                         valueClassName: 'font-sans font-bold text-slate-900 dark:text-slate-150 text-sm'
+                      },
+                      {
+                        label: 'Tiền KPI thực tế nhận',
+                        value: rank.calculatedPayout ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(rank.calculatedPayout) : '0 ₫',
+                        valueClassName: 'font-sans font-extrabold text-[#C21A1A] text-sm',
+                        fullWidth: true
                       }
                     ]}
                   />

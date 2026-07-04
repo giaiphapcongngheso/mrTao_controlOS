@@ -14,6 +14,9 @@ import {
   useKpiGoalsQuery,
   useCreateKpiGoalMutation,
   useDeleteKpiGoalMutation,
+  useKpiStaffMonthlyConfigsQuery,
+  useSaveKpiStaffMonthlyConfigMutation,
+  useUpdateKpiRoleMutation,
 } from './_hook/use-kpi';
 
 export default function KpiRoute() {
@@ -23,6 +26,7 @@ export default function KpiRoute() {
   const { data: kpiDailyValues = [], isLoading: isDailyValuesLoading } = useKpiDailyValuesQuery();
   const { data: roles = [], isLoading: isRolesLoading } = useKpiRolesQuery();
   const { data: goals = [], isLoading: isGoalsLoading } = useKpiGoalsQuery();
+  const { data: monthlyConfigs = [], isLoading: isMonthlyConfigsLoading } = useKpiStaffMonthlyConfigsQuery();
 
   const createConfigMutation = useCreateKpiConfigMutation();
   const updateConfigMutation = useUpdateKpiConfigMutation();
@@ -30,6 +34,8 @@ export default function KpiRoute() {
   const saveDailyValueMutation = useSaveKpiDailyValueMutation();
   const createGoalMutation = useCreateKpiGoalMutation();
   const deleteGoalMutation = useDeleteKpiGoalMutation();
+  const saveMonthlyConfigMutation = useSaveKpiStaffMonthlyConfigMutation();
+  const updateKpiRoleMutation = useUpdateKpiRoleMutation();
 
   // Filter out staff members with role 'CHU_CUA_HANG' (Chủ cửa hàng)
   const filteredStaffMembers = useMemo(() => {
@@ -47,7 +53,7 @@ export default function KpiRoute() {
     });
   }, [roles]);
 
-  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading || isGoalsLoading) {
+  if (isStaffLoading || isConfigsLoading || isDailyValuesLoading || isRolesLoading || isGoalsLoading || isMonthlyConfigsLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-sm font-semibold text-slate-500 animate-pulse">
@@ -67,10 +73,13 @@ export default function KpiRoute() {
       staffMembers={filteredStaffMembers}
       kpiConfigs={kpiConfigs}
       kpiDailyValues={kpiDailyValues}
+      monthlyConfigs={monthlyConfigs}
       onCreateConfig={(newConfig) => createConfigMutation.mutateAsync(newConfig)}
       onUpdateConfig={(config) => updateConfigMutation.mutateAsync(config)}
       onDeleteConfig={(configId) => deleteConfigMutation.mutateAsync(configId)}
       onSaveDailyValue={(val) => saveDailyValueMutation.mutateAsync(val)}
+      onSaveMonthlyConfig={(config) => saveMonthlyConfigMutation.mutateAsync(config)}
+      onUpdateRole={(role) => updateKpiRoleMutation.mutateAsync(role)}
       onSetTab={handleSetTab}
       goals={goals}
       onCreateGoal={(name) => createGoalMutation.mutateAsync({ id: `goal_${Date.now()}`, name })}

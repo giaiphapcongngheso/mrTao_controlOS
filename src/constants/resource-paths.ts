@@ -16,6 +16,7 @@ export const RESOURCE_PATH = {
   KPI_CONFIGS: '/kpi/configs',
   KPI_DAILY_VALUES: '/kpi/daily-values',
   KPI_GOALS: '/kpi/goals',
+  KPI_STAFF_MONTHLY_CONFIGS: '/kpi/staff-monthly-configs',
   CHECKLIST_CATEGORIES: '/checklist/categories',
   CHECKLISTS: '/checklists',
   CHECKLIST_TEMPLATES: '/checklist_templates',

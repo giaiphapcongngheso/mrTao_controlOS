@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
-import type { KPIConfig, KPIDailyValue, StaffRank } from '../../../types/kpi.types';
+import type { KPIConfig, KPIDailyValue, StaffRank, KPIStaffMonthlyConfig } from '../../../types/kpi.types';
 import { Card } from '../../../../share/ui/card';
 import { LeaderboardTable } from '../components/_leaderboard-table';
 import { StaffDetailCard } from '../components/_staff-detail-card';
@@ -20,7 +20,9 @@ interface RanksTabProps {
   staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   kpiDailyValues: KPIDailyValue[];
+  monthlyConfigs: KPIStaffMonthlyConfig[];
   selectedMonthYear: string;
+  onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
 }
 
 export const RanksTab = React.memo(function RanksTab({
@@ -28,7 +30,9 @@ export const RanksTab = React.memo(function RanksTab({
   staffMembers,
   kpiConfigs,
   kpiDailyValues,
+  monthlyConfigs,
   selectedMonthYear,
+  onSaveMonthlyConfig,
 }: RanksTabProps) {
   // Selection states
   const [selectedStaffId, setSelectedStaffId] = useState<string>(
@@ -60,8 +64,8 @@ export const RanksTab = React.memo(function RanksTab({
 
   // Calculate ranks
   const dynamicRanks = useMemo(
-    () => calculateDynamicStaffRanks(staffMembers, kpiConfigs, kpiDailyValues, periodMonths),
-    [staffMembers, kpiConfigs, kpiDailyValues, periodMonths]
+    () => calculateDynamicStaffRanks(staffMembers, kpiConfigs, kpiDailyValues, periodMonths, roles, monthlyConfigs),
+    [staffMembers, kpiConfigs, kpiDailyValues, periodMonths, roles, monthlyConfigs]
   );
 
   // Selected staff
@@ -209,6 +213,8 @@ export const RanksTab = React.memo(function RanksTab({
                 ranksQuarter={ranksQuarter}
                 ranksYear={ranksYear}
                 revenueGrowth={revenueGrowth}
+                monthlyConfigs={monthlyConfigs}
+                onSaveMonthlyConfig={onSaveMonthlyConfig}
               />
 
               {/* Sparkline chart (month view only) */}

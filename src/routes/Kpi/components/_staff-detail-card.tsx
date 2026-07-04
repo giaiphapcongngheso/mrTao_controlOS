@@ -1,10 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Save, Loader2, DollarSign } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '../../../../share/ui/avatar';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
+import { Button } from '../../../shared/components/button';
 import { KpiStatusBadge } from './_kpi-status-badge';
 import { formatValue, getAvatarUrl } from '../kpi-utils';
+import { toastSuccess, toastError } from '../../../shared/lib/toast';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import type { RanksTimeframe, PeriodKpiDetail, RevenueStats } from '../kpi-utils';
+import type { KPIStaffMonthlyConfig } from '../../../types/kpi.types';
 
 interface StaffDetailCardProps {
   roles: StaffRole[];
@@ -21,6 +25,8 @@ interface StaffDetailCardProps {
     isGrow: boolean;
     label: string;
   };
+  monthlyConfigs: KPIStaffMonthlyConfig[];
+  onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
 }
 
 const getClassificationLabel = (score: number) => {
@@ -41,6 +47,8 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
   ranksQuarter,
   ranksYear,
   revenueGrowth,
+  monthlyConfigs,
+  onSaveMonthlyConfig,
 }: StaffDetailCardProps) {
   const avatarUrl = getAvatarUrl(staff.avatar, staff.username);
 
@@ -64,8 +72,60 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
   const remainingValue = periodRevenueStats.totalTarget - periodRevenueStats.totalActual;
   const remainingText = remainingValue > 0 ? `Còn lại ${formatValue(remainingValue, 'VNĐ')}` : 'Đã hoàn thành';
 
-  // Translate role code to display name
-  const roleObj = roles.find(r => r.code === staff.role || r.id === staff.roleId);
+  // Find role config
+  const roleObj = useMemo(() => {
+    return roles.find(r => r.code === staff.role || r.id === staff.roleId);
+  }, [roles, staff]);
+
+  const defaultFund = roleObj?.kpiFund ?? 0;
+  const defaultDays = roleObj?.defaultWorkdays ?? 30;
+
+  // Find monthly config
+  const monthlyConfig = useMemo(() => {
+    return monthlyConfigs.find(c => c.staffId === staff.id && c.month === ranksMonth);
+  }, [monthlyConfigs, staff.id, ranksMonth]);
+
+  // Edit states
+  const [actualWorkdays, setActualWorkdays] = useState<number>(defaultDays);
+  const [disciplineCoeff, setDisciplineCoeff] = useState<number>(1.0);
+  const [overrideFund, setOverrideFund] = useState<number | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync edits when config or defaults change
+  React.useEffect(() => {
+    setActualWorkdays(monthlyConfig?.actualWorkdays ?? defaultDays);
+    setDisciplineCoeff(monthlyConfig?.disciplineCoefficient ?? 1.0);
+    setOverrideFund(monthlyConfig?.payoutBaseOverride);
+  }, [monthlyConfig, defaultDays, staff.id, ranksMonth]);
+
+  const handleSaveMonthlyConfig = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const configId = `${staff.id}_${ranksMonth}`;
+      const payload: KPIStaffMonthlyConfig = {
+        id: configId,
+        storeId: staff.storeId,
+        staffId: staff.id,
+        month: ranksMonth,
+        actualWorkdays: actualWorkdays,
+        disciplineCoefficient: disciplineCoeff,
+        payoutBaseOverride: overrideFund || undefined,
+      };
+      await onSaveMonthlyConfig(payload);
+      toastSuccess('Lưu quyết toán KPI thành công', `Đã ghi nhận ngày công (${actualWorkdays} ngày) và kỷ luật (${disciplineCoeff}) cho ${staff.fullName}`);
+    } catch (err) {
+      console.error('Lỗi khi lưu quyết toán KPI:', err);
+      toastError('Lưu thất bại', 'Vui lòng kiểm tra lại kết nối mạng.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [staff, ranksMonth, actualWorkdays, disciplineCoeff, overrideFund, onSaveMonthlyConfig]);
+
+  const currentFund = overrideFund !== undefined ? overrideFund : defaultFund;
+  const finalPayout = Math.round(
+    currentFund * (score / 100) * (defaultDays > 0 ? (actualWorkdays / defaultDays) : 1) * disciplineCoeff
+  );
+
   const roleDisplay = roleObj ? roleObj.name : staff.role;
 
   return (
@@ -151,6 +211,96 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
           </div>
         </div>
       </div>
+
+      {/* KPI Payout Settlement Panel (Only in monthly view) */}
+      {ranksTimeframe === 'month' && (
+        <div className="p-4 bg-gradient-to-r from-red-50/50 to-slate-50 border border-slate-200/80 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-left shadow-2xs">
+          <div className="space-y-1 max-w-md">
+            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+              <DollarSign className="w-4 h-4 text-[#C21A1A]" />
+              Quyết toán lương KPI tháng
+            </h4>
+            <p className="text-xs font-semibold text-slate-500">
+              Công thức: Quỹ thực tế ({formatValue(currentFund, 'VNĐ')}) × Điểm ({score}%) × Công ({actualWorkdays}/{defaultDays} ngày) × Kỷ luật ({disciplineCoeff})
+            </p>
+            <div className="text-xs font-bold text-slate-650 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              <span>Mặc định vai trò: {formatValue(defaultFund, 'VNĐ')} (Công: {defaultDays})</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 lg:justify-end flex-1">
+            {/* Override Fund Input */}
+            <div className="flex flex-col gap-1 w-full sm:w-[150px]">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quỹ ghi đè (VNĐ)</label>
+              <input
+                type="number"
+                min="0"
+                step="100000"
+                value={overrideFund ?? ''}
+                onChange={(e) => setOverrideFund(e.target.value ? parseInt(e.target.value) : undefined)}
+                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-sans font-bold text-[#C21A1A] focus:outline-none focus:border-red-400 w-full text-right"
+                placeholder="Tự động"
+              />
+            </div>
+
+            {/* Actual Workdays Input */}
+            <div className="flex flex-col gap-1 w-full sm:w-[90px]">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ngày công thực</label>
+              <input
+                type="number"
+                min="0"
+                max="31"
+                value={actualWorkdays || ''}
+                onChange={(e) => setActualWorkdays(parseInt(e.target.value) || 0)}
+                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-sans font-bold text-slate-700 focus:outline-none focus:border-blue-400 w-full text-right"
+              />
+            </div>
+
+            {/* Discipline Dropdown */}
+            <div className="flex flex-col gap-1 w-full sm:w-[135px]">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hệ số kỷ luật</label>
+              <select
+                value={disciplineCoeff}
+                onChange={(e) => setDisciplineCoeff(parseFloat(e.target.value))}
+                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-slate-700 focus:outline-none w-full cursor-pointer h-[34px]"
+              >
+                <option value="1.0">1.0 - Không vi phạm</option>
+                <option value="0.9">0.9 - Nhắc nhở</option>
+                <option value="0.8">0.8 - Kỷ luật mức 1</option>
+                <option value="0.5">0.5 - Kỷ luật mức 2</option>
+                <option value="0.0">0.0 - Vi phạm nghiêm trọng</option>
+              </select>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex flex-col gap-1 self-end w-full sm:w-auto">
+              <Button
+                size="sm"
+                disabled={isSaving}
+                onClick={handleSaveMonthlyConfig}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-[34px] px-3.5 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-50 w-full sm:w-auto"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5 mr-1" />
+                    Lưu chốt
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Calculated Salary Result Card */}
+            <div className="p-2 px-4 bg-red-100/40 border border-red-200/50 rounded-xl flex flex-col justify-center text-right shrink-0 min-w-[150px] w-full sm:w-auto">
+              <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider">Tiền KPI thực tế</span>
+              <h3 className="text-base font-extrabold text-[#C21A1A]">
+                {formatValue(finalPayout, 'VNĐ')}
+              </h3>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Detail Table Container */}
       <div className="space-y-3">

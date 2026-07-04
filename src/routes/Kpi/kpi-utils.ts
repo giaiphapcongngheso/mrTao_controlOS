@@ -1,5 +1,5 @@
-import type { KPIConfig, KPIDailyValue, StaffRank } from '../../types/kpi.types';
-import type { StaffMember } from '../../types/staff.types';
+import type { KPIConfig, KPIDailyValue, StaffRank, KPIStaffMonthlyConfig } from '../../types/kpi.types';
+import type { StaffMember, StaffRole } from '../../types/staff.types';
 
 // ─── Role Normalization ────────────────────────────────────────
 export const normalizeRole = (r: string): string => {
@@ -160,18 +160,37 @@ export const calculateDynamicStaffRanks = (
   staffMembers: StaffMember[],
   kpiConfigs: KPIConfig[],
   kpiDailyValues: KPIDailyValue[],
-  periodMonths: string[]
+  periodMonths: string[],
+  roles: StaffRole[] = [],
+  monthlyConfigs: KPIStaffMonthlyConfig[] = []
 ): StaffRank[] => {
   const activeStaff = staffMembers.filter(s => s.status === 'active');
 
   const ranks = activeStaff.map((staff): StaffRank => {
     let totalScoreSum = 0;
     let monthsCount = 0;
+    let totalPayout = 0;
+    let lastActualWorkdays: number | undefined;
+    let lastDisciplineCoeff: number | undefined;
 
     periodMonths.forEach(m => {
       const configs = kpiConfigs.filter(
         c => c.staffId === staff.id && (c.month || '2026-06') === m
       );
+
+      // Find role settings
+      const roleObj = roles.find(r => r.code === staff.role || r.id === staff.roleId);
+      const defaultFund = roleObj?.kpiFund ?? 0;
+      const defaultDays = roleObj?.defaultWorkdays ?? 30;
+
+      // Find monthly variables
+      const mConfig = monthlyConfigs.find(c => c.staffId === staff.id && c.month === m);
+      const actualDays = mConfig?.actualWorkdays ?? defaultDays;
+      const discipline = mConfig?.disciplineCoefficient ?? 1.0;
+      const fund = mConfig?.payoutBaseOverride ?? defaultFund;
+
+      lastActualWorkdays = actualDays;
+      lastDisciplineCoeff = discipline;
 
       if (configs.length > 0) {
         let monthScore = 0;
@@ -184,7 +203,13 @@ export const calculateDynamicStaffRanks = (
           const score = Math.min(config.weight, config.weight * pct);
           monthScore += score;
         });
+        
+        // monthScore is between 0.0 and 1.0 (sum of weights)
+        const payout = fund * monthScore * (defaultDays > 0 ? (actualDays / defaultDays) : 1) * discipline;
+        totalPayout += payout;
         totalScoreSum += monthScore;
+        monthsCount++;
+      } else {
         monthsCount++;
       }
     });
@@ -199,6 +224,9 @@ export const calculateDynamicStaffRanks = (
       score: finalScore,
       classification: getScoreClassification(finalScore),
       avatar: getAvatarUrl(staff.avatar, staff.username),
+      calculatedPayout: Math.round(totalPayout),
+      actualWorkdays: periodMonths.length === 1 ? lastActualWorkdays : undefined,
+      disciplineCoeff: periodMonths.length === 1 ? lastDisciplineCoeff : undefined,
     };
   });
 

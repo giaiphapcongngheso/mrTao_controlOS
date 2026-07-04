@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, Edit2, Eye, Sparkles, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Eye, Sparkles, AlertTriangle, Save, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../share/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
 import { MobileCard } from '@/src/components/custom/mobile-card';
@@ -9,10 +9,12 @@ import { ConfigDialog, type ConfigDialogMode } from '../components/_config-dialo
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
-import type { StaffMember } from '../../../types/staff.types';
+import { toastSuccess, toastError } from '../../../shared/lib/toast';
+import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import type { KPIConfig, KPIGoal } from '../../../types/kpi.types';
 
 interface SettingsTabProps {
+  roles: StaffRole[];
   staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   selectedMonthYear: string;
@@ -22,9 +24,11 @@ interface SettingsTabProps {
   goals: KPIGoal[];
   onCreateGoal: (name: string) => Promise<any>;
   onDeleteGoal: (id: string) => Promise<any>;
+  onUpdateRole: (role: StaffRole) => Promise<any>;
 }
 
 export const SettingsTab = React.memo(function SettingsTab({
+  roles,
   staffMembers,
   kpiConfigs,
   selectedMonthYear,
@@ -34,9 +38,54 @@ export const SettingsTab = React.memo(function SettingsTab({
   goals,
   onCreateGoal,
   onDeleteGoal,
+  onUpdateRole,
 }: SettingsTabProps) {
   // Staff selection (instead of role)
   const [selectedStaffId, setSelectedStaffId] = useState<string>(staffMembers[0]?.id || '');
+
+  // Role Settings State
+  const [roleEdits, setRoleEdits] = useState<Record<string, { kpiFund: number; defaultWorkdays: number }>>({});
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const initial: Record<string, { kpiFund: number; defaultWorkdays: number }> = {};
+    roles.forEach(r => {
+      initial[r.id] = {
+        kpiFund: r.kpiFund ?? 0,
+        defaultWorkdays: r.defaultWorkdays ?? 30,
+      };
+    });
+    setRoleEdits(initial);
+  }, [roles]);
+
+  const handleRoleEditChange = useCallback((roleId: string, field: 'kpiFund' | 'defaultWorkdays', val: number) => {
+    setRoleEdits(prev => ({
+      ...prev,
+      [roleId]: {
+        ...prev[roleId],
+        [field]: val,
+      },
+    }));
+  }, []);
+
+  const handleSaveRole = useCallback(async (role: StaffRole) => {
+    const edits = roleEdits[role.id];
+    if (!edits) return;
+    setSavingRoleId(role.id);
+    try {
+      await onUpdateRole({
+        ...role,
+        kpiFund: edits.kpiFund,
+        defaultWorkdays: edits.defaultWorkdays,
+      });
+      toastSuccess('Lưu thiết lập vai trò thành công', `Đã lưu cấu hình KPI cho vai trò ${role.name}`);
+    } catch (err) {
+      console.error('Lỗi khi lưu vai trò:', err);
+      toastError('Lưu thất bại', 'Vui lòng kiểm tra lại kết nối mạng.');
+    } finally {
+      setSavingRoleId(null);
+    }
+  }, [roleEdits, onUpdateRole]);
 
   // Dialog states
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
@@ -403,6 +452,148 @@ export const SettingsTab = React.memo(function SettingsTab({
         onConfirm={handleConfirmDeleteGoal}
         variant="confirm"
       />
+
+      {/* Role KPI Allocation Section */}
+      <Card className="mt-6">
+        <CardHeader className="border-b border-slate-100 text-left">
+          <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH PHÂN BỔ KPI THEO VAI TRÒ</CardTitle>
+          <CardDescription className="text-sm font-semibold text-slate-500 mt-1">
+            Thiết lập quỹ KPI tối đa và số ngày công chuẩn làm căn cứ tính lương thưởng KPI cho từng vai trò.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {/* Desktop Table View */}
+          <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <Table className="text-left text-sm">
+              <TableHeader className="bg-slate-50/50">
+                <TableRow>
+                  <TableHead className="text-sm font-bold text-slate-700">Mã vai trò</TableHead>
+                  <TableHead className="text-sm font-bold text-slate-700">Tên vai trò</TableHead>
+                  <TableHead className="text-right text-sm font-bold text-slate-700 w-[240px]">Quỹ KPI tối đa (VNĐ)</TableHead>
+                  <TableHead className="text-right text-sm font-bold text-slate-700 w-[180px]">Ngày công mặc định (ngày)</TableHead>
+                  <TableHead className="w-24 text-right text-sm font-bold text-slate-700">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {roles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-slate-500 font-bold text-sm">
+                      Không tìm thấy vai trò nào khả dụng.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  roles.map(role => {
+                    const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
+                    const isSaving = savingRoleId === role.id;
+                    return (
+                      <TableRow key={role.id}>
+                        <TableCell className="font-mono font-bold text-slate-500 text-xs">{role.code}</TableCell>
+                        <TableCell className="font-bold text-slate-800 text-sm">{role.name}</TableCell>
+                        <TableCell className="text-right">
+                          <input
+                            type="number"
+                            min="0"
+                            step="100000"
+                            value={edits.kpiFund || ''}
+                            onChange={(e) => handleRoleEditChange(role.id, 'kpiFund', parseInt(e.target.value) || 0)}
+                            className="w-full max-w-[200px] inline-block text-right px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-sans font-bold text-[#C21A1A] focus:outline-none focus:border-red-400"
+                            placeholder="0"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <input
+                            type="number"
+                            min="1"
+                            max="31"
+                            value={edits.defaultWorkdays || ''}
+                            onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
+                            className="w-full max-w-[140px] inline-block text-right px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-sans font-bold text-slate-700 focus:outline-none focus:border-blue-400"
+                            placeholder="30"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            disabled={isSaving}
+                            onClick={() => handleSaveRole(role)}
+                            className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-9 px-3 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-50 ml-auto"
+                          >
+                            {isSaving ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4 mr-1" />
+                                Lưu
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="block md:hidden space-y-3">
+            {roles.map((role, idx) => {
+              const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
+              const isSaving = savingRoleId === role.id;
+              return (
+                <MobileCard key={role.id} delayIndex={idx} variant="bordered">
+                  <MobileCard.Header
+                    title={role.name}
+                    badge={{ text: role.code, variant: 'secondary' }}
+                  />
+                  <MobileCard.Body className="p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs font-bold text-slate-500">QUỸ KPI TỐI ĐA (VNĐ)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="100000"
+                        value={edits.kpiFund || ''}
+                        onChange={(e) => handleRoleEditChange(role.id, 'kpiFund', parseInt(e.target.value) || 0)}
+                        className="w-[160px] text-right px-3 py-1 border border-slate-200 rounded-lg text-sm font-sans font-bold text-[#C21A1A]"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs font-bold text-slate-500">CÔNG MẶC ĐỊNH (NGÀY)</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={edits.defaultWorkdays || ''}
+                        onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
+                        className="w-[100px] text-right px-3 py-1 border border-slate-200 rounded-lg text-sm font-sans font-bold text-slate-700"
+                      />
+                    </div>
+                    <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+                      <Button
+                        size="sm"
+                        disabled={isSaving}
+                        onClick={() => handleSaveRole(role)}
+                        className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-8 px-4 rounded-lg flex items-center justify-center cursor-pointer disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <Save className="w-3.5 h-3.5 mr-1" />
+                            Lưu cấu hình
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </MobileCard.Body>
+                </MobileCard>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 });

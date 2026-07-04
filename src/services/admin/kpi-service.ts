@@ -1,7 +1,13 @@
-import type { StaffRank, KPIConfig, KPIDailyValue, KPIGoal } from '../../types/kpi.types';
+import type { StaffRank, KPIConfig, KPIDailyValue, KPIGoal, KPIStaffMonthlyConfig } from '../../types/kpi.types';
 import { createBaseService } from '../../shared/services/create-base-service';
 import { RESOURCE_PATH } from '../../constants/resource-paths';
 import { dataClient } from '../data-client';
+
+export const kpiStaffMonthlyConfigService = createBaseService<KPIStaffMonthlyConfig, Partial<KPIStaffMonthlyConfig>>({
+  client: dataClient,
+  resource: RESOURCE_PATH.KPI_STAFF_MONTHLY_CONFIGS,
+  autoLog: { target: 'Cấu hình KPI tháng nhân sự' },
+});
 
 export const kpiStaffRankService = createBaseService<StaffRank, Partial<StaffRank>>({
   client: dataClient,

@@ -6,6 +6,9 @@ export interface StaffRank {
   score: number;
   classification: 'excellent' | 'good' | 'pass' | 'needs_improvement';
   avatar?: string;
+  calculatedPayout?: number; // Tiền KPI thực nhận tính toán được
+  actualWorkdays?: number;   // Số ngày công thực tế của tháng đó
+  disciplineCoeff?: number;  // Hệ số kỷ luật áp dụng
 }
 
 export interface KPIConfig {
@@ -36,5 +39,16 @@ export interface KPIGoal {
   name: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface KPIStaffMonthlyConfig {
+  id: string; // Định dạng `staffId_month` (ví dụ: `nv1_2026-06`)
+  storeId: string;
+  staffId: string;
+  month: string; // Định dạng YYYY-MM
+  actualWorkdays: number; // Ngày công thực tế
+  disciplineCoefficient: number; // Hệ số kỷ luật (mặc định 1.0)
+  synergyCoefficient?: number; // Hệ số cộng hưởng (nếu có, mặc định 1.0)
+  payoutBaseOverride?: number; // Quỹ KPI tối đa ghi đè cho tháng này (nếu có)
 }
 

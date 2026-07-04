@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Award, Calendar, Target } from 'lucide-react';
 import type { StaffRole, StaffMember } from '../../types/staff.types';
-import type { KPIConfig, KPIDailyValue, KPIGoal } from '../../types/kpi.types';
+import type { KPIConfig, KPIDailyValue, KPIGoal, KPIStaffMonthlyConfig } from '../../types/kpi.types';
 import { ModuleHeader } from '../../../share/components/module-header';
 import { RanksTab } from './tabs/_ranks-tab';
 import { EntryTab } from './tabs/_entry-tab';
@@ -14,10 +14,13 @@ interface KpiViewProps {
   staffMembers: StaffMember[];
   kpiConfigs: KPIConfig[];
   kpiDailyValues: KPIDailyValue[];
+  monthlyConfigs: KPIStaffMonthlyConfig[];
   onCreateConfig: (newConfig: KPIConfig) => Promise<any>;
   onUpdateConfig: (config: KPIConfig) => Promise<any>;
   onDeleteConfig: (configId: string) => Promise<any>;
   onSaveDailyValue: (val: KPIDailyValue) => Promise<any>;
+  onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
+  onUpdateRole: (role: StaffRole) => Promise<any>;
   onSetTab: (tab: any) => void;
   goals: KPIGoal[];
   onCreateGoal: (name: string) => Promise<any>;
@@ -35,10 +38,13 @@ export default function KpiView({
   staffMembers,
   kpiConfigs,
   kpiDailyValues,
+  monthlyConfigs,
   onCreateConfig,
   onUpdateConfig,
   onDeleteConfig,
   onSaveDailyValue,
+  onSaveMonthlyConfig,
+  onUpdateRole,
   onSetTab,
   goals,
   onCreateGoal,
@@ -111,7 +117,9 @@ export default function KpiView({
           staffMembers={staffMembers}
           kpiConfigs={kpiConfigs}
           kpiDailyValues={kpiDailyValues}
+          monthlyConfigs={monthlyConfigs}
           selectedMonthYear={selectedMonthYear}
+          onSaveMonthlyConfig={onSaveMonthlyConfig}
         />
       )}
 
@@ -127,6 +135,7 @@ export default function KpiView({
 
       {activeSubTab === 'settings' && (
         <SettingsTab
+          roles={roles}
           staffMembers={staffMembers}
           kpiConfigs={kpiConfigs}
           selectedMonthYear={selectedMonthYear}
@@ -136,6 +145,7 @@ export default function KpiView({
           goals={goals}
           onCreateGoal={onCreateGoal}
           onDeleteGoal={onDeleteGoal}
+          onUpdateRole={onUpdateRole}
         />
       )}
     </div>

@@ -41,4 +41,6 @@ export interface StaffRole {
   code: string;
   name: string;
   status: 'active' | 'inactive';
+  kpiFund?: number;        // Quỹ KPI tối đa (VND)
+  defaultWorkdays?: number; // Ngày công mặc định (ngày)
 }
