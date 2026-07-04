@@ -1,6 +1,10 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Save, Loader2, DollarSign } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '../../../../share/ui/avatar';
+import { Input } from '../../../../share/ui/input';
+import { Label } from '../../../../share/ui/label';
+import { CustomSelect } from '../../../../share/components/custom/custom-select';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../../share/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
 import { Button } from '../../../shared/components/button';
 import { KpiStatusBadge } from './_kpi-status-badge';
@@ -35,6 +39,14 @@ const getClassificationLabel = (score: number) => {
   if (score >= 70) return 'Đạt';
   return 'Cần cải thiện';
 };
+
+const DISCIPLINE_OPTIONS = [
+  { label: '1.0 - Không vi phạm', value: '1' },
+  { label: '0.9 - Nhắc nhở', value: '0.9' },
+  { label: '0.8 - Kỷ luật mức 1', value: '0.8' },
+  { label: '0.5 - Kỷ luật mức 2', value: '0.5' },
+  { label: '0.0 - Vi phạm nặng', value: '0' },
+];
 
 export const StaffDetailCard = React.memo(function StaffDetailCard({
   roles,
@@ -151,7 +163,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
         {/* 4 Nested KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1 xl:w-[75%]">
           {/* Card 1: Doanh thu tháng */}
-          <div className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left">
+          <Card className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left gap-2 py-3.5 shadow-none">
             <div className="space-y-0.5">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{revenueLabel}</p>
               <h3 className="text-sm xl:text-base font-extrabold text-[#C21A1A]">
@@ -168,10 +180,10 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                 <span className="text-slate-400 font-semibold">-- {revenueGrowth.label}</span>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* Card 2: Điểm trung bình KPI */}
-          <div className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left">
+          <Card className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left gap-2 py-3.5 shadow-none">
             <div className="space-y-0.5">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Điểm trung bình KPI</p>
               <h3 className="text-sm xl:text-base font-extrabold text-slate-900">
@@ -182,10 +194,10 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wider">
               Xếp loại: {getClassificationLabel(score)}
             </p>
-          </div>
+          </Card>
 
           {/* Card 3: Doanh thu đạt được */}
-          <div className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left">
+          <Card className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left gap-2 py-3.5 shadow-none">
             <div className="space-y-0.5">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Doanh thu đạt được</p>
               <h3 className="text-sm xl:text-base font-extrabold text-blue-600">
@@ -195,10 +207,10 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wider">
               {periodRevenueStats.pct.toFixed(1)}% so với target
             </p>
-          </div>
+          </Card>
 
           {/* Card 4: Chỉ tiêu tháng */}
-          <div className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left">
+          <Card className="p-3.5 bg-slate-50/60 border border-slate-100 rounded-xl flex flex-col justify-between text-left gap-2 py-3.5 shadow-none">
             <div className="space-y-0.5">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{targetLabel}</p>
               <h3 className="text-sm xl:text-base font-extrabold text-slate-800">
@@ -208,98 +220,128 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             <p className="text-[10px] font-bold text-slate-400 mt-2 truncate uppercase tracking-wider" title={remainingText}>
               {remainingText}
             </p>
-          </div>
+          </Card>
         </div>
       </div>
 
       {/* KPI Payout Settlement Panel (Only in monthly view) */}
       {ranksTimeframe === 'month' && (
-        <div className="p-4 bg-gradient-to-r from-red-50/50 to-slate-50 border border-slate-200/80 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-left shadow-2xs">
-          <div className="space-y-1 max-w-md">
-            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-              <DollarSign className="w-4 h-4 text-[#C21A1A]" />
-              Quyết toán lương KPI tháng
-            </h4>
-            <p className="text-xs font-semibold text-slate-500">
-              Công thức: Quỹ thực tế ({formatValue(currentFund, 'VNĐ')}) × Điểm ({score}%) × Công ({actualWorkdays}/{defaultDays} ngày) × Kỷ luật ({disciplineCoeff})
-            </p>
-            <div className="text-xs font-bold text-slate-650 mt-1 flex flex-wrap gap-x-4 gap-y-1">
-              <span>Mặc định vai trò: {formatValue(defaultFund, 'VNĐ')} (Công: {defaultDays})</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 lg:justify-end flex-1">
-            {/* Override Fund Input */}
-            <div className="flex flex-col gap-1 w-full sm:w-[150px]">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quỹ ghi đè (VNĐ)</label>
-              <input
-                type="number"
-                min="0"
-                step="100000"
-                value={overrideFund ?? ''}
-                onChange={(e) => setOverrideFund(e.target.value ? parseInt(e.target.value) : undefined)}
-                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-sans font-bold text-[#C21A1A] focus:outline-none focus:border-red-400 w-full text-right"
-                placeholder="Tự động"
-              />
+        <Card className="bg-white/80 border border-slate-200/80 rounded-2xl shadow-xs text-left backdrop-blur-md py-4 gap-4">
+          {/* Header & Formula Equation */}
+          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3.5 px-5">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                <DollarSign className="w-4 h-4 text-[#C21A1A] shrink-0" />
+                Quyết toán lương KPI tháng
+              </CardTitle>
+              <CardDescription className="text-[11px] font-semibold text-slate-400">
+                Lương KPI được chốt dựa trên tỷ lệ công làm việc và hệ số trừ vi phạm kỷ luật.
+              </CardDescription>
             </div>
 
-            {/* Actual Workdays Input */}
-            <div className="flex flex-col gap-1 w-full sm:w-[90px]">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ngày công thực</label>
-              <input
-                type="number"
-                min="0"
-                max="31"
-                value={actualWorkdays || ''}
-                onChange={(e) => setActualWorkdays(parseInt(e.target.value) || 0)}
-                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-sans font-bold text-slate-700 focus:outline-none focus:border-blue-400 w-full text-right"
-              />
+            {/* Visual Formula Equation */}
+            <div className="flex flex-wrap items-center gap-1.5 text-slate-700 text-xs font-bold bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+              <div className="bg-white border border-slate-200/60 px-2 py-1.5 rounded-lg text-slate-700 shadow-2xs">
+                Quỹ: <span className="text-[#C21A1A] font-extrabold">{formatValue(currentFund, 'VNĐ')}</span>
+              </div>
+              <span className="text-slate-400 font-normal">×</span>
+              <div className="bg-emerald-50/60 border border-emerald-100 px-2 py-1.5 rounded-lg text-emerald-700 shadow-2xs">
+                Điểm: <span className="font-extrabold">{score}%</span>
+              </div>
+              <span className="text-slate-400 font-normal">×</span>
+              <div className="bg-blue-50/60 border border-blue-100 px-2 py-1.5 rounded-lg text-blue-700 shadow-2xs">
+                Công: <span className="font-extrabold">{actualWorkdays}/{defaultDays}</span>
+              </div>
+              <span className="text-slate-400 font-normal">×</span>
+              <div className="bg-amber-50/60 border border-amber-100 px-2 py-1.5 rounded-lg text-amber-700 shadow-2xs">
+                Kỷ luật: <span className="font-extrabold">{disciplineCoeff}</span>
+              </div>
             </div>
+          </CardHeader>
 
-            {/* Discipline Dropdown */}
-            <div className="flex flex-col gap-1 w-full sm:w-[135px]">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hệ số kỷ luật</label>
-              <select
-                value={disciplineCoeff}
-                onChange={(e) => setDisciplineCoeff(parseFloat(e.target.value))}
-                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-slate-700 focus:outline-none w-full cursor-pointer h-[34px]"
-              >
-                <option value="1.0">1.0 - Không vi phạm</option>
-                <option value="0.9">0.9 - Nhắc nhở</option>
-                <option value="0.8">0.8 - Kỷ luật mức 1</option>
-                <option value="0.5">0.5 - Kỷ luật mức 2</option>
-                <option value="0.0">0.0 - Vi phạm nghiêm trọng</option>
-              </select>
+          {/* Interactive Form & Result */}
+          <CardContent className="px-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Override Fund Input */}
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Quỹ KPI ghi đè (VNĐ)
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={100000}
+                  value={overrideFund ?? ''}
+                  onChange={(e) => setOverrideFund(e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="w-full text-xs font-bold text-[#C21A1A] placeholder:font-normal"
+                  placeholder="Tự động theo vai trò"
+                  suffix="đ"
+                  size="sm"
+                />
+              </div>
+
+              {/* Actual Workdays Input */}
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Ngày công thực tế
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={31}
+                  value={actualWorkdays || ''}
+                  onChange={(e) => setActualWorkdays(parseInt(e.target.value) || 0)}
+                  className="w-full text-xs font-bold text-slate-700"
+                  suffix="ngày"
+                  size="sm"
+                />
+              </div>
+
+              {/* Discipline Dropdown */}
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Hệ số kỷ luật
+                </Label>
+                <CustomSelect
+                  options={DISCIPLINE_OPTIONS}
+                  value={String(disciplineCoeff)}
+                  onChangeValue={(val) => setDisciplineCoeff(parseFloat(String(val)) || 0)}
+                  size="sm"
+                  clearable={false}
+                  className="text-xs font-bold text-slate-700 w-full"
+                />
+              </div>
             </div>
+          </CardContent>
 
-            {/* Save Button */}
-            <div className="flex flex-col gap-1 self-end w-full sm:w-auto">
+          <CardFooter className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 pt-3.5 px-5 bg-slate-50/30 rounded-b-2xl gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              {/* Calculated Salary Result Card */}
+              <div className="p-2 px-4 bg-gradient-to-br from-red-50 to-rose-100/60 border border-red-150/40 rounded-xl flex flex-row items-center gap-2.5 shadow-2xs">
+                <span className="text-[11px] font-semibold text-red-500 tracking-wide">Lương KPI thực nhận:</span>
+                <h3 className="text-base font-extrabold text-[#C21A1A] tracking-wide">
+                  {formatValue(finalPayout, 'VNĐ')}
+                </h3>
+              </div>
+
+              {/* Save Button */}
               <Button
-                size="sm"
                 disabled={isSaving}
                 onClick={handleSaveMonthlyConfig}
-                className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-[34px] px-3.5 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-50 w-full sm:w-auto"
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 h-[42px] rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 shrink-0"
               >
                 {isSaving ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    <Save className="w-3.5 h-3.5 mr-1" />
-                    Lưu chốt
+                    <Save className="w-4 h-4 mr-1.5" />
+                    Lưu chốt quyết toán
                   </>
                 )}
               </Button>
             </div>
-
-            {/* Calculated Salary Result Card */}
-            <div className="p-2 px-4 bg-red-100/40 border border-red-200/50 rounded-xl flex flex-col justify-center text-right shrink-0 min-w-[150px] w-full sm:w-auto">
-              <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider">Tiền KPI thực tế</span>
-              <h3 className="text-base font-extrabold text-[#C21A1A]">
-                {formatValue(finalPayout, 'VNĐ')}
-              </h3>
-            </div>
-          </div>
-        </div>
+          </CardFooter>
+        </Card>
       )}
 
       {/* KPI Detail Table Container */}
@@ -340,7 +382,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
 // ─── Sub-component: KPI Detail Row ─────────────────────────────
 const KpiDetailRow = React.memo(function KpiDetailRow({ kpi }: { kpi: PeriodKpiDetail }) {
   const pctStr = (kpi.pct * 100).toFixed(1) + '%';
-  
+
   // Format score as fraction [Earned Score] / [Max Score]
   const scoreVal = kpi.score * 100;
   const maxVal = kpi.weight * 100;
@@ -366,8 +408,8 @@ const KpiDetailRow = React.memo(function KpiDetailRow({ kpi }: { kpi: PeriodKpiD
         <div className="flex items-center justify-end gap-2">
           <span className="w-10 text-right text-slate-700">{pctStr}</span>
           <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block border border-slate-200/30">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${kpi.pct >= 0.95 ? 'bg-emerald-500' : kpi.pct >= 0.8 ? 'bg-blue-500' : 'bg-rose-500'}`} 
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${kpi.pct >= 0.95 ? 'bg-emerald-500' : kpi.pct >= 0.8 ? 'bg-blue-500' : 'bg-rose-500'}`}
               style={{ width: `${Math.min(100, kpi.pct * 100)}%` }}
             />
           </div>

@@ -267,7 +267,8 @@ const KpiEntryItem = React.memo(function KpiEntryItem({
           value={value}
           onChange={onChange}
           allowDecimal={true}
-          className="w-[110px] h-9 px-2.5 bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-sans font-bold text-sm text-slate-900 rounded-xl outline-none transition-colors text-right placeholder:text-slate-300 placeholder:font-normal"
+          clearable={false}
+          className="w-[110px] h-9 px-2.5 bg-white border border-slate-200 hover:border-slate-350 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-sans font-bold text-sm text-slate-900 rounded-xl outline-none transition-colors text-right placeholder:text-slate-300 placeholder:font-normal"
         />
         <span className="text-xs font-bold text-slate-400 w-7 shrink-0 text-center">{config.unit}</span>
       </div>

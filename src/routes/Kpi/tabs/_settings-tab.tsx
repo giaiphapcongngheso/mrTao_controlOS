@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, Edit2, Eye, Sparkles, AlertTriangle, Save, Loader2 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../../share/ui/card';
+import { Plus, Trash2, Edit2, Eye, Sparkles, AlertTriangle, Save, Loader2, Minus } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../../share/ui/card';
+import { Input } from '../../../../share/ui/input';
+import { NumericInput } from '../../../../share/ui/numeric-input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../../shared/components/table';
 import { MobileCard } from '@/src/components/custom/mobile-card';
 import { Button } from '../../../shared/components/button';
@@ -8,6 +10,7 @@ import { Alert, AlertTitle, AlertDescription } from '../../../../share/ui/alert'
 import { ConfigDialog, type ConfigDialogMode } from '../components/_config-dialog';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
+import { ActionStack } from '../../../../share/components/custom/action-stack';
 import { formatValue, getDaysInMonthCount, getPreviousMonthYear } from '../kpi-utils';
 import { toastSuccess, toastError } from '../../../shared/lib/toast';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
@@ -45,7 +48,38 @@ export const SettingsTab = React.memo(function SettingsTab({
 
   // Role Settings State
   const [roleEdits, setRoleEdits] = useState<Record<string, { kpiFund: number; defaultWorkdays: number }>>({});
-  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
+
+
+  const handleSaveAllRoles = useCallback(async () => {
+    setIsBatchSaving(true);
+    try {
+      const rolesToSave = roles.map(role => {
+        const edits = roleEdits[role.id];
+        if (!edits) return null;
+        const hasChanges = (role.kpiFund ?? 0) !== edits.kpiFund || (role.defaultWorkdays ?? 30) !== edits.defaultWorkdays;
+        if (!hasChanges) return null;
+        return {
+          ...role,
+          kpiFund: edits.kpiFund,
+          defaultWorkdays: edits.defaultWorkdays,
+        };
+      }).filter(Boolean) as StaffRole[];
+
+      if (rolesToSave.length === 0) {
+        toastSuccess('Không có thay đổi', 'Các cấu hình vai trò trùng khớp với dữ liệu gốc.');
+        return;
+      }
+
+      await Promise.all(rolesToSave.map(role => onUpdateRole(role)));
+      toastSuccess('Lưu cấu hình thành công', 'Đã lưu cấu hình phân bổ KPI cho tất cả vai trò thay đổi.');
+    } catch (err) {
+      console.error('Lỗi khi lưu hàng loạt vai trò:', err);
+      toastError('Lưu thất bại', 'Vui lòng kiểm tra lại kết nối mạng.');
+    } finally {
+      setIsBatchSaving(false);
+    }
+  }, [roleEdits, roles, onUpdateRole]);
 
   React.useEffect(() => {
     const initial: Record<string, { kpiFund: number; defaultWorkdays: number }> = {};
@@ -68,26 +102,6 @@ export const SettingsTab = React.memo(function SettingsTab({
     }));
   }, []);
 
-  const handleSaveRole = useCallback(async (role: StaffRole) => {
-    const edits = roleEdits[role.id];
-    if (!edits) return;
-    setSavingRoleId(role.id);
-    try {
-      await onUpdateRole({
-        ...role,
-        kpiFund: edits.kpiFund,
-        defaultWorkdays: edits.defaultWorkdays,
-      });
-      toastSuccess('Lưu thiết lập vai trò thành công', `Đã lưu cấu hình KPI cho vai trò ${role.name}`);
-    } catch (err) {
-      console.error('Lỗi khi lưu vai trò:', err);
-      toastError('Lưu thất bại', 'Vui lòng kiểm tra lại kết nối mạng.');
-    } finally {
-      setSavingRoleId(null);
-    }
-  }, [roleEdits, onUpdateRole]);
-
-  // Dialog states
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [configDialogMode, setConfigDialogMode] = useState<ConfigDialogMode>('create');
   const [editingConfig, setEditingConfig] = useState<KPIConfig | null>(null);
@@ -110,7 +124,7 @@ export const SettingsTab = React.memo(function SettingsTab({
   const filteredConfigs = useMemo(
     () => kpiConfigs.filter(
       c => c.staffId === selectedStaffId &&
-           (c.month || '2026-06') === selectedMonthYear
+        (c.month || '2026-06') === selectedMonthYear
     ),
     [kpiConfigs, selectedStaffId, selectedMonthYear]
   );
@@ -125,7 +139,7 @@ export const SettingsTab = React.memo(function SettingsTab({
     const prevMonth = getPreviousMonthYear(selectedMonthYear);
     return kpiConfigs.filter(
       c => c.staffId === selectedStaffId &&
-           (c.month || '2026-06') === prevMonth
+        (c.month || '2026-06') === prevMonth
     );
   }, [kpiConfigs, selectedStaffId, selectedMonthYear]);
 
@@ -253,20 +267,17 @@ export const SettingsTab = React.memo(function SettingsTab({
 
   return (
     <section className="space-y-4">
-      <Card>
-        <CardHeader className="border-b border-slate-100">
+      <Card className="!gap-3 !py-3">
+        <CardHeader className="border-b border-slate-100 !pb-2.5 !pt-2.5 !px-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="text-left">
-              <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH KPI THEO NHÂN VIÊN</CardTitle>
-              <CardDescription className="text-sm font-semibold text-slate-500 mt-1">
-                Thiết lập các chỉ số, target tháng và trọng số riêng cho từng nhân viên.
-              </CardDescription>
+              <CardTitle className="text-sm font-bold text-slate-800">Cấu hình KPI theo nhân viên</CardTitle>
             </div>
 
             <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
               {/* Staff selector */}
               <div className="flex items-center gap-2 w-full md:w-auto">
-                <span className="text-sm font-bold text-slate-500 uppercase shrink-0">Nhân viên:</span>
+                <span className="text-sm font-bold text-slate-500 shrink-0">Nhân viên:</span>
                 <CustomSelect
                   options={staffOptions}
                   value={selectedStaffId}
@@ -285,7 +296,7 @@ export const SettingsTab = React.memo(function SettingsTab({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-4">
+        <CardContent className="!pt-0 !px-4 !pb-2.5 space-y-3">
           {/* Copy from previous month banner */}
           {showCopyBanner && (
             <Alert className="bg-gradient-to-r from-red-50 to-amber-50 border-red-200/60">
@@ -317,8 +328,8 @@ export const SettingsTab = React.memo(function SettingsTab({
 
           {/* Config table */}
           <div className="space-y-3.5">
-            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider text-left">DANH SÁCH CHỈ SỐ ÁP DỤNG</h4>
- 
+            <h4 className="text-xs font-bold text-slate-500 text-left">Danh sách chỉ số áp dụng</h4>
+
             {/* Desktop View */}
             <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs overflow-x-auto">
               <Table className="text-left text-sm min-w-[800px]">
@@ -383,20 +394,33 @@ export const SettingsTab = React.memo(function SettingsTab({
                           { label: 'Nguồn đối chứng', value: config.proofSource, fullWidth: true },
                         ]}
                       />
-                      {/* Action buttons footer */}
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 mt-2">
-                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-slate-500 hover:text-slate-800" onClick={() => handleOpenViewDialog(config)}>
-                          <Eye className="w-3.5 h-3.5 mr-1" />
-                          Xem
-                        </Button>
-                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-blue-600 hover:text-blue-800" onClick={() => handleOpenEditDialog(config)}>
-                          <Edit2 className="w-3.5 h-3.5 mr-1" />
-                          Sửa
-                        </Button>
-                        <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-red-600 hover:text-red-800" onClick={() => handleDeleteConfig(config)}>
-                          <Trash2 className="w-3.5 h-3.5 mr-1" />
-                          Xóa
-                        </Button>
+                      <div className="flex items-center justify-end pt-2 border-t border-slate-100 mt-2">
+                        <ActionStack
+                          size="sm"
+                          actions={[
+                            {
+                              key: 'view',
+                              label: 'Xem',
+                              icon: <Eye className="w-3.5 h-3.5 mr-1 text-slate-400" />,
+                              variant: 'ghost',
+                              onClick: () => handleOpenViewDialog(config),
+                            },
+                            {
+                              key: 'edit',
+                              label: 'Sửa',
+                              icon: <Edit2 className="w-3.5 h-3.5 mr-1 text-blue-600" />,
+                              variant: 'ghost',
+                              onClick: () => handleOpenEditDialog(config),
+                            },
+                            {
+                              key: 'delete',
+                              label: 'Xóa',
+                              icon: <Trash2 className="w-3.5 h-3.5 mr-1 text-red-650" />,
+                              variant: 'ghost',
+                              onClick: () => handleDeleteConfig(config),
+                            },
+                          ]}
+                        />
                       </div>
                     </MobileCard.Body>
                   </MobileCard>
@@ -405,12 +429,14 @@ export const SettingsTab = React.memo(function SettingsTab({
             </div>
 
             {/* Weight summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-sm font-bold text-slate-600">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center text-sm font-bold text-slate-600">
               <span>Tổng số chỉ số: {filteredConfigs.length}</span>
-              <span className={`flex items-center gap-1 ${totalWeight === 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                <Sparkles className="w-4 h-4 shrink-0" />
-                Tổng trọng số nhân viên: {(totalWeight * 100).toFixed(0)}%
-                {totalWeight !== 1 && ' (Khuyên dùng: Đảm bảo tổng trọng số đạt 100%)'}
+              <span className={`flex items-start sm:items-center gap-1 ${totalWeight === 1 ? 'text-emerald-600' : 'text-amber-600'} text-left`}>
+                <Sparkles className="w-4 h-4 shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  Tổng trọng số nhân viên: {(totalWeight * 100).toFixed(0)}%
+                  {totalWeight !== 1 && <span className="block sm:inline text-xs text-slate-500 font-semibold sm:ml-1">(Khuyên dùng: Đảm bảo đạt 100%)</span>}
+                </span>
               </span>
             </div>
           </div>
@@ -454,145 +480,101 @@ export const SettingsTab = React.memo(function SettingsTab({
       />
 
       {/* Role KPI Allocation Section */}
-      <Card className="mt-6">
-        <CardHeader className="border-b border-slate-100 text-left">
-          <CardTitle className="text-base font-bold text-slate-800 tracking-wider">CẤU HÌNH PHÂN BỔ KPI THEO VAI TRÒ</CardTitle>
-          <CardDescription className="text-sm font-semibold text-slate-500 mt-1">
-            Thiết lập quỹ KPI tối đa và số ngày công chuẩn làm căn cứ tính lương thưởng KPI cho từng vai trò.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-4">
-          {/* Desktop Table View */}
-          <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <Table className="text-left text-sm">
-              <TableHeader className="bg-slate-50/50">
-                <TableRow>
-                  <TableHead className="text-sm font-bold text-slate-700">Mã vai trò</TableHead>
-                  <TableHead className="text-sm font-bold text-slate-700">Tên vai trò</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-700 w-[240px]">Quỹ KPI tối đa (VNĐ)</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-700 w-[180px]">Ngày công mặc định (ngày)</TableHead>
-                  <TableHead className="w-24 text-right text-sm font-bold text-slate-700">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-slate-500 font-bold text-sm">
-                      Không tìm thấy vai trò nào khả dụng.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  roles.map(role => {
-                    const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
-                    const isSaving = savingRoleId === role.id;
-                    return (
-                      <TableRow key={role.id}>
-                        <TableCell className="font-mono font-bold text-slate-500 text-xs">{role.code}</TableCell>
-                        <TableCell className="font-bold text-slate-800 text-sm">{role.name}</TableCell>
-                        <TableCell className="text-right">
-                          <input
-                            type="number"
-                            min="0"
-                            step="100000"
-                            value={edits.kpiFund || ''}
-                            onChange={(e) => handleRoleEditChange(role.id, 'kpiFund', parseInt(e.target.value) || 0)}
-                            className="w-full max-w-[200px] inline-block text-right px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-sans font-bold text-[#C21A1A] focus:outline-none focus:border-red-400"
-                            placeholder="0"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <input
-                            type="number"
-                            min="1"
-                            max="31"
-                            value={edits.defaultWorkdays || ''}
-                            onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
-                            className="w-full max-w-[140px] inline-block text-right px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-sans font-bold text-slate-700 focus:outline-none focus:border-blue-400"
-                            placeholder="30"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            disabled={isSaving}
-                            onClick={() => handleSaveRole(role)}
-                            className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-9 px-3 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-50 ml-auto"
-                          >
-                            {isSaving ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Save className="w-4 h-4 mr-1" />
-                                Lưu
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+      <Card className="!mt-4 !gap-3 !py-3">
+        <CardHeader className="border-b border-slate-100 !py-2.5 !pb-2.5 !px-4 text-left">
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle className="text-sm font-bold text-slate-800">Cấu hình phân bổ KPI theo vai trò</CardTitle>
+            <Button
+              disabled={isBatchSaving}
+              onClick={handleSaveAllRoles}
+              size="sm"
+              className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-8 px-4 rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-50 transition-all active:scale-95 shadow-sm hover:shadow-md shrink-0"
+            >
+              {isBatchSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  Lưu tất cả vai trò
+                </>
+              )}
+            </Button>
           </div>
+        </CardHeader>
+        <CardContent className="!pt-0 !px-4 !pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {roles.length === 0 ? (
+              <div className="col-span-full py-8 text-center text-slate-500 font-bold text-sm border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                Không tìm thấy vai trò nào khả dụng.
+              </div>
+            ) : (
+              roles.map(role => {
+                const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
+                return (
+                  <div
+                    key={role.id}
+                    className="relative border border-slate-200/80 rounded-2xl p-4 bg-white shadow-3xs hover:shadow-2xs hover:border-slate-350 transition-all duration-300 flex flex-col gap-4 text-left"
+                  >
+                    {/* Header */}
+                    <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+                      <span className="font-bold text-slate-800 text-sm truncate" title={role.name}>
+                        {role.name}
+                      </span>
+                    </div>
 
-          {/* Mobile View */}
-          <div className="block md:hidden space-y-3">
-            {roles.map((role, idx) => {
-              const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
-              const isSaving = savingRoleId === role.id;
-              return (
-                <MobileCard key={role.id} delayIndex={idx} variant="bordered">
-                  <MobileCard.Header
-                    title={role.name}
-                    badge={{ text: role.code, variant: 'secondary' }}
-                  />
-                  <MobileCard.Body className="p-3 space-y-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-xs font-bold text-slate-500">QUỸ KPI TỐI ĐA (VNĐ)</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="100000"
-                        value={edits.kpiFund || ''}
-                        onChange={(e) => handleRoleEditChange(role.id, 'kpiFund', parseInt(e.target.value) || 0)}
-                        className="w-[160px] text-right px-3 py-1 border border-slate-200 rounded-lg text-sm font-sans font-bold text-[#C21A1A]"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-xs font-bold text-slate-500">CÔNG MẶC ĐỊNH (NGÀY)</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={edits.defaultWorkdays || ''}
-                        onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
-                        className="w-[100px] text-right px-3 py-1 border border-slate-200 rounded-lg text-sm font-sans font-bold text-slate-700"
-                      />
-                    </div>
-                    <div className="flex items-center justify-end pt-2 border-t border-slate-100">
-                      <Button
+                    {/* Max KPI Fund Input */}
+                    <div className="space-y-1.5">
+                      <span className="text-sm font-semibold text-slate-500 block">Quỹ KPI tối đa</span>
+                      <NumericInput
+                        allowDecimal={false}
+                        clearable={false}
+                        value={edits.kpiFund !== undefined ? edits.kpiFund : ''}
+                        onValueChange={(val) => handleRoleEditChange(role.id, 'kpiFund', val || 0)}
+                        className="w-full text-right font-sans font-bold text-[#C21A1A] text-xs focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
+                        placeholder="0"
+                        suffix="đ"
                         size="sm"
-                        disabled={isSaving}
-                        onClick={() => handleSaveRole(role)}
-                        className="bg-slate-800 hover:bg-slate-900 text-white font-bold h-8 px-4 rounded-lg flex items-center justify-center cursor-pointer disabled:opacity-50"
-                      >
-                        {isSaving ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <Save className="w-3.5 h-3.5 mr-1" />
-                            Lưu cấu hình
-                          </>
-                        )}
-                      </Button>
+                      />
                     </div>
-                  </MobileCard.Body>
-                </MobileCard>
-              );
-            })}
+
+                    {/* Standard Workdays Input */}
+                    <div className="space-y-1.5">
+                      <span className="text-sm font-semibold text-slate-500 block">Ngày công mặc định</span>
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <button
+                          type="button"
+                          onClick={() => handleRoleEditChange(role.id, 'defaultWorkdays', Math.max(1, (edits.defaultWorkdays ?? 30) - 1))}
+                          className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={edits.defaultWorkdays !== undefined ? edits.defaultWorkdays : ''}
+                          onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
+                          className="w-[70px] text-center font-sans font-bold text-slate-700 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
+                          placeholder="30"
+                          size="sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRoleEditChange(role.id, 'defaultWorkdays', Math.min(31, (edits.defaultWorkdays ?? 30) + 1))}
+                          className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </CardContent>
+
+
       </Card>
     </section>
   );
@@ -631,7 +613,7 @@ const ConfigTableRow = React.memo(function ConfigTableRow({
             {`${(config.weight * 100).toFixed(0)}%`}
           </span>
           <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/30">
-            <div 
+            <div
               className="h-full bg-[#C21A1A] rounded-full transition-all duration-300"
               style={{ width: `${Math.min(config.weight * 100, 100)}%` }}
             />
@@ -639,17 +621,37 @@ const ConfigTableRow = React.memo(function ConfigTableRow({
         </div>
       </TableCell>
       <TableCell className="text-slate-650 text-sm">{config.proofSource}</TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-1.5">
-          <Button variant="ghost" size="icon-xs" onClick={handleView} className="cursor-pointer" title="Xem chi tiết">
-            <Eye className="w-3.5 h-3.5 text-slate-400" />
-          </Button>
-          <Button variant="ghost" size="icon-xs" onClick={handleEdit} className="cursor-pointer" title="Chỉnh sửa">
-            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-          </Button>
-          <Button variant="destructive" size="icon-xs" onClick={handleDelete} className="cursor-pointer" title="Xóa">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+      <TableCell className="text-right py-2 align-middle">
+        <div className="flex justify-end">
+          <ActionStack
+            size="sm"
+            maxVisible={3}
+            showTooltips={true}
+            iconOnly={true}
+            actions={[
+              {
+                key: 'view',
+                tooltip: 'Xem chi tiết',
+                icon: <Eye className="w-3.5 h-3.5 text-slate-400" />,
+                variant: 'ghost',
+                onClick: handleView,
+              },
+              {
+                key: 'edit',
+                tooltip: 'Chỉnh sửa',
+                icon: <Edit2 className="w-3.5 h-3.5 text-slate-400" />,
+                variant: 'ghost',
+                onClick: handleEdit,
+              },
+              {
+                key: 'delete',
+                tooltip: 'Xóa',
+                icon: <Trash2 className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />,
+                variant: 'ghost',
+                onClick: handleDelete,
+              },
+            ]}
+          />
         </div>
       </TableCell>
     </TableRow>
