@@ -12,6 +12,7 @@ import { Button } from '@shared/ui';
 import { CustomTable } from '@shared/components';
 import { cn } from '@shared/lib/utils';
 import { useAppStore } from '../../stores/app-store';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 
 interface IssuesViewProps {
   issues: SOPIssue[];
@@ -534,10 +535,62 @@ const IssuesView = React.memo(function IssuesView({
           />
 
           <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col">
-            {/* On mobile: render table directly to scroll with page. On desktop: enable flex display to allow internal table scroll */}
-            <div className="block md:hidden">
-              {renderedCardList}
+            {/* On mobile: render MobileCard list view */}
+            <div className="block md:hidden space-y-3 px-1 pb-4">
+              {filteredIssues.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+                  Không tìm thấy tài liệu phù hợp.
+                </div>
+              ) : (
+                filteredIssues.map((issue, idx) => {
+                  const statusVariant = 
+                    issue.status === 'Đã xử lý' ? 'success' :
+                    issue.status === 'Đang triển khai' ? 'info' :
+                    issue.status === 'Chờ duyệt' ? 'warning' : 'error';
+
+                  const categoryLabels: Record<string, string> = {
+                    sop_error: 'Lỗi SOP',
+                    exception: 'Ngoại lệ',
+                    risk: 'Rủi ro',
+                    improvement: 'Sáng kiến'
+                  };
+                  const catLabel = categoryLabels[issue.category] || issue.category;
+
+                  return (
+                    <MobileCard
+                      key={issue.id}
+                      delayIndex={idx}
+                      variant="bordered"
+                      className={cn(highlightedIssueId === issue.id && 'border-amber-450 dark:border-amber-500 bg-amber-50/20 dark:bg-amber-950/10 shadow-md animate-pulse')}
+                      id={`issue-card-${issue.id}`}
+                      onClick={() => handleEditIssue(issue)}
+                    >
+                      <MobileCard.Header
+                        title={issue.title}
+                        badge={{
+                          text: issue.status,
+                          variant: statusVariant
+                        }}
+                      />
+                      <MobileCard.Body className="p-3 space-y-2">
+                        <MobileCard.Grid
+                          cols={2}
+                          items={[
+                            { label: 'Phân loại', value: catLabel },
+                            { label: 'Mức độ', value: issue.severity === 'High' ? 'Cao' : issue.severity === 'Medium' ? 'Trung bình' : 'Thấp' },
+                            { label: 'Quy trình', value: issue.process || 'Vận hành chung' },
+                            { label: 'Người xử lý', value: issue.assignee || 'Quản lý cửa hàng' },
+                            { label: 'Đối tượng', value: issue.actor || 'Hệ thống ca trực' },
+                            { label: 'Số lần', value: `${issue.occurrence} lần` },
+                          ]}
+                        />
+                      </MobileCard.Body>
+                    </MobileCard>
+                  );
+                })
+              )}
             </div>
+            {/* On desktop: enable flex display to allow internal table scroll */}
             <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0">
               {renderedCardList}
             </div>

@@ -541,7 +541,7 @@ const IssueModal = React.memo(function IssueModal({
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="p-0 border-none bg-white dark:bg-slate-900 shadow-2xl w-[65%] sm:max-w-[65%] h-full flex flex-col focus:outline-none"
+        className="p-0 border-none bg-white dark:bg-slate-900 shadow-2xl w-[90%] sm:w-[65%] sm:max-w-[65%] h-full flex flex-col focus:outline-none"
       >
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmitHandler)} className="flex-1 flex flex-col min-h-0 h-full overflow-hidden text-left">
@@ -570,7 +570,7 @@ const IssueModal = React.memo(function IssueModal({
                   title="Phân loại cải tiến"
                   subtitle="Chọn loại cải tiến phù hợp để hệ thống phân loại và theo dõi hiệu quả."
                 />
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {(['sop_error', 'exception', 'risk', 'improvement'] as const).map((cat) => (
                     <IssueCategoryButton
                       key={cat}

@@ -343,15 +343,4 @@ export const calculateRevenueStats = (
   return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
 };
 
-// ─── KpiView Props Interface (shared between container + tabs) ─
-export interface KpiViewProps {
-  roles: import('../../types/staff.types').StaffRole[];
-  staffMembers: StaffMember[];
-  kpiConfigs: KPIConfig[];
-  kpiDailyValues: KPIDailyValue[];
-  onCreateConfig: (newConfig: KPIConfig) => Promise<any>;
-  onUpdateConfig: (config: KPIConfig) => Promise<any>;
-  onDeleteConfig: (configId: string) => Promise<any>;
-  onSaveDailyValue: (val: KPIDailyValue) => Promise<any>;
-  onSetTab: (tab: any) => void;
-}
+

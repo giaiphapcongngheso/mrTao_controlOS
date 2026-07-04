@@ -63,10 +63,6 @@ export default function KpiRoute() {
     );
   }
 
-  const handleSetTab = (tab: any) => {
-    void navigate({ to: TAB_ROUTE_MAP[tab] });
-  };
-
   return (
     <KpiView
       roles={filteredRoles}
@@ -80,7 +76,6 @@ export default function KpiRoute() {
       onSaveDailyValue={(val) => saveDailyValueMutation.mutateAsync(val)}
       onSaveMonthlyConfig={(config) => saveMonthlyConfigMutation.mutateAsync(config)}
       onUpdateRole={(role) => updateKpiRoleMutation.mutateAsync(role)}
-      onSetTab={handleSetTab}
       goals={goals}
       onCreateGoal={(name) => createGoalMutation.mutateAsync({ id: `goal_${Date.now()}`, name })}
       onDeleteGoal={(id) => deleteGoalMutation.mutateAsync(id)}

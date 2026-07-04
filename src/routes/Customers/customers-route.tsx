@@ -3,6 +3,8 @@ import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogConte
 import { HeartHandshake, Plus, History, RefreshCw, Search, User, Coins, Award, Trash2, Edit2, Eye, AlertTriangle, Check, X, Users } from 'lucide-react';
 import { ModuleHeader, CustomTable } from '@shared/components';
 import { NumberRangePicker } from '../../../share/components/custom/number-range-picker';
+import { MobileCard } from '@/src/components/custom/mobile-card';
+import { cn } from '@shared/lib/utils';
 import { CustomSelect } from '../../../share/components/custom/custom-select';
 import { ActionStack } from '../../../share/components/custom/action-stack';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -564,7 +566,93 @@ export default function CustomersRoute() {
       </div>
 
       {/* Main Table */}
-      <div className="w-full min-w-0">
+      {/* On mobile: render MobileCard list view */}
+      <div className="block md:hidden space-y-3 px-1 pb-4">
+        {filteredCustomers.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+            Chưa có khách hàng nào trong hệ thống hoặc không khớp với bộ lọc.
+          </div>
+        ) : (
+          filteredCustomers.map((customer, idx) => {
+            const isSynced = customer.source !== 'manual';
+            const hasDebt = (customer.debt ?? 0) > 0;
+            return (
+              <MobileCard
+                key={customer.id}
+                delayIndex={idx}
+                variant="bordered"
+              >
+                <MobileCard.Header
+                  title={customer.name}
+                  subtitle={customer.phone ? `SĐT: ${customer.phone}` : 'SĐT: Chưa cập nhật'}
+                  badge={{
+                    text: isSynced ? 'KiotViet' : 'Tự tạo',
+                    variant: isSynced ? 'info' : 'success'
+                  }}
+                />
+                <MobileCard.Body className="p-3 space-y-2">
+                  <MobileCard.Grid
+                    cols={2}
+                    items={[
+                      { label: 'Nhóm khách hàng', value: customer.groupName || 'Khác' },
+                      { label: 'Điểm tích lũy', value: `${(customer.points ?? 0).toLocaleString('vi-VN')} điểm` },
+                      { label: 'Dư nợ hiện tại', value: CURRENCY_FORMATTER.format(customer.debt ?? 0), valueClassName: hasDebt ? 'text-rose-650 font-bold' : 'text-slate-700', fullWidth: true },
+                    ]}
+                  />
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs px-2.5 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                      onClick={() => {
+                        setEditingCustomer(customer);
+                        setFormMode('view');
+                        setShowForm(true);
+                      }}
+                    >
+                      <Eye className="h-3.5 w-3.5 text-slate-500" />
+                      Xem
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs px-2.5 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                      onClick={() => {
+                        setEditingCustomer(customer);
+                        setFormMode('edit');
+                        setShowForm(true);
+                      }}
+                    >
+                      <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                      Sửa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={`h-8 w-8 p-0 rounded-lg transition active:scale-97 cursor-pointer flex items-center justify-center ${
+                        customer.source === 'manual'
+                          ? 'text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20'
+                          : 'text-slate-300 cursor-not-allowed hover:bg-transparent'
+                      }`}
+                      disabled={customer.source !== 'manual'}
+                      onClick={() => {
+                        if (customer.source === 'manual' && confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customer.name}"?`)) {
+                          void deleteCustomer(customer.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </MobileCard.Body>
+              </MobileCard>
+            );
+          })
+        )}
+      </div>
+
+      {/* On desktop: render CustomTable */}
+      <div className="hidden md:block w-full min-w-0">
         <CustomTable<Customer>
           columns={columns}
           data={filteredCustomers}

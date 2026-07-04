@@ -21,7 +21,6 @@ interface KpiViewProps {
   onSaveDailyValue: (val: KPIDailyValue) => Promise<any>;
   onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
   onUpdateRole: (role: StaffRole) => Promise<any>;
-  onSetTab: (tab: any) => void;
   goals: KPIGoal[];
   onCreateGoal: (name: string) => Promise<any>;
   onDeleteGoal: (id: string) => Promise<any>;
@@ -45,7 +44,6 @@ export default function KpiView({
   onSaveDailyValue,
   onSaveMonthlyConfig,
   onUpdateRole,
-  onSetTab,
   goals,
   onCreateGoal,
   onDeleteGoal,

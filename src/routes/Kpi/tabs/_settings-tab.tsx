@@ -511,63 +511,13 @@ export const SettingsTab = React.memo(function SettingsTab({
               roles.map(role => {
                 const edits = roleEdits[role.id] || { kpiFund: 0, defaultWorkdays: 30 };
                 return (
-                  <div
+                  <RoleConfigCard
                     key={role.id}
-                    className="relative border border-slate-200/80 rounded-2xl p-4 bg-white shadow-3xs hover:shadow-2xs hover:border-slate-350 transition-all duration-300 flex flex-col gap-4 text-left"
-                  >
-                    {/* Header */}
-                    <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
-                      <span className="font-bold text-slate-800 text-sm truncate" title={role.name}>
-                        {role.name}
-                      </span>
-                    </div>
-
-                    {/* Max KPI Fund Input */}
-                    <div className="space-y-1.5">
-                      <span className="text-sm font-semibold text-slate-500 block">Quỹ KPI tối đa</span>
-                      <NumericInput
-                        allowDecimal={false}
-                        clearable={false}
-                        value={edits.kpiFund !== undefined ? edits.kpiFund : ''}
-                        onValueChange={(val) => handleRoleEditChange(role.id, 'kpiFund', val || 0)}
-                        className="w-full text-right font-sans font-bold text-[#C21A1A] text-xs focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
-                        placeholder="0"
-                        suffix="đ"
-                        size="sm"
-                      />
-                    </div>
-
-                    {/* Standard Workdays Input */}
-                    <div className="space-y-1.5">
-                      <span className="text-sm font-semibold text-slate-500 block">Ngày công mặc định</span>
-                      <div className="flex items-center gap-1.5 justify-between">
-                        <button
-                          type="button"
-                          onClick={() => handleRoleEditChange(role.id, 'defaultWorkdays', Math.max(1, (edits.defaultWorkdays ?? 30) - 1))}
-                          className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={edits.defaultWorkdays !== undefined ? edits.defaultWorkdays : ''}
-                          onChange={(e) => handleRoleEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0)}
-                          className="w-[70px] text-center font-sans font-bold text-slate-700 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
-                          placeholder="30"
-                          size="sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRoleEditChange(role.id, 'defaultWorkdays', Math.min(31, (edits.defaultWorkdays ?? 30) + 1))}
-                          className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    role={role}
+                    kpiFund={edits.kpiFund}
+                    defaultWorkdays={edits.defaultWorkdays}
+                    onEditChange={handleRoleEditChange}
+                  />
                 );
               })
             )}
@@ -595,6 +545,30 @@ const ConfigTableRow = React.memo(function ConfigTableRow({
   const handleView = useCallback(() => onView(config), [config, onView]);
   const handleEdit = useCallback(() => onEdit(config), [config, onEdit]);
   const handleDelete = useCallback(() => onDelete(config), [config, onDelete]);
+
+  const actions = useMemo(() => [
+    {
+      key: 'view',
+      tooltip: 'Xem chi tiết',
+      icon: <Eye className="w-3.5 h-3.5 text-slate-400" />,
+      variant: 'ghost' as const,
+      onClick: handleView,
+    },
+    {
+      key: 'edit',
+      tooltip: 'Chỉnh sửa',
+      icon: <Edit2 className="w-3.5 h-3.5 text-slate-400" />,
+      variant: 'ghost' as const,
+      onClick: handleEdit,
+    },
+    {
+      key: 'delete',
+      tooltip: 'Xóa',
+      icon: <Trash2 className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />,
+      variant: 'ghost' as const,
+      onClick: handleDelete,
+    },
+  ], [handleView, handleEdit, handleDelete]);
 
   return (
     <TableRow>
@@ -628,32 +602,98 @@ const ConfigTableRow = React.memo(function ConfigTableRow({
             maxVisible={3}
             showTooltips={true}
             iconOnly={true}
-            actions={[
-              {
-                key: 'view',
-                tooltip: 'Xem chi tiết',
-                icon: <Eye className="w-3.5 h-3.5 text-slate-400" />,
-                variant: 'ghost',
-                onClick: handleView,
-              },
-              {
-                key: 'edit',
-                tooltip: 'Chỉnh sửa',
-                icon: <Edit2 className="w-3.5 h-3.5 text-slate-400" />,
-                variant: 'ghost',
-                onClick: handleEdit,
-              },
-              {
-                key: 'delete',
-                tooltip: 'Xóa',
-                icon: <Trash2 className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />,
-                variant: 'ghost',
-                onClick: handleDelete,
-              },
-            ]}
+            actions={actions}
           />
         </div>
       </TableCell>
     </TableRow>
+  );
+});
+
+// ─── Sub-component: Role Config Card ───────────────────────────
+interface RoleConfigCardProps {
+  role: StaffRole;
+  kpiFund: number;
+  defaultWorkdays: number;
+  onEditChange: (roleId: string, field: 'kpiFund' | 'defaultWorkdays', val: number) => void;
+}
+
+const RoleConfigCard = React.memo(function RoleConfigCard({
+  role,
+  kpiFund,
+  defaultWorkdays,
+  onEditChange,
+}: RoleConfigCardProps) {
+  const handleFundChange = useCallback((val: number | undefined) => {
+    onEditChange(role.id, 'kpiFund', val || 0);
+  }, [role.id, onEditChange]);
+
+  const handleWorkdaysChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onEditChange(role.id, 'defaultWorkdays', parseInt(e.target.value) || 0);
+  }, [role.id, onEditChange]);
+
+  const handleDecreaseWorkdays = useCallback(() => {
+    onEditChange(role.id, 'defaultWorkdays', Math.max(1, defaultWorkdays - 1));
+  }, [role.id, defaultWorkdays, onEditChange]);
+
+  const handleIncreaseWorkdays = useCallback(() => {
+    onEditChange(role.id, 'defaultWorkdays', Math.min(31, defaultWorkdays + 1));
+  }, [role.id, defaultWorkdays, onEditChange]);
+
+  return (
+    <div className="relative border border-slate-200/80 rounded-2xl p-4 bg-white shadow-3xs hover:shadow-2xs hover:border-slate-350 transition-all duration-300 flex flex-col gap-4 text-left">
+      {/* Header */}
+      <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+        <span className="font-bold text-slate-800 text-sm truncate" title={role.name}>
+          {role.name}
+        </span>
+      </div>
+
+      {/* Max KPI Fund Input */}
+      <div className="space-y-1.5">
+        <span className="text-sm font-semibold text-slate-500 block">Quỹ KPI tối đa</span>
+        <NumericInput
+          allowDecimal={false}
+          clearable={false}
+          value={kpiFund !== undefined ? kpiFund : ''}
+          onValueChange={handleFundChange}
+          className="w-full text-right font-sans font-bold text-[#C21A1A] text-xs focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
+          placeholder="0"
+          suffix="đ"
+          size="sm"
+        />
+      </div>
+
+      {/* Standard Workdays Input */}
+      <div className="space-y-1.5">
+        <span className="text-sm font-semibold text-slate-500 block">Ngày công mặc định</span>
+        <div className="flex items-center gap-1.5 justify-between">
+          <button
+            type="button"
+            onClick={handleDecreaseWorkdays}
+            className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-500 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
+          >
+            <Minus className="w-3.5 h-3.5" />
+          </button>
+          <Input
+            type="number"
+            min={1}
+            max={31}
+            value={defaultWorkdays !== undefined ? defaultWorkdays : ''}
+            onChange={handleWorkdaysChange}
+            className="w-[70px] text-center font-sans font-bold text-slate-700 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-1 focus-visible:ring-slate-300 bg-slate-50/40"
+            placeholder="30"
+            size="sm"
+          />
+          <button
+            type="button"
+            onClick={handleIncreaseWorkdays}
+            className="p-1 border border-slate-200 rounded-full hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-550 hover:text-slate-800 cursor-pointer h-7 w-7 flex items-center justify-center bg-white shadow-3xs active:scale-90"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 });

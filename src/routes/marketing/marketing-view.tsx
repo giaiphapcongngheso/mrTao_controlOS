@@ -41,6 +41,7 @@ import { MARKETING_CHANNEL_OPTIONS, MARKETING_STATUS_OPTIONS } from '../../servi
 import type { MarketingCampaignStatus, MarketingCampaign } from '../../types/marketing.types';
 import { ModuleHeader, CustomTable } from '@shared/components';
 import type { ColumnDef } from '@tanstack/react-table';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -544,16 +545,96 @@ export default function MarketingView() {
         </div>
       </div>
 
-      {/* 📋 Bảng danh sách chiến dịch */}
-      <CustomTable<MarketingCampaign>
-        columns={columns}
-        data={displayedCampaigns}
-        enablePagination={true}
-        pageSizeOptions={[10, 20, 50, 100]}
-        emptyMessage="Không tìm thấy chiến dịch marketing nào phù hợp."
-        tableMinWidth={900}
-        className="h-[calc(100vh-365px)]"
-      />
+      {/* 📋 Danh sách chiến dịch */}
+      {/* On mobile: render MobileCard list view */}
+      <div className="block md:hidden space-y-3 px-1 pb-4">
+        {displayedCampaigns.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+            Không tìm thấy chiến dịch marketing nào phù hợp.
+          </div>
+        ) : (
+          displayedCampaigns.map((campaign, idx) => {
+            const statusVariant = 
+              campaign.status === 'active' ? 'success' :
+              campaign.status === 'scheduled' ? 'warning' :
+              campaign.status === 'paused' ? 'info' : 'secondary';
+
+            const channelLabels: Record<string, string> = {
+              'Facebook': 'Facebook',
+              'TikTok': 'TikTok',
+              'Zalo': 'Zalo',
+              'Google Maps': 'Google Maps',
+              'KOL/KOC': 'KOL / KOC',
+            };
+            const channelLabel = channelLabels[campaign.channel] || campaign.channel;
+
+            return (
+              <MobileCard
+                key={campaign.id}
+                delayIndex={idx}
+                variant="bordered"
+              >
+                <MobileCard.Header
+                  title={campaign.name}
+                  badge={{
+                    text: STATUS_LABEL[campaign.status],
+                    variant: statusVariant
+                  }}
+                />
+                <MobileCard.Body className="p-3 space-y-3">
+                  <MobileCard.Grid
+                    cols={2}
+                    items={[
+                      { label: 'Kênh quảng cáo', value: channelLabel },
+                      { label: 'Ngân sách', value: CURRENCY_FORMATTER.format(campaign.budget) },
+                      { label: 'Đã chi tiêu', value: CURRENCY_FORMATTER.format(campaign.spent) },
+                      { label: 'Lượt click', value: campaign.clicks.toLocaleString('vi-VN') },
+                      { label: 'Chuyển đổi', value: campaign.conversions.toLocaleString('vi-VN'), valueClassName: 'text-emerald-600 dark:text-emerald-400 font-bold' },
+                    ]}
+                  />
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs px-2.5 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 transition-all active:scale-97 cursor-pointer flex items-center gap-1"
+                      onClick={() => setEditingCampaign(campaign)}
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Sửa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all active:scale-97 cursor-pointer flex items-center justify-center"
+                      onClick={() =>
+                        setCampaignToDelete({
+                          id: campaign.id,
+                          name: campaign.name,
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </MobileCard.Body>
+              </MobileCard>
+            );
+          })
+        )}
+      </div>
+
+      {/* On desktop: render CustomTable */}
+      <div className="hidden md:block">
+        <CustomTable<MarketingCampaign>
+          columns={columns}
+          data={displayedCampaigns}
+          enablePagination={true}
+          pageSizeOptions={[10, 20, 50, 100]}
+          emptyMessage="Không tìm thấy chiến dịch marketing nào phù hợp."
+          tableMinWidth={900}
+          className="h-[calc(100vh-365px)]"
+        />
+      </div>
 
       <Dialog
         open={showCreateForm || editingCampaign !== null}

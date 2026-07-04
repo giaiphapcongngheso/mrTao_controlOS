@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
+import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetContent } from '@shared/ui';
 import { AlertTriangle, Building, Check, Coins, Copy, Edit2, History, Layers, Plus, RefreshCw, Search, Tag, Trash2, X } from 'lucide-react';
 import WarehouseCreateForm from './components/warehouse-create-form';
 import WarehouseSyncHistoryDrawer from './components/warehouse-sync-history-drawer';
@@ -10,6 +10,8 @@ import { CustomSelect } from '../../../share/components/custom/custom-select';
 import { ActionStack } from '../../../share/components/custom/action-stack';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { WarehouseProduct, WarehouseSyncLog } from '../../types/warehouse.types';
+import { MobileCard } from '@/src/components/custom/mobile-card';
+import { cn } from '@shared/lib/utils';
 
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -694,32 +696,99 @@ export default function WarehouseView() {
       <div className="flex flex-col lg:flex-row gap-4 w-full items-start">
         {/* Table container */}
         <div className={`w-full min-w-0 transition-all duration-300 ${activeProduct ? 'lg:w-[63%] xl:w-[66%]' : 'w-full'}`}>
-          <CustomTable<WarehouseProduct>
-            columns={columns}
-            data={filteredProducts}
-            loading={isLoading}
-            enablePagination={true}
-            pageSizeOptions={[10, 20, 50, 100]}
-            emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
-            tableMinWidth={800}
-            className="h-[calc(100vh-340px)]"
-            activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
-            getRowId={(product) => String(product.id)}
-            onRowClick={(row) => setSelectedProduct(row.original)}
-          />
+          {/* On mobile: render MobileCard list view */}
+          <div className="block md:hidden space-y-3 px-1 pb-4">
+            {filteredProducts.length === 0 ? (
+              <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+                Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc.
+              </div>
+            ) : (
+              filteredProducts.map((product, idx) => {
+                const isSynced = product.source !== 'manual';
+                const totalStock = (product.inventories ?? []).reduce((sum, inv) => sum + inv.onHand, 0);
+                const isLowStock = totalStock <= 5;
+
+                return (
+                  <MobileCard
+                    key={product.id}
+                    delayIndex={idx}
+                    variant="bordered"
+                    className={cn(activeProduct?.id === product.id && 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 shadow-sm')}
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    <MobileCard.Header
+                      title={product.name}
+                      subtitle={product.code}
+                      badge={{
+                        text: isSynced ? 'KiotViet' : 'Tự tạo',
+                        variant: isSynced ? 'info' : 'success'
+                      }}
+                    />
+                    <MobileCard.Body className="p-3 space-y-2">
+                      <MobileCard.Grid
+                        cols={2}
+                        items={[
+                          { label: 'Ngành hàng', value: product.categoryName ?? 'Khác' },
+                          { label: 'Giá bán', value: CURRENCY_FORMATTER.format(product.basePrice), valueClassName: 'text-indigo-650 dark:text-indigo-400 font-bold' },
+                          { label: 'Tổng tồn kho', value: `${totalStock.toLocaleString('vi-VN')} chiếc`, valueClassName: isLowStock ? 'text-rose-600 font-bold' : 'text-slate-750' },
+                        ]}
+                      />
+                    </MobileCard.Body>
+                  </MobileCard>
+                );
+              })
+            )}
+          </div>
+          {/* On desktop: render CustomTable */}
+          <div className="hidden md:block">
+            <CustomTable<WarehouseProduct>
+              columns={columns}
+              data={filteredProducts}
+              loading={isLoading}
+              enablePagination={true}
+              pageSizeOptions={[10, 20, 50, 100]}
+              emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
+              tableMinWidth={800}
+              className="h-[calc(100vh-340px)]"
+              activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
+              getRowId={(product) => String(product.id)}
+              onRowClick={(row) => setSelectedProduct(row.original)}
+            />
+          </div>
         </div>
 
         {/* Selected Product Details Panel */}
         {activeProduct && (
-          <SelectedProductPanel
-            product={activeProduct}
-            onClose={() => setSelectedProduct(null)}
-            onEdit={(prod) => setEditingProduct(prod)}
-            onDelete={async (id) => {
-              await deleteProduct(id);
-              setSelectedProduct(null);
-            }}
-          />
+          <>
+            {/* Desktop Panel */}
+            <div className="hidden lg:block lg:w-[37%] xl:w-[34%] shrink-0">
+              <SelectedProductPanel
+                product={activeProduct}
+                onClose={() => setSelectedProduct(null)}
+                onEdit={(prod) => setEditingProduct(prod)}
+                onDelete={async (id) => {
+                  await deleteProduct(id);
+                  setSelectedProduct(null);
+                }}
+              />
+            </div>
+
+            {/* Mobile Sheet Panel */}
+            <Sheet open={activeProduct !== null} onOpenChange={(open) => { if (!open) setSelectedProduct(null); }}>
+              <SheetContent side="right" className="w-[90%] sm:max-w-[450px] p-0 border-none font-sans bg-white overflow-hidden flex flex-col h-full">
+                <SelectedProductPanel
+                  product={activeProduct}
+                  onClose={() => setSelectedProduct(null)}
+                  onEdit={(prod) => setEditingProduct(prod)}
+                  onDelete={async (id) => {
+                    await deleteProduct(id);
+                    setSelectedProduct(null);
+                  }}
+                  isMobile={true}
+                />
+              </SheetContent>
+            </Sheet>
+          </>
         )}
       </div>
 
@@ -739,9 +808,10 @@ interface SelectedProductPanelProps {
   onClose: () => void;
   onEdit: (product: WarehouseProduct) => void;
   onDelete: (id: number) => Promise<void>;
+  isMobile?: boolean;
 }
 
-function SelectedProductPanel({ product, onClose, onEdit, onDelete }: SelectedProductPanelProps) {
+function SelectedProductPanel({ product, onClose, onEdit, onDelete, isMobile = false }: SelectedProductPanelProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -754,7 +824,10 @@ function SelectedProductPanel({ product, onClose, onEdit, onDelete }: SelectedPr
   const totalStock = (product.inventories ?? []).reduce((sum, inv) => sum + inv.onHand, 0);
 
   return (
-    <Card className="w-full lg:w-[37%] xl:w-[34%] rounded-2xl border border-slate-200/80 shadow-3xs bg-white p-4 h-[calc(100vh-340px)] overflow-y-auto sticky top-4 flex flex-col shrink-0 animate-fade-in font-sans">
+    <Card className={cn(
+      "w-full rounded-2xl border shadow-3xs bg-white p-4 flex flex-col shrink-0 font-sans",
+      isMobile ? "h-full border-none shadow-none rounded-none overflow-y-auto" : "lg:w-full h-[calc(100vh-340px)] overflow-y-auto sticky top-4 animate-fade-in"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Chi tiết sản phẩm</h4>

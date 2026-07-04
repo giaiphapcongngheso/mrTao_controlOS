@@ -314,32 +314,30 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 pt-3.5 px-5 bg-slate-50/30 rounded-b-2xl gap-3">
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-              {/* Calculated Salary Result Card */}
-              <div className="p-2 px-4 bg-gradient-to-br from-red-50 to-rose-100/60 border border-red-150/40 rounded-xl flex flex-row items-center gap-2.5 shadow-2xs">
-                <span className="text-[11px] font-semibold text-red-500 tracking-wide">Lương KPI thực nhận:</span>
-                <h3 className="text-base font-extrabold text-[#C21A1A] tracking-wide">
-                  {formatValue(finalPayout, 'VNĐ')}
-                </h3>
-              </div>
-
-              {/* Save Button */}
-              <Button
-                disabled={isSaving}
-                onClick={handleSaveMonthlyConfig}
-                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 h-[42px] rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 shrink-0"
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-1.5" />
-                    Lưu chốt quyết toán
-                  </>
-                )}
-              </Button>
+          <CardFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-t border-slate-100 pt-3.5 px-5 bg-slate-50/30 rounded-b-2xl gap-3">
+            {/* Calculated Salary Result Card */}
+            <div className="p-2 px-4 bg-gradient-to-br from-red-50 to-rose-100/60 border border-red-150/40 rounded-xl flex items-center justify-between sm:justify-start gap-2.5 shadow-2xs w-full sm:w-auto">
+              <span className="text-[11px] font-semibold text-red-500 tracking-wide">Lương KPI thực nhận:</span>
+              <h3 className="text-base font-extrabold text-[#C21A1A] tracking-wide">
+                {formatValue(finalPayout, 'VNĐ')}
+              </h3>
             </div>
+
+            {/* Save Button */}
+            <Button
+              disabled={isSaving}
+              onClick={handleSaveMonthlyConfig}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 h-[42px] rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 w-full sm:w-auto shrink-0"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-1.5" />
+                  Lưu chốt quyết toán
+                </>
+              )}
+            </Button>
           </CardFooter>
         </Card>
       )}

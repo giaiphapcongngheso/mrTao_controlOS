@@ -10,6 +10,8 @@ import type { StaffFormState } from '../StaffPermissionsView.types';
 import { CustomTable } from '../../../../share/components/custom-table';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { Button, Input, Label } from '../../../../share/ui';
+import { MobileCard } from '@/src/components/custom/mobile-card';
+import { cn } from '@shared/lib/utils';
 
 interface StaffTabContentProps {
   readonly staffSearch: string;
@@ -516,7 +518,83 @@ export function StaffTabContent({
       )}
 
       {/* ---- Staff list table ---- */}
-      <div className="w-full max-w-full overflow-hidden min-w-0">
+      {/* On mobile: render MobileCard list view */}
+      <div className="block md:hidden space-y-3 px-1 pb-4">
+        {filteredStaff.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+            Không có dữ liệu phù hợp. Thử đổi bộ lọc vai trò hoặc từ khóa tìm kiếm.
+          </div>
+        ) : (
+          filteredStaff.map((staff, idx) => {
+            const isActive = staff.status === 'active';
+            return (
+              <MobileCard
+                key={staff.id}
+                delayIndex={idx}
+                variant="bordered"
+              >
+                <MobileCard.Header
+                  avatar={staff.fullName.slice(0, 1)}
+                  title={staff.fullName}
+                  subtitle={`${staff.id} · @${staff.username}`}
+                  badge={{
+                    text: isActive ? 'Hoạt động' : 'Tạm khóa',
+                    variant: isActive ? 'success' : 'secondary'
+                  }}
+                />
+                <MobileCard.Body className="p-3 space-y-2">
+                  <MobileCard.Grid
+                    cols={2}
+                    items={[
+                      { label: 'Vai trò', value: getRoleName(staff.role) },
+                      { label: 'Ngày gia nhập', value: staff.joinedDate || 'Chưa có' },
+                      { label: 'Điện thoại', value: staff.phone || 'Chưa có' },
+                      { label: 'Email', value: staff.email || 'Chưa có', fullWidth: true, valueClassName: 'text-xs' },
+                    ]}
+                  />
+                  {staff.internalNotes && (
+                    <div className="text-[11px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2 py-1 rounded-lg border border-amber-100/50 dark:border-amber-900/30 text-left">
+                      📝 Ghi chú: {staff.internalNotes}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                    <Button
+                      type="button"
+                      disabled={!isOwner}
+                      variant="outline"
+                      className="h-8 text-xs px-3 rounded-lg font-bold transition active:scale-97 cursor-pointer"
+                      onClick={() => onEditStaff?.(staff)}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={!isOwner || staff.role?.toLowerCase() === 'admin' || staff.username?.toLowerCase() === 'admin'}
+                      variant="outline"
+                      className="h-8 text-xs px-3 rounded-lg font-bold transition active:scale-97 cursor-pointer"
+                      onClick={() => onToggleStaffStatus(staff)}
+                    >
+                      {staff.status === 'active' ? 'Khóa' : 'Mở'}
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={!isOwner || staff.role?.toLowerCase() === 'admin' || staff.username?.toLowerCase() === 'admin'}
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition active:scale-97 cursor-pointer flex items-center justify-center"
+                      onClick={() => onDeleteStaff(staff)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </MobileCard.Body>
+              </MobileCard>
+            );
+          })
+        )}
+      </div>
+
+      {/* On desktop: render CustomTable */}
+      <div className="hidden md:block w-full max-w-full overflow-hidden min-w-0">
         <CustomTable<StaffMember>
           columns={columns}
           data={filteredStaff}

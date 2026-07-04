@@ -139,9 +139,9 @@ export const EntryTab = React.memo(function EntryTab({
         `Đã lưu thành công số liệu ngày ${selectedDay.toString().padStart(2, '0')}/${selectedMonthYear.split('-')[1]} cho ${selectedStaff.fullName}`
       );
       setTimeout(() => setSaveSuccessMsg(null), 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi khi lưu KPI ngày:', err);
-      const errMsg = err?.message || 'Không thể kết nối với máy chủ. Vui lòng kiểm tra lại.';
+      const errMsg = err instanceof Error ? err.message : 'Không thể kết nối với máy chủ. Vui lòng kiểm tra lại.';
       toastError('Lưu số liệu KPI thất bại', errMsg);
       throw err;
     }
