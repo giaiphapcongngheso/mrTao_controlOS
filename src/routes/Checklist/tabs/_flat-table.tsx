@@ -369,26 +369,27 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                   ]}
                 />
 
-                <MobileCard.Footer
-                  actions={[
-                    {
-                      label: 'Chi tiết & Bằng chứng',
-                      onClick: () => onOpenDetail(item),
-                      variant: 'outline' as const,
-                      icon: <Eye className="w-3.5 h-3.5" />,
-                    },
-                    ...(!item.isCompleted
-                      ? [
-                          {
-                            label: 'Chỉnh sửa',
-                            onClick: (e: any) => triggerInlineEdit(item, e),
-                            variant: 'secondary' as const,
-                            icon: <Edit2 className="w-3.5 h-3.5" />,
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
+                <MobileCard.Footer className="!py-2 !px-3.5 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400 h-7 flex items-center">
+                    Bấm thẻ để xem chi tiết
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {!item.isCompleted && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 cursor-pointer rounded-lg border-none"
+                        onClick={(e: any) => {
+                          e.stopPropagation();
+                          triggerInlineEdit(item, e);
+                        }}
+                      >
+                        <Edit2 className="size-3.5" />
+                        <span>Sửa nhanh</span>
+                      </Button>
+                    )}
+                  </div>
+                </MobileCard.Footer>
               </MobileCard>
             );
           })

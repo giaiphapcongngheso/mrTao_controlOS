@@ -156,27 +156,41 @@ const ProcessContentArea = React.memo(function ProcessContentArea({
                       </div>
                     )}
 
-                    <MobileCard.Footer
-                      actions={[
-                        {
-                          label: 'Mở chi tiết',
-                          onClick: handleOnOpen,
-                          variant: 'outline' as const,
-                        },
-                        ...(canUpdate ? [{
-                          label: 'Sửa',
-                          onClick: handleOnEdit,
-                          variant: 'secondary' as const,
-                          icon: <Edit2 className="w-3.5 h-3.5" />
-                        }] : []),
-                        ...(canDelete ? [{
-                          label: 'Xóa',
-                          onClick: handleOnDelete,
-                          variant: 'danger' as const,
-                          icon: <Trash2 className="w-3.5 h-3.5" />
-                        }] : [])
-                      ]}
-                    />
+                     <MobileCard.Footer className="!py-2 !px-3.5 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-400 h-7 flex items-center">
+                        Bấm thẻ để mở chi tiết
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 cursor-pointer rounded-lg border-none"
+                            onClick={(e: any) => {
+                              e.stopPropagation();
+                              handleOnEdit(e);
+                            }}
+                          >
+                            <Edit2 className="size-3.5" />
+                            <span>Sửa</span>
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50/50 cursor-pointer rounded-lg border-none"
+                            onClick={(e: any) => {
+                              e.stopPropagation();
+                              handleOnDelete(e);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                            <span>Xóa</span>
+                          </Button>
+                        )}
+                      </div>
+                    </MobileCard.Footer>
                   </MobileCard>
                 );
               }

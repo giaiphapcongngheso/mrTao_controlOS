@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Edit2, Layers, Info, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Layers, Info, CheckCircle2, Eye } from 'lucide-react';
 import { Button, FormControl, FormField, FormItem, FormLabel, FormMessage, Input, Textarea, Card, CardHeader, CardTitle, CardContent, Sheet, SheetContent, SheetFooter } from '../../../../share/ui';
 import { Switch } from '../../../../share/ui/switch';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
@@ -15,6 +15,20 @@ import { staffService } from '../../../services/admin/staff-service';
 import type { ChecklistTemplateDocument } from '../../../types/checklist.types';
 import { cn } from '../../../../share/lib/utils';
 import { getChecklistColorMeta, resolveChecklistIcon } from '../checklist-meta';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { MobileCard, type CardAccentColor } from '../../../components/custom/mobile-card';
+
+const mapCategoryColorToAccent = (colorKey?: string): CardAccentColor => {
+  if (!colorKey) return 'none';
+  const key = colorKey.toLowerCase();
+  if (key.includes('red') || key.includes('rose') || key.includes('pink')) return 'red';
+  if (key.includes('emerald') || key.includes('green')) return 'green';
+  if (key.includes('teal')) return 'teal';
+  if (key.includes('blue') || key.includes('indigo') || key.includes('sky')) return 'blue';
+  if (key.includes('amber') || key.includes('orange') || key.includes('yellow')) return 'amber';
+  if (key.includes('slate') || key.includes('gray')) return 'slate';
+  return 'none';
+};
 
 // Form Schema Validation
 const templateFormSchema = z.object({
@@ -73,6 +87,8 @@ export default function ChecklistTemplateTabContent({
   editingTemplateId,
   setEditingTemplateId,
 }: ChecklistTemplateTabContentProps) {
+  const isMobile = useIsMobile();
+
   // Query danh sách nhân sự
   const { data: staffList = [] } = useQuery({
     queryKey: ['admin', 'staff'],
@@ -574,24 +590,126 @@ export default function ChecklistTemplateTabContent({
 
         {/* Cột 1: Danh sách checklist mẫu */}
         <div className="w-full min-w-0 xl:col-span-9">
-          {/* Bảng danh sách checklist mẫu sử dụng CustomTable */}
-          <div className="w-full max-w-full overflow-hidden min-w-0">
-            <CustomTable<ChecklistTemplateDocument>
-              columns={columns}
-              data={filteredTemplates}
-              enablePagination={true}
-              pagination={tablePagination}
-              onPaginationChange={setTablePagination}
-              enableSorting={false}
-              enableFiltering={false}
-              enableColumnResizing={false}
-              enableColumnVisibility={false}
-              showFilterRow={false}
-              emptyMessage="Không có mẫu checklist nào phù hợp."
-              tableMinWidth={900}
-              className="w-full min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:text-xs [&_th]:font-black rounded-xl border border-slate-200/90 shadow-3xs bg-white overflow-hidden"
-            />
-          </div>
+          {isMobile ? (
+            <div className="space-y-3 text-left">
+              {filteredTemplates.length === 0 ? (
+                <div className="py-6 text-center text-slate-500 font-bold text-sm border border-dashed border-slate-200 rounded-xl bg-white">
+                  Không có mẫu checklist nào phù hợp.
+                </div>
+              ) : (
+                filteredTemplates.map((template, idx) => {
+                  const roleName = roleOptions.find((r) => r.code.toUpperCase() === template.roleCode?.toUpperCase())?.name || template.roleCode || 'N/A';
+                  let freqText = 'Hàng ngày';
+                  if (template.frequency === 'weekly') {
+                    const dayText = weekdayOptions.find(o => o.value === template.frequencyDetail)?.label || 'Thứ 2';
+                    freqText = `Hàng tuần (${dayText})`;
+                  } else if (template.frequency === 'monthly') {
+                    freqText = `Hàng tháng (Ngày ${template.frequencyDetail || 1})`;
+                  }
+                  const colorMeta = getChecklistColorMeta(template.colorKey || 'rose');
+                  const ItemIcon = resolveChecklistIcon(template.iconName || 'Layers');
+
+                  return (
+                    <MobileCard
+                      key={template.id}
+                      variant="bordered"
+                      interactive={true}
+                      delayIndex={idx}
+                      onClick={() => handleStartEdit(template)}
+                      accentColor={mapCategoryColorToAccent(template.colorKey)}
+                    >
+                      <MobileCard.Header
+                        title={
+                          <span className="text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block">
+                            {template.title || 'Mẫu checklist'}
+                          </span>
+                        }
+                        subtitle={
+                          <span className="text-[10px] text-slate-400 font-bold font-sans block">
+                            {roleName}
+                          </span>
+                        }
+                        avatar={
+                          <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border", colorMeta.iconBg)}>
+                            <ItemIcon className={cn("w-4.5 h-4.5", colorMeta.iconColor)} />
+                          </span>
+                        }
+                        badge={
+                          (template.status || 'active') === 'active'
+                            ? { text: 'Đang dùng', variant: 'success' }
+                            : { text: 'Tạm ẩn', variant: 'secondary' }
+                        }
+                      />
+
+                      <MobileCard.Grid
+                        items={[
+                          { label: 'Tần suất', value: freqText },
+                          { label: 'Số đầu việc', value: `${template.tasks?.length || 0} đầu việc` },
+                          { label: 'Tự động sinh', value: template.autoCreateDaily !== false ? 'Bật' : 'Tắt' },
+                          { label: 'Người kiểm tra', value: template.inspectorName || 'Chưa cài đặt' }
+                        ]}
+                      />
+
+                      <MobileCard.Footer className="!py-2 !px-3.5 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-400 h-7 flex items-center">
+                          Bấm thẻ để chỉnh sửa
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {permissions.canUpdate && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 cursor-pointer rounded-lg border-none"
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                handleStartEdit(template);
+                              }}
+                            >
+                              <Edit2 className="size-3.5" />
+                              <span>Sửa</span>
+                            </Button>
+                          )}
+                          {permissions.canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50/50 cursor-pointer rounded-lg border-none"
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                setDeleteTarget(template);
+                              }}
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span>Xóa</span>
+                            </Button>
+                          )}
+                        </div>
+                      </MobileCard.Footer>
+                    </MobileCard>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            /* Bảng danh sách checklist mẫu sử dụng CustomTable */
+            <div className="w-full max-w-full overflow-hidden min-w-0">
+              <CustomTable<ChecklistTemplateDocument>
+                columns={columns}
+                data={filteredTemplates}
+                enablePagination={true}
+                pagination={tablePagination}
+                onPaginationChange={setTablePagination}
+                enableSorting={false}
+                enableFiltering={false}
+                enableColumnResizing={false}
+                enableColumnVisibility={false}
+                showFilterRow={false}
+                emptyMessage="Không có mẫu checklist nào phù hợp."
+                tableMinWidth={900}
+                className="w-full min-w-0 [&_th]:!bg-slate-50 [&_th]:!text-slate-800 [&_th]:text-xs [&_th]:font-black rounded-xl border border-slate-200/90 shadow-3xs bg-white overflow-hidden"
+              />
+            </div>
+          )}
         </div>
 
         <div className="w-full space-y-4 text-left min-w-0 xl:col-span-3">
@@ -654,7 +772,7 @@ export default function ChecklistTemplateTabContent({
       >
         <SheetContent
           side="right"
-          className="w-[55vw] sm:max-w-[55vw] p-0 font-sans border-l border-slate-200 bg-white flex flex-col h-full focus:outline-none"
+          className="w-[92vw] sm:w-[55vw] sm:max-w-[55vw] p-0 font-sans border-l border-slate-200 bg-white flex flex-col h-full focus:outline-none"
         >
           {editingTemplateId !== null && (
             <div className="w-full h-full flex flex-col overflow-hidden text-left bg-white">

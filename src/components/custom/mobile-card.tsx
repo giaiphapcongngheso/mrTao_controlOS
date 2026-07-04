@@ -290,7 +290,7 @@ export function MobileCardGrid({ items, cols = 2, className }: MobileCardGridPro
   return (
     <div
       className={cn(
-        'grid gap-y-3 gap-x-4 border-t border-b border-border/20 py-3.5 my-1',
+        'grid gap-y-3 gap-x-4 border-t border-b border-border/20 px-4 py-3.5 my-1',
         cols === 3 ? 'grid-cols-3' : 'grid-cols-2',
         className
       )}

@@ -759,16 +759,20 @@ export const HistoryTab = React.memo(function HistoryTab({
                         ]}
                       />
 
-                      <MobileCard.Footer
-                        actions={[
-                          {
-                            label: 'Xem chi tiết',
-                            onClick: () => handleRowClick(row.id),
-                            variant: 'outline' as const,
-                            icon: <Eye className="w-3.5 h-3.5" />
-                          }
-                        ]}
-                      />
+                       <MobileCard.Footer className="!py-2 !px-3.5 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-400 h-7 flex items-center">
+                          Bấm thẻ để xem chi tiết lịch sử
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-100 cursor-pointer rounded-lg border-none"
+                          onClick={() => handleRowClick(row.id)}
+                        >
+                          <Eye className="size-3.5" />
+                          <span>Chi tiết</span>
+                        </Button>
+                      </MobileCard.Footer>
                     </MobileCard>
                   );
                 })
