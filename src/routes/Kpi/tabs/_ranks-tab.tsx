@@ -5,7 +5,7 @@ import type { KPIConfig, KPIDailyValue, StaffRank, KPIStaffMonthlyConfig } from 
 import { Card, CardContent } from '../../../../share/ui/card';
 import { StaffDetailCard } from '../components/_staff-detail-card';
 import { LeaderboardTable } from '../components/_leaderboard-table';
-import { KpiSparklineChart } from '../components/_kpi-sparkline-chart';
+import { KpiMultiIndicatorChart } from '../components/_kpi-multi-indicator-chart';
 import { KpiOverviewChart } from '../components/_kpi-overview-chart';
 import { KpiClassificationPieChart } from '../components/_kpi-classification-pie-chart';
 import { KpiLeaderboardTable } from '../components/_kpi-leaderboard-table';
@@ -62,8 +62,7 @@ export const RanksTab = React.memo(function RanksTab({
   const [ranksYear, setRanksYear] = useState<number>(2026);
   const [ranksMonth, setRanksMonth] = useState<string>(selectedMonthYear);
 
-  // Chart state
-  const [activeChartKpiId, setActiveChartKpiId] = useState<string>('');
+
 
   // Sync ranksMonth when parent month changes
   React.useEffect(() => {
@@ -119,16 +118,7 @@ export const RanksTab = React.memo(function RanksTab({
     );
   }, [kpiConfigs, selectedStaff, ranksMonth]);
 
-  // Set default active KPI for chart
-  React.useEffect(() => {
-    if (staffConfigs.length > 0) {
-      if (!activeChartKpiId || !staffConfigs.some(c => c.id === activeChartKpiId)) {
-        setActiveChartKpiId(staffConfigs[0].id);
-      }
-    } else {
-      setActiveChartKpiId('');
-    }
-  }, [selectedStaffId, staffConfigs, activeChartKpiId]);
+
 
   // Period revenue stats
   const periodRevenueStats = useMemo(() => {
@@ -206,7 +196,7 @@ export const RanksTab = React.memo(function RanksTab({
   const handleMonthChange = useCallback((m: string) => setRanksMonth(m), []);
   const handleQuarterChange = useCallback((q: number) => setRanksQuarter(q), []);
   const handleYearChange = useCallback((y: number) => setRanksYear(y), []);
-  const handleChartKpiChange = useCallback((id: string) => setActiveChartKpiId(id), []);
+
   const handleViewModeChange = useCallback((mode: 'overview' | 'detail') => setViewMode(mode), []);
 
   const score = dynamicRanks.find(r => r.staffId === selectedStaff?.id)?.score || 0;
@@ -408,11 +398,9 @@ export const RanksTab = React.memo(function RanksTab({
                 {/* Sparkline chart (month view only) */}
                 {ranksTimeframe === 'month' && staffConfigs.length > 0 && (
                   <div className="pt-2 border-t border-slate-100">
-                    <KpiSparklineChart
+                    <KpiMultiIndicatorChart
                       staffId={selectedStaff.id}
                       configs={staffConfigs}
-                      activeChartKpiId={activeChartKpiId}
-                      onActiveKpiChange={handleChartKpiChange}
                       ranksMonth={ranksMonth}
                       daysInMonthCount={daysInMonthCount}
                       kpiDailyValues={kpiDailyValues}
