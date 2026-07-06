@@ -10,6 +10,7 @@ import { Button } from '../../../shared/components/button';
 import { KpiStatusBadge } from './_kpi-status-badge';
 import { formatValue, getAvatarUrl } from '../kpi-utils';
 import { toastSuccess, toastError } from '../../../shared/lib/toast';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import type { RanksTimeframe, PeriodKpiDetail, RevenueStats } from '../kpi-utils';
 import type { KPIStaffMonthlyConfig } from '../../../types/kpi.types';
@@ -352,25 +353,75 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             {emptyMessage}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/50">
-                <TableRow>
-                  <TableHead className="text-sm font-bold text-slate-800 tracking-wider py-2">Chỉ số KPI</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Target tháng</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Thực đạt</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Đạt %</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Điểm</TableHead>
-                  <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Trạng thái</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {periodKpis.map(kpi => (
-                  <KpiDetailRow key={kpi.id} kpi={kpi} />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <>
+            {/* Desktop View */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow>
+                    <TableHead className="text-sm font-bold text-slate-800 tracking-wider py-2">Chỉ số KPI</TableHead>
+                    <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Target tháng</TableHead>
+                    <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Thực đạt</TableHead>
+                    <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Đạt %</TableHead>
+                    <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Điểm</TableHead>
+                    <TableHead className="text-right text-sm font-bold text-slate-800 tracking-wider py-2">Trạng thái</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {periodKpis.map(kpi => (
+                    <KpiDetailRow key={kpi.id} kpi={kpi} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="block md:hidden space-y-3 text-left">
+              {periodKpis.map((kpi, idx) => {
+                const pctStr = (kpi.pct * 100).toFixed(1) + '%';
+                const scoreVal = kpi.score * 100;
+                const maxVal = kpi.weight * 100;
+                const scoreStr = `${scoreVal % 1 === 0 ? scoreVal.toFixed(0) : scoreVal.toFixed(1)} / ${maxVal.toFixed(0)}`;
+
+                return (
+                  <MobileCard key={kpi.id} delayIndex={idx} variant="bordered">
+                    <MobileCard.Header
+                      title={kpi.kpiName}
+                      subtitle={kpi.goalName}
+                    />
+                    <MobileCard.Body className="p-3 space-y-2">
+                      <MobileCard.Grid
+                        cols={2}
+                        items={[
+                          { label: 'Target tháng', value: formatValue(kpi.target, kpi.unit) },
+                          { label: 'Thực đạt', value: formatValue(kpi.actual, kpi.unit), valueClassName: 'text-blue-600 font-bold' },
+                          { 
+                            label: 'Đạt %', 
+                            value: (
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span className="font-bold text-slate-700">{pctStr}</span>
+                                <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden border border-slate-200/30">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${kpi.pct >= 0.95 ? 'bg-emerald-500' : kpi.pct >= 0.8 ? 'bg-blue-500' : 'bg-rose-500'}`}
+                                    style={{ width: `${Math.min(100, kpi.pct * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          },
+                          { label: 'Điểm', value: scoreStr, valueClassName: 'font-bold text-slate-800' },
+                        ]}
+                      />
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-2 text-xs">
+                        <span className="text-slate-400 font-bold">Trạng thái:</span>
+                        <KpiStatusBadge actual={kpi.actual} pct={kpi.pct} />
+                      </div>
+                    </MobileCard.Body>
+                  </MobileCard>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
