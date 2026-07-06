@@ -6,6 +6,7 @@ import { dataClient } from '../data-client';
 const baseStaffService = createBaseService<StaffMember, Partial<StaffMember>>({
   client: dataClient,
   resource: RESOURCE_PATH.STAFF,
+  cacheTtlMs: 5 * 60 * 1000,
   autoLog: { target: 'Nhân sự' },
 });
 

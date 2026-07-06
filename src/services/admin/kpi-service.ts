@@ -12,12 +12,14 @@ export const kpiStaffMonthlyConfigService = createBaseService<KPIStaffMonthlyCon
 export const kpiStaffRankService = createBaseService<StaffRank, Partial<StaffRank>>({
   client: dataClient,
   resource: RESOURCE_PATH.KPI_STAFF_RANKS,
+  cacheTtlMs: 5 * 60 * 1000,
   autoLog: { target: 'Cấp bậc KPI' },
 });
 
 export const kpiConfigService = createBaseService<KPIConfig, Partial<KPIConfig>>({
   client: dataClient,
   resource: RESOURCE_PATH.KPI_CONFIGS,
+  cacheTtlMs: 5 * 60 * 1000,
   autoLog: { target: 'Cấu hình KPI' },
 });
 
