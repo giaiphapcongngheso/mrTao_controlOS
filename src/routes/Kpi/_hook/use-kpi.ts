@@ -44,14 +44,17 @@ export function useKpiConfigsQuery(storeId?: string, monthYear?: string) {
 export function useKpiDailyValuesQuery(storeId?: string, monthYear?: string) {
   return useQuery({
     queryKey: storeId ? [...kpiQueryKeys.dailyValues, storeId, monthYear] : kpiQueryKeys.dailyValues,
-    queryFn: () => {
+    queryFn: async () => {
       const params: any = {};
-      if (storeId) params.storeId = storeId;
       if (monthYear) {
         params.date_gte = `${monthYear}-01`;
         params.date_lte = `${monthYear}-31`;
       }
-      return kpiDailyValueService.getAll(params);
+      const allValues = await kpiDailyValueService.getAll(params);
+      if (storeId) {
+        return allValues.filter(v => !v.storeId || v.storeId === storeId);
+      }
+      return allValues;
     },
     enabled: !!storeId,
   });

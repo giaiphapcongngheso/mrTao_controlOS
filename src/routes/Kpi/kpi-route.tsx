@@ -46,6 +46,66 @@ export default function KpiRoute() {
   const saveMonthlyConfigMutation = useSaveKpiStaffMonthlyConfigMutation();
   const updateKpiRoleMutation = useUpdateKpiRoleMutation();
 
+  // Expose migration tool to window console to bypass Node CLI permission issues
+  if (typeof window !== 'undefined') {
+    (window as any).runKpiMigration = async () => {
+      const { getFirestoreDb } = await import('../../services/firebase-config');
+      const { collection, getDocs, doc, writeBatch } = await import('firebase/firestore');
+      const db = getFirestoreDb();
+      
+      console.log('🚀 Starting browser-based KPI storeId migration...');
+      
+      const staffStoreMap = new Map();
+      staffMembers.forEach((s) => {
+        if (s.storeId) staffStoreMap.set(s.id, s.storeId);
+      });
+      console.log(`Loaded ${staffStoreMap.size} staff mapping(s).`);
+
+      const updateCollectionStoreId = async (collectionName: string, staffIdFieldName = 'staffId') => {
+        console.log(`Scanning collection "${collectionName}"...`);
+        const qSnapshot = await getDocs(collection(db, collectionName));
+        
+        let updateCount = 0;
+        let batch = writeBatch(db);
+        let opCount = 0;
+        
+        for (const d of qSnapshot.docs) {
+          const data = d.data();
+          const staffId = data[staffIdFieldName];
+          
+          if ((!data.storeId || data.storeId === '') && staffId) {
+            const correctStoreId = staffStoreMap.get(staffId);
+            if (correctStoreId) {
+              batch.update(doc(db, collectionName, d.id), { storeId: correctStoreId });
+              updateCount++;
+              opCount++;
+              console.log(`  - Prepared update for ${collectionName}/${d.id}: storeId = "${correctStoreId}" for staffId = "${staffId}"`);
+              
+              if (opCount >= 400) {
+                await batch.commit();
+                batch = writeBatch(db);
+                opCount = 0;
+              }
+            }
+          }
+        }
+        
+        if (opCount > 0) {
+          await batch.commit();
+        }
+        console.log(`✅ Finished "${collectionName}": updated ${updateCount} records.`);
+        return updateCount;
+      };
+
+      const configsUpdated = await updateCollectionStoreId('kpi_configs');
+      const dailyValuesUpdated = await updateCollectionStoreId('kpi_daily_values');
+      const monthlyConfigsUpdated = await updateCollectionStoreId('kpi_staff_monthly_configs');
+
+      console.log('🎉 Browser migration completed!');
+      return { configsUpdated, dailyValuesUpdated, monthlyConfigsUpdated };
+    };
+  }
+
   // Stable callbacks for mutations
   const handleCreateConfig = useCallback((newConfig: any) => {
     return createConfigMutation.mutateAsync(newConfig);
