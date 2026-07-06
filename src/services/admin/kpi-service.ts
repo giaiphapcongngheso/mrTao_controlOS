@@ -6,6 +6,7 @@ import { dataClient } from '../data-client';
 export const kpiStaffMonthlyConfigService = createBaseService<KPIStaffMonthlyConfig, Partial<KPIStaffMonthlyConfig>>({
   client: dataClient,
   resource: RESOURCE_PATH.KPI_STAFF_MONTHLY_CONFIGS,
+  cacheTtlMs: 5 * 60 * 1000,
   autoLog: { target: 'Cấu hình KPI tháng nhân sự' },
 });
 
