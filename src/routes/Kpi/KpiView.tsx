@@ -15,6 +15,8 @@ interface KpiViewProps {
   kpiConfigs: KPIConfig[];
   kpiDailyValues: KPIDailyValue[];
   monthlyConfigs: KPIStaffMonthlyConfig[];
+  selectedMonthYear: string;
+  onMonthYearChange: (monthYear: string) => void;
   onCreateConfig: (newConfig: KPIConfig) => Promise<any>;
   onUpdateConfig: (config: KPIConfig) => Promise<any>;
   onDeleteConfig: (configId: string) => Promise<any>;
@@ -38,6 +40,8 @@ export default function KpiView({
   kpiConfigs,
   kpiDailyValues,
   monthlyConfigs,
+  selectedMonthYear,
+  onMonthYearChange,
   onCreateConfig,
   onUpdateConfig,
   onDeleteConfig,
@@ -50,16 +54,12 @@ export default function KpiView({
 }: KpiViewProps) {
   // Global states
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('ranks');
-  const now = new Date();
-  const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
-    `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
-  );
 
   // Handlers
   const handleSubTabChange = useCallback((tab: SubTab) => setActiveSubTab(tab), []);
   const handleMonthYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedMonthYear(e.target.value);
-  }, []);
+    onMonthYearChange(e.target.value);
+  }, [onMonthYearChange]);
 
   // Month options
   const monthOptions = useMemo(() =>

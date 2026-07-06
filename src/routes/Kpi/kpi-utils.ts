@@ -166,6 +166,14 @@ export const calculateDynamicStaffRanks = (
 ): StaffRank[] => {
   const activeStaff = staffMembers.filter(s => s.status === 'active');
 
+  // Pre-index kpiDailyValues by staffId_configId_month
+  const dailyValuesMap = new Map<string, number>();
+  kpiDailyValues.forEach(v => {
+    const month = v.date.slice(0, 7); // extract YYYY-MM
+    const key = `${v.staffId}_${v.kpiConfigId}_${month}`;
+    dailyValuesMap.set(key, (dailyValuesMap.get(key) || 0) + v.value);
+  });
+
   const ranks = activeStaff.map((staff): StaffRank => {
     let totalScoreSum = 0;
     let monthsCount = 0;
@@ -195,9 +203,8 @@ export const calculateDynamicStaffRanks = (
       if (configs.length > 0) {
         let monthScore = 0;
         configs.forEach(config => {
-          const actual = kpiDailyValues
-            .filter(v => v.staffId === staff.id && v.kpiConfigId === config.id && v.date.startsWith(m))
-            .reduce((sum, item) => sum + item.value, 0);
+          const key = `${staff.id}_${config.id}_${m}`;
+          const actual = dailyValuesMap.get(key) || 0;
 
           const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
           const score = Math.min(config.weight, config.weight * pct);
@@ -257,6 +264,16 @@ export const calculatePeriodKpis = (
     periodMonths.includes(c.month || '2026-06')
   );
 
+  // Pre-index daily values for the selected staff
+  const dailyValuesMap = new Map<string, number>();
+  kpiDailyValues.forEach(v => {
+    if (v.staffId === staffId) {
+      const month = v.date.slice(0, 7); // extract YYYY-MM
+      const key = `${v.kpiConfigId}_${month}`;
+      dailyValuesMap.set(key, (dailyValuesMap.get(key) || 0) + v.value);
+    }
+  });
+
   const groups: Record<string, {
     kpiName: string;
     goalName: string;
@@ -269,10 +286,9 @@ export const calculatePeriodKpis = (
 
   configsInPeriod.forEach(config => {
     const key = `${config.kpiName.trim().toLowerCase()}_${config.unit}`;
-
-    const actual = kpiDailyValues
-      .filter(v => v.staffId === staffId && v.kpiConfigId === config.id && v.date.startsWith(config.month || '2026-06'))
-      .reduce((sum, item) => sum + item.value, 0);
+    const month = config.month || '2026-06';
+    const mapKey = `${config.id}_${month}`;
+    const actual = dailyValuesMap.get(mapKey) || 0;
 
     if (!groups[key]) {
       groups[key] = {
@@ -331,11 +347,21 @@ export const calculateRevenueStats = (
     periodMonths.includes(c.month || '2026-06')
   );
 
+  // Pre-index daily values for the selected staff
+  const dailyValuesMap = new Map<string, number>();
+  kpiDailyValues.forEach(v => {
+    if (v.staffId === staffId) {
+      const month = v.date.slice(0, 7); // extract YYYY-MM
+      const key = `${v.kpiConfigId}_${month}`;
+      dailyValuesMap.set(key, (dailyValuesMap.get(key) || 0) + v.value);
+    }
+  });
+
   const totalTarget = vnKpis.reduce((sum, c) => sum + c.monthlyTarget, 0);
   const totalActual = vnKpis.reduce((sum, c) => {
-    const actual = kpiDailyValues
-      .filter(v => v.staffId === staffId && v.kpiConfigId === c.id && v.date.startsWith(c.month || '2026-06'))
-      .reduce((s, item) => s + item.value, 0);
+    const month = c.month || '2026-06';
+    const mapKey = `${c.id}_${month}`;
+    const actual = dailyValuesMap.get(mapKey) || 0;
     return sum + actual;
   }, 0);
 

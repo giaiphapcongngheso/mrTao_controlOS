@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, query, where } from 'firebase/firestore';
 import type { HttpClient } from '../shared/services/create-base-service';
 import { KNOWN_RESOURCE_PATHS } from '../constants/resource-paths';
 import { getFirestoreDb } from './firebase-config';
@@ -111,7 +111,27 @@ export const firebaseClient: HttpClient = {
       return withEntityId(docId, snapshot.data() as T);
     }
 
-    const snapshot = await withTimeout(getDocs(collection(db, collectionName)));
+    const queryIndex = url.indexOf('?');
+    const hasQuery = queryIndex !== -1;
+    let q = query(collection(db, collectionName));
+
+    if (hasQuery) {
+      const queryString = url.slice(queryIndex + 1);
+      const params = new URLSearchParams(queryString);
+      params.forEach((value, key) => {
+        if (key.endsWith('_gte')) {
+          const field = key.slice(0, -4);
+          q = query(q, where(field, '>=', value));
+        } else if (key.endsWith('_lte')) {
+          const field = key.slice(0, -4);
+          q = query(q, where(field, '<=', value));
+        } else {
+          q = query(q, where(key, '==', value));
+        }
+      });
+    }
+
+    const snapshot = await withTimeout(getDocs(q));
     return snapshot.docs.map((item) => withEntityId(item.id, item.data())) as T;
   },
 

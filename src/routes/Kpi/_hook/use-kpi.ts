@@ -35,10 +35,18 @@ export function useKpiConfigsQuery() {
   });
 }
 
-export function useKpiDailyValuesQuery() {
+export function useKpiDailyValuesQuery(monthYear?: string) {
   return useQuery({
-    queryKey: kpiQueryKeys.dailyValues,
-    queryFn: kpiDailyValueService.getAll,
+    queryKey: monthYear ? [...kpiQueryKeys.dailyValues, monthYear] : kpiQueryKeys.dailyValues,
+    queryFn: () => {
+      if (monthYear) {
+        return kpiDailyValueService.getAll({
+          date_gte: `${monthYear}-01`,
+          date_lte: `${monthYear}-31`,
+        });
+      }
+      return kpiDailyValueService.getAll();
+    },
   });
 }
 
@@ -118,10 +126,15 @@ export function useDeleteKpiGoalMutation() {
   });
 }
 
-export function useKpiStaffMonthlyConfigsQuery() {
+export function useKpiStaffMonthlyConfigsQuery(monthYear?: string) {
   return useQuery({
-    queryKey: kpiQueryKeys.staffMonthlyConfigs,
-    queryFn: kpiStaffMonthlyConfigService.getAll,
+    queryKey: monthYear ? [...kpiQueryKeys.staffMonthlyConfigs, monthYear] : kpiQueryKeys.staffMonthlyConfigs,
+    queryFn: () => {
+      if (monthYear) {
+        return kpiStaffMonthlyConfigService.getAll({ month: monthYear });
+      }
+      return kpiStaffMonthlyConfigService.getAll();
+    },
   });
 }
 

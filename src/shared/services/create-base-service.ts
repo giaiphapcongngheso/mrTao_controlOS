@@ -67,7 +67,7 @@ export interface BasePagedOptions {
 // ─── Service Interface ───────────────────────────────────────────────────────
 
 export interface BaseService<TEntity, TRequest = Partial<TEntity>> {
-  getAll: () => Promise<TEntity[]>;
+  getAll: (queryParams?: any) => Promise<TEntity[]>;
   getById: (id: string) => Promise<TEntity>;
   create: (payload: TRequest, options?: MutationOptions) => Promise<TEntity>;
   update: (id: string, payload: TRequest, options?: MutationOptions) => Promise<TEntity>;
@@ -175,19 +175,28 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
     : null;
 
   return {
-    getAll: async () => {
+    getAll: async (queryParams?: any) => {
+      let url = resource;
+      const isReactQueryContext = queryParams && typeof queryParams === 'object' && ('queryKey' in queryParams || 'signal' in queryParams);
+      const actualParams = isReactQueryContext ? undefined : queryParams;
+
+      const searchStr = actualParams ? new URLSearchParams(actualParams).toString() : '';
+      if (searchStr) {
+        url += `?${searchStr}`;
+      }
+
       // Serve from cache if fresh
-      if (cache) {
+      if (cache && !actualParams) {
         const cached = cache.get();
         if (cached !== null) {
           return cached;
         }
       }
 
-      const data = await client.get<TEntity[]>(resource);
+      const data = await client.get<TEntity[]>(url);
 
       // Store in cache for future calls
-      if (cache) {
+      if (cache && !actualParams) {
         cache.set(data);
       }
 

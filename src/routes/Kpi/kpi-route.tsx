@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { TAB_ROUTE_MAP } from '../app-shell-state';
@@ -21,12 +21,17 @@ import {
 
 export default function KpiRoute() {
   const navigate = useNavigate();
+  const now = new Date();
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
+    `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
+  );
+
   const { data: staffMembers = [], isLoading: isStaffLoading } = useStaffQuery();
   const { data: kpiConfigs = [], isLoading: isConfigsLoading } = useKpiConfigsQuery();
-  const { data: kpiDailyValues = [], isLoading: isDailyValuesLoading } = useKpiDailyValuesQuery();
+  const { data: kpiDailyValues = [], isLoading: isDailyValuesLoading } = useKpiDailyValuesQuery(selectedMonthYear);
   const { data: roles = [], isLoading: isRolesLoading } = useKpiRolesQuery();
   const { data: goals = [], isLoading: isGoalsLoading } = useKpiGoalsQuery();
-  const { data: monthlyConfigs = [], isLoading: isMonthlyConfigsLoading } = useKpiStaffMonthlyConfigsQuery();
+  const { data: monthlyConfigs = [], isLoading: isMonthlyConfigsLoading } = useKpiStaffMonthlyConfigsQuery(selectedMonthYear);
 
   const createConfigMutation = useCreateKpiConfigMutation();
   const updateConfigMutation = useUpdateKpiConfigMutation();
@@ -70,6 +75,8 @@ export default function KpiRoute() {
       kpiConfigs={kpiConfigs}
       kpiDailyValues={kpiDailyValues}
       monthlyConfigs={monthlyConfigs}
+      selectedMonthYear={selectedMonthYear}
+      onMonthYearChange={setSelectedMonthYear}
       onCreateConfig={(newConfig) => createConfigMutation.mutateAsync(newConfig)}
       onUpdateConfig={(config) => updateConfigMutation.mutateAsync(config)}
       onDeleteConfig={(configId) => deleteConfigMutation.mutateAsync(configId)}
