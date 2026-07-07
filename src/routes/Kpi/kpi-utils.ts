@@ -166,12 +166,37 @@ export const calculateDynamicStaffRanks = (
 ): StaffRank[] => {
   const activeStaff = staffMembers.filter(s => s.status === 'active');
 
-  // Pre-index kpiDailyValues by staffId_configId_month
+  // 1. Phân nhóm kpiConfigs theo staffId và month để truy cập O(1)
+  const configsLookup = new Map<string, KPIConfig[]>();
+  kpiConfigs.forEach(c => {
+    const month = c.month || '2026-06';
+    const key = `${c.staffId}_${month}`;
+    if (!configsLookup.has(key)) {
+      configsLookup.set(key, []);
+    }
+    configsLookup.get(key)!.push(c);
+  });
+
+  // 2. Pre-index kpiDailyValues by staffId_configId_month
   const dailyValuesMap = new Map<string, number>();
   kpiDailyValues.forEach(v => {
     const month = v.date.slice(0, 7); // extract YYYY-MM
     const key = `${v.staffId}_${v.kpiConfigId}_${month}`;
     dailyValuesMap.set(key, (dailyValuesMap.get(key) || 0) + v.value);
+  });
+
+  // 3. Phân nhóm monthlyConfigs theo staffId và month để truy cập O(1)
+  const monthlyConfigsLookup = new Map<string, KPIStaffMonthlyConfig>();
+  monthlyConfigs.forEach(mc => {
+    const key = `${mc.staffId}_${mc.month}`;
+    monthlyConfigsLookup.set(key, mc);
+  });
+
+  // 4. Phân nhóm roles theo code và id để truy cập O(1)
+  const rolesLookup = new Map<string, StaffRole>();
+  roles.forEach(r => {
+    if (r.code) rolesLookup.set(r.code, r);
+    if (r.id) rolesLookup.set(r.id, r);
   });
 
   const ranks = activeStaff.map((staff): StaffRank => {
@@ -182,17 +207,16 @@ export const calculateDynamicStaffRanks = (
     let lastDisciplineCoeff: number | undefined;
 
     periodMonths.forEach(m => {
-      const configs = kpiConfigs.filter(
-        c => c.staffId === staff.id && (c.month || '2026-06') === m
-      );
+      const key = `${staff.id}_${m}`;
+      const configs = configsLookup.get(key) || [];
 
       // Find role settings
-      const roleObj = roles.find(r => r.code === staff.role || r.id === staff.roleId);
+      const roleObj = rolesLookup.get(staff.role) || (staff.roleId ? rolesLookup.get(staff.roleId) : undefined);
       const defaultFund = roleObj?.kpiFund ?? 0;
       const defaultDays = roleObj?.defaultWorkdays ?? 30;
 
       // Find monthly variables
-      const mConfig = monthlyConfigs.find(c => c.staffId === staff.id && c.month === m);
+      const mConfig = monthlyConfigsLookup.get(key);
       const actualDays = mConfig?.actualWorkdays ?? defaultDays;
       const discipline = mConfig?.disciplineCoefficient ?? 1.0;
       const fund = mConfig?.payoutBaseOverride ?? defaultFund;
@@ -203,8 +227,8 @@ export const calculateDynamicStaffRanks = (
       if (configs.length > 0) {
         let monthScore = 0;
         configs.forEach(config => {
-          const key = `${staff.id}_${config.id}_${m}`;
-          const actual = dailyValuesMap.get(key) || 0;
+          const valKey = `${staff.id}_${config.id}_${m}`;
+          const actual = dailyValuesMap.get(valKey) || 0;
 
           const pct = config.monthlyTarget > 0 ? (actual / config.monthlyTarget) : 0;
           const score = Math.min(config.weight, config.weight * pct);

@@ -26,6 +26,11 @@ interface KpiViewProps {
   goals: KPIGoal[];
   onCreateGoal: (name: string) => Promise<any>;
   onDeleteGoal: (id: string) => Promise<any>;
+  activeSubTab: SubTab;
+  onSubTabChange: (tab: SubTab) => void;
+  isRanksLoading: boolean;
+  isEntryLoading: boolean;
+  isSettingsLoading: boolean;
 }
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
@@ -51,12 +56,14 @@ export default function KpiView({
   goals,
   onCreateGoal,
   onDeleteGoal,
+  activeSubTab,
+  onSubTabChange,
+  isRanksLoading,
+  isEntryLoading,
+  isSettingsLoading,
 }: KpiViewProps) {
-  // Global states
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('ranks');
-
   // Handlers
-  const handleSubTabChange = useCallback((tab: SubTab) => setActiveSubTab(tab), []);
+  const handleSubTabChange = useCallback((tab: SubTab) => onSubTabChange(tab), [onSubTabChange]);
   const handleMonthYearChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     onMonthYearChange(e.target.value);
   }, [onMonthYearChange]);
@@ -110,41 +117,65 @@ export default function KpiView({
 
       {/* Tab Content */}
       {activeSubTab === 'ranks' && (
-        <RanksTab
-          roles={roles}
-          staffMembers={staffMembers}
-          kpiConfigs={kpiConfigs}
-          kpiDailyValues={kpiDailyValues}
-          monthlyConfigs={monthlyConfigs}
-          selectedMonthYear={selectedMonthYear}
-          onSaveMonthlyConfig={onSaveMonthlyConfig}
-        />
+        isRanksLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="text-sm font-semibold text-slate-500 animate-pulse">
+              Đang tải dữ liệu Xếp hạng KPI...
+            </div>
+          </div>
+        ) : (
+          <RanksTab
+            roles={roles}
+            staffMembers={staffMembers}
+            kpiConfigs={kpiConfigs}
+            kpiDailyValues={kpiDailyValues}
+            monthlyConfigs={monthlyConfigs}
+            selectedMonthYear={selectedMonthYear}
+            onSaveMonthlyConfig={onSaveMonthlyConfig}
+          />
+        )
       )}
 
       {activeSubTab === 'entry' && (
-        <EntryTab
-          staffMembers={staffMembers}
-          kpiConfigs={kpiConfigs}
-          kpiDailyValues={kpiDailyValues}
-          selectedMonthYear={selectedMonthYear}
-          onSaveDailyValue={onSaveDailyValue}
-        />
+        isEntryLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="text-sm font-semibold text-slate-500 animate-pulse">
+              Đang tải dữ liệu Nhập liệu KPI...
+            </div>
+          </div>
+        ) : (
+          <EntryTab
+            staffMembers={staffMembers}
+            kpiConfigs={kpiConfigs}
+            kpiDailyValues={kpiDailyValues}
+            selectedMonthYear={selectedMonthYear}
+            onSaveDailyValue={onSaveDailyValue}
+          />
+        )
       )}
 
       {activeSubTab === 'settings' && (
-        <SettingsTab
-          roles={roles}
-          staffMembers={staffMembers}
-          kpiConfigs={kpiConfigs}
-          selectedMonthYear={selectedMonthYear}
-          onCreateConfig={onCreateConfig}
-          onUpdateConfig={onUpdateConfig}
-          onDeleteConfig={onDeleteConfig}
-          goals={goals}
-          onCreateGoal={onCreateGoal}
-          onDeleteGoal={onDeleteGoal}
-          onUpdateRole={onUpdateRole}
-        />
+        isSettingsLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="text-sm font-semibold text-slate-500 animate-pulse">
+              Đang tải cấu hình thiết lập KPI...
+            </div>
+          </div>
+        ) : (
+          <SettingsTab
+            roles={roles}
+            staffMembers={staffMembers}
+            kpiConfigs={kpiConfigs}
+            selectedMonthYear={selectedMonthYear}
+            onCreateConfig={onCreateConfig}
+            onUpdateConfig={onUpdateConfig}
+            onDeleteConfig={onDeleteConfig}
+            goals={goals}
+            onCreateGoal={onCreateGoal}
+            onDeleteGoal={onDeleteGoal}
+            onUpdateRole={onUpdateRole}
+          />
+        )
       )}
     </div>
   );

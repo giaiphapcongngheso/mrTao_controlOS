@@ -225,9 +225,11 @@ export const SettingsTab = React.memo(function SettingsTab({
         };
         await onUpdateConfig(updatedConfig);
       } else {
+        const selectedStaff = staffMembers.find(s => s.id === selectedStaffId);
+        const staffStoreId = selectedStaff?.storeId || '';
         const newConfig: KPIConfig = {
           id: `${selectedStaffId}_${Date.now()}`,
-          storeId: '',
+          storeId: staffStoreId,
           staffId: selectedStaffId,
           ...data,
           dailyTarget: Math.round(data.monthlyTarget / daysInMonthCount),
@@ -241,12 +243,14 @@ export const SettingsTab = React.memo(function SettingsTab({
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, configDialogMode, editingConfig, selectedStaffId, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig]);
+  }, [isSubmitting, configDialogMode, editingConfig, selectedStaffId, selectedMonthYear, daysInMonthCount, onCreateConfig, onUpdateConfig, staffMembers]);
 
   const handleCopyFromPrevMonth = useCallback(async () => {
     if (isCopying || prevMonthConfigs.length === 0) return;
     setIsCopying(true);
     try {
+      const selectedStaff = staffMembers.find(s => s.id === selectedStaffId);
+      const staffStoreId = selectedStaff?.storeId || '';
       await Promise.all(
         prevMonthConfigs.map(async (prev) => {
           const newConfig: KPIConfig = {
@@ -254,6 +258,7 @@ export const SettingsTab = React.memo(function SettingsTab({
             id: `${prev.staffId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             month: selectedMonthYear,
             dailyTarget: Math.round(prev.monthlyTarget / daysInMonthCount),
+            storeId: prev.storeId || staffStoreId,
           };
           await onCreateConfig(newConfig);
         })
@@ -263,7 +268,7 @@ export const SettingsTab = React.memo(function SettingsTab({
     } finally {
       setIsCopying(false);
     }
-  }, [isCopying, prevMonthConfigs, selectedMonthYear, daysInMonthCount, onCreateConfig]);
+  }, [isCopying, prevMonthConfigs, selectedMonthYear, daysInMonthCount, onCreateConfig, selectedStaffId, staffMembers]);
 
   return (
     <section className="space-y-4">

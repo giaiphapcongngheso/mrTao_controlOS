@@ -16,7 +16,12 @@ export const kpiQueryKeys = {
 export function useKpiRolesQuery() {
   return useQuery({
     queryKey: kpiQueryKeys.roles,
-    queryFn: roleService.getAll,
+    queryFn: async () => {
+      console.time('⏱️ KPI ROLES QUERY');
+      const res = await roleService.getAll();
+      console.timeEnd('⏱️ KPI ROLES QUERY');
+      return res;
+    },
   });
 }
 
@@ -28,25 +33,41 @@ export function useKpiStaffRanksQuery() {
   });
 }
 
-export function useKpiConfigsQuery() {
+export function useKpiConfigsQuery(storeId?: string, monthYear?: string) {
   return useQuery({
-    queryKey: kpiQueryKeys.configs,
-    queryFn: kpiConfigService.getAll,
+    queryKey: storeId ? [...kpiQueryKeys.configs, storeId, monthYear] : kpiQueryKeys.configs,
+    queryFn: async () => {
+      console.time(`⏱️ KPI CONFIGS QUERY [${storeId} - ${monthYear}]`);
+      const params: any = {};
+      if (storeId) params.storeId = storeId;
+      if (monthYear) params.month = monthYear;
+      const res = await kpiConfigService.getAll(params);
+      console.timeEnd(`⏱️ KPI CONFIGS QUERY [${storeId} - ${monthYear}]`);
+      return res;
+    },
+    enabled: !!storeId,
   });
 }
 
-export function useKpiDailyValuesQuery(monthYear?: string) {
+export function useKpiDailyValuesQuery(storeId?: string, monthYear?: string) {
   return useQuery({
-    queryKey: monthYear ? [...kpiQueryKeys.dailyValues, monthYear] : kpiQueryKeys.dailyValues,
-    queryFn: () => {
+    queryKey: storeId ? [...kpiQueryKeys.dailyValues, storeId, monthYear] : kpiQueryKeys.dailyValues,
+    queryFn: async () => {
+      console.time(`⏱️ KPI DAILY VALUES QUERY [${storeId} - ${monthYear}]`);
+      const params: any = {};
       if (monthYear) {
-        return kpiDailyValueService.getAll({
-          date_gte: `${monthYear}-01`,
-          date_lte: `${monthYear}-31`,
-        });
+        params.date_gte = `${monthYear}-01`;
+        params.date_lte = `${monthYear}-31`;
       }
-      return kpiDailyValueService.getAll();
+      const allValues = await kpiDailyValueService.getAll(params);
+      let res = allValues;
+      if (storeId) {
+        res = allValues.filter(v => !v.storeId || v.storeId === storeId);
+      }
+      console.timeEnd(`⏱️ KPI DAILY VALUES QUERY [${storeId} - ${monthYear}]`);
+      return res;
     },
+    enabled: !!storeId,
   });
 }
 
@@ -99,10 +120,11 @@ export function useSaveKpiDailyValueMutation() {
   });
 }
 
-export function useKpiGoalsQuery() {
+export function useKpiGoalsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: kpiQueryKeys.goals,
     queryFn: kpiGoalService.getAll,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -126,15 +148,19 @@ export function useDeleteKpiGoalMutation() {
   });
 }
 
-export function useKpiStaffMonthlyConfigsQuery(monthYear?: string) {
+export function useKpiStaffMonthlyConfigsQuery(storeId?: string, monthYear?: string) {
   return useQuery({
-    queryKey: monthYear ? [...kpiQueryKeys.staffMonthlyConfigs, monthYear] : kpiQueryKeys.staffMonthlyConfigs,
-    queryFn: () => {
-      if (monthYear) {
-        return kpiStaffMonthlyConfigService.getAll({ month: monthYear });
-      }
-      return kpiStaffMonthlyConfigService.getAll();
+    queryKey: storeId ? [...kpiQueryKeys.staffMonthlyConfigs, storeId, monthYear] : kpiQueryKeys.staffMonthlyConfigs,
+    queryFn: async () => {
+      console.time(`⏱️ KPI STAFF MONTHLY CONFIGS QUERY [${storeId} - ${monthYear}]`);
+      const params: any = {};
+      if (storeId) params.storeId = storeId;
+      if (monthYear) params.month = monthYear;
+      const res = await kpiStaffMonthlyConfigService.getAll(params);
+      console.timeEnd(`⏱️ KPI STAFF MONTHLY CONFIGS QUERY [${storeId} - ${monthYear}]`);
+      return res;
     },
+    enabled: !!storeId,
   });
 }
 
