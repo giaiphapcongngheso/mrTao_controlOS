@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
 import { formatValue } from '../kpi-utils';
 import type { KPIConfig, KPIDailyValue } from '../../../types/kpi.types';
 import { cn } from '@shared/lib/utils';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@shared/ui/chart';
+import type { ChartConfig } from '@shared/ui/chart';
 
 interface KpiMultiIndicatorChartProps {
   readonly staffId: string;
@@ -13,12 +16,12 @@ interface KpiMultiIndicatorChartProps {
 
 // Bảng màu chuẩn hóa cho từng chỉ số (Tránh màu tím theo quy chuẩn hệ thống)
 const INDICATOR_COLORS = [
-  { stroke: '#10b981', fill: 'url(#grad-green)', legendBg: 'bg-emerald-500', text: 'text-emerald-500' }, // Xanh lá - Doanh thu
-  { stroke: '#3b82f6', fill: 'url(#grad-blue)', legendBg: 'bg-blue-500', text: 'text-blue-500' },    // Xanh dương - Đơn hàng
-  { stroke: '#f97316', fill: 'url(#grad-orange)', legendBg: 'bg-orange-500', text: 'text-orange-500' },// Cam - Checklist
-  { stroke: '#06b6d4', fill: 'url(#grad-cyan)', legendBg: 'bg-cyan-500', text: 'text-cyan-500' },    // Cyan
-  { stroke: '#eab308', fill: 'url(#grad-yellow)', legendBg: 'bg-yellow-500', text: 'text-yellow-500' },// Vàng
-  { stroke: '#f43f5e', fill: 'url(#grad-rose)', legendBg: 'bg-rose-500', text: 'text-rose-500' },    // Hồng/Đỏ
+  { stroke: '#10b981', legendBg: 'bg-emerald-500', text: 'text-emerald-500' }, // Xanh lá - Doanh thu
+  { stroke: '#3b82f6', legendBg: 'bg-blue-500', text: 'text-blue-500' },    // Xanh dương - Đơn hàng
+  { stroke: '#f97316', legendBg: 'bg-orange-500', text: 'text-orange-500' },// Cam - Checklist
+  { stroke: '#06b6d4', legendBg: 'bg-cyan-500', text: 'text-cyan-500' },    // Cyan
+  { stroke: '#eab308', legendBg: 'bg-yellow-500', text: 'text-yellow-500' },// Vàng
+  { stroke: '#f43f5e', legendBg: 'bg-rose-500', text: 'text-rose-500' },    // Hồng/Đỏ
 ];
 
 export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart({
@@ -28,7 +31,6 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
   daysInMonthCount,
   kpiDailyValues,
 }: KpiMultiIndicatorChartProps) {
-  const [hoveredDayIdx, setHoveredDayIdx] = useState<number | null>(null);
   const [visibleKpiIds, setVisibleKpiIds] = useState<Set<string>>(() => new Set(configs.map(c => c.id)));
 
   // Đồng bộ lại chỉ số hiển thị khi configs thay đổi
@@ -53,121 +55,58 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
 
   const monthNum = parseInt(ranksMonth.split('-')[1]);
 
-  // Kích thước biểu đồ SVG
-  const paddingLeft = 45;
-  const paddingRight = 15;
-  const paddingTop = 20;
-  const paddingBottom = 25;
-  const chartWidth = 600 - paddingLeft - paddingRight;
-  const chartHeight = 180 - paddingTop - paddingBottom;
+  // Quy đổi dữ liệu hằng ngày của từng KPI sang dạng mảng của Recharts
+  const chartData = useMemo(() => {
+    return Array.from({ length: daysInMonthCount }, (_, dayIdx) => {
+      const day = dayIdx + 1;
+      const dateStr = `${ranksMonth}-${day.toString().padStart(2, '0')}`;
+      const row: any = {
+        day: day,
+      };
 
-  // Giới hạn trần tỷ lệ hiển thị trên biểu đồ là 150%
-  const maxVisiblePct = 150;
-
-  // Lấy dữ liệu hằng ngày và quy đổi sang tỷ lệ %
-  const indicatorsData = useMemo(() => {
-    return configs.map((config, index) => {
-      const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
-      
-      const dailyValues = Array.from({ length: daysInMonthCount }, (_, dayIdx) => {
-        const day = dayIdx + 1;
-        const dateStr = `${ranksMonth}-${day.toString().padStart(2, '0')}`;
+      configs.forEach((config) => {
         const record = kpiDailyValues.find(
           v => v.staffId === staffId && v.kpiConfigId === config.id && v.date === dateStr
         );
-        return record ? record.value : 0;
+        const val = record ? record.value : 0;
+        const target = config.dailyTarget > 0
+          ? config.dailyTarget
+          : (config.monthlyTarget > 0 ? config.monthlyTarget / daysInMonthCount : 0);
+
+        const pct = target <= 0 ? (val > 0 ? 100 : 0) : (val / target) * 100;
+        
+        // Lưu trữ cả phần trăm (để vẽ đồ thị), giá trị thực tế, mục tiêu ngày và đơn vị để dùng trong CustomTooltip
+        row[`${config.id}_pct`] = Math.min(pct, 150); // Giới hạn 150% giống biểu đồ cũ
+        row[`${config.id}_val`] = val;
+        row[`${config.id}_target`] = target;
+        row[`${config.id}_unit`] = config.unit;
+        row[`${config.id}_name`] = config.kpiName;
       });
 
-      // Xác định mục tiêu ngày để quy đổi sang %
-      const target = config.dailyTarget > 0
-        ? config.dailyTarget
-        : (config.monthlyTarget > 0 ? config.monthlyTarget / daysInMonthCount : 0);
+      return row;
+    });
+  }, [configs, staffId, ranksMonth, daysInMonthCount, kpiDailyValues]);
 
-      // Quy đổi sang mảng phần trăm phần trăm đạt được hằng ngày
-      const pctValues = dailyValues.map(val => {
-        if (target <= 0) return val > 0 ? 100 : 0;
-        return (val / target) * 100;
-      });
-
-      // Tọa độ X, Y của các điểm trên biểu đồ SVG
-      const points: [number, number][] = pctValues.map((pct, idx) => {
-        const x = paddingLeft + (idx / (daysInMonthCount - 1)) * chartWidth;
-        // Giới hạn giá trị vẽ tối đa ở mức 150% để tránh gãy biểu đồ do đột biến
-        const clampedPct = Math.min(pct, maxVisiblePct);
-        const y = paddingTop + chartHeight - (clampedPct / maxVisiblePct) * chartHeight;
-        return [x, y];
-      });
-
-      return {
-        config,
-        colorScheme,
-        dailyValues,
-        pctValues,
-        points,
-        target,
+  // Thiết lập cấu hình chart config cho ChartContainer
+  const chartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    configs.forEach((cfg, idx) => {
+      const colorScheme = INDICATOR_COLORS[idx % INDICATOR_COLORS.length];
+      config[cfg.id] = {
+        label: cfg.kpiName,
+        color: colorScheme.stroke,
       };
     });
-  }, [configs, staffId, ranksMonth, daysInMonthCount, kpiDailyValues, chartWidth, chartHeight]);
+    return config;
+  }, [configs]);
 
-  // Thuật toán nội suy đường spline Bezier để vẽ các nét cong mềm mại
-  const smoothing = 0.12;
-  const line = (pointA: [number, number], pointB: [number, number]) => {
-    const lengthX = pointB[0] - pointA[0];
-    const lengthY = pointB[1] - pointA[1];
-    return {
-      length: Math.sqrt(Math.pow(lengthX, 2) + Math.pow(lengthY, 2)),
-      angle: Math.atan2(lengthY, lengthX),
-    };
-  };
+  // Các mốc hiển thị cố định trên trục X để tránh chật chội
+  const xTicks = useMemo(() => {
+    return [1, 5, 10, 15, 20, 25, daysInMonthCount].filter(day => day <= daysInMonthCount);
+  }, [daysInMonthCount]);
 
-  const controlPoint = (current: [number, number], previous: [number, number], next: [number, number], isEnd: boolean) => {
-    const p = previous || current;
-    const n = next || current;
-    const o = line(p, n);
-    const angle = o.angle + (isEnd ? Math.PI : 0);
-    const length = o.length * smoothing;
-    const x = current[0] + Math.cos(angle) * length;
-    const y = current[1] + Math.sin(angle) * length;
-    return [x, y];
-  };
-
-  const svgPath = (pts: [number, number][]) => {
-    return pts.reduce((acc, point, i, a) => {
-      if (i === 0) return `M ${point[0]} ${point[1]}`;
-      const cp1 = controlPoint(a[i - 1], a[i - 2], point, false);
-      const cp2 = controlPoint(point, a[i - 1], a[i + 1], true);
-      // Giới hạn các điểm điều khiển nằm trong vùng vẽ
-      const cp1Y = Math.max(paddingTop, Math.min(paddingTop + chartHeight, cp1[1]));
-      const cp2Y = Math.max(paddingTop, Math.min(paddingTop + chartHeight, cp2[1]));
-      return `${acc} C ${cp1[0]} ${cp1Y}, ${cp2[0]} ${cp2Y}, ${point[0]} ${point[1]}`;
-    }, '');
-  };
-
-  // Trục Y hiển thị các mốc cố định: 150%, 100% (mục tiêu), 50%, 0%
-  const yTicks = [150, 100, 50, 0];
-  const targetY = paddingTop + chartHeight - (100 / maxVisiblePct) * chartHeight; // Mốc 100% mục tiêu ngày
-
-  // Các mốc trục X
-  const xTicksIndices = [0, 4, 9, 14, 19, 24, daysInMonthCount - 1].filter(idx => idx < daysInMonthCount);
-
-  // Lấy danh sách dữ liệu hiển thị cho Tooltip tại ngày đang hover
-  const tooltipData = useMemo(() => {
-    if (hoveredDayIdx === null) return null;
-    return indicatorsData
-      .filter(item => visibleKpiIds.has(item.config.id))
-      .map(item => {
-        const val = item.dailyValues[hoveredDayIdx];
-        const pct = item.pctValues[hoveredDayIdx];
-        return {
-          name: item.config.kpiName,
-          value: formatValue(val, item.config.unit),
-          target: formatValue(item.target, item.config.unit),
-          pct: Math.round(pct),
-          color: item.colorScheme.stroke,
-          textClass: item.colorScheme.text,
-        };
-      });
-  }, [hoveredDayIdx, indicatorsData, visibleKpiIds]);
+  // Custom Tooltip hiển thị chi tiết phần trăm và số thực đạt của từng chỉ số KPI đang được bật
+  // Removed CustomTooltip in favor of ChartTooltipContent from share/ui/chart
 
   return (
     <div className="space-y-4">
@@ -184,204 +123,104 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
       </div>
 
       {/* Main Chart Box */}
-      <div className="relative overflow-hidden h-[230px] w-full">
-        {/* HTML Tooltip tích hợp */}
-        {hoveredDayIdx !== null && tooltipData && (
-          <div 
-            className="absolute bg-slate-900/95 text-white text-[11px] font-bold py-2.5 px-3 rounded-xl shadow-lg border border-slate-700 pointer-events-none z-30 transition-all duration-150 text-left w-[200px]"
-            style={{ 
-              left: `${( (paddingLeft + (hoveredDayIdx / (daysInMonthCount - 1)) * chartWidth) / 600 ) * 100}%`,
-              top: '15px',
-              transform: hoveredDayIdx > daysInMonthCount / 2 ? 'translateX(-105%)' : 'translateX(5%)',
-            }}
+      <div className="h-[220px] w-full relative">
+        <ChartContainer config={chartConfig} className="h-full w-full">
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
-            <p className="border-b border-slate-800 pb-1.5 mb-1.5 text-slate-300">
-              Ngày {String(hoveredDayIdx + 1).padStart(2, '0')}/{monthNum}
-            </p>
-            <div className="space-y-1.5">
-              {tooltipData.map((item, idx) => (
-                <div key={idx} className="flex flex-col border-b border-slate-800/40 pb-1 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-slate-400 truncate text-[10px]">{item.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <span className={cn('font-black text-xs', item.textClass)}>{item.value}</span>
-                    <span className="text-[9.5px] text-slate-400 font-medium">Mục tiêu: {item.target} ({item.pct}%)</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+            <defs>
+              {configs.map((config, index) => {
+                const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
+                return (
+                  <linearGradient
+                    key={config.id}
+                    id={`fill-${config.id}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={colorScheme.stroke} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={colorScheme.stroke} stopOpacity={0.0} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
 
-        {/* SVG Drawing Canvas */}
-        <svg className="w-full h-full" viewBox="0 0 600 180" preserveAspectRatio="none">
-          <defs>
-            {/* Gradients cho từng màu */}
-            <linearGradient id="grad-green" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="grad-blue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="grad-orange" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f97316" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="grad-cyan" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="grad-yellow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#eab308" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#eab308" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="grad-rose" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
-          {/* Đường lưới ngang & nhãn trục Y */}
-          {yTicks.map((val, idx) => {
-            const y = paddingTop + (idx / (yTicks.length - 1)) * chartHeight;
-            return (
-              <g key={idx}>
-                <line 
-                  x1={paddingLeft} 
-                  y1={y} 
-                  x2={600 - paddingRight} 
-                  y2={y} 
-                  stroke="#e2e8f0" 
-                  strokeWidth="1" 
-                  strokeOpacity="0.5" 
-                />
-                <text 
-                  x={paddingLeft - 8} 
-                  y={y + 3} 
-                  fill="#94a3b8" 
-                  fontSize="9.2" 
-                  fontWeight="bold" 
-                  textAnchor="end"
-                >
-                  {val}%
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Đường Target chuẩn mực 100% (Đỏ đứt nét) */}
-          <line 
-            x1={paddingLeft} 
-            y1={targetY} 
-            x2={600 - paddingRight} 
-            y2={targetY} 
-            stroke="#ef4444" 
-            strokeWidth="1.2" 
-            strokeDasharray="4,4" 
-            strokeOpacity="0.75"
-          />
-
-          {/* Đường vẽ dọc chỉ định (Vertical Guide Line) khi hover */}
-          {hoveredDayIdx !== null && (
-            <line
-              x1={paddingLeft + (hoveredDayIdx / (daysInMonthCount - 1)) * chartWidth}
-              y1={paddingTop}
-              x2={paddingLeft + (hoveredDayIdx / (daysInMonthCount - 1)) * chartWidth}
-              y2={paddingTop + chartHeight}
-              stroke="#cbd5e1"
-              strokeWidth="1"
-              strokeDasharray="3,3"
+            <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" opacity={0.5} />
+            
+            <XAxis
+              dataKey="day"
+              ticks={xTicks}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={10}
+              tickFormatter={(value) => `Ngày ${String(value).padStart(2, '0')}`}
+              className="text-[9.5px] font-bold text-slate-400"
             />
-          )}
 
-          {/* Vẽ từng chỉ số */}
-          {indicatorsData.map((item) => {
-            const isVisible = visibleKpiIds.has(item.config.id);
-            if (!isVisible) return null;
+            <YAxis
+              domain={[0, 150]}
+              ticks={[0, 50, 100, 150]}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => `${value}%`}
+              className="text-[9.5px] font-bold text-slate-400"
+            />
 
-            const pathData = svgPath(item.points);
-            const fillData = `${pathData} L ${paddingLeft + chartWidth} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`;
+            <ReferenceLine
+              y={100}
+              stroke="#ef4444"
+              strokeWidth={1.2}
+              strokeDasharray="4 4"
+              strokeOpacity={0.75}
+            />
 
-            return (
-              <g key={item.config.id} className="transition-all duration-300">
-                {/* Vùng đổ màu Gradient phía dưới */}
-                <path d={fillData} fill={item.colorScheme.fill} />
-                
-                {/* Đường vẽ Spline chính */}
-                <path 
-                  d={pathData} 
-                  fill="none" 
-                  stroke={item.colorScheme.stroke} 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
+             <ChartTooltip
+              cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }}
+              content={
+                <ChartTooltipContent
+                  indicator="dot"
+                  className="w-[210px]"
+                  formatter={(value, name, item) => {
+                    const kpiId = String(item.dataKey).replace('_pct', '');
+                    const val = item.payload[`${kpiId}_val`];
+                    const target = item.payload[`${kpiId}_target`];
+                    const unit = item.payload[`${kpiId}_unit`];
+                    return `${formatValue(val, unit)} / ${formatValue(target, unit)} (${Math.round(Number(value))}%)`;
+                  }}
                 />
+              }
+            />
 
-                {/* Điểm nhấn (Chấm tròn) tại ngày đang hover */}
-                {hoveredDayIdx !== null && item.points[hoveredDayIdx] && (
-                  <circle 
-                    cx={item.points[hoveredDayIdx][0]} 
-                    cy={item.points[hoveredDayIdx][1]} 
-                    r="4.5" 
-                    fill="#ffffff" 
-                    stroke={item.colorScheme.stroke} 
-                    strokeWidth="2.5" 
-                  />
-                )}
-              </g>
-            );
-          })}
+            {configs.map((config, index) => {
+              const isVisible = visibleKpiIds.has(config.id);
+              if (!isVisible) return null;
 
-          {/* Nhãn trục X */}
-          {xTicksIndices.map((dayIdx) => {
-            const x = paddingLeft + (dayIdx / (daysInMonthCount - 1)) * chartWidth;
-            return (
-              <g key={dayIdx}>
-                <line 
-                  x1={x} 
-                  y1={paddingTop + chartHeight} 
-                  x2={x} 
-                  y2={paddingTop + chartHeight + 4} 
-                  stroke="#cbd5e1" 
-                  strokeWidth="1" 
+              const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
+              
+              return (
+                <Area
+                  key={config.id}
+                  type="monotone"
+                  dataKey={`${config.id}_pct`}
+                  stroke={colorScheme.stroke}
+                  fill={`url(#fill-${config.id})`}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{
+                    r: 4.5,
+                    strokeWidth: 2.5,
+                    fill: '#ffffff',
+                    stroke: colorScheme.stroke,
+                  }}
                 />
-                <text 
-                  x={x} 
-                  y={paddingTop + chartHeight + 14} 
-                  fill="#94a3b8" 
-                  fontSize="9.2" 
-                  fontWeight="bold" 
-                  textAnchor="middle"
-                >
-                  Ngày {String(dayIdx + 1).padStart(2, '0')}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Vùng cột dọc tàng hình (Invisible bars) để hover bắt sự kiện ngày */}
-          {Array.from({ length: daysInMonthCount }).map((_, idx) => {
-            const step = chartWidth / (daysInMonthCount - 1);
-            const x = paddingLeft + idx * step;
-            return (
-              <rect
-                key={idx}
-                x={x - step / 2}
-                y={paddingTop}
-                width={step}
-                height={chartHeight}
-                fill="transparent"
-                className="cursor-pointer"
-                onMouseEnter={() => setHoveredDayIdx(idx)}
-                onMouseLeave={() => setHoveredDayIdx(null)}
-              />
-            );
-          })}
-        </svg>
+              );
+            })}
+          </AreaChart>
+        </ChartContainer>
       </div>
 
       {/* Legend Tương tác ở dưới cùng */}
@@ -404,7 +243,7 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
             >
               <span 
                 className={cn(
-                  'w-2 h-2 rounded-full shrink-0 transition-transform duration-205', 
+                  'w-2 h-2 rounded-full shrink-0 transition-transform duration-250', 
                   isVisible ? colorScheme.legendBg : 'bg-slate-300 scale-75'
                 )} 
               />

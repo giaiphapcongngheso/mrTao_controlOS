@@ -1,8 +1,9 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { TAB_ROUTE_MAP, useAppShellState } from '../app-shell-state';
 import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
+import { useAppStore } from '../../stores/app-store';
 import {
   useKpiConfigsQuery,
   useKpiDailyValuesQuery,
@@ -22,11 +23,26 @@ import {
 export default function KpiRoute() {
   const navigate = useNavigate();
   const { activeStoreId } = useAppShellState();
+  
+  const { currentUser } = useAppStore();
+  const isAdminOrOwner = useMemo(() => {
+    return currentUser?.roleCode === 'CHU_CUA_HANG' || currentUser?.roleCode === 'QUAN_TRI_VIEN';
+  }, [currentUser]);
+
   const now = new Date();
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
     `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
   );
-  const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>('ranks');
+  const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>(
+    isAdminOrOwner ? 'ranks' : 'entry'
+  );
+
+  // Sync tab if user privileges change or storage restores asynchronously
+  useEffect(() => {
+    if (!isAdminOrOwner && activeSubTab !== 'entry') {
+      setActiveSubTab('entry');
+    }
+  }, [isAdminOrOwner, activeSubTab]);
 
   const { data: staffMembers = [], isLoading: isStaffLoading } = useStaffQuery();
   const { data: allKpiConfigs = [], isLoading: isConfigsLoading } = useKpiConfigsQuery(activeStoreId, selectedMonthYear);
@@ -184,6 +200,7 @@ export default function KpiRoute() {
       isRanksLoading={isRanksLoading}
       isEntryLoading={isEntryLoading}
       isSettingsLoading={isSettingsLoading}
+      isAdminOrOwner={isAdminOrOwner}
     />
   );
 }

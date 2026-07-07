@@ -19,7 +19,9 @@ import {
   getPreviousMonthYear,
   translateClassification,
   getClassificationBadgeClass,
+  calculateStaffKpiGroupData,
   type RanksTimeframe,
+  type StaffKpiGroupData,
 } from '../kpi-utils';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -80,6 +82,14 @@ export const RanksTab = React.memo(function RanksTab({
     () => calculateDynamicStaffRanks(staffMembers, kpiConfigs, kpiDailyValues, periodMonths, roles, monthlyConfigs),
     [staffMembers, kpiConfigs, kpiDailyValues, periodMonths, roles, monthlyConfigs]
   );
+
+  // Calculate store overall performance by KPI indicators grouped by staff member
+  const storeDailyPerf = useMemo(
+    () => calculateStaffKpiGroupData(dynamicRanks, kpiConfigs, kpiDailyValues, ranksMonth),
+    [dynamicRanks, kpiConfigs, kpiDailyValues, ranksMonth]
+  );
+
+  const daysInMonthCount = getDaysInMonthCount(ranksMonth);
 
   // Calculate average score, total payout sum, pass rate and top performer for overview
   const avgScore = useMemo(() => {
@@ -200,7 +210,6 @@ export const RanksTab = React.memo(function RanksTab({
   const handleViewModeChange = useCallback((mode: 'overview' | 'detail') => setViewMode(mode), []);
 
   const score = dynamicRanks.find(r => r.staffId === selectedStaff?.id)?.score || 0;
-  const daysInMonthCount = getDaysInMonthCount(ranksMonth);
 
   return (
     <div className="space-y-4">
@@ -332,6 +341,8 @@ export const RanksTab = React.memo(function RanksTab({
                 roles={roles}
                 avgScore={avgScore}
                 totalPayoutSum={totalPayoutSum}
+                storeDailyChartData={storeDailyPerf.chartData}
+                storeDailyIndicators={storeDailyPerf.indicators}
                 onSelectStaff={handleSelectStaff}
                 onViewModeChange={handleViewModeChange}
               />

@@ -31,6 +31,7 @@ interface KpiViewProps {
   isRanksLoading: boolean;
   isEntryLoading: boolean;
   isSettingsLoading: boolean;
+  isAdminOrOwner: boolean;
 }
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
@@ -61,6 +62,7 @@ export default function KpiView({
   isRanksLoading,
   isEntryLoading,
   isSettingsLoading,
+  isAdminOrOwner,
 }: KpiViewProps) {
   // Handlers
   const handleSubTabChange = useCallback((tab: SubTab) => onSubTabChange(tab), [onSubTabChange]);
@@ -76,6 +78,15 @@ export default function KpiView({
     }),
   []);
 
+  const visibleTabs = useMemo(() => {
+    return SUB_TABS.filter(tab => {
+      if (tab.key === 'ranks' || tab.key === 'settings') {
+        return isAdminOrOwner;
+      }
+      return true;
+    });
+  }, [isAdminOrOwner]);
+
   return (
     <div className="space-y-4 pb-10">
       {/* Module Header */}
@@ -88,7 +99,7 @@ export default function KpiView({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0 min-w-0">
         {/* Underline tabs */}
         <div className="flex items-center gap-6 md:gap-8 -mb-px overflow-x-auto whitespace-nowrap scrollbar-none w-full md:w-auto">
-          {SUB_TABS.map(tab => (
+          {visibleTabs.map(tab => (
             <SubTabButton
               key={tab.key}
               tabKey={tab.key}
@@ -116,7 +127,7 @@ export default function KpiView({
       </div>
 
       {/* Tab Content */}
-      {activeSubTab === 'ranks' && (
+      {activeSubTab === 'ranks' && isAdminOrOwner && (
         isRanksLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-sm font-semibold text-slate-500 animate-pulse">
@@ -154,7 +165,7 @@ export default function KpiView({
         )
       )}
 
-      {activeSubTab === 'settings' && (
+      {activeSubTab === 'settings' && isAdminOrOwner && (
         isSettingsLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-sm font-semibold text-slate-500 animate-pulse">

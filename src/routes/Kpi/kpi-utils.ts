@@ -393,4 +393,90 @@ export const calculateRevenueStats = (
   return { totalTarget, totalActual, pct, hasRevenue: vnKpis.length > 0 };
 };
 
+// ─── Staff KPI Grouped Data Calculator ────────────────────────
+export interface StaffKpiGroupData {
+  staffId: string;
+  name: string;
+  [key: string]: any;
+}
+
+export const calculateStaffKpiGroupData = (
+  ranks: StaffRank[],
+  kpiConfigs: KPIConfig[],
+  kpiDailyValues: KPIDailyValue[],
+  ranksMonth: string
+): {
+  chartData: StaffKpiGroupData[];
+  indicators: { id: string; name: string; unit: string }[];
+} => {
+  const activeStaffIds = new Set(ranks.map(r => r.staffId));
+
+  // Lọc các config thuộc tháng được chọn của các nhân viên active trong store
+  const storeConfigs = kpiConfigs.filter(c => 
+    activeStaffIds.has(c.staffId) && 
+    (c.month || '2026-06') === ranksMonth
+  );
+
+  // Gom nhóm các config theo kpiName để lấy danh sách chỉ tiêu duy nhất của cả cửa hàng trong tháng
+  const uniqueNames = new Set<string>();
+  const indicatorUnits: Record<string, string> = {};
+  storeConfigs.forEach(c => {
+    const key = c.kpiName.trim();
+    uniqueNames.add(key);
+    indicatorUnits[key] = c.unit;
+  });
+
+  const indicators = Array.from(uniqueNames).map(name => ({
+    id: name,
+    name: name,
+    unit: indicatorUnits[name],
+  }));
+
+  // Xây dựng daily values lookup
+  const dailyValuesMap = new Map<string, number>();
+  kpiDailyValues.forEach(v => {
+    if (activeStaffIds.has(v.staffId)) {
+      const month = v.date.slice(0, 7);
+      const key = `${v.staffId}_${v.kpiConfigId}_${month}`;
+      dailyValuesMap.set(key, (dailyValuesMap.get(key) || 0) + v.value);
+    }
+  });
+
+  const chartData = ranks.map(rank => {
+    // Tên viết tắt: Nguyễn Văn A -> V. A hoặc A
+    const nameParts = rank.name.trim().split(' ');
+    const shortName = nameParts.length > 1
+      ? `${nameParts[nameParts.length - 2][0]}. ${nameParts[nameParts.length - 1]}`
+      : rank.name;
+
+    const row: StaffKpiGroupData = {
+      staffId: rank.staffId,
+      name: shortName,
+    };
+
+    // Tìm các config của nhân viên này
+    const staffConfigs = storeConfigs.filter(c => c.staffId === rank.staffId);
+
+    indicators.forEach(ind => {
+      const config = staffConfigs.find(c => c.kpiName.trim() === ind.name);
+      if (config) {
+        const valKey = `${rank.staffId}_${config.id}_${ranksMonth}`;
+        const actual = dailyValuesMap.get(valKey) || 0;
+        const target = config.monthlyTarget;
+        const pct = target > 0 ? (actual / target) * 100 : 0;
+
+        row[ind.id] = Math.round(pct);
+        row[`${ind.id}_val`] = actual;
+        row[`${ind.id}_target`] = target;
+        row[`${ind.id}_unit`] = config.unit;
+        row[`${ind.id}_name`] = config.kpiName;
+      }
+    });
+
+    return row;
+  });
+
+  return { chartData, indicators };
+};
+
 
