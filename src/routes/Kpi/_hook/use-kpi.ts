@@ -105,13 +105,22 @@ export function useSaveKpiDailyValueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dailyValue: KPIDailyValue) => {
-      const cachedDailyValues = queryClient.getQueryData<KPIDailyValue[]>(kpiQueryKeys.dailyValues) || [];
-      const isExisting = cachedDailyValues.some(v => v.id === dailyValue.id);
+      const queries = queryClient.getQueriesData<KPIDailyValue[]>({ queryKey: kpiQueryKeys.dailyValues });
+      const isExisting = queries.some(([, data]) => 
+        Array.isArray(data) && data.some(v => v.id === dailyValue.id)
+      );
 
-      if (isExisting) {
-        return await kpiDailyValueService.update(dailyValue.id, dailyValue);
-      } else {
-        return await kpiDailyValueService.create(dailyValue);
+      try {
+        if (isExisting) {
+          return await kpiDailyValueService.update(dailyValue.id, dailyValue);
+        } else {
+          return await kpiDailyValueService.create(dailyValue);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('đã tồn tại')) {
+          return await kpiDailyValueService.update(dailyValue.id, dailyValue);
+        }
+        throw err;
       }
     },
     onSuccess: () => {
@@ -168,13 +177,22 @@ export function useSaveKpiStaffMonthlyConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (config: KPIStaffMonthlyConfig) => {
-      const cached = queryClient.getQueryData<KPIStaffMonthlyConfig[]>(kpiQueryKeys.staffMonthlyConfigs) || [];
-      const isExisting = cached.some(v => v.id === config.id);
+      const queries = queryClient.getQueriesData<KPIStaffMonthlyConfig[]>({ queryKey: kpiQueryKeys.staffMonthlyConfigs });
+      const isExisting = queries.some(([, data]) => 
+        Array.isArray(data) && data.some(v => v.id === config.id)
+      );
 
-      if (isExisting) {
-        return await kpiStaffMonthlyConfigService.update(config.id, config);
-      } else {
-        return await kpiStaffMonthlyConfigService.create(config);
+      try {
+        if (isExisting) {
+          return await kpiStaffMonthlyConfigService.update(config.id, config);
+        } else {
+          return await kpiStaffMonthlyConfigService.create(config);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('đã tồn tại')) {
+          return await kpiStaffMonthlyConfigService.update(config.id, config);
+        }
+        throw err;
       }
     },
     onSuccess: () => {
