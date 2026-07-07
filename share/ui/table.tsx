@@ -59,7 +59,7 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot="table-row"
       className={cn(
-        'group hover:bg-muted/50 data-[state=selected]:bg-muted [&[data-state=selected]>td]:!bg-muted data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&[data-state=active]>td]:!bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] [&>td]:transition-colors [&>td]:duration-300 border-b [&>td]:border-b [&>td]:border-border transition-colors',
+        'group hover:bg-muted/50 data-[state=selected]:bg-muted [&[data-state=selected]>td]:!bg-muted data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] dark:data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_15%,var(--color-card))] [&[data-state=active]>td]:!bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] dark:[&[data-state=active]>td]:!bg-[color-mix(in_oklab,var(--color-primary)_15%,var(--color-card))] [&>td]:transition-colors [&>td]:duration-300 border-b [&>td]:border-b [&>td]:border-border transition-colors',
         className,
       )}
       {...props}
@@ -168,8 +168,8 @@ function TableCell({ className, sticky, tooltip, children, ...props }: TableCell
       className={cn(
         'bg-background px-4 py-2.5 align-middle whitespace-nowrap overflow-hidden [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] transition-colors duration-200',
         {
-          'sticky left-0 z-10 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'left',
-          'sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)]': sticky === 'right',
+          'sticky left-0 z-10 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] dark:group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_15%,var(--color-card))]': sticky === 'left',
+          'sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] group-hover:bg-muted/50 group-data-[state=selected]:bg-muted group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_10%,#fff)] dark:group-data-[state=active]:bg-[color-mix(in_oklab,var(--color-primary)_15%,var(--color-card))]': sticky === 'right',
         },
         className,
       )}
