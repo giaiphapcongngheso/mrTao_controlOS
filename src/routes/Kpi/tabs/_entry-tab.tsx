@@ -610,7 +610,7 @@ const MonthViewContent = React.memo(function MonthViewContent({
 
               {/* Actual row */}
               <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
-                <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
+                <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] dark:bg-[#221e16] z-10 border-r shadow-xs max-w-[192px] truncate">
                   <span className="text-sm text-amber-650 font-bold">↳ Thực tế</span>
                 </TableCell>
                 <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-sm">Thực tế</TableCell>
@@ -622,13 +622,13 @@ const MonthViewContent = React.memo(function MonthViewContent({
                     </TableCell>
                   );
                 })}
-                <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[90px] bg-[#fefdfa] border-l shadow-xs">
+                <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[90px] bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs">
                   {totalActual.toLocaleString()}
                 </TableCell>
-                <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs">
+                <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs">
                   {pctStr}
                 </TableCell>
-                <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs">
+                <TableCell className="sticky right-0 bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs">
                   <KpiStatusBadge actual={totalActual} pct={pct} />
                 </TableCell>
               </TableRow>
@@ -703,7 +703,7 @@ const WeekViewContent = React.memo(function WeekViewContent({
 
               {/* Actual row */}
               <TableRow className="bg-amber-50/20 hover:bg-amber-50/40">
-                <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] z-10 border-r shadow-xs max-w-[192px] truncate">
+                <TableCell className="text-left font-bold text-slate-700 sticky left-0 bg-[#fefdfa] dark:bg-[#221e16] z-10 border-r shadow-xs max-w-[192px] truncate">
                   <span className="text-sm text-amber-650 font-bold">↳ Thực tế</span>
                 </TableCell>
                 <TableCell className="border-r font-bold text-amber-700 bg-amber-50/50 text-sm">Thực tế</TableCell>
@@ -724,16 +724,16 @@ const WeekViewContent = React.memo(function WeekViewContent({
                     </TableCell>
                   );
                 })}
-                <TableCell className="border-r text-right font-bold text-amber-800 sticky right-[202px] bg-[#fefdfa] border-l shadow-xs text-sm">
+                <TableCell className="border-r text-right font-bold text-amber-800 sticky right-[202px] bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs text-sm">
                   {weekAct.toLocaleString()}
                 </TableCell>
-                <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[112px] bg-[#fefdfa] border-l shadow-xs text-sm">
+                <TableCell className="border-r text-right font-bold text-slate-800 sticky right-[112px] bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs text-sm">
                   {totalActual.toLocaleString()}
                 </TableCell>
-                <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] border-l shadow-xs text-sm">
+                <TableCell className="border-r text-right font-bold text-blue-600 sticky right-12 bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs text-sm">
                   {pctStr}
                 </TableCell>
-                <TableCell className="sticky right-0 bg-[#fefdfa] border-l shadow-xs text-sm">
+                <TableCell className="sticky right-0 bg-[#fefdfa] dark:bg-[#221e16] border-l shadow-xs text-sm">
                   <KpiStatusBadge actual={totalActual} pct={pct} />
                 </TableCell>
               </TableRow>
