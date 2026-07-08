@@ -148,13 +148,18 @@ export default function ChecklistView({
   // Draggable floating button positioning
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isNearDismissZone, setIsNearDismissZone] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasMovedRef = useRef(false);
+  const isNearDismissRef = useRef(false); // ref đồng bộ để check lúc touchend
+  const DISMISS_ZONE_HEIGHT = 90; // px từ đáy màn hình
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Set to bottom right initially
-      setPosition({ x: window.innerWidth - 60, y: window.innerHeight - 150 });
+      // Đặt mặc định ở góc trên 1/3 bên phải
+      const btnSize = 44;
+      setPosition({ x: window.innerWidth - btnSize - 10, y: Math.round(window.innerHeight / 3) });
     }
   }, []);
 
@@ -171,6 +176,19 @@ export default function ChecklistView({
     };
   }, [position]);
 
+  const snapToEdge = useCallback((rawX: number, rawY: number) => {
+    const btnSize = 44;
+    const margin = 10;
+    const topMin = 60;
+    const bottomMax = window.innerHeight - btnSize - 80;
+    const clampedY = Math.max(topMin, Math.min(bottomMax, rawY));
+    // Snap tới cạnh gần nhất (trái hoặc phải)
+    const distLeft = rawX;
+    const distRight = window.innerWidth - rawX - btnSize;
+    const snappedX = distLeft < distRight ? margin : window.innerWidth - btnSize - margin;
+    return { x: snappedX, y: clampedY };
+  }, []);
+
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (!touch || !isDragging) return;
@@ -182,19 +200,37 @@ export default function ChecklistView({
       hasMovedRef.current = true;
     }
     
-    let newX = dragStartRef.current.posX + dx;
-    let newY = dragStartRef.current.posY + dy;
-    
+    // Kiểm tra có đang kéo vào dismiss zone không - cập nhật ref đồng bộ
+    const nearDismiss = touch.clientY > window.innerHeight - DISMISS_ZONE_HEIGHT;
+    isNearDismissRef.current = nearDismiss;
+    setIsNearDismissZone(nearDismiss);
+
+    // Cho phép kéo tự do khắp màn hình
     const btnSize = 44;
-    newX = Math.max(10, Math.min(window.innerWidth - btnSize - 10, newX));
-    newY = Math.max(60, Math.min(window.innerHeight - btnSize - 80, newY));
+    const newX = Math.max(0, Math.min(window.innerWidth - btnSize, dragStartRef.current.posX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - btnSize, dragStartRef.current.posY + dy));
     
     setPosition({ x: newX, y: newY });
-  }, [isDragging]);
+  }, [isDragging, DISMISS_ZONE_HEIGHT]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+    const wasDragged = hasMovedRef.current;
+    const wasNearDismiss = isNearDismissRef.current;
     setIsDragging(false);
-  }, []);
+    setIsNearDismissZone(false);
+    isNearDismissRef.current = false;
+    if (wasDragged) {
+      if (wasNearDismiss) {
+        // Thả vào dismiss zone → ẩn (chỉ trong lần dùng này, quay lại trang thì hiện lại)
+        setIsDismissed(true);
+        return;
+      }
+      // Snap về viền dựa theo vị trí nút hiện tại
+      setPosition(prev => prev ? snapToEdge(prev.x, prev.y) : prev);
+    }
+  }, [snapToEdge]);
+
+
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!position) return;
@@ -215,25 +251,41 @@ export default function ChecklistView({
         hasMovedRef.current = true;
       }
       
-      let newX = dragStartRef.current.posX + dx;
-      let newY = dragStartRef.current.posY + dy;
-      
+      // Kiểm tra vùng dismiss - cập nhật ref đồng bộ
+      const nearDismiss = moveEvent.clientY > window.innerHeight - DISMISS_ZONE_HEIGHT;
+      isNearDismissRef.current = nearDismiss;
+      setIsNearDismissZone(nearDismiss);
+
+      // Cho phép kéo tự do khắp màn hình
       const btnSize = 44;
-      newX = Math.max(10, Math.min(window.innerWidth - btnSize - 10, newX));
-      newY = Math.max(60, Math.min(window.innerHeight - btnSize - 80, newY));
+      const newX = Math.max(0, Math.min(window.innerWidth - btnSize, dragStartRef.current.posX + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - btnSize, dragStartRef.current.posY + dy));
       
       setPosition({ x: newX, y: newY });
     };
     
-    const handleMouseUp = () => {
+    const handleMouseUp = (_upEvent: MouseEvent) => {
+      const wasDragged = hasMovedRef.current;
+      const wasNearDismiss = isNearDismissRef.current;
       setIsDragging(false);
+      setIsNearDismissZone(false);
+      isNearDismissRef.current = false;
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      if (wasDragged && wasNearDismiss) {
+        // Ẩn tạm thời (quay lại trang sẽ hiện lại)
+        setIsDismissed(true);
+        return;
+      }
+      // Snap tới viền gần nhất khi thả chuột (dựa theo vị trí nút)
+      if (wasDragged) {
+        setPosition(prev => prev ? snapToEdge(prev.x, prev.y) : prev);
+      }
     };
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [position]);
+  }, [position, snapToEdge]);
 
   const handleButtonClick = useCallback(() => {
     if (hasMovedRef.current) return;
@@ -659,11 +711,13 @@ export default function ChecklistView({
   // ── Render ──
   return (
     <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 w-full min-w-0 overflow-x-hidden">
-      <ChecklistHeader
-        subTab={subTab}
-        canCreate={permissions.canCreate}
-        onOpenCreateDialog={handleOpenCreateDialog}
-      />
+      <div className="hidden sm:block">
+        <ChecklistHeader
+          subTab={subTab}
+          canCreate={permissions.canCreate}
+          onOpenCreateDialog={handleOpenCreateDialog}
+        />
+      </div>
 
       <ChecklistErrorBanner
         errorMessage={errorMessage}
@@ -813,7 +867,7 @@ export default function ChecklistView({
       />
 
       {/* Draggable floating button (Mobile only, shown on today, checklist_template, process sub-tabs when drawer is hidden) */}
-      {isMobile && (subTab === 'today' || subTab === 'checklist_template' || subTab === 'process') && !showKpiDrawer && position && (
+      {isMobile && (subTab === 'today' || subTab === 'checklist_template' || subTab === 'process') && !showKpiDrawer && position && !isDismissed && (
         <>
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes floatPulse {
@@ -831,6 +885,35 @@ export default function ChecklistView({
               animation: floatPulse 2s infinite;
             }
           ` }} />
+
+          {/* Dismiss zone - chỉ hiện khi đang kéo */}
+          {isDragging && (
+            <div
+              className={cn(
+                "fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center justify-center gap-1.5 transition-all duration-200",
+                isNearDismissZone
+                  ? "h-[90px] bg-slate-800/90 backdrop-blur-sm"
+                  : "h-[90px] bg-slate-700/70 backdrop-blur-xs"
+              )}
+              style={{ pointerEvents: 'none' }}
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200",
+                isNearDismissZone
+                  ? "border-red-400 bg-red-500/30 scale-125"
+                  : "border-slate-400 bg-slate-500/30"
+              )}>
+                <X className={cn("w-4 h-4 transition-colors", isNearDismissZone ? "text-red-300" : "text-slate-300")} />
+              </div>
+              <span className={cn(
+                "text-[10px] font-bold tracking-wide transition-colors",
+                isNearDismissZone ? "text-red-300" : "text-slate-400"
+              )}>
+                {isNearDismissZone ? "Thả để ẩn" : "Kéo xuống để ẩn"}
+              </span>
+            </div>
+          )}
+
           <button
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -838,9 +921,10 @@ export default function ChecklistView({
             onMouseDown={handleMouseDown}
             onClick={handleButtonClick}
             className={cn(
-              "fixed z-45 w-11 h-11 rounded-full bg-[#C21A1A] hover:bg-red-755 text-white flex items-center justify-center shadow-lg border border-red-700/20 active:scale-95 transition-all select-none cursor-grab active:cursor-grabbing",
+              "fixed z-55 rounded-full bg-[#C21A1A] hover:bg-red-755 text-white flex items-center justify-center shadow-lg border border-red-700/20 transition-all select-none cursor-grab active:cursor-grabbing",
               isDragging && "scale-105 shadow-xl",
-              shouldPulse && "float-pulse"
+              isNearDismissZone ? "w-9 h-9 opacity-60 scale-90" : "w-11 h-11",
+              shouldPulse && !isDragging && "float-pulse"
             )}
             style={{
               left: `${position.x}px`,
@@ -849,7 +933,10 @@ export default function ChecklistView({
             }}
             title="Thống kê & HD"
           >
-            <Award className="w-5 h-5" />
+            {isNearDismissZone
+              ? <X className="w-4 h-4" />
+              : <Award className="w-5 h-5" />
+            }
           </button>
         </>
       )}
