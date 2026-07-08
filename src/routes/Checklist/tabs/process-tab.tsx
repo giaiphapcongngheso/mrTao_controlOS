@@ -275,7 +275,7 @@ const ProcessTab = React.memo(function ProcessTab({
         )}
 
         {/* Cột 3: Tổng quan quy trình (Luôn hiển thị) */}
-        <div className="lg:col-span-4 w-full space-y-3.5 text-left h-full transition-all duration-300">
+        <div className="hidden lg:block lg:col-span-4 w-full space-y-3.5 text-left h-full transition-all duration-300">
           <div className="space-y-3.5">
             {/* Card 1: Dashboard Thống kê */}
             <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">

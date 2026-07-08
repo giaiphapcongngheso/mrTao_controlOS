@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
-import { Button } from '../../../share/ui';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { Plus, Award, Info, X, Layers, User } from 'lucide-react';
+import { Button, Card } from '../../../share/ui';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import type {
   ChecklistItem,
@@ -17,6 +17,7 @@ import {
   ChecklistErrorBanner,
   ChecklistCreateDialog,
 } from './shared';
+import RadialProgress from './shared/radial-progress';
 import { TodayTab, ProcessTab, TemplateTab, HistoryTab } from './tabs';
 import {
   useFilteredCategories,
@@ -25,6 +26,8 @@ import {
 import { getTodayKey, toLocalDateKey, isItemLate } from './checklist-utils';
 import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { cn } from '../../../share/lib/utils';
+import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
@@ -138,6 +141,376 @@ export default function ChecklistView({
   // ── Tab & Filter State ──
   const [subTab, setSubTab] = useState<'today' | 'checklist_template' | 'process' | 'history'>('today');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const isMobile = useIsMobile();
+  const [showKpiDrawer, setShowKpiDrawer] = useState(false); // Do not auto-open
+  
+  // Draggable floating button positioning
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const hasMovedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Set to bottom right initially
+      setPosition({ x: window.innerWidth - 60, y: window.innerHeight - 150 });
+    }
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch || !position) return;
+    setIsDragging(true);
+    hasMovedRef.current = false;
+    dragStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      posX: position.x,
+      posY: position.y,
+    };
+  }, [position]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch || !isDragging) return;
+    
+    const dx = touch.clientX - dragStartRef.current.x;
+    const dy = touch.clientY - dragStartRef.current.y;
+    
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+      hasMovedRef.current = true;
+    }
+    
+    let newX = dragStartRef.current.posX + dx;
+    let newY = dragStartRef.current.posY + dy;
+    
+    const btnSize = 44;
+    newX = Math.max(10, Math.min(window.innerWidth - btnSize - 10, newX));
+    newY = Math.max(60, Math.min(window.innerHeight - btnSize - 80, newY));
+    
+    setPosition({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!position) return;
+    setIsDragging(true);
+    hasMovedRef.current = false;
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      posX: position.x,
+      posY: position.y,
+    };
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - dragStartRef.current.x;
+      const dy = moveEvent.clientY - dragStartRef.current.y;
+      
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        hasMovedRef.current = true;
+      }
+      
+      let newX = dragStartRef.current.posX + dx;
+      let newY = dragStartRef.current.posY + dy;
+      
+      const btnSize = 44;
+      newX = Math.max(10, Math.min(window.innerWidth - btnSize - 10, newX));
+      newY = Math.max(60, Math.min(window.innerHeight - btnSize - 80, newY));
+      
+      setPosition({ x: newX, y: newY });
+    };
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [position]);
+
+  const handleButtonClick = useCallback(() => {
+    if (hasMovedRef.current) return;
+    setShowKpiDrawer(true);
+  }, []);
+
+  // Compute KPI statistics
+  const kpiStats = useMemo(() => {
+    let total = 0;
+    let completedCount = 0;
+    let lateCount = 0;
+    let onTimeCount = 0;
+
+    items.forEach((task) => {
+      total++;
+      if (task.isCompleted) {
+        completedCount++;
+        if (isItemLate(task)) {
+          lateCount++;
+        } else {
+          onTimeCount++;
+        }
+      } else {
+        if (isItemLate(task)) {
+          lateCount++;
+        }
+      }
+    });
+
+    const notCompletedCount = total - completedCount;
+    const completionPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+    const onTimePercent = total > 0 ? Math.round((onTimeCount / total) * 100) : 0;
+    const latePercent = total > 0 ? Math.round((lateCount / total) * 100) : 0;
+
+    return { total, completedCount, notCompletedCount, onTimeCount, lateCount, onTimePercent, latePercent, completionPercent };
+  }, [items]);
+
+  const shouldPulse = kpiStats.notCompletedCount > 0;
+
+  // Thống kê sidebar cho Checklist mẫu
+  const templateStats = useMemo(() => {
+    const total = templates.length;
+    const active = templates.filter(t => (t.status || 'active') === 'active').length;
+    const autoCreate = templates.filter(t => t.autoCreateDaily !== false).length;
+    const hidden = total - active;
+    return { total, active, autoCreate, hidden };
+  }, [templates]);
+
+  // Compute SOP summary metrics
+  const sopSummary = useMemo(() => {
+    const activeCount = processes.filter((p) => (p.status || 'active') === 'active').length;
+    return processes.reduce((acc, process) => {
+      acc.stepCount += process.steps.length;
+      acc.taskCount += process.steps.reduce((stepTotal, step) => {
+        const subTaskCount = (step.steps || []).reduce((subTotal, subStep) => subTotal + (subStep.tasks?.length || 0), 0);
+        return stepTotal + (step.tasks?.length || 0) + subTaskCount;
+      }, 0);
+      return acc;
+    }, {
+      processCount: processes.length,
+      activeCount,
+      stepCount: 0,
+      taskCount: 0,
+    });
+  }, [processes]);
+
+  // Compute departments/roles SOP count statistics
+  const departmentStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    processes.forEach((p) => {
+      const code = (p.roleCode || '').toUpperCase();
+      counts[code] = (counts[code] || 0) + 1;
+    });
+
+    return roleOptions
+      .map((role) => ({
+        name: role.name,
+        code: role.code,
+        count: counts[role.code.toUpperCase()] || 0,
+      }))
+      .filter((dept) => dept.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [processes, roleOptions]);
+
+  const renderKpiSidebar = useCallback(() => {
+    if (subTab === 'checklist_template') {
+      return (
+        <div className="space-y-4 text-left">
+          {/* Card Thống kê Tổng quan */}
+          <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+            <div className="h-1 bg-gradient-to-r from-red-600 to-rose-400 shrink-0" />
+            <div className="p-4 pb-0 flex flex-row items-center gap-1.5 space-y-0">
+              <Layers className="w-4.5 h-4.5 text-[#C21A1A] shrink-0" />
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Tổng quan checklist mẫu
+              </h3>
+            </div>
+            <div className="p-4 pt-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block leading-normal">Tổng mẫu</span>
+                  <span className="mt-1 block text-lg font-black text-slate-700 tabular-nums">{templateStats.total}</span>
+                </div>
+                <div className="p-3 bg-emerald-50/60 border border-emerald-100/50 rounded-xl">
+                  <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider block leading-normal">Đang dùng</span>
+                  <span className="mt-1 block text-lg font-black text-emerald-700 tabular-nums">{templateStats.active}</span>
+                </div>
+                <div className="p-3 bg-blue-50/60 border border-blue-100/50 rounded-xl">
+                  <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider block leading-normal">Tự động sinh</span>
+                  <span className="mt-1 block text-lg font-black text-blue-700 tabular-nums">{templateStats.autoCreate}</span>
+                </div>
+                <div className="p-3 bg-amber-50/60 border border-amber-100/50 rounded-xl">
+                  <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider block leading-normal">Tạm ẩn</span>
+                  <span className="mt-1 block text-lg font-black text-amber-700 tabular-nums">{templateStats.hidden}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Card Nguyên tắc */}
+          <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+            <div className="p-4 pb-0 flex flex-row items-center gap-1.5 space-y-0">
+              <Info className="w-4 h-4 text-slate-400 shrink-0" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                Nguyên tắc checklist mẫu
+              </h3>
+            </div>
+            <div className="p-4 pt-2">
+              <ul className="text-xs font-medium text-slate-500 leading-relaxed pl-3.5 list-disc space-y-2">
+                <li><strong className="text-slate-700">Tạo 1 lần - dùng nhiều lần:</strong> Tạo checklist mẫu theo vai trò, hệ thống tự sinh hàng ngày.</li>
+                <li><strong className="text-slate-700">Chuẩn hóa & nhất quán:</strong> Đầu việc rõ ràng, có bằng chứng hình ảnh giúp kiểm soát chất lượng showroom.</li>
+                <li><strong className="text-slate-700">Dễ dàng cập nhật:</strong> Thay đổi mẫu sẽ tự động đồng bộ và áp dụng cho các checklist sinh về sau.</li>
+              </ul>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    if (subTab === 'process') {
+      return (
+        <div className="space-y-3.5 text-left">
+          {/* Card 1: Dashboard Thống kê */}
+          <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+            <div className="h-1 bg-gradient-to-r from-red-600 via-orange-400 to-rose-500 shrink-0" />
+            <div className="p-4.5 space-y-4">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-red-600" />
+                <span>Tổng quan quy trình (SOP)</span>
+              </h3>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="p-2.5 bg-rose-50/50 border border-rose-100/40 rounded-xl text-left">
+                  <span className="text-[9px] font-black uppercase text-rose-500 tracking-wider block">Tổng SOP</span>
+                  <span className="mt-1 block text-base font-black text-rose-700 tabular-nums">{sopSummary.processCount}</span>
+                </div>
+                <div className="p-2.5 bg-emerald-50/50 border border-emerald-100/40 rounded-xl text-left">
+                  <span className="text-[9px] font-black uppercase text-emerald-500 tracking-wider block">Đang dùng</span>
+                  <span className="mt-1 block text-base font-black text-emerald-700 tabular-nums">{sopSummary.activeCount}</span>
+                </div>
+                <div className="p-2.5 bg-blue-50/50 border border-blue-100/40 rounded-xl text-left">
+                  <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider block">Phòng ban</span>
+                  <span className="mt-1 block text-base font-black text-blue-700 tabular-nums">{departmentStats.length}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Card 2: Nhóm Nghiệp Vụ */}
+          {departmentStats.length > 0 && (
+            <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+              <div className="p-4.5 space-y-3">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-blue-500" />
+                  <span>Theo nhóm nghiệp vụ</span>
+                </h3>
+                <div className="divide-y divide-slate-100/75">
+                  {departmentStats.map((dept) => (
+                    <div key={dept.code} className="py-2.5 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-slate-900 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-[#C21A1A]/85 shrink-0" />
+                        <span className="truncate">{dept.name}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-250/30 text-[10px] font-black text-slate-500 tabular-nums">
+                        {dept.count} SOP
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Card 3: SOP Nguyên tắc */}
+          <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+            <div className="p-4.5 space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Info className="w-4.5 h-4.5 text-slate-400" />
+                <span>Nguyên tắc SOP vận hành</span>
+              </h4>
+              <ul className="text-xs font-semibold text-slate-500 leading-relaxed pl-3.5 list-disc space-y-2 text-left">
+                <li><strong className="text-slate-700">Đúng quy trình - Đúng chuẩn:</strong> Mở ra là làm đúng, làm nhanh, làm đồng nhất mọi showroom.</li>
+                <li><strong className="text-slate-700">Dễ hiểu - Dễ nhớ - Dễ làm:</strong> Trực quan hóa các bước thực hiện, phân chia rõ ràng trách nhiệm.</li>
+                <li><strong className="text-slate-700">Kiểm soát chặt chẽ:</strong> Tuân thủ tuyệt đối các điểm kiểm soát bắt buộc và biểu mẫu liên quan.</li>
+              </ul>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Default: today tab
+    return (
+      <div className="space-y-4 text-left">
+        {/* Card 1: Thống kê hôm nay */}
+        <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+          <div className="p-4.5 space-y-4">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+              <Award className="w-4 h-4 text-blue-500" />
+              <span>Thống kê hôm nay</span>
+            </h3>
+
+            {/* Flex row containing grid stats and radial chart */}
+            <div className="flex items-center justify-between gap-4">
+              {/* 2x2 Grid stats */}
+              <div className="grid grid-cols-2 gap-2.5 flex-1">
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-left">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Tổng việc</span>
+                  <div className="text-lg font-black text-slate-700 mt-1 select-none tabular-nums">
+                    {kpiStats.total}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-emerald-50/60 border border-emerald-100/50 rounded-xl text-left">
+                  <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Đã xong</span>
+                  <div className="text-lg font-black text-emerald-700 mt-1 select-none tabular-nums">
+                    {kpiStats.completedCount}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-left">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Chưa xong</span>
+                  <div className="text-lg font-black text-slate-700 mt-1 select-none tabular-nums">
+                    {kpiStats.notCompletedCount}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-rose-50/60 border border-rose-100/50 rounded-xl text-left">
+                  <span className="text-[10px] font-black uppercase text-rose-600 tracking-wider">Quá hạn</span>
+                  <div className="text-lg font-black text-rose-700 mt-1 select-none tabular-nums">
+                    {kpiStats.lateCount}
+                  </div>
+                </div>
+              </div>
+
+              {/* SVG Radial percentage progress */}
+              <RadialProgress percentage={kpiStats.completionPercent} />
+            </div>
+          </div>
+        </Card>
+
+        {/* Card 2: Nguyên tắc sử dụng */}
+        <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
+          <div className="p-4.5 space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Info className="w-4 h-4 text-slate-400" />
+              <span>Nguyên tắc sử dụng</span>
+            </h4>
+            <ul className="text-xs font-medium text-slate-500 leading-relaxed pl-4 list-disc space-y-2 text-left">
+              <li>Checklist tự sinh theo vai trò và khung giờ chuẩn.</li>
+              <li>Hoàn thành đúng giờ giúp nâng cao hiệu suất và trải nghiệm khách hàng showroom.</li>
+              <li>Cập nhật ghi chú/bằng chứng hình ảnh đầy đủ để minh bạch và dễ đối soát chất lượng dịch vụ.</li>
+            </ul>
+          </div>
+        </Card>
+      </div>
+    );
+  }, [subTab, kpiStats, templateStats, sopSummary, departmentStats]);
   const [selectedPerformer, setSelectedPerformer] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -285,7 +658,7 @@ export default function ChecklistView({
 
   // ── Render ──
   return (
-    <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10">
+    <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 w-full min-w-0 overflow-x-hidden">
       <ChecklistHeader
         subTab={subTab}
         canCreate={permissions.canCreate}
@@ -438,6 +811,93 @@ export default function ChecklistView({
         }}
         variant="confirm"
       />
+
+      {/* Draggable floating button (Mobile only, shown on today, checklist_template, process sub-tabs when drawer is hidden) */}
+      {isMobile && (subTab === 'today' || subTab === 'checklist_template' || subTab === 'process') && !showKpiDrawer && position && (
+        <>
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes floatPulse {
+              0% {
+                box-shadow: 0 0 0 0 rgba(194, 26, 26, 0.7);
+              }
+              70% {
+                box-shadow: 0 0 0 10px rgba(194, 26, 26, 0);
+              }
+              100% {
+                box-shadow: 0 0 0 0 rgba(194, 26, 26, 0);
+              }
+            }
+            .float-pulse {
+              animation: floatPulse 2s infinite;
+            }
+          ` }} />
+          <button
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onClick={handleButtonClick}
+            className={cn(
+              "fixed z-45 w-11 h-11 rounded-full bg-[#C21A1A] hover:bg-red-755 text-white flex items-center justify-center shadow-lg border border-red-700/20 active:scale-95 transition-all select-none cursor-grab active:cursor-grabbing",
+              isDragging && "scale-105 shadow-xl",
+              shouldPulse && "float-pulse"
+            )}
+            style={{
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              touchAction: 'none'
+            }}
+            title="Thống kê & HD"
+          >
+            <Award className="w-5 h-5" />
+          </button>
+        </>
+      )}
+
+      {/* Drawer Overlay & Panel (Mobile only) */}
+      {isMobile && (subTab === 'today' || subTab === 'checklist_template' || subTab === 'process') && (
+        <div
+          className={cn(
+            "fixed inset-0 z-50 transition-opacity duration-300 pointer-events-none",
+            showKpiDrawer ? "pointer-events-auto" : ""
+          )}
+        >
+          {/* Backdrop overlay */}
+          <div
+            onClick={() => setShowKpiDrawer(false)}
+            className={cn(
+              "absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300",
+              showKpiDrawer ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
+          />
+          
+          {/* Drawer Panel */}
+          <div
+            className={cn(
+              "absolute top-0 right-0 h-full w-80 max-w-[85vw] bg-slate-50 border-l border-slate-200 p-4.5 shadow-2xl flex flex-col gap-4.5 transform transition-transform duration-300 ease-out z-50 overflow-y-auto text-left",
+              showKpiDrawer ? "translate-x-0" : "translate-x-full"
+            )}
+          >
+            {/* Close button & header */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-[#C21A1A]" />
+                <span className="text-sm font-black text-slate-800 uppercase tracking-wider">Thống kê &amp; Hướng dẫn</span>
+              </div>
+              <button
+                onClick={() => setShowKpiDrawer(false)}
+                className="w-7 h-7 rounded-full bg-slate-200/70 text-slate-600 flex items-center justify-center font-bold hover:bg-slate-200 cursor-pointer active:scale-95 transition-all border-none outline-none"
+              >
+                <X className="w-4 h-4 stroke-[3]" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-4 pb-10 scrollbar-none">
+              {renderKpiSidebar()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

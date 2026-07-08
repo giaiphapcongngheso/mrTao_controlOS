@@ -193,7 +193,7 @@ export function flattenSnapshotTask(
     deletedByUsername: task.deletedByUsername,
     imageUrls: task.imageUrls || [],
     isRequired: task.isRequired !== undefined ? task.isRequired : templateTask?.isRequired,
-    evidenceRequired: task.evidenceRequired === true || templateTask?.evidenceRequired === true,
+    evidenceRequired: task.evidenceRequired !== undefined ? task.evidenceRequired === true : templateTask?.evidenceRequired === true,
   };
 }
 
@@ -362,7 +362,7 @@ export function mergeTemplateTasksIntoSnapshot(params: {
       title: nextTemplateTask.title,
       timeLimit: nextTemplateTask.timeLimit,
       isRequired: nextTemplateTask.isRequired,
-      evidenceRequired: nextTemplateTask.evidenceRequired === true || snapshotTask.evidenceRequired === true,
+      evidenceRequired: nextTemplateTask.evidenceRequired === true,
       updatedAt: nowIso,
     });
   }

@@ -220,7 +220,7 @@ export function MobileCardHeader({
         <MobileCardAvatar avatar={avatar} nameForFallback={typeof title === 'string' ? title : ''} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center flex-wrap gap-2">
-            <h3 className="font-semibold text-base text-slate-900 dark:text-slate-50 leading-tight tracking-tight truncate">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-slate-50 leading-tight tracking-tight break-words whitespace-normal min-w-0 flex-1">
               {title}
             </h3>
             {badge && (

@@ -216,181 +216,116 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
             }
 
             return (
-              <MobileCard
+              <div
                 key={item.id}
-                variant="bordered"
-                interactive={true}
-                delayIndex={index}
+                className="bg-white border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-3 shadow-2xs active:bg-slate-50 transition-all w-full min-w-0"
                 onClick={() => onOpenDetail(item)}
-                accentColor={mapCategoryColorToAccent(item.categoryAccentHex)}
               >
-                <MobileCard.Header
-                  title={
+                {/* Left: Checkbox */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRowClick(item);
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all active:scale-90 shrink-0"
+                >
+                  {item.isCompleted ? (
+                    <CheckSquare className="w-5 h-5 text-emerald-500 shrink-0" />
+                  ) : (
+                    <Square
+                      className={cn(
+                        "w-5 h-5 shrink-0 transition-colors",
+                        isLate ? "text-rose-500" : "text-slate-350"
+                      )}
+                    />
+                  )}
+                </button>
+
+                {/* Middle: Title & Badges */}
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <span className={cn(
-                      "text-slate-800 font-extrabold text-xs tracking-tight leading-normal font-sans block",
+                      "text-xs font-bold leading-normal font-sans break-words whitespace-normal",
                       item.isCompleted && "line-through text-slate-400"
                     )}>
                       {item.title}
                     </span>
-                  }
-                  subtitle={
-                    <span className="text-[10px] text-slate-400 font-bold font-sans block">
-                      {item.categoryTitle}
-                    </span>
-                  }
-                  avatar={
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRowClick(item);
-                      }}
-                      className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all active:scale-90"
-                    >
-                      {item.isCompleted ? (
-                        <CheckSquare className="w-5 h-5 text-emerald-500 shrink-0" />
-                      ) : (
-                        <Square
-                          className={cn(
-                            "w-5 h-5 shrink-0 transition-colors",
-                            isLate ? "text-rose-500" : "text-slate-350"
-                          )}
-                        />
-                      )}
-                    </button>
-                  }
-                  badge={
-                    item.isCompleted
-                      ? { text: 'Đã xong', variant: 'success' }
-                      : isLate
-                      ? { text: 'Quá hạn', variant: 'error' }
-                      : { text: 'Chưa làm', variant: 'secondary' }
-                  }
-                  actions={
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          className="w-7 h-7 p-0 hover:bg-slate-100 rounded-lg flex items-center justify-center shrink-0 cursor-pointer active:scale-95 border-none"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 font-sans" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem
-                          onClick={() => onOpenDetail(item)}
-                          className="text-slate-600 cursor-pointer gap-2"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Chi tiết & bằng chứng</span>
-                        </DropdownMenuItem>
-
-                        {!item.isCompleted && (
-                          <DropdownMenuItem
-                            onClick={(e) => triggerInlineEdit(item, e)}
-                            className="text-slate-600 cursor-pointer gap-2"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Chỉnh sửa</span>
-                          </DropdownMenuItem>
-                        )}
-
-                        {permissions.canDelete && (
-                          <DropdownMenuItem
-                            onClick={(e) => handleDeleteClick(item.id, item.dateKey, e)}
-                            className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 cursor-pointer gap-2"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                            <span>Xóa đầu việc</span>
-                          </DropdownMenuItem>
-                        )}
-
-                        {item.isCompleted && (
-                          <>
-                            <DropdownMenuSeparator className="bg-slate-100" />
-                            <div className="p-2 text-[10px] text-slate-400 text-left space-y-0.5 select-none">
-                              <div className="font-extrabold text-slate-500 flex items-center gap-1 text-[9px]">
-                                <Award className="w-3.5 h-3.5 text-emerald-555 shrink-0" />
-                                <span>Hoàn thành</span>
-                              </div>
-                              <p className="truncate">Bởi: {item.checkedByName || 'Hệ thống'}</p>
-                              {item.checkedAt && (
-                                <p className="truncate">Lúc: {formatCheckedAt(item.checkedAt)}</p>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                />
-
-                <MobileCard.Grid
-                  items={[
-                    ...(item.timeLimit
-                      ? [
-                          {
-                            label: 'Giờ chốt',
-                            value: (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                {item.timeLimit}
-                              </span>
-                            ),
-                          },
-                        ]
-                      : []),
-                    ...(item.isCompleted && item.checkedByName
-                      ? [
-                          {
-                            label: 'Người làm',
-                            value: (
-                              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-650 bg-slate-50 border border-slate-100 rounded px-1.5 py-px max-w-[110px] truncate">
-                                {item.checkedByName}
-                              </span>
-                            ),
-                          },
-                        ]
-                      : []),
-                    {
-                      label: 'Minh chứng',
-                      value: (
-                        <span className={cn(
-                          "flex items-center gap-1 text-[11px] font-black border rounded px-1.5 py-px w-fit transition-all",
-                          hasImages
-                            ? "bg-blue-50 border-blue-200 text-blue-600"
-                            : "bg-slate-50 border-slate-200/60 text-slate-400"
-                        )}>
-                          <Paperclip className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>{(item.imageUrls || []).length}</span>
-                        </span>
-                      ),
-                    },
-                  ]}
-                />
-
-                <MobileCard.Footer className="!py-2 !px-3.5 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-400 h-7 flex items-center">
-                    Bấm thẻ để xem chi tiết
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {!item.isCompleted && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 cursor-pointer rounded-lg border-none"
-                        onClick={(e: any) => {
-                          e.stopPropagation();
-                          triggerInlineEdit(item, e);
-                        }}
-                      >
-                        <Edit2 className="size-3.5" />
-                        <span>Sửa nhanh</span>
-                      </Button>
+                    {item.timeLimit && (
+                      <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded font-black whitespace-nowrap inline-flex items-center gap-0.5 shrink-0">
+                        <Clock className="w-2.5 h-2.5 text-slate-400" />
+                        <span>{item.timeLimit}</span>
+                      </span>
+                    )}
+                    {item.isRequired && (
+                      <span className="text-[9px] text-amber-600 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 whitespace-nowrap">
+                        Bắt buộc
+                      </span>
+                    )}
+                    {item.evidenceRequired && (
+                      <span className="text-[9px] text-[#C21A1A] bg-rose-50 border border-rose-200/40 px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 whitespace-nowrap">
+                        Ảnh
+                      </span>
                     )}
                   </div>
-                </MobileCard.Footer>
-              </MobileCard>
+                </div>
+
+                {/* Right: small indicators and menu */}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {hasImages && (
+                    <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
+                      <Paperclip className="w-3 h-3" />
+                      <span>{item.imageUrls?.length}</span>
+                    </span>
+                  )}
+                  {isLate && !item.isCompleted && (
+                    <span className="text-[9px] text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                      Trễ
+                    </span>
+                  )}
+                  
+                  {/* Dropdown Menu for Actions */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-7 h-7 p-0 hover:bg-slate-100 rounded-lg flex items-center justify-center shrink-0 cursor-pointer active:scale-95 border-none"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 font-sans">
+                      <DropdownMenuItem
+                        onClick={() => onOpenDetail(item)}
+                        className="text-slate-600 cursor-pointer gap-2 text-xs font-semibold"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Xem chi tiết</span>
+                      </DropdownMenuItem>
+
+                      {!item.isCompleted && (
+                        <DropdownMenuItem
+                          onClick={(e) => triggerInlineEdit(item, e)}
+                          className="text-slate-600 cursor-pointer gap-2 text-xs font-semibold"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Chỉnh sửa</span>
+                        </DropdownMenuItem>
+                      )}
+
+                      {permissions.canDelete && (
+                        <DropdownMenuItem
+                          onClick={(e) => handleDeleteClick(item.id, item.dateKey, e)}
+                          className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 cursor-pointer gap-2 text-xs font-semibold"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Xóa đầu việc</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             );
           })
         )}
@@ -557,7 +492,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                         >
                           {item.title}
                         </span>
-                        {/* Category badge tag */}
+                        {/* Category badge tag (Commented out as requested)
                         {item.categoryTitle && (
                           <span
                             className="text-[9px] px-1.5 py-0.2 rounded border font-extrabold  shrink-0 transition-opacity"
@@ -568,6 +503,17 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                             }}
                           >
                             {item.categoryTitle}
+                          </span>
+                        )}
+                        */}
+                        {item.isRequired && (
+                          <span className="text-[9px] text-amber-600 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 whitespace-nowrap">
+                            Bắt buộc
+                          </span>
+                        )}
+                        {item.evidenceRequired && (
+                          <span className="text-[9px] text-[#C21A1A] bg-rose-50 border border-rose-200/40 px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 whitespace-nowrap">
+                            Ảnh
                           </span>
                         )}
                       </div>

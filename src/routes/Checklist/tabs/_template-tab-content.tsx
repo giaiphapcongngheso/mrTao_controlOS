@@ -712,7 +712,7 @@ export default function ChecklistTemplateTabContent({
           )}
         </div>
 
-        <div className="w-full space-y-4 text-left min-w-0 xl:col-span-3">
+        <div className="hidden xl:block w-full space-y-4 text-left min-w-0 xl:col-span-3">
           {/* Card Thống kê Tổng quan */}
           <Card className="bg-white rounded-2xl border border-slate-200/90 text-left overflow-hidden flex flex-col gap-0 py-0 shadow-2xs">
             <div className="h-1 bg-gradient-to-r from-red-600 to-rose-400 shrink-0" />

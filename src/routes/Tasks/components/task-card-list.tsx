@@ -100,7 +100,7 @@ const TaskCard = React.memo(function TaskCard({
   const subtaskCompleted = task.subtasks?.filter((s) => s.completed).length ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className="relative overflow-hidden rounded-xl w-full">
       {/* Swipe action buttons (behind the card) */}
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         {onEdit && (
@@ -127,7 +127,7 @@ const TaskCard = React.memo(function TaskCard({
 
       {/* Card content (slides left on swipe) */}
       <div
-        className="relative bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs active:bg-slate-50 transition-transform duration-150 ease-out"
+        className="relative w-full bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs active:bg-slate-50 transition-transform duration-150 ease-out"
         style={{ transform: `translateX(${swipeX}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
