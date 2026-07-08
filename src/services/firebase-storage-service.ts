@@ -74,7 +74,7 @@ export async function uploadHandbookImage(file: File, editingDocId?: string | nu
   }
 
   // Tạm thời chuyển sang lưu base64 nén chất lượng cao để tránh quá dung lượng Firestore/REST API
-  return compressAndConvertToBase64(file);
+  return compressAndConvertToBase64(file, 1000, 1000, 0.7);
 
   /* Logic Firebase Storage cũ (Giữ lại để khôi phục sau này)
   const storage = getFirebaseStorage();
@@ -100,8 +100,8 @@ export async function uploadChecklistItemImage(file: File, itemId: string): Prom
     throw new Error('INVALID_IMAGE_TYPE');
   }
 
-  // Tạm thời chuyển sang lưu base64 nén chất lượng cao để tránh quá dung lượng Firestore/REST API
-  return compressAndConvertToBase64(file);
+  // Tải ảnh chứng cứ của checklist với độ nén cao (khoảng 30KB-50KB) để tránh tràn bộ nhớ Firestore
+  return compressAndConvertToBase64(file, 800, 800, 0.6);
 
   /* Logic Firebase Storage cũ (Giữ lại để khôi phục sau này)
   const storage = getFirebaseStorage();

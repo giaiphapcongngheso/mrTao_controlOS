@@ -30,7 +30,7 @@ import type { UserSession } from '../../../stores/app-store';
 import { Button, Checkbox, Sheet, SheetContent, SheetTitle } from '@shared/ui';
 import { cn } from '@shared/lib/utils';
 import { CustomMultiSelect } from '../../../../share/components/custom/custom-multi-select';
-import type { StaffMember } from '../../../types/staff.types';
+import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import { getRoleFriendlyName } from '../../../constants';
 import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 import { sanitizeHtml } from '../../../shared/lib/sanitize-html';
@@ -46,6 +46,7 @@ interface TaskDetailModalProps {
   onUpdateSubtasks?: (taskId: string, subtasks: SubTask[]) => void | Promise<void>;
   isSaving?: boolean;
   staffMembers?: StaffMember[];
+  roles?: StaffRole[];
   onUpdateHelpers?: (taskId: string, helpers: string[]) => void | Promise<void>;
   onUpdateTaskFields?: (taskId: string, fields: Partial<TaskItem>) => void | Promise<void>;
 }
@@ -131,6 +132,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
   onUpdateSubtasks,
   isSaving = false,
   staffMembers = [],
+  roles = [],
   onUpdateHelpers,
   onUpdateTaskFields,
 }: TaskDetailModalProps) {
@@ -139,11 +141,17 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
   const [commentInput, setCommentInput] = useState('');
 
   const staffOptions = React.useMemo(() => {
-    return (staffMembers || []).map((staff) => ({
-      value: staff.fullName,
-      label: `${staff.fullName} (${staff.position || getRoleFriendlyName(staff.role)})`,
-    }));
-  }, [staffMembers]);
+    return (staffMembers || []).map((staff) => {
+      const foundRole = (roles || []).find(
+        (r) => r.code.toUpperCase().trim() === (staff.role || '').toUpperCase().trim()
+      );
+      const roleName = foundRole ? foundRole.name : getRoleFriendlyName(staff.role);
+      return {
+        value: staff.fullName,
+        label: `${staff.fullName} (${staff.position || roleName})`,
+      };
+    });
+  }, [staffMembers, roles]);
 
   // Subtask toggle handler
   const handleSubtaskToggle = useCallback((subtaskId: string) => {

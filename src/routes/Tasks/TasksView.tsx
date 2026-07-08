@@ -1256,6 +1256,7 @@ export default function TasksView({
         onSubmit={handleQuickDelegate}
         staffMembers={staffMembers}
         tasks={visibleTasks}
+        roles={roles}
       />
 
       {/* Detail Task Modal */}
@@ -1266,6 +1267,7 @@ export default function TasksView({
         currentUser={currentUser}
         canUpdate={canUpdate}
         staffMembers={staffMembers}
+        roles={roles}
         onUpdateHelpers={async (taskId, helpers) => {
           try {
             await onUpdateTask(taskId, { helpers });

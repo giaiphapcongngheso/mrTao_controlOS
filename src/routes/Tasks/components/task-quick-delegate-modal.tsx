@@ -16,7 +16,7 @@ import {
   Label,
 } from '@shared/ui';
 import type { TaskItem, TaskRequestType } from '../../../types/tasks.types';
-import type { StaffMember } from '../../../types/staff.types';
+import type { StaffMember, StaffRole } from '../../../types/staff.types';
 import { getRoleFriendlyName } from '../../../constants';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import {
@@ -32,6 +32,7 @@ interface TaskQuickDelegateModalProps {
   onSubmit: (task: TaskRequestType) => void | Promise<void>;
   staffMembers?: StaffMember[];
   tasks?: TaskItem[];
+  roles?: StaffRole[];
 }
 
 export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal({
@@ -40,6 +41,7 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
   onSubmit,
   staffMembers = [],
   tasks = [],
+  roles = [],
 }: TaskQuickDelegateModalProps) {
   const form = useForm<TaskQuickDelegateFormValues>({
     resolver: zodResolver(taskQuickDelegateFormSchema),
@@ -148,22 +150,28 @@ export const TaskQuickDelegateModal = React.memo(function TaskQuickDelegateModal
                     Không có nhân sự nào trong ca trực
                   </div>
                 ) : (
-                  staffMembers.map((staff) => (
-                    <Button
-                      key={staff.id}
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleSelectCandidate(staff)}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between items-start h-auto font-normal hover:bg-transparent ${
-                        selectedAssignee === staff.fullName
-                          ? 'border-[#C21A1A] bg-[#C21A1A]/5 shadow-2xs'
-                          : 'border-slate-200 hover:bg-slate-50 bg-white'
-                      }`}
-                    >
-                      <h4 className="font-extrabold text-slate-800 text-xs">{staff.fullName}</h4>
-                      <p className="text-[9px] text-slate-400 mt-0.5">{staff.position || getRoleFriendlyName(staff.role)}</p>
-                    </Button>
-                  ))
+                  staffMembers.map((staff) => {
+                    const foundRole = (roles || []).find(
+                      (r) => r.code.toUpperCase().trim() === (staff.role || '').toUpperCase().trim()
+                    );
+                    const roleName = foundRole ? foundRole.name : getRoleFriendlyName(staff.role);
+                    return (
+                      <Button
+                        key={staff.id}
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleSelectCandidate(staff)}
+                        className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between items-start h-auto font-normal hover:bg-transparent ${
+                          selectedAssignee === staff.fullName
+                            ? 'border-[#C21A1A] bg-[#C21A1A]/5 shadow-2xs'
+                            : 'border-slate-200 hover:bg-slate-50 bg-white'
+                        }`}
+                      >
+                        <h4 className="font-extrabold text-slate-800 text-xs">{staff.fullName}</h4>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{staff.position || roleName}</p>
+                      </Button>
+                    );
+                  })
                 )}
               </div>
             </div>

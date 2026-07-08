@@ -107,11 +107,17 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   });
 
   const staffOptions = useMemo(() => {
-    return (staffMembers || []).map((staff) => ({
-      value: staff.fullName,
-      label: `${staff.fullName} (${staff.position || getRoleFriendlyName(staff.role)})`,
-    }));
-  }, [staffMembers]);
+    return (staffMembers || []).map((staff) => {
+      const foundRole = (roles || []).find(
+        (r) => r.code.toUpperCase().trim() === (staff.role || '').toUpperCase().trim()
+      );
+      const roleName = foundRole ? foundRole.name : getRoleFriendlyName(staff.role);
+      return {
+        value: staff.fullName,
+        label: `${staff.fullName} (${staff.position || roleName})`,
+      };
+    });
+  }, [staffMembers, roles]);
 
   const roleOptions = useMemo(() => {
     return (roles || []).map((role) => ({
@@ -179,14 +185,14 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        
+
         // Limit max width to 800px to maintain performant Firestore & LocalStorage storage
         const MAX_WIDTH = 800;
         if (width > MAX_WIDTH) {
           height = Math.round((height * MAX_WIDTH) / width);
           width = MAX_WIDTH;
         }
-        
+
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
@@ -194,14 +200,14 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
           ctx.drawImage(img, 0, 0, width, height);
           // Compress JPEG to 0.75 quality for super high resolution with tiny footprint
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-          
+
           if (editorRef.current) {
             editorRef.current.focus();
-            
+
             // Insert base64 image with proper premium design style
-             document.execCommand(
-              'insertHTML', 
-              false, 
+            document.execCommand(
+              'insertHTML',
+              false,
               `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh tài liệu" />`
             );
             handleEditorInput();
@@ -726,7 +732,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                               const url = prompt("Nhập URL của ảnh:");
                               if (url) {
                                 if (editorRef.current) editorRef.current.focus();
-                                 document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
+                                document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
                                 handleEditorInput();
                               }
                             }}
@@ -777,7 +783,6 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                                     [&_img]:max-w-full [&_img]:max-h-[300px] [&_img]:h-auto [&_img]:object-contain [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
                                     [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-506 [&_blockquote]:my-3
                                     [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"
-                          placeholder="Mô tả công việc chi tiết. Định dạng Word có thể đổi màu, chèn danh sách và hình ảnh trực quan..."
                         />
                       </div>
                     </FormControl>
