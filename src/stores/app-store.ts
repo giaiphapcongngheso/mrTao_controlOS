@@ -16,8 +16,6 @@ export interface UserSession {
 }
 
 export const SESSION_STORAGE_KEY = 'mrt_user_session';
-const SESSION_TTL_MS = 30 * 60 * 1000;
-const SESSION_RENEW_BUFFER_MS = 60 * 1000;
 
 function resolveRoleCode(user: Partial<UserSession>, legacyUser: Record<string, unknown>): string {
   const explicitRoleCode =
@@ -75,10 +73,7 @@ export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null
     department: user?.department || (legacyUser.boPhan as string | undefined) || '',
     position: user?.position || (legacyUser.viTri as string | undefined) || '',
     statusLabel,
-    sessionExpiresAt:
-      typeof user?.sessionExpiresAt === 'number' && user.sessionExpiresAt > Date.now()
-        ? user.sessionExpiresAt
-        : Date.now() + SESSION_TTL_MS,
+    sessionExpiresAt: user?.sessionExpiresAt, // Keep original if exists, but do not set default value based on TTL since session is now infinite
   } as UserSession;
 }
 
@@ -90,16 +85,7 @@ function readPersistedSession(): UserSession | null {
     }
 
     const parsed = JSON.parse(persistedUser) as Partial<UserSession>;
-    if (typeof parsed.sessionExpiresAt !== 'number') {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      return null;
-    }
-
-    if (parsed.sessionExpiresAt <= Date.now()) {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      return null;
-    }
-
+    // Infinite session: no expiration check is performed
     return enrichSessionWithDefaultFields(parsed);
   } catch {
     return null;
@@ -129,10 +115,7 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
   notificationFocus: null,
   setNotificationFocus: (focus) => set({ notificationFocus: focus }),
   login: (sessionData) => {
-    const enriched = enrichSessionWithDefaultFields({
-      ...sessionData,
-      sessionExpiresAt: Date.now() + SESSION_TTL_MS,
-    });
+    const enriched = enrichSessionWithDefaultFields(sessionData);
     set({ currentUser: enriched });
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(enriched));
   },
@@ -141,29 +124,7 @@ export const useAppStore = create<AppStoreState>((set, get) => ({
     localStorage.removeItem(SESSION_STORAGE_KEY);
   },
   extendSession: () => {
-    const { currentUser } = get();
-    if (!currentUser) return;
-
-    const now = Date.now();
-    const currentExpiry = currentUser.sessionExpiresAt ?? 0;
-    const newExpiry = now + SESSION_TTL_MS;
-
-    if (currentExpiry <= now) {
-      set({ currentUser: null, notificationFocus: null });
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      return;
-    }
-
-    if (currentExpiry - now > SESSION_TTL_MS - SESSION_RENEW_BUFFER_MS) {
-      return;
-    }
-
-    const enriched = {
-      ...currentUser,
-      sessionExpiresAt: newExpiry,
-    };
-    set({ currentUser: enriched });
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(enriched));
+    // No-op: Session is now infinite and does not require expiration extension.
   },
   syncSessionFromStorage: () => {
     const restored = readPersistedSession();

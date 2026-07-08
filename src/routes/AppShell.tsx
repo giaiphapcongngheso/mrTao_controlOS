@@ -95,7 +95,6 @@ export default function AppShell() {
   const currentUser = useAppStore((state) => state.currentUser);
   const handleLogin = useAppStore((state) => state.login);
   const clearSession = useAppStore((state) => state.logout);
-  const extendSession = useAppStore((state) => state.extendSession);
   const syncSessionFromStorage = useAppStore((state) => state.syncSessionFromStorage);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,31 +153,7 @@ export default function AppShell() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const handleActivity = () => {
-      const expiresAt = useAppStore.getState().currentUser?.sessionExpiresAt ?? 0;
-      if (expiresAt <= Date.now()) {
-        void handleLogout({ reason: 'expired' });
-        return;
-      }
-
-      extendSession();
-    };
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach((event) => {
-      window.addEventListener(event, handleActivity, { passive: true });
-    });
-
-    return () => {
-      events.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
-    };
-  }, [currentUser, extendSession, handleLogout]);
-
+  // Sync session logout status across different browser tabs
   useEffect(() => {
     const handleStorageSync = (event: StorageEvent) => {
       if (event.storageArea !== window.localStorage || event.key !== SESSION_STORAGE_KEY) {
@@ -197,45 +172,6 @@ export default function AppShell() {
     window.addEventListener('storage', handleStorageSync);
     return () => window.removeEventListener('storage', handleStorageSync);
   }, [syncSessionFromStorage]);
-
-  useEffect(() => {
-    const validateSessionOnForeground = () => {
-      if (document.visibilityState === 'hidden') {
-        return;
-      }
-
-      const expiresAt = useAppStore.getState().currentUser?.sessionExpiresAt;
-      if (typeof expiresAt === 'number' && expiresAt <= Date.now()) {
-        void handleLogout({ reason: 'expired' });
-      }
-    };
-
-    document.addEventListener('visibilitychange', validateSessionOnForeground);
-    window.addEventListener('focus', validateSessionOnForeground);
-    return () => {
-      document.removeEventListener('visibilitychange', validateSessionOnForeground);
-      window.removeEventListener('focus', validateSessionOnForeground);
-    };
-  }, [handleLogout]);
-
-  useEffect(() => {
-    if (!currentUser?.sessionExpiresAt) {
-      return;
-    }
-
-    sessionExpiryHandledRef.current = false;
-    const delayMs = currentUser.sessionExpiresAt - Date.now();
-    if (delayMs <= 0) {
-      void handleLogout({ reason: 'expired' });
-      return;
-    }
-
-    const sessionTimer = window.setTimeout(() => {
-      void handleLogout({ reason: 'expired' });
-    }, delayMs);
-
-    return () => window.clearTimeout(sessionTimer);
-  }, [currentUser?.sessionExpiresAt, handleLogout]);
 
   useEffect(() => {
     if (!sessionExpiredMessage) {
