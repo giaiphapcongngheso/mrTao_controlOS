@@ -452,6 +452,7 @@ export function StaffTabContent({
                         placeholder={staffForm.id ? "Để trống nếu không đổi" : "Tối thiểu 6 ký tự"}
                         icon={<Lock className="h-4 w-4 text-slate-400" />}
                         position="left"
+                        clearable={false}
                         className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-semibold text-slate-700 transition duration-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/10 focus-visible:ring-4 pr-12"
                       />
                       <button
