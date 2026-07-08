@@ -33,14 +33,12 @@ export default function KpiRoute() {
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
     `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
   );
-  const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>(
-    isAdminOrOwner ? 'ranks' : 'entry'
-  );
+  const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>('ranks');
 
   // Sync tab if user privileges change or storage restores asynchronously
   useEffect(() => {
-    if (!isAdminOrOwner && activeSubTab !== 'entry') {
-      setActiveSubTab('entry');
+    if (!isAdminOrOwner && activeSubTab === 'settings') {
+      setActiveSubTab('ranks');
     }
   }, [isAdminOrOwner, activeSubTab]);
 
@@ -161,9 +159,14 @@ export default function KpiRoute() {
       const roleCode = (staff.role || '').toUpperCase().replace(/_/g, '').trim();
       const isNotOwner = roleCode !== 'CHU_CUA_HANG' && roleCode !== 'CHUCUAHANG';
       const isCurrentStore = staff.storeId === activeStoreId;
+      
+      if (!isAdminOrOwner) {
+        return staff.id === currentUser?.id;
+      }
+      
       return isNotOwner && isCurrentStore;
     });
-  }, [staffMembers, activeStoreId]);
+  }, [staffMembers, activeStoreId, isAdminOrOwner, currentUser]);
 
   // Filter out 'CHU_CUA_HANG' from available KPI roles
   const filteredRoles = useMemo(() => {

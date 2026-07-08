@@ -38,6 +38,7 @@ interface RanksTabProps {
   monthlyConfigs: KPIStaffMonthlyConfig[];
   selectedMonthYear: string;
   onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
+  isAdminOrOwner?: boolean;
 }
 
 export const RanksTab = React.memo(function RanksTab({
@@ -48,12 +49,21 @@ export const RanksTab = React.memo(function RanksTab({
   monthlyConfigs,
   selectedMonthYear,
   onSaveMonthlyConfig,
+  isAdminOrOwner = true,
 }: RanksTabProps) {
   // Selection states
   const [selectedStaffId, setSelectedStaffId] = useState<string>(
     staffMembers.find(s => s.status === 'active')?.id || ''
   );
-  const [viewMode, setViewMode] = useState<'overview' | 'detail'>('overview');
+  const [viewMode, setViewMode] = useState<'overview' | 'detail'>(
+    isAdminOrOwner ? 'overview' : 'detail'
+  );
+
+  React.useEffect(() => {
+    if (!isAdminOrOwner && viewMode !== 'detail') {
+      setViewMode('detail');
+    }
+  }, [isAdminOrOwner, viewMode]);
 
   // Timeframe states
   const [ranksTimeframe, setRanksTimeframe] = useState<RanksTimeframe>('month');
@@ -214,32 +224,34 @@ export const RanksTab = React.memo(function RanksTab({
   return (
     <div className="space-y-4">
       {/* 📊 Segmented View Mode Switcher */}
-      <div className="flex items-center gap-1 bg-slate-100/85 p-1 rounded-xl w-max border border-slate-200/50 font-sans">
-        <button
-          type="button"
-          onClick={() => setViewMode('overview')}
-          className={cn(
-            'px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none active:scale-95',
-            viewMode === 'overview'
-              ? 'bg-white text-slate-800 shadow-xs border border-slate-200/10'
-              : 'text-slate-500 hover:text-slate-800'
-          )}
-        >
-          Tổng quan cửa hàng
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('detail')}
-          className={cn(
-            'px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none active:scale-95',
-            viewMode === 'detail'
-              ? 'bg-white text-slate-800 shadow-xs border border-slate-200/10'
-              : 'text-slate-500 hover:text-slate-800'
-          )}
-        >
-          Chi tiết nhân sự
-        </button>
-      </div>
+      {isAdminOrOwner && (
+        <div className="flex items-center gap-1 bg-slate-100/85 p-1 rounded-xl w-max border border-slate-200/50 font-sans">
+          <button
+            type="button"
+            onClick={() => setViewMode('overview')}
+            className={cn(
+              'px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none active:scale-95',
+              viewMode === 'overview'
+                ? 'bg-white text-slate-800 shadow-xs border border-slate-200/10'
+                : 'text-slate-500 hover:text-slate-800'
+            )}
+          >
+            Tổng quan cửa hàng
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('detail')}
+            className={cn(
+              'px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none active:scale-95',
+              viewMode === 'detail'
+                ? 'bg-white text-slate-800 shadow-xs border border-slate-200/10'
+                : 'text-slate-500 hover:text-slate-800'
+            )}
+          >
+            Chi tiết nhân sự
+          </button>
+        </div>
+      )}
 
       {/* 2. Overview Mode */}
       {viewMode === 'overview' ? (
@@ -369,26 +381,28 @@ export const RanksTab = React.memo(function RanksTab({
         /* Detail Mode: Split screen layout */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade-in">
           {/* Left: Leaderboard */}
-          <div className="lg:col-span-5">
-            <LeaderboardTable
-              roles={roles}
-              ranks={dynamicRanks}
-              selectedStaffId={selectedStaffId}
-              onSelectStaff={handleSelectStaff}
-              periodLabel={periodLabel}
-              ranksTimeframe={ranksTimeframe}
-              onTimeframeChange={handleTimeframeChange}
-              ranksMonth={ranksMonth}
-              onRanksMonthChange={handleMonthChange}
-              ranksQuarter={ranksQuarter}
-              onRanksQuarterChange={handleQuarterChange}
-              ranksYear={ranksYear}
-              onRanksYearChange={handleYearChange}
-            />
-          </div>
+          {isAdminOrOwner && (
+            <div className="lg:col-span-5">
+              <LeaderboardTable
+                roles={roles}
+                ranks={dynamicRanks}
+                selectedStaffId={selectedStaffId}
+                onSelectStaff={handleSelectStaff}
+                periodLabel={periodLabel}
+                ranksTimeframe={ranksTimeframe}
+                onTimeframeChange={handleTimeframeChange}
+                ranksMonth={ranksMonth}
+                onRanksMonthChange={handleMonthChange}
+                ranksQuarter={ranksQuarter}
+                onRanksQuarterChange={handleQuarterChange}
+                ranksYear={ranksYear}
+                onRanksYearChange={handleYearChange}
+              />
+            </div>
+          )}
 
           {/* Right: Staff detail */}
-          <div className="lg:col-span-7">
+          <div className={isAdminOrOwner ? 'lg:col-span-7' : 'lg:col-span-12'}>
             {selectedStaff && (
               <Card className="p-5 md:p-6 space-y-2">
                 <StaffDetailCard
@@ -404,6 +418,7 @@ export const RanksTab = React.memo(function RanksTab({
                   revenueGrowth={revenueGrowth}
                   monthlyConfigs={monthlyConfigs}
                   onSaveMonthlyConfig={onSaveMonthlyConfig}
+                  isAdminOrOwner={isAdminOrOwner}
                 />
 
                 {/* Sparkline chart (month view only) */}

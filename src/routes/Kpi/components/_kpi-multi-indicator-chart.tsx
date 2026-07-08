@@ -76,7 +76,7 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
         const pct = target <= 0 ? (val > 0 ? 100 : 0) : (val / target) * 100;
         
         // Lưu trữ cả phần trăm (để vẽ đồ thị), giá trị thực tế, mục tiêu ngày và đơn vị để dùng trong CustomTooltip
-        row[`${config.id}_pct`] = Math.min(pct, 150); // Giới hạn 150% giống biểu đồ cũ
+        row[`${config.id}_pct`] = Math.min(Math.round(pct), 150); // Giới hạn 150% giống biểu đồ cũ
         row[`${config.id}_val`] = val;
         row[`${config.id}_target`] = target;
         row[`${config.id}_unit`] = config.unit;
@@ -92,7 +92,7 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
     const config: ChartConfig = {};
     configs.forEach((cfg, idx) => {
       const colorScheme = INDICATOR_COLORS[idx % INDICATOR_COLORS.length];
-      config[cfg.id] = {
+      config[`${cfg.id}_pct`] = {
         label: cfg.kpiName,
         color: colorScheme.stroke,
       };
@@ -206,6 +206,7 @@ export const KpiMultiIndicatorChart = React.memo(function KpiMultiIndicatorChart
                   key={config.id}
                   type="monotone"
                   dataKey={`${config.id}_pct`}
+                  name={config.kpiName}
                   stroke={colorScheme.stroke}
                   fill={`url(#fill-${config.id})`}
                   strokeWidth={2}

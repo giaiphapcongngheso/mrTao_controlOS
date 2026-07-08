@@ -401,7 +401,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
             </p>
             
             {/* Desktop Table View */}
-            <div className="hidden md:block flex-1 min-h-0 flex flex-col">
+            <div className="hidden md:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-slate-200">
               <CustomTable<PermissionRowFormValues>
                 columns={columns}
                 data={permissions}
@@ -413,7 +413,8 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
                 showFilterRow={false}
                 emptyMessage="Không có module nào."
                 tableMinWidth={680}
-                className="flex-1 min-h-0 [&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
+                enableInternalVerticalScroll={false}
+                className="[&_th]:bg-emerald-50/50 [&_th]:text-emerald-800 [&_th]:border-b [&_th]:border-emerald-100/50"
               />
             </div>
 

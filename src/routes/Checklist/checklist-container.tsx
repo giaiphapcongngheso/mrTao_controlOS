@@ -48,6 +48,11 @@ export default function ChecklistContainer({
     onMetricsChange,
   });
 
+  const isManagerOrOwner = currentUser?.roleCode === 'CHU_CUA_HANG' ||
+    currentUser?.roleCode === 'QUAN_TRI_VIEN' ||
+    currentUser?.roleCode === 'QUAN_LY_CUA_HANG' ||
+    currentUser?.roleCode === 'QUAN_LY';
+
   return (
     <ChecklistView
       todayCategories={derivedState.todayCategories}
@@ -70,9 +75,9 @@ export default function ChecklistContainer({
       pendingTemplateSync={
         pendingTemplateSync
           ? {
-              templateTitle: pendingTemplateSync.templateTitle,
-              snapshotTitle: pendingTemplateSync.snapshotTitle,
-            }
+            templateTitle: pendingTemplateSync.templateTitle,
+            snapshotTitle: pendingTemplateSync.snapshotTitle,
+          }
           : null
       }
       onConfirmTemplateSync={handleConfirmTemplateSync}
@@ -80,9 +85,14 @@ export default function ChecklistContainer({
       onCreateProcess={handleCreateProcess}
       onUpdateProcess={handleUpdateProcess}
       onDeleteProcess={handleDeleteProcess}
-      permissions={permissions}
+      permissions={{
+        ...permissions,
+        canCreate: isManagerOrOwner ? permissions.canCreate : false,
+        canUpdate: isManagerOrOwner ? permissions.canUpdate : false,
+        canDelete: isManagerOrOwner ? permissions.canDelete : false,
+      }}
       isLoading={isLoading}
-      isOwner={isOwner}
+      isOwner={isManagerOrOwner}
       onRefresh={refreshChecklistData}
     />
   );

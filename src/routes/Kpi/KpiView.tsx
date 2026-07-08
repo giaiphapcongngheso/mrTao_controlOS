@@ -80,7 +80,7 @@ export default function KpiView({
 
   const visibleTabs = useMemo(() => {
     return SUB_TABS.filter(tab => {
-      if (tab.key === 'ranks' || tab.key === 'settings') {
+      if (tab.key === 'settings') {
         return isAdminOrOwner;
       }
       return true;
@@ -90,10 +90,10 @@ export default function KpiView({
   return (
     <div className="space-y-4 pb-10">
       {/* Module Header */}
-      <ModuleHeader
+      {/* <ModuleHeader
         title="KPI & Thi đua"
         description="Quản lý tổng thể KPI — Theo dõi, đánh giá và nhập liệu thực tế cho nhân sự"
-      />
+      /> */}
 
       {/* Month selector + Sub tabs */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0 min-w-0">
@@ -127,7 +127,7 @@ export default function KpiView({
       </div>
 
       {/* Tab Content */}
-      {activeSubTab === 'ranks' && isAdminOrOwner && (
+      {activeSubTab === 'ranks' && (
         isRanksLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-sm font-semibold text-slate-500 animate-pulse">
@@ -143,6 +143,7 @@ export default function KpiView({
             monthlyConfigs={monthlyConfigs}
             selectedMonthYear={selectedMonthYear}
             onSaveMonthlyConfig={onSaveMonthlyConfig}
+            isAdminOrOwner={isAdminOrOwner}
           />
         )
       )}

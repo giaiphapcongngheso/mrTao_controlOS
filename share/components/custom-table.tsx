@@ -1166,7 +1166,9 @@ export function CustomTable<TData>({
 
       <div className={cn(
         'flex-1 flex flex-col min-h-0 min-w-0',
-        !hasExternalBorder && 'rounded-xl border border-slate-200 shadow-3xs bg-white overflow-hidden',
+        enableInternalVerticalScroll && 'overflow-hidden',
+        !hasExternalBorder && 'rounded-xl border border-slate-200 shadow-3xs bg-white',
+        !hasExternalBorder && !enableInternalVerticalScroll && 'overflow-hidden',
       )}>
         <ScrollArea
           ref={scrollContainerRef}

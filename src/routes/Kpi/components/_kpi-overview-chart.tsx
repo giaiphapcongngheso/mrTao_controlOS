@@ -58,8 +58,9 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
   onSelectStaff,
   onViewModeChange,
 }: KpiOverviewChartProps) {
-  const [activeChart, setActiveChart] = useState<'score' | 'payout' | 'revenue'>('score');
+  const [activeChart, setActiveChart] = useState<'score' | 'payout' | 'revenue'>('revenue');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [showLegend, setShowLegend] = useState(false);
 
   // Quản lý bật/tắt hiển thị từng chỉ số trên biểu đồ
   const [visibleIndicatorIds, setVisibleIndicatorIds] = useState<Set<string>>(() => new Set(storeDailyIndicators.map(i => i.id)));
@@ -208,11 +209,28 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
         {/* Aggregate Tabs / Buttons */}
         <div className="flex border-t sm:border-t-0 sm:border-l border-slate-100 select-none overflow-x-auto scrollbar-none w-full sm:w-auto">
-          {/* Button 1: Score */}
+          {/* Button 1: Indicator Pct (% Hoàn thành) */}
           <button
             type="button"
             className={cn(
-              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[130px]',
+              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
+              activeChart === 'revenue' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
+            )}
+            onClick={() => handleChartChange('revenue')}
+          >
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+              % Hoàn thành
+            </span>
+            <span className="text-sm sm:text-base font-black text-blue-600 leading-none mt-1.5">
+              {avgKpiPct}% chỉ tiêu
+            </span>
+          </button>
+
+          {/* Button 2: Score (KPI trung bình) */}
+          <button
+            type="button"
+            className={cn(
+              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[130px]',
               activeChart === 'score' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
             )}
             onClick={() => handleChartChange('score')}
@@ -225,7 +243,7 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
             </span>
           </button>
 
-          {/* Button 2: Payout */}
+          {/* Button 3: Payout (Tổng thưởng KPI) */}
           <button
             type="button"
             className={cn(
@@ -239,23 +257,6 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
             </span>
             <span className="text-sm sm:text-base font-black text-emerald-600 leading-none mt-1.5">
               {CURRENCY_FORMATTER.format(totalPayoutSum)}
-            </span>
-          </button>
-
-          {/* Button 3: Indicator Pct (NEW TAB) */}
-          <button
-            type="button"
-            className={cn(
-              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
-              activeChart === 'revenue' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
-            )}
-            onClick={() => handleChartChange('revenue')}
-          >
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              % Hoàn thành
-            </span>
-            <span className="text-sm sm:text-base font-black text-blue-600 leading-none mt-1.5">
-              {avgKpiPct}% chỉ tiêu
             </span>
           </button>
         </div>
@@ -354,35 +355,49 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
               </ChartContainer>
             </div>
 
-            {/* Interactive Legend for Indicators below */}
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-1 select-none font-sans text-xs">
-              {storeDailyIndicators.map((ind, index) => {
-                const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
-                const isVisible = visibleIndicatorIds.has(ind.id);
-                
-                return (
-                  <button
-                    key={ind.id}
-                    type="button"
-                    onClick={() => toggleIndicatorVisibility(ind.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer hover:bg-slate-50',
-                      isVisible 
-                        ? 'border-slate-200 bg-white font-bold text-slate-700 shadow-3xs' 
-                        : 'border-slate-100 bg-slate-50/50 text-slate-400 border-dashed'
-                    )}
-                  >
-                    <span 
-                      className={cn(
-                        'w-2 h-2 rounded-full shrink-0 transition-transform duration-250', 
-                        isVisible ? colorScheme.legendBg : 'bg-slate-300 scale-75'
-                      )} 
-                    />
-                    <span>{ind.name}</span>
-                  </button>
-                );
-              })}
+            {/* Toggle Legend Button */}
+            <div className="flex justify-center pb-1">
+              <button
+                type="button"
+                onClick={() => setShowLegend(prev => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-all duration-150 cursor-pointer select-none active:scale-95 shadow-3xs"
+              >
+                <span>{showLegend ? 'Ẩn chú thích' : 'Hiện chú thích'}</span>
+                <span className="text-[9px]">{showLegend ? '▲' : '▼'}</span>
+              </button>
             </div>
+
+            {/* Interactive Legend for Indicators below */}
+            {showLegend && (
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-3 border-t border-slate-100 select-none font-sans text-xs animate-fade-in">
+                {storeDailyIndicators.map((ind, index) => {
+                  const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
+                  const isVisible = visibleIndicatorIds.has(ind.id);
+                  
+                  return (
+                    <button
+                      key={ind.id}
+                      type="button"
+                      onClick={() => toggleIndicatorVisibility(ind.id)}
+                      className={cn(
+                        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer hover:bg-slate-50',
+                        isVisible 
+                          ? 'border-slate-200 bg-white font-bold text-slate-700 shadow-3xs' 
+                          : 'border-slate-100 bg-slate-50/50 text-slate-400 border-dashed'
+                      )}
+                    >
+                      <span 
+                        className={cn(
+                          'w-2 h-2 rounded-full shrink-0 transition-transform duration-250', 
+                          isVisible ? colorScheme.legendBg : 'bg-slate-300 scale-75'
+                        )} 
+                      />
+                      <span>{ind.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : (
           /* Render SVG Column Chart for Staff performance (score or payout) */

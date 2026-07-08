@@ -108,13 +108,15 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
               <span>Hôm nay</span>
             </TabsTrigger>
 
-            <TabsTrigger
-              value="checklist_template"
-              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-            >
-              <Ruler className="w-4 h-4 shrink-0" />
-              <span>Checklist mẫu</span>
-            </TabsTrigger>
+            {showHistory && (
+              <TabsTrigger
+                value="checklist_template"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              >
+                <Ruler className="w-4 h-4 shrink-0" />
+                <span>Checklist mẫu</span>
+              </TabsTrigger>
+            )}
 
             <TabsTrigger
               value="process"

@@ -32,6 +32,7 @@ interface StaffDetailCardProps {
   };
   monthlyConfigs: KPIStaffMonthlyConfig[];
   onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
+  isAdminOrOwner?: boolean;
 }
 
 const getClassificationLabel = (score: number) => {
@@ -62,6 +63,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
   revenueGrowth,
   monthlyConfigs,
   onSaveMonthlyConfig,
+  isAdminOrOwner = true,
 }: StaffDetailCardProps) {
   const avatarUrl = getAvatarUrl(staff.avatar, staff.username);
 
@@ -272,6 +274,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                   type="number"
                   min={0}
                   step={100000}
+                  disabled={!isAdminOrOwner}
                   value={overrideFund ?? ''}
                   onChange={(e) => setOverrideFund(e.target.value ? parseInt(e.target.value) : undefined)}
                   className="w-full text-xs font-bold text-[#C21A1A] placeholder:font-normal"
@@ -290,6 +293,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                   type="number"
                   min={0}
                   max={31}
+                  disabled={!isAdminOrOwner}
                   value={actualWorkdays || ''}
                   onChange={(e) => setActualWorkdays(parseInt(e.target.value) || 0)}
                   className="w-full text-xs font-bold text-slate-700"
@@ -305,6 +309,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                 </Label>
                 <CustomSelect
                   options={DISCIPLINE_OPTIONS}
+                  disabled={!isAdminOrOwner}
                   value={String(disciplineCoeff)}
                   onChangeValue={(val) => setDisciplineCoeff(parseFloat(String(val)) || 0)}
                   size="sm"
@@ -325,20 +330,22 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             </div>
 
             {/* Save Button */}
-            <Button
-              disabled={isSaving}
-              onClick={handleSaveMonthlyConfig}
-              className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 h-[42px] rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 w-full sm:w-auto shrink-0"
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1.5" />
-                  Lưu chốt quyết toán
-                </>
-              )}
-            </Button>
+            {isAdminOrOwner && (
+              <Button
+                disabled={isSaving}
+                onClick={handleSaveMonthlyConfig}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 h-[42px] rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 w-full sm:w-auto shrink-0"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-1.5" />
+                    Lưu chốt quyết toán
+                  </>
+                )}
+              </Button>
+            )}
           </CardFooter>
         </Card>
       )}

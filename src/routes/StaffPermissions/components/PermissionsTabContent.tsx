@@ -8,6 +8,7 @@ import type { RolePermissionRow, StaffRole } from '../../../types/staff.types';
 import { PERMISSION_FIELDS } from '../StaffPermissionsView.constants';
 import type { PermissionRowFormValues } from '../role-permission-form-schema';
 import { RolePermissionDialog } from './RolePermissionDialog';
+import { MobileCard } from '@/src/components/custom/mobile-card';
 
 // ============================================================================
 // Types
@@ -258,8 +259,74 @@ export function PermissionsTabContent({
         </div>
       </div>
 
-      {/* ---- Roles Table ---- */}
-      <div className="w-full max-w-full overflow-hidden min-w-0">
+      {/* On mobile: render MobileCard list view */}
+      <div className="block md:hidden space-y-3 px-1 pb-4">
+        {roleOptions.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+            Chưa có vai trò nào. Bấm nút Vai trò phía trên để tạo vai trò mới.
+          </div>
+        ) : (
+          roleOptions.map((role, idx) => {
+            const rows = getRoleRows(role);
+            const enabledCount = totalEnabledByRole(role);
+            return (
+              <MobileCard
+                key={role.id}
+                delayIndex={idx}
+                variant="bordered"
+              >
+                <MobileCard.Header
+                  avatar={role.name.slice(0, 1)}
+                  title={role.name}
+                  subtitle={role.code}
+                  badge={{
+                    text: role.status === 'active' ? 'Đang dùng' : 'Ngưng dùng',
+                    variant: role.status === 'active' ? 'success' : 'secondary'
+                  }}
+                />
+                <MobileCard.Body className="p-3 space-y-2">
+                  <MobileCard.Grid
+                    cols={2}
+                    items={[
+                      { label: 'Số module', value: `${rows.length} modules` },
+                      { label: 'Quyền bật', value: `${enabledCount} ô` },
+                    ]}
+                  />
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={!isOwner}
+                      onClick={() => handleOpenEdit(role)}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-sky-200 px-3 text-xs font-black uppercase tracking-wider text-sky-700 hover:bg-sky-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition active:scale-97"
+                    >
+                      <Shield className="h-3.5 w-3.5" /> Phân quyền
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isOwner}
+                      onClick={() => handleOpenClone(role)}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-emerald-200 px-3 text-xs font-black uppercase tracking-wider text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition active:scale-97"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Nhân bản
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isOwner}
+                      onClick={() => handleDelete(role)}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-200 px-3 text-xs font-black uppercase tracking-wider text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition active:scale-97"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Xoá
+                    </button>
+                  </div>
+                </MobileCard.Body>
+              </MobileCard>
+            );
+          })
+        )}
+      </div>
+
+      {/* On desktop: render CustomTable */}
+      <div className="hidden md:block w-full max-w-full overflow-hidden min-w-0">
         <CustomTable<StaffRole>
           columns={columns}
           data={roleOptions}

@@ -90,7 +90,7 @@ function AppFrameLayout({
           </ScrollArea>
 
           <div className="pt-3 pb-1 border-t border-sidebar-border/60 flex flex-col items-center justify-center select-none text-center shrink-0">
-            <span className="text-[10.5px] font-bold text-sidebar-foreground/50 tracking-wide">Powered by NguyenTD</span>
+            <span className="text-[10.5px] font-bold text-sidebar-foreground/50 tracking-wide">Mr Táo 2026</span>
             <span className="text-[9.5px] text-sidebar-foreground/40 font-sans font-semibold mt-0.5">v{__APP_VERSION__}</span>
           </div>
         </aside>
