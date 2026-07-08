@@ -505,7 +505,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
 
                   {/* Column 3: Task Title */}
                   <TableCell
-                    className="py-3 text-left cursor-pointer"
+                    className="py-3 text-left cursor-pointer max-w-[450px] min-w-[200px] whitespace-normal break-words"
                     onClick={(e) => {
                       if (!isEditing) {
                         e.stopPropagation();

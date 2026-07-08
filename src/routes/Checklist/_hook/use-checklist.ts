@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { DocumentSnapshot } from 'firebase/firestore';
+import { DocumentSnapshot, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { getFirestoreDb } from '../../../services/firebase-config';
 import type {
   ChecklistCategory,
   ChecklistDocument,
@@ -405,26 +406,35 @@ export function useChecklist({
     setIsLoading(true);
     const todayKey = getTodayKey();
     try {
-      const [allTemplates, allSnapshots, allProcesses] = await Promise.all([
+      const [allTemplates, allProcesses] = await Promise.all([
         checklistTemplateService.getAll(),
-        checklistService.getAll(),
         processService.getAll(),
       ]);
       const filteredState = filterState({
         templates: allTemplates || [],
-        snapshots: allSnapshots || [],
+        snapshots: dataStateRef.current.snapshots,
         processes: allProcesses || [],
       });
 
-      replaceLocalState(filteredState);
+      setDataState((prev) => ({
+        ...prev,
+        templates: filteredState.templates,
+        processes: filteredState.processes,
+      }));
       setIsLoading(false);
 
-      ensureMissingSnapshotsInBackground(filteredState, todayKey);
+      ensureMissingSnapshotsInBackground(
+        {
+          ...filteredState,
+          snapshots: dataStateRef.current.snapshots,
+        },
+        todayKey
+      );
     } catch (error) {
       console.error('Không thể refresh dữ liệu checklist:', error);
       setIsLoading(false);
     }
-  }, [ensureMissingSnapshotsInBackground, filterState, replaceLocalState]);
+  }, [ensureMissingSnapshotsInBackground, filterState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -466,6 +476,44 @@ export function useChecklist({
       cancelled = true;
     };
   }, [currentRoleCode, currentUser.role]);
+
+  // Real-time listener for checklists collection
+  useEffect(() => {
+    if (!activeStoreId) return;
+
+    const db = getFirestoreDb();
+    const q = query(
+      collection(db, 'checklists'),
+      where('storeId', '==', activeStoreId),
+      where('deletedAt', '==', null)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const updatedSnapshots: ChecklistDocument[] = [];
+      snapshot.forEach((docSnap) => {
+        updatedSnapshots.push({
+          ...docSnap.data(),
+          id: docSnap.id,
+        } as ChecklistDocument);
+      });
+
+      setDataState((prev) => {
+        const nextState = {
+          ...prev,
+          snapshots: updatedSnapshots,
+        };
+        const todayKey = getTodayKey();
+        ensureMissingSnapshotsInBackground(nextState, todayKey);
+        return nextState;
+      });
+    }, (error) => {
+      console.error('Lỗi lắng nghe dữ liệu checklist thời gian thực:', error);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeStoreId, ensureMissingSnapshotsInBackground]);
 
   useEffect(() => {
     let cancelled = false;
