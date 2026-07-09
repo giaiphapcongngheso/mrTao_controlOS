@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ReferenceLine, LabelList } 
 import type { StaffRank } from '../../../types/kpi.types';
 import type { StaffRole } from '../../../types/staff.types';
 import { Card, CardContent } from '../../../../share/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '../../../../share/ui/tabs';
 import { translateClassification, formatValue } from '../kpi-utils';
 import { cn } from '@shared/lib/utils';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@shared/ui/chart';
@@ -152,6 +153,8 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
     return `${count * 75}px`;
   }, [count]);
 
+
+
   const yTicks = useMemo(() => {
     return [maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0];
   }, [maxVal]);
@@ -196,71 +199,76 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
   return (
     <Card className="border border-slate-200 bg-white shadow-xs rounded-2xl text-left relative overflow-hidden font-sans flex flex-col p-0">
-      {/* 🛠️ Interactive Header (Shadcn style) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-slate-100 p-0">
-        <div className="flex-1 flex flex-col justify-center gap-1 px-5 py-4">
-          <h4 className="text-sm font-black text-slate-850 uppercase tracking-wider leading-none">
-            Hiệu suất cửa hàng
-          </h4>
-          <span className="text-[10px] text-slate-400 font-bold block mt-1">
-            Hiển thị tổng thể kết quả làm việc của toàn bộ đội ngũ
-          </span>
+      <Tabs 
+        value={activeChart} 
+        onValueChange={(val) => handleChartChange(val as 'score' | 'payout' | 'revenue')}
+        className="w-full flex flex-col gap-0"
+      >
+        {/* 🛠️ Interactive Header (Shadcn style) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-slate-100 p-0">
+          <div className="flex-1 flex flex-col justify-center gap-1 px-5 py-4">
+            <h4 className="text-sm font-black text-slate-850 uppercase tracking-wider leading-none">
+              Hiệu suất cửa hàng
+            </h4>
+            <span className="text-[10px] text-slate-400 font-bold block mt-1">
+              Hiển thị tổng thể kết quả làm việc của toàn bộ đội ngũ
+            </span>
+          </div>
+
+          {/* Aggregate Tabs / Buttons */}
+          <TabsList className="bg-transparent h-auto p-0 flex border-t sm:border-t-0 sm:border-l border-slate-100 select-none overflow-x-auto scrollbar-none w-full sm:w-auto rounded-none">
+            {/* Tab 1: % Hoàn thành */}
+            <TabsTrigger
+              value="revenue"
+              className={cn(
+                'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
+                'rounded-none border-b-2 border-b-transparent border-t-0 border-l-0 border-r-0 h-auto font-sans shadow-none',
+                'data-[state=active]:bg-slate-50 data-[state=active]:text-blue-600 data-[state=active]:border-b-transparent'
+              )}
+            >
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                % Hoàn thành
+              </span>
+              <span className="text-sm sm:text-base font-black text-blue-600 leading-none mt-1.5">
+                {avgKpiPct}% chỉ tiêu
+              </span>
+            </TabsTrigger>
+
+            {/* Tab 2: KPI trung bình */}
+            <TabsTrigger
+              value="score"
+              className={cn(
+                'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[130px]',
+                'rounded-none border-b-2 border-b-transparent border-t-0 border-r-0 h-auto font-sans shadow-none',
+                'data-[state=active]:bg-slate-50 data-[state=active]:text-slate-800 data-[state=active]:border-b-transparent'
+              )}
+            >
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                KPI trung bình
+              </span>
+              <span className="text-sm sm:text-base font-black text-slate-850 leading-none mt-1.5">
+                {avgScore} điểm
+              </span>
+            </TabsTrigger>
+
+            {/* Tab 3: Tổng thưởng KPI */}
+            <TabsTrigger
+              value="payout"
+              className={cn(
+                'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
+                'rounded-none border-b-2 border-b-transparent border-t-0 border-r-0 h-auto font-sans shadow-none',
+                'data-[state=active]:bg-slate-50 data-[state=active]:text-emerald-600 data-[state=active]:border-b-transparent'
+              )}
+            >
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                Tổng thưởng KPI
+              </span>
+              <span className="text-sm sm:text-base font-black text-emerald-600 leading-none mt-1.5">
+                {CURRENCY_FORMATTER.format(totalPayoutSum)}
+              </span>
+            </TabsTrigger>
+          </TabsList>
         </div>
-
-        {/* Aggregate Tabs / Buttons */}
-        <div className="flex border-t sm:border-t-0 sm:border-l border-slate-100 select-none overflow-x-auto scrollbar-none w-full sm:w-auto">
-          {/* Button 1: Indicator Pct (% Hoàn thành) */}
-          <button
-            type="button"
-            className={cn(
-              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
-              activeChart === 'revenue' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
-            )}
-            onClick={() => handleChartChange('revenue')}
-          >
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              % Hoàn thành
-            </span>
-            <span className="text-sm sm:text-base font-black text-blue-600 leading-none mt-1.5">
-              {avgKpiPct}% chỉ tiêu
-            </span>
-          </button>
-
-          {/* Button 2: Score (KPI trung bình) */}
-          <button
-            type="button"
-            className={cn(
-              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[130px]',
-              activeChart === 'score' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
-            )}
-            onClick={() => handleChartChange('score')}
-          >
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              KPI trung bình
-            </span>
-            <span className="text-sm sm:text-base font-black text-slate-800 leading-none mt-1.5">
-              {avgScore} điểm
-            </span>
-          </button>
-
-          {/* Button 3: Payout (Tổng thưởng KPI) */}
-          <button
-            type="button"
-            className={cn(
-              'flex-1 sm:flex-initial flex flex-col justify-center gap-1 px-4 py-3 sm:px-5 sm:py-4 text-left border-l border-slate-100 transition duration-150 cursor-pointer min-w-[110px] sm:min-w-[140px]',
-              activeChart === 'payout' ? 'bg-slate-50' : 'hover:bg-slate-50/40'
-            )}
-            onClick={() => handleChartChange('payout')}
-          >
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-              Tổng thưởng KPI
-            </span>
-            <span className="text-sm sm:text-base font-black text-emerald-600 leading-none mt-1.5">
-              {CURRENCY_FORMATTER.format(totalPayoutSum)}
-            </span>
-          </button>
-        </div>
-      </div>
 
       {/* Chart Canvas Area */}
       <CardContent className="p-4 md:p-5">
@@ -272,8 +280,8 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
                 <BarChart
                   data={storeDailyChartData}
                   margin={{ top: 18, right: 10, left: -20, bottom: 0 }}
-                  barGap={3}
-                  barCategoryGap="18%"
+                  barGap={4}
+                  barCategoryGap="24%"
                 >
                   <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" opacity={0.5} />
                   
@@ -327,30 +335,21 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
                     }
                   />
 
-                  {storeDailyIndicators.map((ind, index) => {
-                    const isVisible = visibleIndicatorIds.has(ind.id);
-                    if (!isVisible) return null;
-
-                    const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
-                    
-                    return (
-                      <Bar 
-                        key={ind.id}
-                        dataKey={ind.id} 
-                        fill={colorScheme.stroke} 
-                        radius={[3, 3, 0, 0]}
-                        barSize={16}
-                      >
-                        <LabelList 
+                  {storeDailyIndicators
+                    .filter(ind => visibleIndicatorIds.has(ind.id))
+                    .map((ind, index) => {
+                      const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
+                      
+                      return (
+                        <Bar 
+                          key={ind.id}
                           dataKey={ind.id} 
-                          position="top" 
-                          offset={6} 
-                          style={{ fontSize: '8.2px', fill: '#475569', fontWeight: 'bold' }} 
-                          formatter={(v) => v ? `${v}%` : ''} 
+                          fill={colorScheme.stroke} 
+                          radius={[3, 3, 0, 0]}
+                          barSize={20}
                         />
-                      </Bar>
-                    );
-                  })}
+                      );
+                    })}
                 </BarChart>
               </ChartContainer>
             </div>
@@ -585,6 +584,7 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
           </div>
         )}
       </CardContent>
+      </Tabs>
     </Card>
   );
 });

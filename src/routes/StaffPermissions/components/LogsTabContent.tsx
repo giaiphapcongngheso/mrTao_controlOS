@@ -8,6 +8,7 @@ import { Button, Input } from '../../../../share/ui';
 import { CustomTable } from '../../../../share/components/custom-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
+import { MobileCard } from '../../../components/custom/mobile-card';
 
 interface LogsTabContentProps {
   logs: SystemLog[];
@@ -146,6 +147,101 @@ const columns: ColumnDef<SystemLog>[] = [
     },
   },
 ];
+
+// ── Sub-component: System Logs Cards (Mobile) ──
+const LogsTabMobileCards = React.memo(function LogsTabMobileCards({ logs }: { logs: SystemLog[] }) {
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+
+  if (logs.length === 0) {
+    return <p className="text-sm text-slate-400 font-medium italic text-center py-6">Không có log phù hợp.</p>;
+  }
+
+  const paginatedLogs = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize;
+    return logs.slice(start, start + pagination.pageSize);
+  }, [logs, pagination.pageIndex, pagination.pageSize]);
+
+  const totalPages = Math.ceil(logs.length / pagination.pageSize);
+
+  const getAccentColor = (actionType: SystemLog['actionType']) => {
+    switch (actionType) {
+      case 'CREATE': return 'green';
+      case 'UPDATE': return 'blue';
+      case 'DELETE': return 'red';
+      case 'SYNC': return 'amber';
+      case 'RESET': return 'slate';
+      default: return 'none';
+    }
+  };
+
+  return (
+    <div className="space-y-3.5">
+      <div className="flex flex-col gap-3">
+        {paginatedLogs.map((log, idx) => (
+          <MobileCard
+            key={log.id}
+            variant="bordered"
+            accentColor={getAccentColor(log.actionType)}
+            accentPosition="left"
+            interactive={true}
+            delayIndex={idx}
+          >
+            <MobileCard.Header
+              title={log.actor}
+              subtitle={log.role}
+              badge={{
+                text: getActionLabel(log.actionType),
+                variant: log.actionType === 'CREATE' ? 'success' :
+                         log.actionType === 'UPDATE' ? 'info' :
+                         log.actionType === 'DELETE' ? 'error' :
+                         log.actionType === 'SYNC' ? 'warning' : 'secondary'
+              }}
+              actions={
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">
+                  {formatTimestamp(log.timestamp)}
+                </span>
+              }
+            />
+            <MobileCard.Body className="p-3.5 space-y-2 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                <span className="text-slate-400 font-semibold">Đối tượng:</span>
+                <span className="truncate">{log.target}</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-zinc-900/40 rounded-lg p-2.5 text-slate-650 dark:text-zinc-300 font-medium leading-relaxed break-words border border-slate-100/50">
+                {log.details}
+              </div>
+            </MobileCard.Body>
+          </MobileCard>
+        ))}
+      </div>
+
+      {/* Phân trang di động tinh gọn */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2 pt-1 text-xs font-semibold text-slate-500">
+          <button
+            type="button"
+            disabled={pagination.pageIndex === 0}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+          >
+            Trước
+          </button>
+          <span className="tabular-nums">
+            Trang {pagination.pageIndex + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={pagination.pageIndex >= totalPages - 1}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+          >
+            Sau
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
 
 export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner }: LogsTabContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -400,22 +496,30 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
         </div>
       </div>
 
-      {/* Table Section */}
+      {/* Table & Cards Section */}
       <div className="w-full max-w-full overflow-hidden min-w-0">
-        <CustomTable<SystemLog>
-          columns={columns}
-          data={filteredLogs}
-          enablePagination={true}
-          pageSizeOptions={[10, 20, 50, 100]}
-          enableSorting={false}
-          enableFiltering={false}
-          enableColumnResizing={false}
-          enableColumnVisibility={false}
-          showFilterRow={false}
-          emptyMessage="Không có log phù hợp."
-          tableMinWidth={1150}
-          className="w-full min-w-0 h-[calc(100vh-330px)] min-h-[350px]"
-        />
+        {/* Desktop View: Table */}
+        <div className="hidden md:block">
+          <CustomTable<SystemLog>
+            columns={columns}
+            data={filteredLogs}
+            enablePagination={true}
+            pageSizeOptions={[10, 20, 50, 100]}
+            enableSorting={false}
+            enableFiltering={false}
+            enableColumnResizing={false}
+            enableColumnVisibility={false}
+            showFilterRow={false}
+            emptyMessage="Không có log phù hợp."
+            tableMinWidth={1150}
+            className="w-full min-w-0 h-[calc(100vh-330px)] min-h-[350px]"
+          />
+        </div>
+
+        {/* Mobile View: Cards */}
+        <div className="block md:hidden">
+          <LogsTabMobileCards logs={filteredLogs} />
+        </div>
       </div>
 
       {/* Footer Info */}
