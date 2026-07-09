@@ -1,4 +1,5 @@
 import type { KiotProduct } from '../types/kiotviet.types';
+import { env } from './env';
 
 const DEFAULT_KIOT_TOKEN_URL = 'https://id.kiotviet.vn/connect/token';
 const DEFAULT_KIOT_API_BASE_URL = 'https://public.kiotapi.com';
@@ -197,6 +198,53 @@ export function clearKiotTokenCache() {
 async function fetchKiotApi<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
   const config = getKiotConfig();
   const query = buildQueryString(params);
+
+  // In production, we proxy KiotViet requests through Google Apps Script to bypass CORS
+  if (!import.meta.env.DEV) {
+    let gasUrl = env.VITE_GAS_WEBAPP_URL?.trim() || '';
+    gasUrl = gasUrl.replace(/\\r/g, '').replace(/\\n/g, '').trim();
+
+    let gasToken = env.VITE_GAS_SYNC_TOKEN?.trim() || 'mrTaoOs';
+    gasToken = gasToken.replace(/\\r/g, '').replace(/\\n/g, '').trim();
+
+    if (gasUrl) {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({
+          action: 'kiotProxy',
+          token: gasToken,
+          path: path,
+          params: params,
+          clientId: config.clientId,
+          clientSecret: config.clientSecret,
+          retailer: config.retailer,
+          tokenUrl: config.tokenUrl,
+          apiBaseUrl: config.apiBaseUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Apps Script HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        throw new Error(text || 'Phản hồi không xác định từ Apps Script Proxy');
+      }
+
+      if (result && result.success) {
+        return result.data as TPayload;
+      }
+      throw new Error(result?.error || 'Proxy KiotViet qua Apps Script thất bại.');
+    }
+  }
+
   const url = `${config.apiBaseUrl}${path}${query ? `?${query}` : ''}`;
 
   const requestWithToken = async (token: string) =>

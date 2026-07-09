@@ -140,6 +140,84 @@ export function EmailTabContent() {
         message: "Email sent successfully"
       })).setMimeType(ContentService.MimeType.JSON);
     }
+    
+    if (action === "kiotProxy") {
+      var path = jsonBody.path;
+      var queryParams = jsonBody.params || {};
+      var clientId = jsonBody.clientId;
+      var clientSecret = jsonBody.clientSecret;
+      var retailer = jsonBody.retailer;
+      var tokenUrl = jsonBody.tokenUrl || "https://id.kiotviet.vn/connect/token";
+      var apiBaseUrl = jsonBody.apiBaseUrl || "https://public.kiotapi.com";
+      
+      // 1. Lấy token từ KiotViet
+      var tokenResponse = UrlFetchApp.fetch(tokenUrl, {
+        method: "post",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        payload: {
+          scopes: "PublicApi.Access",
+          grant_type: "client_credentials",
+          client_id: clientId,
+          client_secret: clientSecret
+        },
+        muteHttpExceptions: true
+      });
+      
+      var tokenStatus = tokenResponse.getResponseCode();
+      var tokenText = tokenResponse.getContentText();
+      if (tokenStatus !== 200) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: "Failed to get KiotViet token (" + tokenStatus + "): " + tokenText
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      var tokenData = JSON.parse(tokenText);
+      var accessToken = tokenData.access_token;
+      
+      // 2. Build query string
+      var queryString = "";
+      var keys = Object.keys(queryParams);
+      if (keys.length > 0) {
+        var parts = [];
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          var v = queryParams[k];
+          if (v !== undefined && v !== null && v !== "") {
+            parts.push(encodeURIComponent(k) + "=" + encodeURIComponent(v));
+          }
+        }
+        if (parts.length > 0) {
+          queryString = "?" + parts.join("&");
+        }
+      }
+      
+      // 3. Gọi KiotViet API
+      var apiResponse = UrlFetchApp.fetch(apiBaseUrl + path + queryString, {
+        method: "get",
+        headers: {
+          "Retailer": retailer,
+          "Authorization": "Bearer " + accessToken
+        },
+        muteHttpExceptions: true
+      });
+      
+      var apiStatus = apiResponse.getResponseCode();
+      var apiText = apiResponse.getContentText();
+      if (apiStatus !== 200) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: "KiotViet API error (" + apiStatus + "): " + apiText
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        data: JSON.parse(apiText)
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
