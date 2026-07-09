@@ -1,7 +1,9 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { onRequest } from 'firebase-functions/v2/https';
+import * as nodemailer from 'nodemailer';
 
 const KIOT_CLIENT_ID = defineSecret('KIOT_CLIENT_ID');
 const KIOT_CLIENT_SECRET = defineSecret('KIOT_CLIENT_SECRET');
@@ -305,3 +307,86 @@ export const kiotvietWarehouseSync = onRequest(
     }
   },
 );
+
+export const sendEmailViaSmtp = onRequest(
+  {
+    region: 'asia-southeast1',
+    cors: true,
+  },
+  async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+
+    // 1. Chỉ chấp nhận POST
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed. Use POST.' });
+      return;
+    }
+
+    try {
+      // 2. Xác thực session Firebase của user đang gọi để tránh spam
+      await verifyFirebaseSession(req.headers.authorization);
+
+      const { to, subject, body, htmlBody } = req.body || {};
+      if (!to || !subject || (!body && !htmlBody)) {
+        res.status(400).json({ error: 'Missing required parameters: to, subject, body/htmlBody.' });
+        return;
+      }
+
+      // 3. Truy vấn cấu hình SMTP lưu trong Firestore (kpi_configs/email_config)
+      ensureAdminApp();
+      const db = getFirestore();
+      const configSnap = await db.collection('kpi_configs').doc('email_config').get();
+
+      if (!configSnap.exists) {
+        res.status(400).json({ error: 'Chưa cấu hình tài khoản SMTP trên hệ thống. Vui lòng vào mục Cấu hình Email cài đặt.' });
+        return;
+      }
+
+      const config = configSnap.data() || {};
+      const host = (config.smtpHost || '').trim();
+      const port = Number(config.smtpPort || 587);
+      const secure = !!config.smtpSecure;
+      const user = (config.smtpUser || '').trim();
+      const pass = (config.smtpPass || '').trim();
+      const senderName = (config.senderName || 'Hệ thống Mr Táo').trim();
+
+      if (!host || !user || !pass) {
+        res.status(400).json({ error: 'Thông tin cấu hình SMTP chưa đầy đủ (Host, User hoặc Password bị trống).' });
+        return;
+      }
+
+      // 4. Khởi tạo kết nối SMTP với Nodemailer
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: {
+          user,
+          pass,
+        },
+      });
+
+      // 5. Tiến hành gửi mail
+      await transporter.sendMail({
+        from: `"${senderName}" <${user}>`,
+        to,
+        subject,
+        text: body || '',
+        html: htmlBody || '',
+      });
+
+      res.status(200).json({ success: true, message: 'Email sent successfully via SMTP.' });
+    } catch (error) {
+      console.error('SMTP sending error:', error);
+      if (error instanceof HttpResponseError) {
+        res.status(error.status).json({ error: error.message });
+        return;
+      }
+
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Lỗi không xác định khi gửi SMTP.',
+      });
+    }
+  },
+);
+

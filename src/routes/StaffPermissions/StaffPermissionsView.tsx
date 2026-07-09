@@ -6,11 +6,6 @@ import {
   ensureFirebasePasswordUser,
   FirebaseIdentityToolkitError,
 } from '../../services/firebase-auth-service';
-import {
-  isStaffAuthGasConfigured,
-  StaffAuthGasError,
-  syncStaffAuthViaGas,
-} from '../../services/staff-auth-gas-service';
 import { systemLogService } from '../../services/system-log-service';
 import type { RolePermissionRow, StaffMember, StaffRole } from '../../types/staff.types';
 import { DEFAULT_AVATAR } from '../../constants';
@@ -20,6 +15,7 @@ import {
   PermissionsTabContent,
   StaffPermissionsHeader,
   StaffTabContent,
+  EmailTabContent,
 } from './components';
 import {
   DEFAULT_STAFF_FORM,
@@ -43,6 +39,7 @@ import {
 } from './StaffPermissionsView.utils';
 import type { PermissionRowFormValues } from './role-permission-form-schema';
 import { staffFormSchema } from './staff-form-schema';
+import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 
 
 
@@ -74,6 +71,20 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
   // Dialog state for role creation (triggered from header button)
   const [showRoleDialog, setShowRoleDialog] = useState(false);
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    type: 'role' | 'staff';
+    title: string;
+    description: string;
+    targetRole?: StaffRole;
+    targetStaff?: StaffMember;
+  }>({
+    open: false,
+    type: 'role',
+    title: '',
+    description: '',
+  });
 
   const isOwner = Boolean(
     currentUser?.user === 'admin' ||
@@ -341,6 +352,34 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     [isOwner, roles, permissionRows, defaultStoreId],
   );
 
+  const executeDeleteRole = async (role: StaffRole) => {
+    try {
+      // 1. Delete all permission rows for this role (bypass auto log to avoid spamming)
+      const relatedPermissions = permissionRows.filter(
+        (row) => row.roleId === role.id || row.roleCode === role.code,
+      );
+      await Promise.all(
+        relatedPermissions.map((perm) => staffPermissionService.delete(perm.id, { bypassAutoLog: true })),
+      );
+
+      // 2. Delete the role itself with custom log details
+      await roleService.delete(role.id, {
+        logDetails: `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
+      });
+
+      // 3. Update local state
+      setRoles((prev) => prev.filter((r) => r.id !== role.id));
+      setPermissionRows((prev) =>
+        prev.filter((row) => row.roleId !== role.id && row.roleCode !== role.code),
+      );
+
+      toastSuccess(`Đã xoá vai trò "${role.name}" và ${relatedPermissions.length} phân quyền liên quan.`);
+    } catch (error) {
+      console.error('Failed to delete role:', error);
+      toastError('Không thể xoá vai trò. Vui lòng kiểm tra quyền ghi Firestore.');
+    }
+  };
+
   const handleDeleteRole = useCallback(
     async (role: StaffRole) => {
       if (!isOwner) {
@@ -359,38 +398,15 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         return;
       }
 
-      const confirmed = window.confirm(
-        `Xoá vai trò "${role.name}" (${role.code})? Tất cả phân quyền liên quan sẽ bị xoá.`,
-      );
-      if (!confirmed) return;
-
-      try {
-        // 1. Delete all permission rows for this role (bypass auto log to avoid spamming)
-        const relatedPermissions = permissionRows.filter(
-          (row) => row.roleId === role.id || row.roleCode === role.code,
-        );
-        await Promise.all(
-          relatedPermissions.map((perm) => staffPermissionService.delete(perm.id, { bypassAutoLog: true })),
-        );
-
-        // 2. Delete the role itself with custom log details
-        await roleService.delete(role.id, {
-          logDetails: `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
-        });
-
-        // 3. Update local state
-        setRoles((prev) => prev.filter((r) => r.id !== role.id));
-        setPermissionRows((prev) =>
-          prev.filter((row) => row.roleId !== role.id && row.roleCode !== role.code),
-        );
-
-        toastSuccess(`Đã xoá vai trò "${role.name}" và ${relatedPermissions.length} phân quyền liên quan.`);
-      } catch (error) {
-        console.error('Failed to delete role:', error);
-        toastError('Không thể xoá vai trò. Vui lòng kiểm tra quyền ghi Firestore.');
-      }
+      setConfirmDelete({
+        open: true,
+        type: 'role',
+        title: 'Xác nhận xóa vai trò',
+        description: `Bạn có chắc chắn muốn xóa vai trò "${role.name}" (${role.code})? Tất cả phân quyền liên quan sẽ bị xóa.`,
+        targetRole: role,
+      });
     },
-    [isOwner, staffList, permissionRows],
+    [isOwner, staffList],
   );
 
   const handleCreateStaff = async (event: React.FormEvent) => {
@@ -442,40 +458,27 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         existingStaff?.email ||
         `${normalizeUsername(existingStaff?.username || username)}@mrtaocoop.com`
       ).toLowerCase();
-      const shouldSyncExistingAuth =
-        isEditMode &&
-        Boolean(existingStaff) &&
-        (Boolean(password) || authEmail !== currentAuthEmail);
-
       let firebaseUid = existingStaff?.firebaseUid || '';
       let hashedPassword = existingStaff?.password || '';
 
       if (!isEditMode && password) {
+        // Tạo mới: tạo Firebase Auth user trực tiếp qua Identity Toolkit
         const authUser = await ensureFirebasePasswordUser(authEmail, password);
         firebaseUid = authUser.uid;
         hashedPassword = await hashSha256(password);
       }
 
-      if (shouldSyncExistingAuth) {
-        if (!isStaffAuthGasConfigured()) {
-          toastError(
-            'Chưa cấu hình Apps Script cho cập nhật email hoặc mật khẩu nhân sự. Vui lòng kiểm tra VITE_GAS_STAFF_AUTH_URL.',
-          );
-          setIsSavingStaff(false);
-          return;
+      if (isEditMode && password) {
+        // Chỉnh sửa + có đổi mật khẩu: tạo/xác thực trực tiếp qua Identity Toolkit
+        // (ensureFirebasePasswordUser sẽ tạo mới nếu chưa có, hoặc xác thực nếu đã tồn tại)
+        try {
+          const authUser = await ensureFirebasePasswordUser(authEmail, password);
+          firebaseUid = authUser.uid;
+        } catch {
+          // Nếu email đã tồn tại với mật khẩu khác, giữ nguyên firebaseUid cũ
+          console.warn('Không thể cập nhật Firebase Auth (email có thể dùng mật khẩu khác). Chỉ cập nhật Firestore.');
         }
-
-        const authUser = await syncStaffAuthViaGas({
-          authEmail,
-          currentAuthEmail,
-          firebaseUid: existingStaff?.firebaseUid,
-          password: password || undefined,
-          allowCreate: Boolean(password),
-        });
-        firebaseUid = authUser.uid;
-        if (password) {
-          hashedPassword = await hashSha256(password);
-        }
+        hashedPassword = await hashSha256(password);
       }
 
       const payload: StaffMember = {
@@ -520,11 +523,6 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
       setShowAddStaffForm(false);
     } catch (error) {
       console.error('Failed to create/edit staff:', error);
-
-      if (error instanceof StaffAuthGasError) {
-        toastError(error.message);
-        return;
-      }
 
       if (error instanceof FirebaseIdentityToolkitError) {
         if (error.code.includes('WEAK_PASSWORD')) {
@@ -597,36 +595,44 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     }
   };
 
-  const handleDeleteStaff = async (staff: StaffMember) => {
-    if (!isOwner) {
-      toastError('Bạn không có quyền xóa nhân sự.');
-      return;
-    }
-
-    if (
-      staff.username?.toLowerCase() === 'admin' ||
-      staff.role?.toLowerCase() === 'admin'
-    ) {
-      toastError('Không thể xóa tài khoản Admin hệ thống.');
-      return;
-    }
-
-    const confirmed = window.confirm(`Xóa nhân sự ${staff.fullName} (${staff.id})?`);
-    if (!confirmed) {
-      return;
-    }
-
+  const executeDeleteStaff = async (staff: StaffMember) => {
     try {
       await staffService.delete(staff.id, {
         logDetails: `Đã xóa nhân sự ${staff.fullName} (${staff.id}).`,
       });
       setStaffList((prev: StaffMember[]) => prev.filter((item: StaffMember) => item.id !== staff.id));
-      toastSuccess('Đã xóa nhân sự.');
+      toastSuccess(`Đã xóa nhân sự ${staff.fullName}.`);
     } catch (error) {
       console.error('Failed to delete staff:', error);
       toastError('Không thể xóa nhân sự.');
     }
   };
+
+  const handleDeleteStaff = useCallback(
+    async (staff: StaffMember) => {
+      if (!isOwner) {
+        toastError('Bạn không có quyền xóa nhân sự.');
+        return;
+      }
+
+      if (
+        staff.username?.toLowerCase() === 'admin' ||
+        staff.role?.toLowerCase() === 'admin'
+      ) {
+        toastError('Không thể xóa tài khoản Admin hệ thống.');
+        return;
+      }
+
+      setConfirmDelete({
+        open: true,
+        type: 'staff',
+        title: 'Xác nhận xóa nhân sự',
+        description: `Bạn có chắc chắn muốn xóa nhân sự ${staff.fullName} (${staff.id})? Hành động này không thể hoàn tác.`,
+        targetStaff: staff,
+      });
+    },
+    [isOwner],
+  );
 
   const handleToggleModulePermission = async (
     role: StaffRole,
@@ -767,9 +773,26 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
           externalCreateOpen={showRoleDialog}
           onExternalCreateOpenChange={setShowRoleDialog}
         />
+      ) : activeTab === 'email' ? (
+        <EmailTabContent />
       ) : (
         <LogsTabContent logs={logs} isOwner={isOwner} onClearLogs={handleClearLogs} />
       )}
+
+      <ActionConfirmDialog
+        open={confirmDelete.open}
+        onOpenChange={(open) => setConfirmDelete((prev) => ({ ...prev, open }))}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        variant="danger"
+        onConfirm={async () => {
+          if (confirmDelete.type === 'role' && confirmDelete.targetRole) {
+            await executeDeleteRole(confirmDelete.targetRole);
+          } else if (confirmDelete.type === 'staff' && confirmDelete.targetStaff) {
+            await executeDeleteStaff(confirmDelete.targetStaff);
+          }
+        }}
+      />
     </div>
   );
 }

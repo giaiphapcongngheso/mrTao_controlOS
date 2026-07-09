@@ -28,6 +28,7 @@ import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { cn } from '../../../share/lib/utils';
 import { useIsMobile } from '../../shared/hooks/use-is-mobile';
+import { kiotVietService } from '../../services/kiotviet-service';
 
 interface ChecklistViewProps {
   todayCategories: ChecklistCategory[];
@@ -104,6 +105,7 @@ interface ChecklistViewProps {
   errorMessage?: string | null;
   onDismissError?: () => void;
   isOwner?: boolean;
+  currentUser?: any;
   onRefresh?: () => Promise<void>;
 }
 
@@ -136,6 +138,7 @@ export default function ChecklistView({
   errorMessage,
   onDismissError,
   isOwner = false,
+  currentUser,
   onRefresh,
 }: ChecklistViewProps) {
   // ── Tab & Filter State ──
@@ -161,6 +164,73 @@ export default function ChecklistView({
       const btnSize = 44;
       setPosition({ x: window.innerWidth - btnSize - 10, y: Math.round(window.innerHeight / 3) });
     }
+  }, []);
+
+  // ── KiotViet Revenue State ──
+  const [todayRevenue, setTodayRevenue] = useState<number | null>(null);
+  const [isFetchingRevenue, setIsFetchingRevenue] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchRevenue = async () => {
+      try {
+        setIsFetchingRevenue(true);
+        // Lấy ngày hôm nay theo giờ Việt Nam (GMT+7)
+        const d = new Date();
+        const offset = 7 * 60; // GMT+7
+        const localTime = new Date(d.getTime() + (d.getTimezoneOffset() + offset) * 60000);
+        const yyyy = localTime.getFullYear();
+        const mm = String(localTime.getMonth() + 1).padStart(2, '0');
+        const dd = String(localTime.getDate()).padStart(2, '0');
+        const todayDateStr = `${yyyy}-${mm}-${dd}`;
+
+        let response;
+        if (import.meta.env.DEV) {
+          const clientId = String(import.meta.env.VITE_KIOT_CLIENT_ID || '');
+          const clientSecret = String(import.meta.env.VITE_KIOT_CLIENT_SECRET || '');
+          const retailer = String(import.meta.env.VITE_KIOT_RETAILER || '');
+          const params = new URLSearchParams({
+            clientId,
+            clientSecret,
+            retailer,
+            fromPurchaseDate: todayDateStr,
+            pageSize: '100',
+          });
+          const res = await fetch(`/api/kiotviet/invoices?${params.toString()}`);
+          response = await res.json();
+        } else {
+          response = await kiotVietService.fetchApi<{ data?: any[] }>('/invoices', {
+            fromPurchaseDate: todayDateStr,
+            pageSize: 100
+          });
+        }
+
+        if (!active) return;
+
+        const data = response?.data || [];
+        // Lọc các hóa đơn đã hoàn thành (status === 1) thuộc ngày hôm nay
+        const completedInvoices = data.filter((inv: any) => {
+          const isCompleted = inv.status === 1;
+          const matchDate = inv.purchaseDate ? inv.purchaseDate.startsWith(todayDateStr) : false;
+          return isCompleted && matchDate;
+        });
+        const totalRev = completedInvoices.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+
+        setTodayRevenue(totalRev);
+      } catch (error) {
+        console.error('Failed to fetch today revenue from KiotViet:', error);
+      } finally {
+        if (active) {
+          setIsFetchingRevenue(false);
+        }
+      }
+    };
+
+    fetchRevenue();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -543,6 +613,23 @@ export default function ChecklistView({
               {/* SVG Radial percentage progress */}
               <RadialProgress percentage={kpiStats.completionPercent} />
             </div>
+
+            {/* Doanh thu hôm nay (KiotViet) */}
+            <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span>Doanh thu KiotViet</span>
+              </div>
+              <div className="text-sm font-black text-blue-600 tabular-nums">
+                {isFetchingRevenue ? (
+                  <span className="text-slate-400 text-xs font-bold animate-pulse">Đang tải...</span>
+                ) : todayRevenue !== null ? (
+                  `${todayRevenue.toLocaleString('vi-VN')} đ`
+                ) : (
+                  '0 đ'
+                )}
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -562,8 +649,20 @@ export default function ChecklistView({
         </Card>
       </div>
     );
-  }, [subTab, kpiStats, templateStats, sopSummary, departmentStats]);
-  const [selectedPerformer, setSelectedPerformer] = useState('all');
+  }, [subTab, kpiStats, templateStats, sopSummary, departmentStats, todayRevenue, isFetchingRevenue]);
+  const [selectedPerformer, setSelectedPerformer] = useState(() => {
+    if (!isOwner && currentUser?.fullName) {
+      return currentUser.fullName;
+    }
+    return 'all';
+  });
+
+  useEffect(() => {
+    if (!isOwner && currentUser?.fullName) {
+      setSelectedPerformer(currentUser.fullName);
+    }
+  }, [isOwner, currentUser?.fullName]);
+
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -698,11 +797,11 @@ export default function ChecklistView({
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
     setSearchTerm('');
-    setSelectedPerformer('all');
+    setSelectedPerformer(!isOwner && currentUser?.fullName ? currentUser.fullName : 'all');
     setSelectedStatus('all');
     setSelectedDate(new Date());
     setDateRange({ from: subDays(new Date(), 7), to: new Date() });
-  }, []);
+  }, [isOwner, currentUser?.fullName]);
 
   const handleCloseChecklistDialog = useCallback(() => {
     setIsAddingItem(false);
@@ -742,6 +841,8 @@ export default function ChecklistView({
         onRefresh={onRefresh}
         showHistory={isOwner}
         showRoleSelect={isOwner}
+        isOwner={isOwner}
+        currentUser={currentUser}
         templateFilterRole={templateFilterRole}
         setTemplateFilterRole={setTemplateFilterRole}
         templateFilterFrequency={templateFilterFrequency}

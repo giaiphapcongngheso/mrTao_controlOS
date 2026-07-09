@@ -49,9 +49,7 @@ export default function ChecklistContainer({
   });
 
   const isManagerOrOwner = currentUser?.roleCode === 'CHU_CUA_HANG' ||
-    currentUser?.roleCode === 'QUAN_TRI_VIEN' ||
-    currentUser?.roleCode === 'QUAN_LY_CUA_HANG' ||
-    currentUser?.roleCode === 'QUAN_LY';
+    currentUser?.roleCode === 'QUAN_TRI_VIEN';
 
   return (
     <ChecklistView
@@ -93,6 +91,7 @@ export default function ChecklistContainer({
       }}
       isLoading={isLoading}
       isOwner={isManagerOrOwner}
+      currentUser={currentUser}
       onRefresh={refreshChecklistData}
     />
   );

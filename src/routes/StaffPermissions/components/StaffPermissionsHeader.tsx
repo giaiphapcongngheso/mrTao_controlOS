@@ -1,4 +1,4 @@
-import { Activity, Plus, RefreshCw, Shield, Trash2, Users } from 'lucide-react';
+import { Activity, Plus, RefreshCw, Shield, Trash2, Users, Mail } from 'lucide-react';
 import type { ActiveTab } from '../StaffPermissionsView.types';
 
 interface StaffPermissionsHeaderProps {
@@ -79,6 +79,20 @@ export function StaffPermissionsHeader({
             <Activity className="h-4 w-4" />
             Log ({logCount})
           </button>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => onSetActiveTab('email')}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] transition ${
+                activeTab === 'email'
+                  ? 'bg-amber-600 text-white shadow-[0_12px_20px_-12px_rgba(217,119,6,0.75)]'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Mail className="h-4 w-4" />
+              Cấu hình Email
+            </button>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">

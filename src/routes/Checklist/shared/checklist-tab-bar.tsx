@@ -4,6 +4,8 @@ import { Button, Input, Tabs, TabsList, TabsTrigger } from '../../../../share/ui
 import { CustomSelect } from '../../../../share/components/custom/custom-select';
 import { DatePicker } from '../../../../share/components/custom/date-picker';
 import type { ChecklistItem } from '../../../types/checklist.types';
+import { useQuery } from '@tanstack/react-query';
+import { staffService } from '../../../services/admin/staff-service';
 
 interface ChecklistTabBarProps {
   subTab: 'today' | 'checklist_template' | 'process' | 'history';
@@ -24,6 +26,8 @@ interface ChecklistTabBarProps {
   isRefreshing?: boolean;
   showHistory?: boolean;
   showRoleSelect?: boolean;
+  isOwner?: boolean;
+  currentUser?: any;
   // Checklist template filters
   templateFilterRole?: string;
   setTemplateFilterRole?: (role: string) => void;
@@ -61,6 +65,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   isRefreshing = false,
   showHistory = false,
   showRoleSelect = false,
+  isOwner = false,
+  currentUser,
   templateFilterRole = 'all',
   setTemplateFilterRole,
   templateFilterFrequency = 'all',
@@ -77,14 +83,69 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
     setSubTab(value as 'today' | 'checklist_template' | 'process' | 'history');
   }, [setSubTab]);
 
-  // Extract unique performers dynamically from items to filter by
+  // Query full staff list to filter performers by selected role code
+  const { data: staffList = [] } = useQuery({
+    queryKey: ['admin', 'staff'],
+    queryFn: () => staffService.getAll(),
+  });
+
+  // Extract unique performers dynamically from items or full staff list of selected role
   const performerOptions = useMemo(() => {
-    const names = Array.from(new Set(items.map((it) => it.checkedByName).filter(Boolean))) as string[];
+    const normalizedRole = selectedRoleCode.trim().toUpperCase();
+    
+    // Find the current role object to get its friendly name (e.g., "Bán hàng") for matching old staff records
+    const selectedRole = roleOptions.find(r => r.code.toUpperCase() === normalizedRole);
+    const roleNameUpper = selectedRole ? selectedRole.name.trim().toUpperCase() : '';
+    
+    // 1. Get names of active staff members belonging to the currently selected role
+    let filteredStaff = staffList.filter((s) => {
+      if (s.status !== 'active') return false;
+      const staffRoleCode = (s.role || '').trim().toUpperCase();
+      const staffRoleId = (s.roleId || '').trim().toUpperCase();
+      return staffRoleCode === normalizedRole || 
+             (roleNameUpper && staffRoleCode === roleNameUpper) ||
+             staffRoleId === `ROLE-${normalizedRole}` ||
+             staffRoleId === normalizedRole;
+    });
+    
+    let names = filteredStaff.map((s) => s.fullName).filter(Boolean);
+
+    // 2. Fallback: If no staff found/loaded, extract from task checklist checkers of this role
+    if (names.length === 0) {
+      const roleItems = items.filter(it => (it.roleCode || '').trim().toUpperCase() === normalizedRole);
+      names = Array.from(new Set(roleItems.map((it) => it.checkedByName).filter(Boolean))) as string[];
+    }
+
+    // 3. Filter out admin/owner roles
+    names = names.filter(name => {
+      const lower = name.toLowerCase().trim();
+      return lower !== 'admin' && 
+             lower !== 'quản trị viên' && 
+             lower !== 'quản trị viên hệ thống' &&
+             lower !== 'chủ cửa hàng' &&
+             lower !== 'chu_cua_hang';
+    });
+
+    // 4. Ensure current user is in list if not owner
+    if (!isOwner && currentUser?.fullName) {
+      const lowerFull = currentUser.fullName.toLowerCase().trim();
+      if (
+        lowerFull !== 'admin' && 
+        lowerFull !== 'quản trị viên' && 
+        lowerFull !== 'quản trị viên hệ thống' &&
+        lowerFull !== 'chủ cửa hàng' &&
+        lowerFull !== 'chu_cua_hang' &&
+        !names.includes(currentUser.fullName)
+      ) {
+        names.push(currentUser.fullName);
+      }
+    }
+
     return [
       { label: 'Tất cả người thực hiện', value: 'all' },
       ...names.map((name) => ({ label: name, value: name })),
     ];
-  }, [items]);
+  }, [staffList, items, selectedRoleCode, isOwner, currentUser?.fullName]);
 
   const statusOptions = [
     { label: 'Tất cả trạng thái', value: 'all' },
@@ -244,6 +305,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       onChangeValue={(value) => setSelectedPerformer(String(value))}
                       options={performerOptions}
                       clearable={false}
+                      disabled={!isOwner}
                       placeholder="Chọn người thực hiện..."
                       className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                     />
