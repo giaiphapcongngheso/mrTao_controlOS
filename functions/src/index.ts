@@ -280,7 +280,27 @@ export const kiotvietWarehouseSync = onRequest(
     try {
       await verifyFirebaseSession(req.headers.authorization);
 
+      const action = req.query.action;
       const accessToken = await requestKiotAccessToken();
+
+      if (action === 'invoices') {
+        const fromPurchaseDate = req.query.fromPurchaseDate ? String(req.query.fromPurchaseDate) : undefined;
+        const toPurchaseDate = req.query.toPurchaseDate ? String(req.query.toPurchaseDate) : undefined;
+        const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 100;
+        const currentItem = req.query.currentItem ? Number(req.query.currentItem) : 0;
+
+        const params: KiotQueryParams = {
+          pageSize,
+          currentItem,
+        };
+        if (fromPurchaseDate) params.fromPurchaseDate = fromPurchaseDate;
+        if (toPurchaseDate) params.toPurchaseDate = toPurchaseDate;
+
+        const payload = await fetchKiotPage<Record<string, unknown>>(accessToken, '/invoices', params);
+        res.status(200).json(payload);
+        return;
+      }
+
       const [branches, products] = await Promise.all([
         fetchAllKiotItems<Record<string, unknown>>(accessToken, '/branches'),
         fetchAllKiotItems<Record<string, unknown>>(accessToken, '/products', {

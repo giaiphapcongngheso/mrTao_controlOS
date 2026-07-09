@@ -1,11 +1,12 @@
 import type { KiotProduct } from '../types/kiotviet.types';
-import { env } from './env';
+import { getCurrentFirebaseIdToken } from './firebase-auth-service';
 
 const DEFAULT_KIOT_TOKEN_URL = 'https://id.kiotviet.vn/connect/token';
 const DEFAULT_KIOT_API_BASE_URL = 'https://public.kiotapi.com';
 const DEFAULT_KIOT_SCOPE = 'PublicApi.Access';
 const DEFAULT_KIOT_PAGE_SIZE = 100;
 const TOKEN_EXPIRY_SKEW_SECONDS = 300;
+const KIOT_SYNC_FUNCTION_URL = import.meta.env.VITE_KIOT_SYNC_FUNCTION_URL ?? '';
 
 export type KiotEntityName = 'branches' | 'categories' | 'products' | 'customers' | 'invoices';
 
@@ -196,55 +197,18 @@ export function clearKiotTokenCache() {
 }
 
 async function fetchKiotApi<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
+  // In development, call KiotViet API directly (CORS bypassed by Vite proxy)
+  if (import.meta.env.DEV) {
+    return fetchKiotApiDirect<TPayload>(path, params);
+  }
+  // In production, route through Firebase Function proxy to avoid CORS and hide credentials
+  return fetchKiotApiViaProxy<TPayload>(path, params);
+}
+
+/** DEV-only: direct KiotViet API call using client credentials from .env */
+async function fetchKiotApiDirect<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
   const config = getKiotConfig();
   const query = buildQueryString(params);
-
-  // In production, we proxy KiotViet requests through Google Apps Script to bypass CORS
-  if (!import.meta.env.DEV) {
-    let gasUrl = env.VITE_GAS_WEBAPP_URL?.trim() || '';
-    gasUrl = gasUrl.replace(/\\r/g, '').replace(/\\n/g, '').trim();
-
-    let gasToken = env.VITE_GAS_SYNC_TOKEN?.trim() || 'mrTaoOs';
-    gasToken = gasToken.replace(/\\r/g, '').replace(/\\n/g, '').trim();
-
-    if (gasUrl) {
-      const response = await fetch(gasUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify({
-          action: 'kiotProxy',
-          token: gasToken,
-          path: path,
-          params: params,
-          clientId: config.clientId,
-          clientSecret: config.clientSecret,
-          retailer: config.retailer,
-          tokenUrl: config.tokenUrl,
-          apiBaseUrl: config.apiBaseUrl,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Apps Script HTTP ${response.status}`);
-      }
-
-      const text = await response.text();
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        throw new Error(text || 'Phản hồi không xác định từ Apps Script Proxy');
-      }
-
-      if (result && result.success) {
-        return result.data as TPayload;
-      }
-      throw new Error(result?.error || 'Proxy KiotViet qua Apps Script thất bại.');
-    }
-  }
-
   const url = `${config.apiBaseUrl}${path}${query ? `?${query}` : ''}`;
 
   const requestWithToken = async (token: string) =>
@@ -263,6 +227,52 @@ async function fetchKiotApi<TPayload>(path: string, params: KiotQueryParams = {}
   }
 
   return parseJsonOrThrow(response, path) as Promise<TPayload>;
+}
+
+/** PROD: proxy KiotViet requests through Firebase Function (secrets stay server-side) */
+async function fetchKiotApiViaProxy<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
+  const functionUrl = KIOT_SYNC_FUNCTION_URL.trim();
+  if (!functionUrl) {
+    throw new Error(
+      'Thiếu cấu hình VITE_KIOT_SYNC_FUNCTION_URL. Vui lòng cấu hình URL Firebase Function để lấy dữ liệu KiotViet.',
+    );
+  }
+
+  const idToken = await getCurrentFirebaseIdToken();
+  if (!idToken) {
+    throw new Error('Bạn cần đăng nhập Firebase trước khi truy vấn dữ liệu KiotViet.');
+  }
+
+  const entity = path.replace(/^\//, '');
+  const searchParams = new URLSearchParams({ action: entity });
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, toStringValue(value as KiotPrimitive));
+    }
+  });
+
+  const url = `${functionUrl}?${searchParams.toString()}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let errorMsg: string;
+    try {
+      const json = JSON.parse(text);
+      errorMsg = json.error || text;
+    } catch {
+      errorMsg = text || `HTTP ${response.status}`;
+    }
+    throw new Error(`KiotViet proxy error (${path}): ${response.status} ${errorMsg}`);
+  }
+
+  return response.json() as Promise<TPayload>;
 }
 
 function getRemovedIds<TItem>(payload: KiotEntityResponse<TItem>): string[] {
