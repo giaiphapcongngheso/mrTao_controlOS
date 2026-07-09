@@ -15,6 +15,7 @@ import { cn } from '../../../../share/lib/utils';
 import type { SOPIssue, SOPIssueCategory } from '../../../types/issues.types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { CustomTable } from '../../../../share/components/custom-table';
+import { MobileCard } from '../../../components/custom/mobile-card';
 
 // ── Types ──
 interface IssuesOverviewTabProps {
@@ -336,6 +337,120 @@ const RecentIssuesTable = React.memo(function RecentIssuesTable({ rows }: { rows
   );
 });
 
+// ── Sub-component: Recent Issues Mini Cards (Mobile) ──
+const RecentIssuesCards = React.memo(function RecentIssuesCards({ rows }: { rows: RecentIssueRow[] }) {
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-slate-400 font-medium italic text-center py-6">Chưa có phiếu nào được ghi nhận</p>;
+  }
+
+  const paginatedRows = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize;
+    return rows.slice(start, start + pagination.pageSize);
+  }, [rows, pagination.pageIndex, pagination.pageSize]);
+
+  const totalPages = Math.ceil(rows.length / pagination.pageSize);
+
+  const getCategoryLabel = (category: SOPIssueCategory) => {
+    return CATEGORY_CONFIG[category]?.label || category;
+  };
+
+  const getAccentColor = (category: SOPIssueCategory) => {
+    switch (category) {
+      case 'sop_error': return 'red';
+      case 'exception': return 'amber';
+      case 'risk': return 'slate';
+      case 'improvement': return 'teal';
+      default: return 'none';
+    }
+  };
+
+  const getStatusType = (status: string) => {
+    switch (status) {
+      case 'Đã xử lý': return 'success';
+      case 'Đang triển khai': return 'info';
+      case 'Chờ duyệt': return 'warning';
+      default: return 'error'; // Xử lý ngay
+    }
+  };
+
+  return (
+    <div className="space-y-3.5">
+      <div className="flex flex-col gap-3">
+        {paginatedRows.map((row, idx) => (
+          <MobileCard
+            key={row.id}
+            variant="bordered"
+            accentColor={getAccentColor(row.category)}
+            accentPosition="left"
+            interactive={true}
+            delayIndex={idx}
+          >
+            <MobileCard.Header
+              title={row.title}
+              subtitle={row.code}
+              badge={{
+                text: getCategoryLabel(row.category),
+                variant: row.category === 'sop_error' ? 'error' :
+                         row.category === 'exception' ? 'warning' :
+                         row.category === 'improvement' ? 'success' : 'secondary'
+              }}
+              actions={
+                <MobileCard.StatusIndicator
+                  status={getStatusType(row.status)}
+                  label={row.status}
+                  pulse={row.status === 'Xử lý ngay'}
+                />
+              }
+            />
+            <MobileCard.Body className="p-3.5 space-y-2">
+              <MobileCard.Grid
+                cols={2}
+                items={[
+                  { label: 'Người ghi nhận', value: row.assignee },
+                  { label: 'Ngày ghi nhận', value: row.date },
+                  { 
+                    label: 'Hiệu quả ước tính', 
+                    value: row.costSaved || '—', 
+                    fullWidth: true,
+                    valueClassName: "text-emerald-600 dark:text-emerald-450 font-bold" 
+                  }
+                ]}
+              />
+            </MobileCard.Body>
+          </MobileCard>
+        ))}
+      </div>
+
+      {/* Phân trang di động tinh gọn */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2 pt-1 text-xs font-semibold text-slate-500">
+          <button
+            type="button"
+            disabled={pagination.pageIndex === 0}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+          >
+            Trước
+          </button>
+          <span className="tabular-nums">
+            Trang {pagination.pageIndex + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={pagination.pageIndex >= totalPages - 1}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+          >
+            Sau
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ── Section Card Wrapper ──
 const SectionCard = React.memo(function SectionCard({
   title,
@@ -632,10 +747,15 @@ const IssuesOverviewTab = React.memo(function IssuesOverviewTab({ issues }: Issu
         </SectionCard>
       </div>
 
-      {/* ── Row 4: Recent Issues Table ── */}
+      {/* ── Row 4: Recent Issues Table & Cards ── */}
       <div className="space-y-2.5">
         <h3 className="text-sm font-black text-slate-400 tracking-wider pl-1">Cải tiến mới ghi nhận</h3>
-        <RecentIssuesTable rows={recentRows} />
+        <div className="hidden md:block">
+          <RecentIssuesTable rows={recentRows} />
+        </div>
+        <div className="block md:hidden">
+          <RecentIssuesCards rows={recentRows} />
+        </div>
       </div>
     </div>
   );
