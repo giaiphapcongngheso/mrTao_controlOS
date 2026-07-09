@@ -1,7 +1,14 @@
-const STAFF_AUTH_GAS_WEBAPP_URL =
-  import.meta.env.VITE_GAS_STAFF_AUTH_URL ?? import.meta.env.VITE_GAS_WEBAPP_URL ?? '';
-const STAFF_AUTH_GAS_TOKEN =
-  import.meta.env.VITE_GAS_STAFF_AUTH_TOKEN ?? import.meta.env.VITE_GAS_SYNC_TOKEN ?? '';
+const sanitizeEnvVal = (val: string | undefined): string => {
+  if (!val) return '';
+  return val.trim().replace(/\\r/g, '').replace(/\\n/g, '').trim();
+};
+
+const STAFF_AUTH_GAS_WEBAPP_URL = sanitizeEnvVal(
+  import.meta.env.VITE_GAS_STAFF_AUTH_URL ?? import.meta.env.VITE_GAS_WEBAPP_URL
+);
+const STAFF_AUTH_GAS_TOKEN = sanitizeEnvVal(
+  import.meta.env.VITE_GAS_STAFF_AUTH_TOKEN ?? import.meta.env.VITE_GAS_SYNC_TOKEN
+);
 
 const STAFF_AUTH_GAS_TIMEOUT_MS = 60_000;
 const STAFF_AUTH_GAS_ALLOWED_HOSTS = new Set([

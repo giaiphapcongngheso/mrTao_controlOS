@@ -128,8 +128,11 @@ export const emailService = {
       const sendMethod = 'apps_script'; // Tạm thời chỉ dùng Google Apps Script
 
       if (sendMethod === 'apps_script') {
-        const gasUrl = env.VITE_GAS_WEBAPP_URL?.trim();
-        const gasToken = env.VITE_GAS_SYNC_TOKEN?.trim() || 'mrTaoOs';
+        let gasUrl = env.VITE_GAS_WEBAPP_URL?.trim() || '';
+        gasUrl = gasUrl.replace(/\\r/g, '').replace(/\\n/g, '').trim();
+
+        let gasToken = env.VITE_GAS_SYNC_TOKEN?.trim() || 'mrTaoOs';
+        gasToken = gasToken.replace(/\\r/g, '').replace(/\\n/g, '').trim();
 
         if (!gasUrl) {
           return { success: false, error: 'Chưa cấu hình Web App URL của Google Apps Script.' };
