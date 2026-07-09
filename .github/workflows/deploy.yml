@@ -68,17 +68,12 @@ jobs:
             echo "::warning::Missing both VITE_GAS_STAFF_AUTH_URL and VITE_GAS_WEBAPP_URL. Staff auth sync via Apps Script will not work on production."
           fi
 
-      - name: Auto bump patch version
+      - name: Get app version
         id: version
         run: |
           CURRENT=$(node -p "require('./package.json').version")
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "🔖 Version bump: $CURRENT → $NEW_VERSION"
-          # Update package.json with new version
-          node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW_VERSION'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+          echo "version=$CURRENT" >> $GITHUB_OUTPUT
+          echo "🔖 Current version: $CURRENT"
 
       - name: Build
         env:
@@ -123,12 +118,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Commit version bump
-        timeout-minutes: 5
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
-          git diff --cached --quiet || git commit -m "chore: bump version to v${{ steps.version.outputs.version }} [skip ci]"
-          git push
