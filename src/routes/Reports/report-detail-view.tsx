@@ -88,16 +88,20 @@ function formatCurrency(amount: number): string {
     .replace('₫', 'đ');
 }
 
-function formatDateVN(dateStr?: string): string {
+function formatDateVN(dateStr?: string, period?: string): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
+  if (period === 'month' && parts.length >= 2) {
+    const [year, month] = parts;
+    return `Tháng ${month}/${year}`;
+  }
   if (parts.length === 3) {
     const [year, month, day] = parts;
     return `${day}/${month}/${year}`;
   }
   if (parts.length === 2) {
     const [year, month] = parts;
-    return `${month}/${year}`;
+    return `Tháng ${month}/${year}`;
   }
   return dateStr;
 }
@@ -195,6 +199,7 @@ const InfoSection = React.memo(function InfoSection({
   shift,
   status,
   approvalStatus,
+  period,
 }: {
   actor?: string;
   department?: string;
@@ -202,6 +207,7 @@ const InfoSection = React.memo(function InfoSection({
   shift?: string;
   status?: string;
   approvalStatus?: string;
+  period?: string;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
@@ -226,7 +232,7 @@ const InfoSection = React.memo(function InfoSection({
           </div>
           <div className="text-left">
             <p className="text-[10px] font-bold text-slate-400 tracking-wide uppercase">Thời gian báo cáo</p>
-            <p className="text-xs font-bold text-slate-800 mt-0.5">{formatDateVN(reportDate) || 'Chưa xác định'}</p>
+            <p className="text-xs font-bold text-slate-800 mt-0.5">{formatDateVN(reportDate, period) || 'Chưa xác định'}</p>
           </div>
         </div>
 
@@ -1096,6 +1102,7 @@ export default function ReportDetailView({
             shift={report.shift}
             status={report.status}
             approvalStatus={report.approvalStatus}
+            period={report.period}
           />
 
           <MetricsSection
