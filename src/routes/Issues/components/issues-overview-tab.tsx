@@ -341,14 +341,14 @@ const RecentIssuesTable = React.memo(function RecentIssuesTable({ rows }: { rows
 const RecentIssuesCards = React.memo(function RecentIssuesCards({ rows }: { rows: RecentIssueRow[] }) {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
 
-  if (rows.length === 0) {
-    return <p className="text-sm text-slate-400 font-medium italic text-center py-6">Chưa có phiếu nào được ghi nhận</p>;
-  }
-
   const paginatedRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize;
     return rows.slice(start, start + pagination.pageSize);
   }, [rows, pagination.pageIndex, pagination.pageSize]);
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-slate-400 font-medium italic text-center py-6">Chưa có phiếu nào được ghi nhận</p>;
+  }
 
   const totalPages = Math.ceil(rows.length / pagination.pageSize);
 

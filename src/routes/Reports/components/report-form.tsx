@@ -91,9 +91,13 @@ const PERIOD_LABEL: Record<ReportPeriod, string> = {
   month: 'Tháng',
 };
 
-function formatDateVN(dateStr?: string): string {
+function formatDateVN(dateStr?: string, period?: 'day' | 'week' | 'month'): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
+  if (period === 'month' && parts.length >= 2) {
+    const [year, month] = parts;
+    return `Tháng ${month}/${year}`;
+  }
   if (parts.length === 3) {
     const [year, month, day] = parts;
     return `${day}/${month}/${year}`;
@@ -135,6 +139,17 @@ const ReportForm = React.memo(function ReportForm({
 }: ReportFormProps) {
   const isMobile = useIsMobile();
   const [newPromiseText, setNewPromiseText] = useState('');
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleDateContainerClick = useCallback(() => {
+    if (dateInputRef.current) {
+      try {
+        dateInputRef.current.showPicker();
+      } catch (err) {
+        console.warn('showPicker not supported, falling back to direct click', err);
+      }
+    }
+  }, []);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -344,9 +359,13 @@ const ReportForm = React.memo(function ReportForm({
                   {/* Cột 2, 3, 4: Thời gian, Người lập, Lấy số liệu */}
                   <div className="flex items-center gap-3">
                     {/* Cột 2: Chọn ngày */}
-                    <div className="relative w-40 h-9 group shrink-0">
-                      {/* Hidden native input overlay that receives user click/tap events */}
+                    <div
+                      onClick={handleDateContainerClick}
+                      className="relative w-44 h-9 group shrink-0 cursor-pointer"
+                    >
+                      {/* Hidden native input overlay that receives user clicks/taps */}
                       <input
+                        ref={dateInputRef}
                         type={period === 'month' ? 'month' : 'date'}
                         value={
                           period === 'month' && formState.reportDate.length === 10
@@ -356,9 +375,9 @@ const ReportForm = React.memo(function ReportForm({
                         onChange={handleDateChange}
                         className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
                       />
-                      {/* Beautiful styled visual representation formatted as dd/mm/yyyy */}
-                      <div className="absolute inset-0 flex items-center justify-between px-3 border border-slate-200 bg-white rounded-xl text-xs font-extrabold text-slate-700 shadow-3xs pointer-events-none group-hover:border-slate-350 transition-all select-none">
-                        <span>{formatDateVN(formState.reportDate)}</span>
+                      {/* Beautiful styled visual representation formatted strictly as dd/mm/yyyy or Tháng mm/yyyy */}
+                      <div className="absolute inset-0 flex items-center justify-between px-3 border border-slate-200 bg-white rounded-xl text-xs font-extrabold text-slate-700 shadow-3xs group-hover:border-slate-350 transition-all select-none z-0">
+                        <span>{formatDateVN(formState.reportDate, period)}</span>
                         <Calendar className="h-4 w-4 text-slate-400" />
                       </div>
                     </div>
