@@ -347,7 +347,7 @@ export const RanksTab = React.memo(function RanksTab({
           {/* Charts Grid: Bar Chart + Pie Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
             {/* Left: Bar Chart (Comparison) */}
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-8">
               <KpiOverviewChart
                 ranks={dynamicRanks}
                 roles={roles}
@@ -360,7 +360,7 @@ export const RanksTab = React.memo(function RanksTab({
               />
             </div>
             {/* Right: Pie Chart (Classification) */}
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-4">
               <KpiClassificationPieChart
                 ranks={dynamicRanks}
               />
