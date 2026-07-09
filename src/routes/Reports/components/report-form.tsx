@@ -344,8 +344,7 @@ const ReportForm = React.memo(function ReportForm({
                   {/* Cột 2, 3, 4: Thời gian, Người lập, Lấy số liệu */}
                   <div className="flex items-center gap-3">
                     {/* Cột 2: Chọn ngày */}
-                    <div className="relative w-40 h-9 group shrink-0">
-                      {/* Hidden native input overlay that receives user click/tap events */}
+                    <div className="relative w-40 h-9 shrink-0">
                       <input
                         type={period === 'month' ? 'month' : 'date'}
                         value={
@@ -354,13 +353,9 @@ const ReportForm = React.memo(function ReportForm({
                             : formState.reportDate
                         }
                         onChange={handleDateChange}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                        className="w-full h-full pl-3 pr-8 border border-slate-200 bg-white rounded-xl text-xs font-extrabold text-slate-700 shadow-3xs hover:border-slate-350 transition-all focus:border-red-500 focus:ring-1 focus:ring-red-100 cursor-pointer outline-none"
                       />
-                      {/* Beautiful styled visual representation formatted as dd/mm/yyyy */}
-                      <div className="absolute inset-0 flex items-center justify-between px-3 border border-slate-200 bg-white rounded-xl text-xs font-extrabold text-slate-700 shadow-3xs pointer-events-none group-hover:border-slate-350 transition-all select-none">
-                        <span>{formatDateVN(formState.reportDate)}</span>
-                        <Calendar className="h-4 w-4 text-slate-400" />
-                      </div>
+                      <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
 
                     {/* Cột 3: Tên nhân viên lập */}
