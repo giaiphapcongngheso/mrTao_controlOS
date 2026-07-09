@@ -88,6 +88,20 @@ function formatCurrency(amount: number): string {
     .replace('₫', 'đ');
 }
 
+function formatDateVN(dateStr?: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+  if (parts.length === 2) {
+    const [year, month] = parts;
+    return `${month}/${year}`;
+  }
+  return dateStr;
+}
+
 // Sub-component: Breadcrumb & Header Title
 const ReportDetailHeader = React.memo(function ReportDetailHeader({
   period,
@@ -195,7 +209,7 @@ const InfoSection = React.memo(function InfoSection({
         <FileText className="h-4.5 w-4.5 text-[#C21A1A]" />
         Thông tin báo cáo
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-10 w-10 rounded-full bg-slate-50 border border-slate-100 shrink-0">
             <User className="h-5 w-5 text-slate-500" />
@@ -208,21 +222,11 @@ const InfoSection = React.memo(function InfoSection({
 
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-10 w-10 rounded-full bg-slate-50 border border-slate-100 shrink-0">
-            <Building className="h-5 w-5 text-slate-500" />
-          </div>
-          <div className="text-left">
-            <p className="text-[10px] font-bold text-slate-400 tracking-wide uppercase">Bộ phận</p>
-            <p className="text-xs font-bold text-slate-800 mt-0.5">{department || 'Vận hành'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-slate-50 border border-slate-100 shrink-0">
             <Calendar className="h-5 w-5 text-slate-500" />
           </div>
           <div className="text-left">
             <p className="text-[10px] font-bold text-slate-400 tracking-wide uppercase">Thời gian báo cáo</p>
-            <p className="text-xs font-bold text-slate-800 mt-0.5">{reportDate || 'Tuần này'} ({shift || 'Cả ngày'})</p>
+            <p className="text-xs font-bold text-slate-800 mt-0.5">{formatDateVN(reportDate) || 'Chưa xác định'}</p>
           </div>
         </div>
 
@@ -647,13 +651,14 @@ const ApprovalPanel = React.memo(function ApprovalPanel({
 }) {
   const isManager = useMemo(() => {
     const code = currentUser?.roleCode || '';
-    return code === 'STORE_MANAGER' || code === 'OWNER' || code === 'ADMIN';
+    return code === 'OWNER' || code === 'ADMIN' ||
+           code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN';
   }, [currentUser]);
 
   return (
     <div className="space-y-6">
       {/* 1. Nhận xét của quản lý */}
-      {isManager && approvalStatus === 'pending' && (
+      {isManager && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs text-left">
           <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
             <MessageSquareIcon className="h-4.5 w-4.5 text-slate-600" />
@@ -922,8 +927,8 @@ export default function ReportDetailView({
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const actorName = currentUser?.fullName || 'Quản lý cửa hàng';
-    const currentRole = currentUser?.role || 'Quản lý';
+    const actorName = currentUser?.fullName || 'Chủ cửa hàng';
+    const currentRole = currentUser?.role || 'Chủ cửa hàng';
 
     const payload: Partial<ReportSubmission> = {
       approvalStatus: nextStatus,
@@ -1012,9 +1017,13 @@ export default function ReportDetailView({
   // Check role to render admin tools
   const canApprove = useMemo(() => {
     if (!currentUser) return false;
-    const isManager = currentUser.roleCode === 'STORE_MANAGER' || currentUser.roleCode === 'OWNER' || currentUser.roleCode === 'ADMIN';
-    return isManager && report?.approvalStatus === 'pending';
-  }, [currentUser, report]);
+    const code = currentUser.roleCode || '';
+    const role = currentUser.role || '';
+    const isManager = code === 'OWNER' || code === 'ADMIN' ||
+                      code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
+                      role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
+    return isManager;
+  }, [currentUser]);
 
   if (isLoading) {
     return (

@@ -9,7 +9,7 @@ export interface StaffPermissionsViewProps {
 
 export type PermissionField = 'canView' | 'canCreate' | 'canUpdate' | 'canDelete' | 'canApprove' | 'canExport';
 
-export type ActiveTab = 'staff' | 'permissions' | 'logs';
+export type ActiveTab = 'staff' | 'permissions' | 'logs' | 'email';
 
 export type { SystemLog, SystemLogActionType } from '../../types/system-log.types';
 

@@ -90,6 +90,13 @@ function kiotVietProxyPlugin(): Plugin {
             }
             targetUrl.searchParams.set('pageSize', pageSize);
 
+            // Forward all other custom parameters
+            searchParams.forEach((val, key) => {
+              if (!['clientId', 'clientSecret', 'retailer', 'pageSize'].includes(key)) {
+                targetUrl.searchParams.set(key, val);
+              }
+            });
+
             const apiRes = await fetch(targetUrl.toString(), {
               headers: {
                 Retailer: retailer,

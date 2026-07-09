@@ -8,8 +8,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/utils';
 
 type ActionConfirmDialogProps = {
   readonly open: boolean;
@@ -18,7 +19,7 @@ type ActionConfirmDialogProps = {
   readonly description?: string;
   readonly onConfirm: () => void;
   readonly loading?: boolean;
-  readonly variant?: 'complete' | 'confirm' | 'submit' | 'close';
+  readonly variant?: 'complete' | 'confirm' | 'submit' | 'close' | 'danger';
 };
 
 export function ActionConfirmDialog({
@@ -68,6 +69,12 @@ export function ActionConfirmDialog({
             t('action:confirmCloseDesc', 'Bạn có chắc chắn muốn đóng công việc này?'),
           buttonClass: 'bg-primary hover:bg-primary/90',
         };
+      case 'danger':
+        return {
+          title: title ?? 'Xác nhận xóa',
+          description: description ?? 'Hành động này không thể hoàn tác, bạn có chắc chắn muốn xóa?',
+          buttonClass: 'bg-[#C21A1A] hover:bg-[#A81515] text-white focus:ring-red-500',
+        };
     }
   };
 
@@ -83,10 +90,22 @@ export function ActionConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="bg-primary/10 border border-primary/20 rounded-md p-3 flex gap-3">
-          <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className={cn(
+          "border rounded-md p-3 flex gap-3",
+          variant === 'danger' ? "bg-red-50 border-red-200" : "bg-primary/10 border-primary/20"
+        )}>
+          {variant === 'danger' ? (
+            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          )}
           <div className="flex-1">
-            <p className="text-sm text-primary/90">Vui lòng xác nhận để tiếp tục</p>
+            <p className={cn(
+              "text-sm font-medium",
+              variant === 'danger' ? "text-red-700" : "text-primary/90"
+            )}>
+              Vui lòng xác nhận để tiếp tục
+            </p>
           </div>
         </div>
 
@@ -95,7 +114,8 @@ export function ActionConfirmDialog({
             {t('common:cancel', 'Hủy')}
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               onConfirm();
               onOpenChange(false);
             }}

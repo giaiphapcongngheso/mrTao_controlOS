@@ -58,6 +58,7 @@ export interface ReportSubmission {
   promises?: PromiseItem[];
   attachments?: AttachmentItem[];
   managerComment?: string;
+  isDeleted?: boolean;
 }
 
 export const reportsDailyService = createBaseService<ReportSubmission, Partial<ReportSubmission>>({

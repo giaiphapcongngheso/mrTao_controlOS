@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react';
-import { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
   AlertTriangle,
@@ -15,6 +14,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   HelpCircle,
+  ArrowLeft,
+  Calendar,
 } from 'lucide-react';
 import {
   Button,
@@ -30,9 +31,15 @@ import {
   SheetContent,
   SheetTitle,
   ScrollArea,
+  Table,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '../../../../share/ui';
-import { CustomTable } from '../../../../share/components/custom-table';
 import { HighlightIssue, PromiseItem, AttachmentItem } from '../../../services/reports-service';
+import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 
 export type ReportPeriod = 'day' | 'week' | 'month';
 export type ReportStatus = 'green' | 'yellow' | 'red';
@@ -84,6 +91,20 @@ const PERIOD_LABEL: Record<ReportPeriod, string> = {
   month: 'Tháng',
 };
 
+function formatDateVN(dateStr?: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+  if (parts.length === 2) {
+    const [year, month] = parts;
+    return `${month}/${year}`;
+  }
+  return dateStr;
+}
+
 const STATUS_LABEL: Record<ReportStatus, string> = {
   green: 'Ổn định',
   yellow: 'Cần chú ý',
@@ -112,6 +133,7 @@ const ReportForm = React.memo(function ReportForm({
   onRefreshMetrics,
   currentUser,
 }: ReportFormProps) {
+  const isMobile = useIsMobile();
   const [newPromiseText, setNewPromiseText] = useState('');
 
   const handleOpenChange = useCallback(
@@ -123,8 +145,12 @@ const ReportForm = React.memo(function ReportForm({
 
   // Basic Info Handlers
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdateForm({ reportDate: e.target.value });
-  }, [onUpdateForm]);
+    let value = e.target.value;
+    if (period === 'month' && value.length === 7) {
+      value = `${value}-01`;
+    }
+    onUpdateForm({ reportDate: value });
+  }, [onUpdateForm, period]);
 
   const handleNotesChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -219,135 +245,63 @@ const ReportForm = React.memo(function ReportForm({
     });
   }, [formState.attachments, onUpdateForm]);
 
-  const columns = React.useMemo<ColumnDef<HighlightIssue>[]>(
-    () => [
-      {
-        id: 'index',
-        header: '#',
-        cell: ({ row }) => (
-          <span className="font-bold text-slate-400 flex items-center justify-center h-full">
-            {row.index + 1}
-          </span>
-        ),
-        meta: { width: 50 },
-      },
-      {
-        accessorKey: 'issue',
-        header: 'Vấn đề *',
-        cell: ({ row }) => (
-          <Input
-            value={row.original.issue}
-            onChange={(e) => handleUpdateIssue(row.original.id, { issue: e.target.value })}
-            placeholder="Mô tả vấn đề..."
-            className="text-xs h-8 border-transparent hover:border-slate-200 focus:border-[#C21A1A] px-2 rounded-lg"
-          />
-        ),
-      },
-      {
-        accessorKey: 'severity',
-        header: 'Mức độ *',
-        cell: ({ row }) => (
-          <Select
-            value={row.original.severity}
-            onValueChange={(val) => handleUpdateIssue(row.original.id, { severity: val as any })}
-          >
-            <SelectTrigger className="w-full text-xs rounded-lg border-slate-200 bg-white h-8">
-              <SelectValue placeholder="Chọn mức độ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Thấp</SelectItem>
-              <SelectItem value="medium">Trung bình</SelectItem>
-              <SelectItem value="high">Cao</SelectItem>
-            </SelectContent>
-          </Select>
-        ),
-        meta: { width: 120 },
-      },
-      {
-        accessorKey: 'rootCause',
-        header: 'Nguyên nhân *',
-        cell: ({ row }) => (
-          <Input
-            value={row.original.rootCause}
-            onChange={(e) => handleUpdateIssue(row.original.id, { rootCause: e.target.value })}
-            placeholder="Nguyên nhân vấn đề..."
-            className="text-xs h-8 border-transparent hover:border-slate-200 focus:border-[#C21A1A] px-2 rounded-lg"
-          />
-        ),
-      },
-      {
-        accessorKey: 'action',
-        header: 'Hành động xử lý *',
-        cell: ({ row }) => (
-          <Input
-            value={row.original.action}
-            onChange={(e) => handleUpdateIssue(row.original.id, { action: e.target.value })}
-            placeholder="Cam kết hành động xử lý..."
-            className="text-xs h-8 border-transparent hover:border-slate-200 focus:border-[#C21A1A] px-2 rounded-lg"
-          />
-        ),
-      },
-      {
-        id: 'actions',
-        header: 'Thao tác',
-        cell: ({ row }) => (
-          <div className="flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => handleRemoveIssue(row.original.id)}
-              className="text-slate-400 hover:text-rose-600 rounded-lg p-1.5 hover:bg-rose-50 cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ),
-        meta: { width: 60 },
-      },
-    ],
-    [handleUpdateIssue, handleRemoveIssue],
-  );
+
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="w-[95vw] lg:w-[85vw] xl:w-[75vw] sm:max-w-none max-h-screen overflow-hidden p-0 gap-0 flex flex-col font-sans text-sm text-slate-650 bg-slate-50 border-l"
+        className="w-full lg:w-[85vw] xl:w-[75vw] h-full sm:max-w-none max-h-screen overflow-hidden p-0 gap-0 flex flex-col font-sans text-sm text-slate-650 bg-slate-50 border-0 lg:border-l"
       >
         {/* Header Cố định phía trên */}
-        <div className="border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between shrink-0 shadow-xs z-10">
-          <div>
-            <SheetTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
+        <div className="border-b border-slate-200 bg-white px-4 sm:px-6 py-4 flex items-center gap-3 shrink-0 shadow-xs z-10">
+          {/* Back button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => handleOpenChange(false)}
+            className="rounded-xl hover:bg-slate-50 text-slate-500 hover:text-slate-700 cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+
+          <div className="flex-1 text-left min-w-0">
+            <SheetTitle className="text-base sm:text-xl font-black text-slate-800 flex items-center gap-2 truncate leading-none">
               Tạo báo cáo điều hành
             </SheetTitle>
-            <p className="text-xs font-semibold text-slate-400 mt-0.5">
+            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 mt-0.5 truncate">
               Nắm bắt tình hình vận hành nhanh chóng - Chính xác - Kịp thời
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
               disabled={!canSubmit || formState.saveStatus === 'saving'}
               onClick={onSaveDraft}
-              className="rounded-xl h-9 text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shadow-2xs gap-1.5"
+              className="rounded-xl h-9 px-3 text-[11px] sm:text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shadow-2xs gap-1"
             >
-              <Bookmark className="h-4.5 w-4.5 text-slate-500" />
-              {formState.saveStatus === 'saving'
-                ? 'Đang lưu...'
-                : formState.saveStatus === 'saved'
-                  ? 'Đã lưu nháp'
-                  : 'Lưu nháp'}
+              <Bookmark className="h-4 w-4 text-slate-500" />
+              <span className="hidden sm:inline">
+                {formState.saveStatus === 'saving'
+                  ? 'Đang lưu...'
+                  : formState.saveStatus === 'saved'
+                    ? 'Đã lưu nháp'
+                    : 'Lưu nháp'}
+              </span>
+              <span className="inline sm:hidden">Lưu nháp</span>
             </Button>
             
             <Button
               type="button"
               disabled={!canSubmit}
               onClick={onSubmit}
-              className="rounded-xl h-9 text-xs font-bold bg-[#C21A1A] hover:bg-[#a61616] text-white cursor-pointer shadow-md shadow-red-100 gap-1.5"
+              className="rounded-xl h-9 px-3 text-[11px] sm:text-xs font-bold bg-[#C21A1A] hover:bg-[#a61616] text-white cursor-pointer shadow-md shadow-red-100 gap-1"
             >
-              <Send className="h-4 w-4" />
-              Gửi báo cáo
+              <Send className="h-3.5 w-3.5" />
+              <span>Gửi</span>
             </Button>
           </div>
         </div>
@@ -379,92 +333,56 @@ const ReportForm = React.memo(function ReportForm({
                 </div>
               )}
 
-              {/* 1. Thông tin báo cáo */}
+              {/* 1. Chỉ số tự đồng bộ */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-                <div className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <span className="text-[#C21A1A]">1.</span> Thông tin báo cáo
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="space-y-1 text-left">
-                    <label className="text-xs font-bold text-slate-500">Ngày báo cáo *</label>
-                    <Input
-                      type="date"
-                      value={formState.reportDate}
-                      onChange={handleDateChange}
-                      className="text-xs rounded-xl border-slate-200 focus:border-[#C21A1A]"
-                    />
+                <div className="flex flex-row items-center justify-between gap-4">
+                  {/* Cột 1: Tiêu đề */}
+                  <div className="text-sm font-black text-slate-800 flex items-center gap-2 shrink-0">
+                    <span className="text-[#C21A1A]">1.</span> Chỉ số tự đồng bộ
                   </div>
-                  <div className="space-y-1 text-left flex flex-col justify-end">
-                    <label className="text-xs font-bold text-slate-500 mb-1">Ca làm *</label>
-                    <Select
-                      value={formState.shift}
-                      onValueChange={(val) => onUpdateForm({ shift: val })}
-                    >
-                      <SelectTrigger className="w-full text-xs rounded-xl border-slate-250 h-9 bg-white">
-                        <SelectValue placeholder="Chọn ca làm" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Ca sáng (06:00 - 14:00)">Ca sáng (06:00 - 14:00)</SelectItem>
-                        <SelectItem value="Ca chiều (14:00 - 22:00)">Ca chiều (14:00 - 22:00)</SelectItem>
-                        <SelectItem value="Ca tối (22:00 - 06:00)">Ca tối (22:00 - 06:00)</SelectItem>
-                        <SelectItem value="Cả ngày">Cả ngày</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1 text-left flex flex-col justify-end">
-                    <label className="text-xs font-bold text-slate-500 mb-1">Bộ phận *</label>
-                    <Select
-                      value={formState.department}
-                      onValueChange={(val) => onUpdateForm({ department: val })}
-                    >
-                      <SelectTrigger className="w-full text-xs rounded-xl border-slate-250 h-9 bg-white">
-                        <SelectValue placeholder="Chọn bộ phận" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cửa hàng Bình Thạnh">Cửa hàng Bình Thạnh</SelectItem>
-                        <SelectItem value="Cửa hàng Quận 1">Cửa hàng Quận 1</SelectItem>
-                        <SelectItem value="Cửa hàng Quận 3">Cửa hàng Quận 3</SelectItem>
-                        <SelectItem value="Văn phòng chính">Văn phòng chính</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1 text-left flex flex-col justify-end">
-                    <label className="text-xs font-bold text-slate-500 mb-1">Người lập *</label>
-                    <Select
-                      value={formState.reporter}
-                      onValueChange={(val) => onUpdateForm({ reporter: val })}
-                    >
-                      <SelectTrigger className="w-full text-xs rounded-xl border-slate-250 h-9 bg-white">
-                        <SelectValue placeholder="Chọn người lập" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={currentUser?.fullName || 'Trần Tấn Phát'}>
-                          {currentUser?.fullName || 'Trần Tấn Phát'}
-                        </SelectItem>
-                        <SelectItem value="Nguyễn Văn A">Nguyễn Văn A</SelectItem>
-                        <SelectItem value="Lê Thị B">Lê Thị B</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+                  
+                  {/* Cột 2, 3, 4: Thời gian, Người lập, Lấy số liệu */}
+                  <div className="flex items-center gap-3">
+                    {/* Cột 2: Chọn ngày */}
+                    <div className="relative w-40 h-9 group shrink-0">
+                      {/* Hidden native input overlay that receives user click/tap events */}
+                      <input
+                        type={period === 'month' ? 'month' : 'date'}
+                        value={
+                          period === 'month' && formState.reportDate.length === 10
+                            ? formState.reportDate.slice(0, 7)
+                            : formState.reportDate
+                        }
+                        onChange={handleDateChange}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                      />
+                      {/* Beautiful styled visual representation formatted as dd/mm/yyyy */}
+                      <div className="absolute inset-0 flex items-center justify-between px-3 border border-slate-200 bg-white rounded-xl text-xs font-extrabold text-slate-700 shadow-3xs pointer-events-none group-hover:border-slate-350 transition-all select-none">
+                        <span>{formatDateVN(formState.reportDate)}</span>
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
 
-              {/* 2. Chỉ số tự đồng bộ */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-black text-slate-800 flex items-center gap-2">
-                    <span className="text-[#C21A1A]">2.</span> Chỉ số tự đồng bộ
+                    {/* Cột 3: Tên nhân viên lập */}
+                    <div className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl h-9 flex items-center gap-1 select-none shrink-0">
+                      <span className="text-slate-455">Người lập:</span>
+                      <span className="text-slate-700 font-extrabold">
+                        {formState.reporter || currentUser?.fullName || 'Trần Tấn Phát'}
+                      </span>
+                    </div>
+
+                    {/* Cột 4: Nút lấy số liệu */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={onRefreshMetrics}
+                      disabled={isMetricsLoading}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl px-3.5 h-9 gap-1 cursor-pointer border border-slate-200 shadow-3xs bg-white active:scale-95 transition-all shrink-0"
+                    >
+                      <Clock className={`h-3.5 w-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
+                      {isMetricsLoading ? 'Đang tải...' : 'Lấy số liệu'}
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={onRefreshMetrics}
-                    disabled={isMetricsLoading}
-                    className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-lg p-1.5 h-auto gap-1 cursor-pointer"
-                  >
-                    <Clock className={`h-3.5 w-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
-                    {isMetricsLoading ? 'Đang tải...' : 'Tự lấy từ hệ thống'}
-                  </Button>
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -598,18 +516,161 @@ const ReportForm = React.memo(function ReportForm({
                   Liệt kê các vấn đề quan trọng cần lưu ý trong ca và hướng xử lý tương ứng.
                 </p>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-250 bg-white">
-                  <CustomTable
-                    columns={columns}
-                    data={formState.highlightIssues || []}
-                    enableFiltering={false}
-                    enableColumnVisibility={false}
-                    enableSorting={false}
-                    enablePagination={false}
-                    emptyMessage="Chưa ghi nhận vấn đề nổi bật nào trong ca làm."
-                    className="text-xs"
-                  />
-                </div>
+                {isMobile ? (
+                  <div className="space-y-4">
+                    {formState.highlightIssues && formState.highlightIssues.length > 0 ? (
+                      formState.highlightIssues.map((item, index) => (
+                        <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 relative shadow-3xs text-left">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span className="font-extrabold text-xs text-slate-500">Vấn đề #{index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveIssue(item.id)}
+                              className="text-slate-400 hover:text-rose-600 rounded-lg p-1.5 hover:bg-rose-50 cursor-pointer transition-colors"
+                              title="Xóa dòng"
+                            >
+                              <Trash2 className="h-4.5 w-4.5" />
+                            </button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide">Vấn đề *</label>
+                              <Input
+                                value={item.issue}
+                                onChange={(e) => handleUpdateIssue(item.id, { issue: e.target.value })}
+                                placeholder="Mô tả vấn đề..."
+                                className="text-xs h-9 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2.5 rounded-lg bg-white shadow-3xs w-full"
+                              />
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide">Mức độ *</label>
+                              <Select
+                                value={item.severity}
+                                onValueChange={(val) => handleUpdateIssue(item.id, { severity: val as any })}
+                              >
+                                <SelectTrigger className="w-full text-xs rounded-lg border border-slate-200 bg-white h-9 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 shadow-3xs">
+                                  <SelectValue placeholder="Chọn mức độ" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="low">Thấp</SelectItem>
+                                  <SelectItem value="medium">Trung bình</SelectItem>
+                                  <SelectItem value="high">Cao</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide">Nguyên nhân *</label>
+                              <Input
+                                value={item.rootCause}
+                                onChange={(e) => handleUpdateIssue(item.id, { rootCause: e.target.value })}
+                                placeholder="Nguyên nhân vấn đề..."
+                                className="text-xs h-9 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2.5 rounded-lg bg-white shadow-3xs w-full"
+                              />
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide">Hành động xử lý *</label>
+                              <Input
+                                value={item.action}
+                                onChange={(e) => handleUpdateIssue(item.id, { action: e.target.value })}
+                                placeholder="Cam kết hành động xử lý..."
+                                className="text-xs h-9 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2.5 rounded-lg bg-white shadow-3xs w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-xs italic text-slate-400 font-medium bg-slate-50/20 border border-slate-100 rounded-xl">
+                        Chưa ghi nhận vấn đề nổi bật nào trong ca làm.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <Table className="text-xs min-w-[700px]">
+                      <TableHeader className="bg-slate-50/70 border-b border-slate-100">
+                        <TableRow>
+                          <TableHead className="w-12 text-center font-bold text-slate-500 py-3">#</TableHead>
+                          <TableHead className="font-bold text-slate-500 py-3">Vấn đề *</TableHead>
+                          <TableHead className="w-36 font-bold text-slate-500 py-3">Mức độ *</TableHead>
+                          <TableHead className="font-bold text-slate-500 py-3">Nguyên nhân *</TableHead>
+                          <TableHead className="font-bold text-slate-500 py-3">Hành động xử lý *</TableHead>
+                          <TableHead className="w-12 text-center py-3"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formState.highlightIssues && formState.highlightIssues.length > 0 ? (
+                          formState.highlightIssues.map((item, index) => (
+                            <TableRow key={item.id} className="hover:bg-slate-50/30 transition-colors border-b last:border-0 border-slate-100">
+                              <TableCell className="text-center font-bold text-slate-400 py-2">
+                                {index + 1}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Input
+                                  value={item.issue}
+                                  onChange={(e) => handleUpdateIssue(item.id, { issue: e.target.value })}
+                                  placeholder="Mô tả vấn đề..."
+                                  className="text-xs h-8 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2 rounded-lg bg-white shadow-3xs"
+                                />
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Select
+                                  value={item.severity}
+                                  onValueChange={(val) => handleUpdateIssue(item.id, { severity: val as any })}
+                                >
+                                  <SelectTrigger className="w-full text-xs rounded-lg border border-slate-200 bg-white h-8 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 shadow-3xs">
+                                    <SelectValue placeholder="Chọn mức độ" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="low">Thấp</SelectItem>
+                                    <SelectItem value="medium">Trung bình</SelectItem>
+                                    <SelectItem value="high">Cao</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Input
+                                  value={item.rootCause}
+                                  onChange={(e) => handleUpdateIssue(item.id, { rootCause: e.target.value })}
+                                  placeholder="Nguyên nhân vấn đề..."
+                                  className="text-xs h-8 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2 rounded-lg bg-white shadow-3xs"
+                                />
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Input
+                                  value={item.action}
+                                  onChange={(e) => handleUpdateIssue(item.id, { action: e.target.value })}
+                                  placeholder="Cam kết hành động xử lý..."
+                                  className="text-xs h-8 border border-slate-200 focus:border-[#C21A1A] focus:ring-0 focus-visible:ring-0 px-2 rounded-lg bg-white shadow-3xs"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center py-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveIssue(item.id)}
+                                  className="text-slate-400 hover:text-rose-600 rounded-lg p-1.5 hover:bg-rose-50 cursor-pointer transition-colors"
+                                  title="Xóa dòng"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="py-8 text-center text-xs italic text-slate-400 font-medium">
+                              Chưa ghi nhận vấn đề nổi bật nào trong ca làm.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
 
               {/* 5. Cam kết / việc cần làm tiếp theo */}

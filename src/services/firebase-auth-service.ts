@@ -146,3 +146,18 @@ export function getFirebaseAuthErrorCode(error: unknown): string | null {
 
   return (error as AuthError).code ?? null;
 }
+
+/**
+ * Xóa tài khoản Firebase Auth bằng localId (UID).
+ * Sử dụng Identity Toolkit REST API accounts:delete.
+ * Trả về true nếu xóa thành công, false nếu thất bại (không throw).
+ */
+export async function deleteFirebaseAuthUser(localId: string): Promise<boolean> {
+  try {
+    await postToIdentityToolkit('accounts:delete', { localId });
+    return true;
+  } catch (error) {
+    console.warn('Không thể xóa Firebase Auth account:', error);
+    return false;
+  }
+}

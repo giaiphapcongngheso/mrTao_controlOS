@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileText, Search, Trash2, TrendingUp, Eye } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, Search, Trash2, TrendingUp, Eye, AlertTriangle } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Input,
@@ -11,14 +12,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from '../../../share/ui';
 import { DailyReport } from '../../types/reports.types';
 import { reportsDailyService, type ReportSubmission } from '../../services/reports-service';
 import { notificationsService } from '../../services/notifications-service';
+import { emailService } from '../../services/email-service';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
 import ReportForm, { type ReportFormState, type ReportPeriod, type ReportStatus } from './components/report-form';
-import { useDailyReportQuery } from './_hook/use-reports';
+import { useDailyReportQuery, reportsQueryKeys } from './_hook/use-reports';
 import { useReportMetrics } from './_hook/use-report-metrics';
 import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 import { MobileCard } from '../../components/custom/mobile-card';
@@ -44,6 +54,13 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   green: 'Ổn định',
   yellow: 'Cần chú ý',
   red: 'Khẩn cấp',
+};
+
+const APPROVAL_STATUS_LABEL: Record<string, string> = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã duyệt',
+  rejected: 'Từ chối',
+  supplement_requested: 'Cần bổ sung',
 };
 
 const FALLBACK_PERIOD_METRICS: Record<ReportPeriod, { revenue: number; billCount: number }> = {
@@ -78,10 +95,13 @@ export default function ReportsView({
   currentUser,
 }: ReportsViewProps) {
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [reportTab, setReportTab] = useState<ReportPeriod>('day');
   const [searchTerm, setSearchTerm] = useState('');
   const [showToast, setShowToast] = useState<ToastState>({ show: false, msg: '', type: 'success' });
   const [submittedReports, setSubmittedReports] = useState<ReportSubmission[]>([]);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isOwner = isOwnerUser(currentUser as any);
   const { permissions } = useModulePermissions(MODULE_CODE.BAO_CAO, currentUser as any, isOwner);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,27 +110,31 @@ export default function ReportsView({
   const [reportForm, setReportForm] = useState<ReportFormState>(DEFAULT_FORM_STATE);
   const reportsQuery = useDailyReportQuery();
 
-  // Query metrics directly from Firestore services
-  const todayDateKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const {
     metrics: liveReportMetrics,
     isLoading: isMetricsLoading,
     refetch: refetchMetrics,
   } = useReportMetrics({
     storeId: dailyReport.storeId,
-    dateKey: todayDateKey,
+    dateKey: reportForm.reportDate,
+    period: reportTab,
     enabled: true,
   });
 
   const activePeriodMetrics = useMemo(() => {
     const fallback = FALLBACK_PERIOD_METRICS[reportTab];
-    if (reportTab === 'day') {
-      // Prefer live metrics revenue, fallback to dailyReport, then hardcode
-      const revenue = liveReportMetrics.revenue || dailyReport.revenue || fallback.revenue;
-      const billCount = liveReportMetrics.billCount || dailyReport.billCount || fallback.billCount;
-      return { revenue, billCount };
-    }
-    return fallback;
+    const liveRevenue = liveReportMetrics.revenue;
+    const liveBillCount = liveReportMetrics.billCount;
+
+    const revenue = (liveRevenue !== undefined && liveRevenue !== null)
+      ? liveRevenue
+      : ((reportTab === 'day' ? dailyReport.revenue : 0) || fallback.revenue);
+
+    const billCount = (liveBillCount !== undefined && liveBillCount !== null)
+      ? liveBillCount
+      : ((reportTab === 'day' ? dailyReport.billCount : 0) || fallback.billCount);
+
+    return { revenue, billCount };
   }, [dailyReport.billCount, dailyReport.revenue, liveReportMetrics.billCount, liveReportMetrics.revenue, reportTab]);
 
   const defaultStatus = useMemo<ReportStatus>(() => {
@@ -178,7 +202,7 @@ export default function ReportsView({
         }
 
         const nextReports = (allReports || [])
-          .filter((item) => item.storeId === dailyReport.storeId)
+          .filter((item) => item.storeId === dailyReport.storeId && !item.isDeleted)
           .sort((a, b) => {
             const timeA = a.updatedAt || a.createdAt || a.timestamp || '';
             const timeB = b.updatedAt || b.createdAt || b.timestamp || '';
@@ -210,7 +234,7 @@ export default function ReportsView({
     }
 
     const nextReports = reportsQuery.data
-      .filter((item) => item.storeId === dailyReport.storeId)
+      .filter((item) => item.storeId === dailyReport.storeId && !item.isDeleted)
       .sort((a, b) => {
         const timeA = a.updatedAt || a.createdAt || a.timestamp || '';
         const timeB = b.updatedAt || b.createdAt || b.timestamp || '';
@@ -405,6 +429,71 @@ export default function ReportsView({
         console.error('Không thể gửi thông báo báo cáo:', notifyError);
       }
 
+      // Tự động gửi email thông báo cho Admin nếu được kích hoạt
+      try {
+        const emailConfig = await emailService.getConfig();
+        if (emailConfig.notifyOnReportCreated) {
+          const recipientList = emailConfig.defaultRecipients || '';
+          if (recipientList.trim()) {
+            await emailService.sendEmail({
+              to: recipientList,
+              subject: `[Thông báo] Có báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới từ ${actorName}`,
+              htmlBody: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+                  <h2 style="color: #ea580c; margin-bottom: 10px;">Báo Cáo ${PERIOD_LABEL[reportTab]} Mới</h2>
+                  <p>Xin chào quản trị viên,</p>
+                  <p>Nhân sự <strong>${actorName}</strong> (${currentUser?.role || 'Nhân viên'}) vừa nộp báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới.</p>
+                  
+                  <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3 style="margin-top: 0; color: #334155;">Chi tiết báo cáo:</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 40%;">Doanh thu:</td>
+                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.revenue.toLocaleString('vi-VN')} đ</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Số đơn hàng:</td>
+                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.billCount} đơn</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Tỷ lệ checklist:</td>
+                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.checklistRatio || (savedReport.checklistPct || 0) + '%'}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Trạng thái:</td>
+                        <td style="padding: 6px 0; color: #0f172a;">
+                          <span style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; 
+                            background-color: ${savedReport.status === 'green' ? '#dcfce7' : savedReport.status === 'yellow' ? '#fef9c3' : '#fee2e2'};
+                            color: ${savedReport.status === 'green' ? '#166534' : savedReport.status === 'yellow' ? '#854d0e' : '#991b1b'};">
+                            ${savedReport.status === 'green' ? 'Tốt (Xanh)' : savedReport.status === 'yellow' ? 'Bình thường (Vàng)' : 'Cảnh báo (Đỏ)'}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    ${savedReport.notes ? `
+                    <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                      <strong>Ghi chú:</strong><br/>
+                      <span style="color: #334155; font-style: italic;">${savedReport.notes}</span>
+                    </div>
+                    ` : ''}
+                  </div>
+                  
+                  <p style="text-align: center; margin-top: 20px;">
+                    <a href="${window.location.origin}/reports/${savedReport.id}" style="background-color: #ea580c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Xem chi tiết & Phê duyệt</a>
+                  </p>
+                  
+                  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                  <p style="font-size: 11px; color: #94a3b8; text-align: center;">Đây là email tự động gửi từ hệ thống quản lý Mr Táo.</p>
+                </div>
+              `
+            });
+          }
+        }
+      } catch (emailErr) {
+        console.error('Lỗi khi tự động gửi mail báo cáo:', emailErr);
+      }
+
       triggerToast('Đã gửi báo cáo lên hệ thống phê duyệt.', 'success');
     } catch (error) {
       console.error('Không thể gửi báo cáo:', error);
@@ -428,25 +517,38 @@ export default function ReportsView({
   ]);
 
   const handleDeleteReport = useCallback(
-    async (reportId: string) => {
-      if (!permissions.canDelete) {
+    (reportId: string) => {
+      const code = currentUser?.roleCode || '';
+      const role = currentUser?.role || '';
+      const isManager = code === 'OWNER' || code === 'ADMIN' ||
+                        code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
+                        role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
+      if (!isManager) {
         triggerToast('Bạn không có quyền xóa báo cáo.', 'error');
         return;
       }
-      if (!window.confirm('Bạn có chắc chắn muốn xóa báo cáo này?')) {
-        return;
-      }
-      try {
-        await reportsDailyService.delete(reportId);
-        setSubmittedReports((prev) => prev.filter((item) => item.id !== reportId));
-        triggerToast('Đã xóa báo cáo.', 'info');
-      } catch (error) {
-        console.error('Không thể xóa báo cáo:', error);
-        triggerToast('Không thể xóa báo cáo trên hệ thống.', 'error');
-      }
+      setDeleteTargetId(reportId);
     },
-    [permissions.canDelete, triggerToast],
+    [currentUser, triggerToast],
   );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
+    try {
+      // Soft delete by updating isDeleted status to bypass database delete limits
+      await reportsDailyService.update(deleteTargetId, { isDeleted: true } as any);
+      // Force React Query cache to invalidate and refetch new list from Firestore
+      await queryClient.invalidateQueries({ queryKey: reportsQueryKeys.daily });
+      triggerToast('Đã xóa báo cáo.', 'info');
+      setDeleteTargetId(null);
+    } catch (error) {
+      console.error('Không thể xóa báo cáo:', error);
+      triggerToast('Không thể xóa báo cáo trên hệ thống.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteTargetId, queryClient, triggerToast]);
 
   const handlePrevPage = useCallback(() => {
     setCurrentPage((prev) => Math.max(1, prev - 1));
@@ -464,11 +566,10 @@ export default function ReportsView({
     <div className="space-y-4 text-left font-sans text-sm text-slate-650">
       {showToast.show && (
         <div
-          className={`fixed left-5 bottom-5 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-lg ${
-            showToast.type === 'error'
+          className={`fixed left-5 bottom-5 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold shadow-lg ${showToast.type === 'error'
               ? 'border-rose-200 bg-rose-50 text-rose-700'
               : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-          }`}
+            }`}
         >
           {showToast.type === 'error' ? (
             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -507,11 +608,10 @@ export default function ReportsView({
                 key={tab}
                 type="button"
                 onClick={() => handleReportTabChange(tab)}
-                className={`flex items-center gap-2 px-5 py-1.5 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${
-                  reportTab === tab
+                className={`flex items-center gap-2 px-5 py-1.5 rounded-full font-bold text-sm transition-all duration-300 ease-out active:scale-95 cursor-pointer border-0 ${reportTab === tab
                     ? 'bg-white text-[#C21A1A] border border-slate-200/50 shadow-xs'
                     : 'text-slate-500 hover:text-[#C21A1A] hover:bg-white/50'
-                }`}
+                  }`}
               >
                 {PERIOD_LABEL[tab]}
               </button>
@@ -596,9 +696,21 @@ export default function ReportsView({
                         </span>
                       }
                       subtitle={
-                        <span className="text-[10px] text-slate-400 font-bold font-sans block">
-                          {report.actor}
-                        </span>
+                        <div className="flex flex-col gap-1 text-left mt-1 font-sans">
+                          <span className="text-[10px] text-slate-400 font-bold">
+                            Người lập: {report.actor}
+                          </span>
+                          <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[9px] font-black border ${report.approvalStatus === 'approved'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : report.approvalStatus === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : report.approvalStatus === 'supplement_requested'
+                                  ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                            Phê duyệt: {APPROVAL_STATUS_LABEL[report.approvalStatus || 'pending']}
+                          </span>
+                        </div>
                       }
                       badge={{ text: STATUS_LABEL[report.status], variant: badgeVariant }}
                     />
@@ -660,6 +772,7 @@ export default function ReportsView({
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Thời gian</TableHead>
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Người lập</TableHead>
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Trạng thái</TableHead>
+                  <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Phê duyệt</TableHead>
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Doanh thu</TableHead>
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Checklist</TableHead>
                   <TableHead className="!bg-slate-100 !text-slate-700 text-sm font-bold">Sự cố</TableHead>
@@ -675,6 +788,7 @@ export default function ReportsView({
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
@@ -688,15 +802,28 @@ export default function ReportsView({
                       <TableCell className="text-sm font-semibold text-slate-700">{report.actor}</TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${
-                            report.status === 'green'
+                          className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${report.status === 'green'
                               ? 'bg-emerald-50 text-emerald-700'
                               : report.status === 'yellow'
                                 ? 'bg-amber-50 text-amber-700'
                                 : 'bg-rose-50 text-rose-700'
-                          }`}
+                            }`}
                         >
                           {STATUS_LABEL[report.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold border ${report.approvalStatus === 'approved'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : report.approvalStatus === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : report.approvalStatus === 'supplement_requested'
+                                  ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                        >
+                          {APPROVAL_STATUS_LABEL[report.approvalStatus || 'pending']}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm font-semibold text-slate-700">
@@ -735,7 +862,7 @@ export default function ReportsView({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-sm italic text-slate-400">
+                    <TableCell colSpan={9} className="py-10 text-center text-sm italic text-slate-400">
                       Chưa có báo cáo nào cho kỳ này.
                     </TableCell>
                   </TableRow>
@@ -763,11 +890,10 @@ export default function ReportsView({
                   key={pageNumber}
                   type="button"
                   onClick={() => handleGoToPage(pageNumber)}
-                  className={`h-8 w-8 rounded-md text-sm font-black cursor-pointer ${
-                    pageNumber === currentPage
+                  className={`h-8 w-8 rounded-md text-sm font-black cursor-pointer ${pageNumber === currentPage
                       ? 'bg-[#C21A1A] text-white'
                       : 'border border-slate-200 text-slate-600 hover:bg-white'
-                  }`}
+                    }`}
                 >
                   {pageNumber}
                 </button>
@@ -810,6 +936,47 @@ export default function ReportsView({
         onRefreshMetrics={refetchMetrics}
         currentUser={currentUser}
       />
+
+      {/* Custom Confirm Delete Modal */}
+      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => !open && !isDeleting && setDeleteTargetId(null)}>
+        <AlertDialogContent className="rounded-2xl max-w-md border-slate-100 p-6 bg-white shadow-xl">
+          <AlertDialogHeader className="flex flex-col items-center text-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <AlertDialogTitle className="text-slate-800 font-extrabold text-lg">
+                Xác nhận xóa báo cáo
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400 font-medium text-xs max-w-xs mx-auto">
+                Hành động này không thể hoàn tác. Báo cáo này sẽ bị ẩn khỏi hệ thống vận hành.
+              </AlertDialogDescription>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="grid grid-cols-2 gap-2 mt-4">
+            <AlertDialogCancel 
+              disabled={isDeleting}
+              className="w-full rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 h-10 text-xs font-bold transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Hủy bỏ
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="w-full rounded-xl bg-[#C21A1A] hover:bg-[#9d1515] text-white border-0 h-10 text-xs font-bold shadow-xs active:scale-98 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-1.5 justify-center">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Đang xóa...</span>
+                </div>
+              ) : (
+                'Xóa báo cáo'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
