@@ -67,6 +67,7 @@ interface TasksViewProps {
   onUpdateSubtasks?: (taskId: string, subtasks: SubTask[]) => void | Promise<void>;
   canCreate?: boolean;
   canUpdate?: boolean;
+  canDelete?: boolean;
   currentUser?: UserSession | null;
 }
 
@@ -318,6 +319,7 @@ export default function TasksView({
   onUpdateSubtasks,
   canCreate = false,
   canUpdate = false,
+  canDelete = false,
   currentUser,
 }: TasksViewProps) {
   const isMobile = useIsMobile();
@@ -630,40 +632,48 @@ export default function TasksView({
                 </Button>
               ),
             },
-            {
-              key: 'edit',
-              label: 'Sửa',
-              variant: 'ghost' as const,
-              onClick: () => setEditingTask(task),
-              element: (
-                <Button
-                  key="edit"
-                  variant="ghost"
-                  tooltip="Chỉnh sửa công việc"
-                  className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
-                  onClick={() => setEditingTask(task)}
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              ),
-            },
-            {
-              key: 'delete',
-              label: 'Xóa',
-              variant: 'ghost' as const,
-              onClick: () => setTaskToDelete(task),
-              element: (
-                <Button
-                  key="delete"
-                  variant="ghost"
-                  tooltip="Xóa công việc"
-                  className="w-8 h-8 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
-                  onClick={() => setTaskToDelete(task)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              ),
-            },
+            ...(canUpdate
+              ? [
+                  {
+                    key: 'edit',
+                    label: 'Sửa',
+                    variant: 'ghost' as const,
+                    onClick: () => setEditingTask(task),
+                    element: (
+                      <Button
+                        key="edit"
+                        variant="ghost"
+                        tooltip="Chỉnh sửa công việc"
+                        className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                        onClick={() => setEditingTask(task)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    ),
+                  },
+                ]
+              : []),
+            ...(canDelete
+              ? [
+                  {
+                    key: 'delete',
+                    label: 'Xóa',
+                    variant: 'ghost' as const,
+                    onClick: () => setTaskToDelete(task),
+                    element: (
+                      <Button
+                        key="delete"
+                        variant="ghost"
+                        tooltip="Xóa công việc"
+                        className="w-8 h-8 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                        onClick={() => setTaskToDelete(task)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    ),
+                  },
+                ]
+              : []),
           ];
 
           return (
@@ -681,7 +691,7 @@ export default function TasksView({
         },
       },
     ],
-    [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask]
+    [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask, canUpdate, canDelete]
   );
 
   // Filter tasks based on current user roles & permissions
@@ -1096,7 +1106,7 @@ export default function TasksView({
             tasks={filteredTasks}
             onCardClick={setViewingTask}
             onEdit={canUpdate ? setEditingTask : undefined}
-            onDelete={canUpdate ? setTaskToDelete : undefined}
+            onDelete={canDelete ? setTaskToDelete : undefined}
           />
         </div>
       )}
@@ -1125,21 +1135,23 @@ export default function TasksView({
                   const count = selectedRows.length;
                   return (
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
-                        onClick={async () => {
-                          if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không?`)) {
-                            const selectedIds = selectedRows.map((r) => r.original.id);
-                            await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
-                            table.resetRowSelection();
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa {count} mục</span>
-                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
+                          onClick={async () => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không?`)) {
+                              const selectedIds = selectedRows.map((r) => r.original.id);
+                              await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
+                              table.resetRowSelection();
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa {count} mục</span>
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

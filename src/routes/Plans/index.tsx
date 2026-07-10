@@ -19,6 +19,9 @@ import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask, PlanLive
 import type { PlanLiveIndicatorForm } from './components/form';
 import { formatDateVN } from './plan-utils';
 import { toastSuccess, toastError } from '../../shared/lib/toast';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 import PlanDashboard from './components/plan-dashboard';
 import PlanMonthView from './components/plan-month-view';
@@ -36,6 +39,10 @@ const TAB_CONFIG = [
 ];
 
 export default function PlansRoute() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KE_HOACH, currentUser, isOwner);
+
   const { activeStoreId } = useAppShellState();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<PlanTab>('dashboard');
@@ -259,14 +266,16 @@ export default function PlansRoute() {
         description="Biến mục tiêu công ty thành hành động đơn giản — rõ ràng — đo lường được"
         icon={<CalendarRange className="w-6 h-6 text-[#C21A1A]" />}
       >
-        <Button
-          type="button"
-          onClick={handleOpenCreate}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Tạo kế hoạch
-        </Button>
+        {permissions.canCreate && (
+          <Button
+            type="button"
+            onClick={handleOpenCreate}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Tạo kế hoạch
+          </Button>
+        )}
       </ModuleHeader>
 
       {/* Tab switcher style like checklist */}
@@ -305,7 +314,7 @@ export default function PlansRoute() {
               Xem chi tiết
             </Button>
           )}
-          {editButtonConfig.show && (
+          {editButtonConfig.show && permissions.canUpdate && (
             <Button
               type="button"
               variant="outline"

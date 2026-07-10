@@ -322,6 +322,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
             canUpdate: perm.canUpdate,
             canDelete: perm.canDelete,
             canApprove: perm.canApprove,
+            canExport: perm.canExport,
           };
 
           return staffPermissionService.update(permRow.id, permRow, { bypassAutoLog: true }).then(() => permRow);

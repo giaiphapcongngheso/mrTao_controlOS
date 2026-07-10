@@ -40,6 +40,7 @@ interface ChecklistTabBarProps {
   // Callback mở Sheet tạo mới checklist mẫu
   canCreate?: boolean;
   onOpenCreateTemplate?: () => void;
+  onOpenCreateDialog?: () => void;
 }
 
 /**
@@ -77,6 +78,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   setTemplateSearchTerm,
   canCreate = false,
   onOpenCreateTemplate,
+  onOpenCreateDialog,
 }: ChecklistTabBarProps) {
   
   const handleTabChange = React.useCallback((value: string) => {
@@ -156,14 +158,14 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   ];
 
   return (
-    <div className="space-y-4 text-left font-sans">
+    <div className="space-y-3 text-left font-sans">
       {/* ── Line 1: Tab Navigation (Inline on background) ── */}
       <div className="border-b border-slate-200 pb-0">
         <Tabs value={subTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-6 sm:gap-8 justify-start !h-auto w-full overflow-x-auto scrollbar-none !border-none !shadow-none">
             <TabsTrigger
               value="today"
-              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
             >
               <Calendar className="w-4 h-4 shrink-0" />
               <span>Hôm nay</span>
@@ -172,7 +174,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
             {showHistory && (
               <TabsTrigger
                 value="checklist_template"
-                className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
               >
                 <Ruler className="w-4 h-4 shrink-0" />
                 <span>Checklist mẫu</span>
@@ -181,7 +183,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
 
             <TabsTrigger
               value="process"
-              className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span>Quy trình SOP</span>
@@ -190,7 +192,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
             {showHistory && (
               <TabsTrigger
                 value="history"
-                className="!flex-none flex items-center gap-1.5 px-0 !pb-3 text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
               >
                 <History className="w-4 h-4 shrink-0" />
                 <span>Lịch sử</span>
@@ -202,7 +204,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
 
       {/* ── Line 2: Filters Horizontal Block (Card container) ── */}
       {subTab !== 'history' && (
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex flex-col lg:flex-row lg:items-end gap-3.5 justify-between">
             {subTab === 'checklist_template' ? (
               <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
@@ -365,20 +367,35 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                 </div>
               )
             ) : (
-              onRefresh && (
-                <div className="flex flex-col gap-1 items-start lg:items-center shrink-0 self-start lg:self-auto">
-                  <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Đồng bộ</span>
-                  <Button
-                    type="button"
-                    onClick={onRefresh}
-                    disabled={isRefreshing}
-                    className="h-9.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    <span>Đồng bộ</span>
-                  </Button>
-                </div>
-              )
+              <div className="flex items-center gap-2 shrink-0 self-start lg:self-auto">
+                {onRefresh && (
+                  <div className="flex flex-col gap-1 items-start lg:items-center">
+                    <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Đồng bộ</span>
+                    <Button
+                      type="button"
+                      onClick={onRefresh}
+                      disabled={isRefreshing}
+                      className="h-9.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      <span>Đồng bộ</span>
+                    </Button>
+                  </div>
+                )}
+                {(subTab === 'today' || subTab === 'process') && canCreate && onOpenCreateDialog && (
+                  <div className="flex flex-col gap-1 items-start lg:items-center animate-in fade-in duration-200">
+                    <span className="hidden lg:block text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1 text-center">Tạo mới</span>
+                    <Button
+                      type="button"
+                      onClick={onOpenCreateDialog}
+                      className="h-9.5 px-4 bg-[#C21A1A] hover:bg-[#A81515] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 shrink-0"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>{subTab === 'process' ? 'Thêm quy trình' : 'Thêm việc'}</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

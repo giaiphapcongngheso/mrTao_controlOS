@@ -12,6 +12,9 @@ import type { Customer, CustomerSyncLog } from '../../types/customer.types';
 import { useCustomerData } from './hooks/use-customer-data';
 import CustomerDialog from './components/customer-dialog';
 import CustomerSyncHistoryDrawer from './components/customer-sync-history-drawer';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -20,6 +23,10 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
 });
 
 export default function CustomersRoute() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KHACH_HANG, currentUser, isOwner);
+
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view'>('create');
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -258,80 +265,88 @@ export default function CustomersRoute() {
         cell: ({ row }) => {
           const customer = row.original;
           const isManual = customer.source === 'manual';
+          const actions = [
+            {
+              key: 'view',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/55 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCustomer(customer);
+                    setFormMode('view');
+                    setShowForm(true);
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5 text-slate-500" />
+                  Xem
+                </Button>
+              ),
+            },
+          ];
+
+          if (permissions.canUpdate) {
+            actions.push({
+              key: 'edit',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/55 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCustomer(customer);
+                    setFormMode('edit');
+                    setShowForm(true);
+                  }}
+                >
+                  <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                  Sửa
+                </Button>
+              ),
+            });
+          }
+
+          if (permissions.canDelete) {
+            actions.push({
+              key: 'delete',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 px-2 rounded-xl font-bold text-xs flex items-center gap-1 ${
+                    isManual
+                      ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
+                      : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
+                  }`}
+                  disabled={!isManual}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isManual && confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customer.name}"?`)) {
+                      void deleteCustomer(customer.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Xóa
+                </Button>
+              ),
+            });
+          }
+
           return (
             <ActionStack
               className="font-sans"
               gap={1}
-              actions={[
-                {
-                  key: 'view',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/50 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCustomer(customer);
-                        setFormMode('view');
-                        setShowForm(true);
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5 text-slate-500" />
-                      Xem
-                    </Button>
-                  ),
-                },
-                {
-                  key: 'edit',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/50 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCustomer(customer);
-                        setFormMode('edit');
-                        setShowForm(true);
-                      }}
-                    >
-                      <Edit2 className="h-3.5 w-3.5 text-slate-500" />
-                      Sửa
-                    </Button>
-                  ),
-                },
-                {
-                  key: 'delete',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`h-8 px-2 rounded-xl font-bold text-xs flex items-center gap-1 ${
-                        isManual
-                          ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
-                          : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
-                      }`}
-                      disabled={!isManual}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isManual && confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customer.name}"?`)) {
-                          void deleteCustomer(customer.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Xóa
-                    </Button>
-                  ),
-                },
-              ]}
+              actions={actions}
             />
           );
         },
       },
     ];
-  }, [deleteCustomer, groups]);
+  }, [deleteCustomer, groups, permissions.canUpdate, permissions.canDelete]);
 
   const statCardsData = [
     {
@@ -374,18 +389,20 @@ export default function CustomersRoute() {
         icon={<HeartHandshake className="h-5 w-5 text-slate-800" />}
       >
         <div className="flex flex-wrap gap-2 w-full sm:w-auto md:justify-end">
-          <Button
-            variant="outline"
-            className="rounded-xl h-9 text-sm font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center"
-            onClick={() => {
-              setEditingCustomer(null);
-              setFormMode('create');
-              setShowForm(true);
-            }}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-            Tạo khách hàng
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              variant="outline"
+              className="rounded-xl h-9 text-sm font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center"
+              onClick={() => {
+                setEditingCustomer(null);
+                setFormMode('create');
+                setShowForm(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
+              Tạo khách hàng
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -396,14 +413,16 @@ export default function CustomersRoute() {
             Lịch sử đồng bộ
           </Button>
 
-          <Button
-            className="rounded-xl h-9 text-sm font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center border-none"
-            onClick={() => void syncDataPreview()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Đang đọc...' : 'Đồng bộ KiotViet'}
-          </Button>
+          {(permissions.canCreate || permissions.canUpdate) && (
+            <Button
+              className="rounded-xl h-9 text-sm font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center border-none"
+              onClick={() => void syncDataPreview()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Đang đọc...' : 'Đồng bộ KiotViet'}
+            </Button>
+          )}
         </div>
       </ModuleHeader>
 

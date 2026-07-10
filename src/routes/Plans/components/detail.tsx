@@ -21,7 +21,7 @@ interface PlanDetailProps {
   plan: PlanDocument;
   daySchedule?: PlanDaySchedule | null;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 export default function PlanDetail({
@@ -66,13 +66,15 @@ export default function PlanDetail({
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={onEdit}
-          className="flex items-center gap-1.5 px-4 h-9.5 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-sm self-start sm:self-auto cursor-pointer shrink-0"
-        >
-          Chỉnh sửa kế hoạch
-        </Button>
+        {onEdit && (
+          <Button
+            type="button"
+            onClick={onEdit}
+            className="flex items-center gap-1.5 px-4 h-9.5 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-sm self-start sm:self-auto cursor-pointer shrink-0"
+          >
+            Chỉnh sửa kế hoạch
+          </Button>
+        )}
       </div>
 
       {/* ─── Top Level Metric Summary Cards ──────────────────────────────── */}

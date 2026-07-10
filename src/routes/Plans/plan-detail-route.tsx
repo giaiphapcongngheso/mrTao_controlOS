@@ -16,8 +16,15 @@ import PlanForm from './components/form';
 import { toastSuccess, toastError } from '../../shared/lib/toast';
 import type { PlanRequestType, PlanTimeSlot, PlanMITTask } from '../../types/plans.types';
 import type { PlanLiveIndicatorForm } from './components/form';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 export default function PlanDetailRoute() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KE_HOACH, currentUser, isOwner);
+
   const { planId } = useParams({ from: '/app/plans/$planId' });
   const navigate = useNavigate();
   const { activeStoreId } = useAppShellState();
@@ -163,7 +170,7 @@ export default function PlanDetailRoute() {
         plan={plan}
         daySchedule={daySchedule}
         onBack={handleBack}
-        onEdit={handleEdit}
+        onEdit={permissions.canUpdate ? handleEdit : undefined}
       />
 
       <PlanForm

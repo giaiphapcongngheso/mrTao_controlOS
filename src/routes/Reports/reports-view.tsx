@@ -518,18 +518,13 @@ export default function ReportsView({
 
   const handleDeleteReport = useCallback(
     (reportId: string) => {
-      const code = currentUser?.roleCode || '';
-      const role = currentUser?.role || '';
-      const isManager = code === 'OWNER' || code === 'ADMIN' ||
-                        code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
-                        role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
-      if (!isManager) {
+      if (!permissions.canDelete) {
         triggerToast('Bạn không có quyền xóa báo cáo.', 'error');
         return;
       }
       setDeleteTargetId(reportId);
     },
-    [currentUser, triggerToast],
+    [permissions.canDelete, triggerToast],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -591,14 +586,15 @@ export default function ReportsView({
               Đồng bộ dữ liệu và gửi báo cáo định kỳ cho quản lý.
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={handleOpenReportForm}
-            disabled={!canSubmitReport}
-            className="rounded-xl h-9 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
-          >
-            Tạo báo cáo
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              type="button"
+              onClick={handleOpenReportForm}
+              className="rounded-xl h-9 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
+            >
+              Tạo báo cáo
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -745,14 +741,16 @@ export default function ReportsView({
                           <Eye className="w-3.5 h-3.5" />
                           <span>Xem & Duyệt</span>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReport(report.id)}
-                          className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer border-none"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Xóa</span>
-                        </button>
+                        {permissions.canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReport(report.id)}
+                            className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer border-none"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa</span>
+                          </button>
+                        )}
                       </div>
                     </MobileCard.Footer>
                   </MobileCard>
@@ -848,14 +846,16 @@ export default function ReportsView({
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteReport(report.id)}
-                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                            title="Xóa báo cáo"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {permissions.canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReport(report.id)}
+                              className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer border-none"
+                              title="Xóa báo cáo"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

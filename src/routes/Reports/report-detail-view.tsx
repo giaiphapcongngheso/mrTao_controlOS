@@ -43,6 +43,8 @@ import { notificationsService } from '../../services/notifications-service';
 import { useReportDetailQuery, useDailyReportQuery } from './_hook/use-reports';
 import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 import { MobileCard } from '../../components/custom/mobile-card';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 interface ReportDetailViewProps {
   reportId: string;
@@ -647,6 +649,7 @@ const ApprovalPanel = React.memo(function ApprovalPanel({
   approvalStatus,
   history,
   currentUser,
+  canApprove,
 }: {
   comment: string;
   onCommentChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -654,17 +657,13 @@ const ApprovalPanel = React.memo(function ApprovalPanel({
   approvalStatus: string;
   history: Array<{ action: string; timestamp: string; actor: string; note?: string }>;
   currentUser?: any;
+  canApprove: boolean;
 }) {
-  const isManager = useMemo(() => {
-    const code = currentUser?.roleCode || '';
-    return code === 'OWNER' || code === 'ADMIN' ||
-           code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN';
-  }, [currentUser]);
 
   return (
     <div className="space-y-6">
       {/* 1. Nhận xét của quản lý */}
-      {isManager && (
+      {canApprove && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs text-left">
           <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
             <MessageSquareIcon className="h-4.5 w-4.5 text-slate-600" />
@@ -824,6 +823,9 @@ export default function ReportDetailView({
   dailyReport,
   currentUser,
 }: ReportDetailViewProps) {
+  const isOwner = useMemo(() => isOwnerUser(currentUser as any), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.BAO_CAO, currentUser as any, isOwner);
+
   const router = useRouter();
   const [toast, setToast] = useState<ToastState>({ show: false, msg: '', type: 'success' });
   const [comment, setComment] = useState('');
@@ -1021,15 +1023,7 @@ export default function ReportDetailView({
   }, [report]);
 
   // Check role to render admin tools
-  const canApprove = useMemo(() => {
-    if (!currentUser) return false;
-    const code = currentUser.roleCode || '';
-    const role = currentUser.role || '';
-    const isManager = code === 'OWNER' || code === 'ADMIN' ||
-                      code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
-                      role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
-    return isManager;
-  }, [currentUser]);
+  const canApprove = permissions.canApprove;
 
   if (isLoading) {
     return (
@@ -1138,6 +1132,7 @@ export default function ReportDetailView({
             approvalStatus={report.approvalStatus}
             history={approvalHistory}
             currentUser={currentUser}
+            canApprove={canApprove}
           />
         </div>
 
