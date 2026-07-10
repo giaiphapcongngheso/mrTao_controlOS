@@ -197,13 +197,15 @@ export default function ReportsView({
   }, []);
 
   useEffect(() => {
-    setReportForm((prev) => ({
-      ...prev,
-      status: defaultStatus,
-      notes: defaultNotes,
-      saveStatus: 'idle',
-    }));
-  }, [defaultNotes, defaultStatus, reportTab]);
+    if (!isReportFormOpen) {
+      setReportForm((prev) => ({
+        ...prev,
+        status: defaultStatus,
+        notes: defaultNotes,
+        saveStatus: 'idle',
+      }));
+    }
+  }, [defaultNotes, defaultStatus, reportTab, isReportFormOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -314,16 +316,20 @@ export default function ReportsView({
   }, []);
 
   const handleOpenReportForm = useCallback(() => {
-    setReportForm((prev) => ({
-      ...prev,
-      reportDate: new Date().toISOString().slice(0, 10),
+    const todayDateKey = new Date().toISOString().slice(0, 10);
+    setReportForm({
+      status: defaultStatus,
+      notes: defaultNotes,
+      saveStatus: 'idle',
+      reportDate: todayDateKey,
       reporter: currentUser?.fullName || 'Trần Tấn Phát',
       highlightIssues: [],
       promises: [],
       attachments: [],
-    }));
+      recipientEmails: [],
+    });
     setIsReportFormOpen(true);
-  }, [currentUser?.fullName]);
+  }, [currentUser?.fullName, defaultStatus, defaultNotes]);
 
   const handleChangeFormOpen = useCallback((open: boolean) => {
     setIsReportFormOpen(open);
@@ -361,8 +367,10 @@ export default function ReportsView({
     const dayLabel = `${daysVN[now.getDay()]} ${now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`;
     const timeLabel = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
+    const reportId = `rep-${Date.now()}`;
+
     const reportPayload: ReportSubmission = {
-      id: `rep-${Date.now()}`,
+      id: reportId,
       storeId: dailyReport.storeId,
       period: reportTab,
       dateKey,
@@ -390,32 +398,12 @@ export default function ReportsView({
     };
 
     try {
-      const existingDaily =
-        reportTab === 'day'
-          ? submittedReports.find((item) => item.period === 'day' && item.dateKey === dateKey)
-          : undefined;
-
-      let savedReport: ReportSubmission;
-      if (existingDaily) {
-        if (!permissions.canUpdate) {
-          triggerToast('Bạn không có quyền cập nhật báo cáo ngày.', 'error');
-          return;
-        }
-        const updated = await reportsDailyService.update(existingDaily.id, reportPayload);
-        savedReport = {
-          ...existingDaily,
-          ...reportPayload,
-          ...updated,
-          timestamp: updated.timestamp || reportPayload.timestamp,
-        };
-      } else {
-        const created = await reportsDailyService.create(reportPayload);
-        savedReport = {
-          ...reportPayload,
-          ...created,
-          timestamp: created.timestamp || reportPayload.timestamp,
-        };
-      }
+      const created = await reportsDailyService.create(reportPayload);
+      const savedReport: ReportSubmission = {
+        ...reportPayload,
+        ...created,
+        timestamp: created.timestamp || reportPayload.timestamp,
+      };
 
       setSubmittedReports((prev) => [savedReport, ...prev.filter((item) => item.id !== savedReport.id)]);
       setCurrentPage(1);
@@ -456,6 +444,7 @@ export default function ReportsView({
           await emailService.sendEmail({
             to: recipientList,
             subject: `[Thông báo] Có báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới từ ${actorName}`,
+            attachments: reportPayload.attachments,
             htmlBody: `
               <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                 <h2 style="color: #ea580c; margin-top: 0; margin-bottom: 4px; font-size: 20px; font-weight: 800;">
@@ -558,20 +547,21 @@ export default function ReportsView({
                 </div>
                 ` : ''}
 
-                <!-- 6. Tài liệu & Hình ảnh đính kèm -->
+                <!-- 6. Hình ảnh minh chứng -->
                 ${savedReport.attachments && savedReport.attachments.length > 0 ? `
                 <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
                   <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                    6. Hình ảnh & Tài liệu đính kèm
+                    6. Hình ảnh minh chứng
                   </h3>
                   <div style="font-size: 13px;">
                     ${(savedReport.attachments || []).map((file) => {
                       const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (file.url && file.url.startsWith('data:image/'));
                       if (isImage) {
                         return `
-                          <div style="margin-bottom: 15px;">
-                            <p style="margin: 0 0 6px 0; color: #475569; font-weight: bold;">📷 ${file.name} (${Math.round(file.size / 1024)} KB)</p>
-                            <img src="${file.url}" style="max-width: 100%; border-radius: 8px; display: block; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="${file.name}" />
+                          <div style="margin-bottom: 8px; padding: 8px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <p style="margin: 0; color: #475569;">
+                              📷 <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB) - <span style="color: #64748b; font-style: italic;">[Đã đính kèm ảnh ở cuối email]</span>
+                            </p>
                           </div>
                         `;
                       } else {
@@ -618,8 +608,7 @@ export default function ReportsView({
     defaultNotes,
     liveReportMetrics,
     permissions.canUpdate,
-    reportForm.notes,
-    reportForm.status,
+    reportForm,
     reportTab,
     submittedReports,
     triggerToast,
