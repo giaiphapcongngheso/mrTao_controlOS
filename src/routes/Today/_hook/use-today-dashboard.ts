@@ -7,6 +7,7 @@ import { checklistService } from '../../../services/checklist-service';
 import { tasksService } from '../../../services/tasks-service';
 import { issuesService } from '../../../services/issues-service';
 import { RESOLVED_SOP_ISSUE_STATUS } from '../../../types/issues.types';
+import { kiotVietService } from '../../../services/kiotviet-service';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,38 @@ export function useTodayDashboard(storeId: string): DashboardData {
     staleTime: 2 * 60 * 1000,
   });
 
+  const kiotInvoicesQuery = useQuery<number, Error>({
+    queryKey: ['dashboard', 'kiot-invoices', storeId, todayDateKey],
+    queryFn: async () => {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const dateString = `${yyyy}-${mm}-${dd}`;
+      const fromDate = `${dateString}T00:00:00`;
+      const toDate = `${dateString}T23:59:59`;
+
+      try {
+        const result = await kiotVietService.syncInvoices<any>({
+          extraParams: {
+            fromPurchaseDate: fromDate,
+            toPurchaseDate: toDate,
+          }
+        });
+        
+        // Sum total of completed invoices (status !== 2, since 2 is cancelled)
+        const completedInvoices = (result.items || []).filter((inv: any) => inv.status !== 2);
+        const total = completedInvoices.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+        return total as number;
+      } catch (err) {
+        console.error('Lỗi khi tải doanh thu KiotViet:', err);
+        return 0;
+      }
+    },
+    enabled: Boolean(storeId) && !hasReport && !reportQuery.isLoading,
+    staleTime: 2 * 60 * 1000,
+  });
+
   // ── Merge Results ──────────────────────────────────────────────────────────
 
   const stats = useMemo<KPIStats>(() => {
@@ -178,7 +211,7 @@ export function useTodayDashboard(storeId: string): DashboardData {
 
       return {
         storeId,
-        todayRevenue: 0, // No revenue without report
+        todayRevenue: kiotInvoicesQuery.data ?? 0,
         checklistCompletion: live.checklistCompletion,
         delayedTasksCount: live.delayedTasksCount,
         sopErrorsCount: live.sopErrorsCount,
@@ -198,7 +231,7 @@ export function useTodayDashboard(storeId: string): DashboardData {
       lateStaffCount: 0,
       status: 'green',
     };
-  }, [storeId, hasReport, reportQuery.data, liveQuery.data]);
+  }, [storeId, hasReport, reportQuery.data, liveQuery.data, kiotInvoicesQuery.data]);
 
   const todayChecklistItems = useMemo<ChecklistItem[]>(() => {
     if (liveQuery.data) {
@@ -207,17 +240,17 @@ export function useTodayDashboard(storeId: string): DashboardData {
     return [];
   }, [liveQuery.data]);
 
-  const isLoading = reportQuery.isLoading || (!hasReport && liveQuery.isLoading);
+  const isLoading = reportQuery.isLoading || (!hasReport && (liveQuery.isLoading || kiotInvoicesQuery.isLoading));
 
   const errorMessage = useMemo(() => {
-    if (reportQuery.error && liveQuery.error) {
+    if (reportQuery.error && (liveQuery.error || kiotInvoicesQuery.error)) {
       return 'Không thể tải dữ liệu dashboard. Vui lòng thử lại.';
     }
     if (reportQuery.error) {
       return 'Không thể tải báo cáo ngày. Đang dùng dữ liệu trực tiếp.';
     }
     return null;
-  }, [reportQuery.error, liveQuery.error]);
+  }, [reportQuery.error, liveQuery.error, kiotInvoicesQuery.error]);
 
   return {
     stats,

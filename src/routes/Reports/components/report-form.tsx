@@ -435,13 +435,18 @@ const ReportForm = React.memo(function ReportForm({
     const newAttachments: AttachmentItem[] = [];
 
     for (const file of filesList) {
+      if (!file.type.startsWith('image/')) {
+        alert(`Tệp "${file.name}" không phải là ảnh. Chỉ chấp nhận các tệp hình ảnh (.jpg, .jpeg, .png).`);
+        continue;
+      }
+
       try {
-        const base64Url = await uploadTaskAttachment(file);
+        const fileUrl = await uploadTaskAttachment(file);
         newAttachments.push({
           id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: file.name,
           size: file.size,
-          url: base64Url,
+          url: fileUrl,
         });
       } catch (err) {
         console.error('Lỗi tải file:', err);
@@ -974,7 +979,7 @@ const ReportForm = React.memo(function ReportForm({
               {/* 6. Tệp đính kèm */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <span className="text-[#C21A1A]">6.</span> Tệp đính kèm / hình ảnh minh chứng
+                  <span className="text-[#C21A1A]">6.</span> Hình ảnh minh chứng
                 </div>
                 
                 {/* Drag and drop zone */}
@@ -982,15 +987,16 @@ const ReportForm = React.memo(function ReportForm({
                   <input
                     type="file"
                     multiple
+                    accept="image/*"
                     onChange={handleFileChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <UploadCloud className="h-9 w-9 text-slate-400 mb-2" />
                   <p className="text-xs font-bold text-slate-700">
-                    Kéo thả file vào đây hoặc <span className="text-[#C21A1A] hover:underline">Chọn file</span>
+                    Kéo thả hình ảnh vào đây hoặc <span className="text-[#C21A1A] hover:underline">Chọn ảnh</span>
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1 font-semibold">
-                    Hỗ trợ định dạng: .jpg, .jpeg, .png, .pdf, .docx, .xlsx (tối đa 10MB/file)
+                    Hỗ trợ định dạng: .jpg, .jpeg, .png (tối đa 10MB/ảnh)
                   </p>
                 </div>
 
