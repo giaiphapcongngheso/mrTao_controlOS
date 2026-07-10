@@ -30,7 +30,7 @@ function getTaskSortTime(task: TaskItem): number {
 export function useTasksQuery(storeId: string) {
   const queryResult = useQuery({
     queryKey: tasksQueryKeys.list(storeId),
-    queryFn: tasksService.getAll,
+    queryFn: () => tasksService.getAll({ storeId }),
     enabled: !!storeId,
   });
 

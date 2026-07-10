@@ -82,7 +82,7 @@ export function useReportMetrics({
   // 1. Checklists — filter by dateKey and storeId
   const checklistsQuery = useQuery({
     queryKey: [...reportMetricsKeys.checklists, storeId, dateKey],
-    queryFn: checklistService.getAll,
+    queryFn: () => checklistService.getAll({ storeId, dateKey, deletedAt: 'null' }),
     enabled,
     staleTime: 60_000, // 1 min
   });
@@ -90,7 +90,7 @@ export function useReportMetrics({
   // 2. Tasks — all tasks for the store
   const tasksQuery = useQuery({
     queryKey: [...reportMetricsKeys.tasks, storeId],
-    queryFn: tasksService.getAll,
+    queryFn: () => tasksService.getAll({ storeId }),
     enabled,
     staleTime: 60_000,
   });
@@ -98,7 +98,7 @@ export function useReportMetrics({
   // 3. SOP Issues — all issues for the store
   const issuesQuery = useQuery({
     queryKey: [...reportMetricsKeys.issues, storeId],
-    queryFn: issuesService.getAll,
+    queryFn: () => issuesService.getAll({ storeId }),
     enabled,
     staleTime: 60_000,
   });
@@ -106,7 +106,7 @@ export function useReportMetrics({
   // 4. Today Stats — revenue, complaints, staff issues
   const todayStatsQuery = useQuery({
     queryKey: [...reportMetricsKeys.todayStats, storeId],
-    queryFn: todayStatsService.getAll,
+    queryFn: () => todayStatsService.getAll({ storeId }),
     enabled,
     staleTime: 60_000,
   });

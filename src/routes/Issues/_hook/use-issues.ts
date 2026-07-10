@@ -35,7 +35,7 @@ function getIssueSortTime(issue: SOPIssue): number {
 export function useIssuesInfiniteQuery(storeId: string) {
   const queryResult = useQuery({
     queryKey: issuesQueryKeys.list(storeId),
-    queryFn: issuesService.getAll,
+    queryFn: () => issuesService.getAll({ storeId }),
     enabled: !!storeId,
   });
 

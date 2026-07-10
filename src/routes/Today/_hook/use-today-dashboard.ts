@@ -84,9 +84,9 @@ export function useTodayDashboard(storeId: string): DashboardData {
     queryKey: dashboardQueryKeys.liveAggregate(storeId, todayDateKey),
     queryFn: async () => {
       const [checklists, tasks, issues] = await Promise.all([
-        checklistService.getAll(),
-        tasksService.getAll(),
-        issuesService.getAll(),
+        checklistService.getAll({ storeId, dateKey: todayDateKey, deletedAt: 'null' }),
+        tasksService.getAll({ storeId }),
+        issuesService.getAll({ storeId }),
       ]);
 
       // Checklists for today

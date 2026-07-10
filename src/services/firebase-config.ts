@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, Firestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { env } from './env';
 
@@ -30,8 +30,23 @@ export function getFirebaseApp() {
   return getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
 
-export function getFirestoreDb() {
-  return getFirestore(getFirebaseApp());
+let firestoreDb: Firestore | null = null;
+
+export function getFirestoreDb(): Firestore {
+  if (!firestoreDb) {
+    const app = getFirebaseApp();
+    try {
+      firestoreDb = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch (e) {
+      console.warn('Firestore persistent cache initialization failed, falling back to default instance:', e);
+      firestoreDb = getFirestore(app);
+    }
+  }
+  return firestoreDb;
 }
 
 export function getFirebaseStorage() {
