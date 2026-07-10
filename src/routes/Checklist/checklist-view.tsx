@@ -809,7 +809,8 @@ export default function ChecklistView({
 
   return (
     <div className="flex flex-col text-left antialiased font-sans h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative">
-      <div className="shrink-0 pb-3">
+      {/* Thanh tab cố định – chỉ render navigation row */}
+      <div className="shrink-0 bg-white">
         <ChecklistTabBar
           subTab={subTab}
           setSubTab={setSubTab}
@@ -841,10 +842,46 @@ export default function ChecklistView({
           canCreate={permissions.canCreate}
           onOpenCreateTemplate={() => setEditingTemplateId('new')}
           onOpenCreateDialog={handleOpenCreateDialog}
+          tabsOnly
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-none space-y-3.5 pb-12 pr-1">
+      {/* Phần cuộn: bộ lọc + nội dung */}
+      <div className="flex-1 overflow-y-auto scrollbar-none pb-12 pr-1">
+        <ChecklistTabBar
+          subTab={subTab}
+          setSubTab={setSubTab}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedRoleCode={selectedRoleCode}
+          setSelectedRoleCode={setDialogRoleCode}
+          roleOptions={roleOptions}
+          items={items}
+          selectedPerformer={selectedPerformer}
+          setSelectedPerformer={setSelectedPerformer}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onRefresh={onRefresh}
+          showHistory={isOwner}
+          showRoleSelect={isOwner}
+          isOwner={isOwner}
+          currentUser={currentUser}
+          templateFilterRole={templateFilterRole}
+          setTemplateFilterRole={setTemplateFilterRole}
+          templateFilterFrequency={templateFilterFrequency}
+          setTemplateFilterFrequency={setTemplateFilterFrequency}
+          templateFilterStatus={templateFilterStatus}
+          setTemplateFilterStatus={setTemplateFilterStatus}
+          templateSearchTerm={templateSearchTerm}
+          setTemplateSearchTerm={setTemplateSearchTerm}
+          canCreate={permissions.canCreate}
+          onOpenCreateTemplate={() => setEditingTemplateId('new')}
+          onOpenCreateDialog={handleOpenCreateDialog}
+          filtersOnly
+        />
+        <div className="mt-3.5 space-y-3.5">
         <ChecklistErrorBanner
           errorMessage={errorMessage}
           onDismissError={onDismissError}
@@ -1081,6 +1118,7 @@ export default function ChecklistView({
           </div>
         </div>
       )}
+      </div>
       </div>
     </div>
   );

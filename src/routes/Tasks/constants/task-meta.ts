@@ -1,4 +1,4 @@
-import type { TaskItem, TaskStatus } from '../../types/tasks.types';
+import type { TaskItem, TaskStatus } from '../../../types/tasks.types';
 import { Circle, Play, Clock, CheckCircle2 } from 'lucide-react';
 
 // ============ TASK STATUS CONSTANTS ============

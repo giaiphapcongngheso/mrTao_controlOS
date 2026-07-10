@@ -65,3 +65,16 @@ export const reportsDailyService = createBaseService<ReportSubmission, Partial<R
   client: dataClient,
   resource: RESOURCE_PATH.REPORTS_DAILY,
 });
+
+export interface ReportPreset {
+  id: string;
+  title: string;
+  content: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export const reportPresetsService = createBaseService<ReportPreset, Partial<ReportPreset>>({
+  client: dataClient,
+  resource: RESOURCE_PATH.REPORT_PRESETS,
+});

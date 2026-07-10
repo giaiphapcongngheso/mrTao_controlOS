@@ -84,9 +84,10 @@ const APPROVAL_STATUS_STYLES: Record<string, string> = {
   supplement_requested: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount?: number): string {
+  const value = amount || 0;
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
-    .format(amount)
+    .format(value)
     .replace('₫', 'đ');
 }
 
@@ -832,7 +833,7 @@ export default function ReportDetailView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch report detail using base query hook
-  const { data: report, isLoading, refetch } = useReportDetailQuery(reportId);
+  const { data: report, isLoading, refetch, error } = useReportDetailQuery(reportId);
   const { data: allReports } = useDailyReportQuery();
 
   const comparisonStats = useMemo<ReportComparison>(() => {
@@ -1042,13 +1043,40 @@ export default function ReportDetailView({
     );
   }
 
+  if (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isQuotaExceeded = errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.includes('429');
+
+    return (
+      <div className="space-y-4 text-center py-20">
+        <AlertCircle className="h-12 w-12 text-rose-500 mx-auto animate-bounce" />
+        <h2 className="text-base font-black text-slate-800">
+          {isQuotaExceeded ? 'Hệ thống quá tải giới hạn (Firebase Quota Exceeded)' : 'Lỗi khi tải báo cáo'}
+        </h2>
+        <p className="text-xs text-slate-400 max-w-md mx-auto px-4 leading-normal mt-2">
+          {isQuotaExceeded 
+            ? 'Cơ sở dữ liệu Firebase của hệ thống hiện tại đã vượt quá giới hạn lượt đọc/ghi miễn phí trong ngày (Spark Plan Limit). Vui lòng nâng cấp gói hoặc thử lại vào ngày mai.' 
+            : `Đã xảy ra lỗi khi tải dữ liệu: ${errorMsg}`}
+        </p>
+        <div className="flex justify-center gap-3 mt-4">
+          <Button onClick={() => refetch()} variant="outline" className="rounded-xl h-9 text-xs border-slate-200 cursor-pointer">
+            Tải lại
+          </Button>
+          <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616] cursor-pointer">
+            Quay lại danh sách
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!report) {
     return (
       <div className="space-y-4 text-center py-20">
         <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
         <h2 className="text-base font-black text-slate-800">Không tìm thấy báo cáo</h2>
         <p className="text-xs text-slate-400">Báo cáo có mã {reportId} không tồn tại trên hệ thống.</p>
-        <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616]">
+        <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616] cursor-pointer">
           Quay lại danh sách
         </Button>
       </div>

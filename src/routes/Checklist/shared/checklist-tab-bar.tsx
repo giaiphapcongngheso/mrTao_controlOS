@@ -41,6 +41,10 @@ interface ChecklistTabBarProps {
   canCreate?: boolean;
   onOpenCreateTemplate?: () => void;
   onOpenCreateDialog?: () => void;
+  /** Nếu true: chỉ render thanh tab chuyển hướng, không render bộ lọc */
+  tabsOnly?: boolean;
+  /** Nếu true: chỉ render bộ lọc, ẩn thanh tab chuyển hướng */
+  filtersOnly?: boolean;
 }
 
 /**
@@ -79,6 +83,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   canCreate = false,
   onOpenCreateTemplate,
   onOpenCreateDialog,
+  tabsOnly = false,
+  filtersOnly = false,
 }: ChecklistTabBarProps) {
   
   const handleTabChange = React.useCallback((value: string) => {
@@ -159,7 +165,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
 
   return (
     <div className="space-y-3 text-left font-sans">
-      {/* ── Line 1: Tab Navigation (Inline on background) ── */}
+      {/* ── Line 1: Tab Navigation – ẩn khi filtersOnly ── */}
+      {!filtersOnly && (
       <div className="border-b border-slate-200 pb-0">
         <Tabs value={subTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-6 sm:gap-8 justify-start !h-auto w-full overflow-x-auto scrollbar-none !border-none !shadow-none">
@@ -201,8 +208,12 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
           </TabsList>
         </Tabs>
       </div>
+      )}
 
-      {/* ── Line 2: Filters Horizontal Block (Card container) ── */}
+      {/* Nếu tabsOnly=true, dừng ở đây – không render bộ lọc */}
+      {tabsOnly ? null : (
+      <>
+      {/* ── Line 2: Filters Horizontal Block (Card container) – cuộn theo nội dung ── */}
       {subTab !== 'history' && (
         <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex flex-col lg:flex-row lg:items-end gap-3.5 justify-between">
@@ -399,6 +410,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
             )}
           </div>
         </div>
+      )}
+      </> 
       )}
     </div>
   );
