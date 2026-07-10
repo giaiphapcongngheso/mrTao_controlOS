@@ -59,19 +59,7 @@ const ChecklistHeader = React.memo(function ChecklistHeader({
 
       {/* Action buttons */}
       <div className="relative z-10 shrink-0 flex items-center gap-2 self-start sm:self-auto">
-        <Button
-          type="button"
-          className="inline-flex items-center gap-1.5 px-3.5 h-9 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-all duration-200 cursor-pointer active:scale-95"
-          onClick={() => {
-            // Xem hướng dẫn SOP click handler
-            window.open('https://mrtao.vn', '_blank'); // fallback
-          }}
-        >
-          <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-            <Play className="w-2.5 h-2.5 fill-current stroke-[3] ml-0.5" />
-          </span>
-          <span>Xem hướng dẫn</span>
-        </Button>
+
 
         {(subTab === 'today' || subTab === 'process') && canCreate && (
           <Button

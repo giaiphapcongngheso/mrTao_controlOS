@@ -35,8 +35,8 @@ export function useTodayStatsQuery(storeId: string) {
   return useQuery<KPIStats | null>({
     queryKey: todayQueryKeys.stats(storeId),
     queryFn: async () => {
-      const stats = await todayStatsService.getAll();
-      return stats.find((item) => item.storeId === storeId) ?? null;
+      const stats = await todayStatsService.getAll({ storeId });
+      return stats[0] ?? null;
     },
     enabled: Boolean(storeId),
   });
@@ -53,7 +53,7 @@ export function useTodayTimelineQuery(storeId: string) {
   return useQuery<TimelineEvent[]>({
     queryKey: todayQueryKeys.timeline(storeId, todayDateKey),
     queryFn: async () => {
-      const checklists = await checklistService.getAll();
+      const checklists = await checklistService.getAll({ storeId, dateKey: todayDateKey, deletedAt: 'null' });
 
       // Filter today's checklists for this store
       const todayChecklists = (checklists || []).filter(

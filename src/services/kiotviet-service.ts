@@ -7,6 +7,8 @@ const DEFAULT_KIOT_SCOPE = 'PublicApi.Access';
 const DEFAULT_KIOT_PAGE_SIZE = 100;
 const TOKEN_EXPIRY_SKEW_SECONDS = 300;
 const KIOT_SYNC_FUNCTION_URL = import.meta.env.VITE_KIOT_SYNC_FUNCTION_URL ?? '';
+const GAS_WEBAPP_URL = import.meta.env.VITE_GAS_WEBAPP_URL ?? '';
+const GAS_SYNC_TOKEN = import.meta.env.VITE_GAS_SYNC_TOKEN ?? '';
 
 export type KiotEntityName = 'branches' | 'categories' | 'products' | 'customers' | 'invoices';
 
@@ -229,12 +231,43 @@ async function fetchKiotApiDirect<TPayload>(path: string, params: KiotQueryParam
   return parseJsonOrThrow(response, path) as Promise<TPayload>;
 }
 
-/** PROD: proxy KiotViet requests through Firebase Function (secrets stay server-side) */
+/** PROD: proxy KiotViet requests through Google Apps Script or Firebase Function (secrets stay server-side) */
 async function fetchKiotApiViaProxy<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
+  const gasUrl = GAS_WEBAPP_URL.trim();
+  const gasToken = GAS_SYNC_TOKEN.trim();
+
+  // If Google Apps Script Web App is configured, use it as the proxy
+  if (gasUrl) {
+    const entity = path.replace(/^\//, '');
+    const searchParams = new URLSearchParams({
+      token: gasToken,
+      action: entity,
+    });
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.set(key, toStringValue(value as KiotPrimitive));
+      }
+    });
+
+    const url = `${gasUrl}${gasUrl.includes('?') ? '&' : '?'}${searchParams.toString()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`GAS Web App proxy error (${path}): HTTP ${response.status}`);
+    }
+
+    return response.json() as Promise<TPayload>;
+  }
+
   const functionUrl = KIOT_SYNC_FUNCTION_URL.trim();
   if (!functionUrl) {
     throw new Error(
-      'Thiếu cấu hình VITE_KIOT_SYNC_FUNCTION_URL. Vui lòng cấu hình URL Firebase Function để lấy dữ liệu KiotViet.',
+      'Thiếu cấu hình VITE_KIOT_SYNC_FUNCTION_URL hoặc VITE_GAS_WEBAPP_URL. Vui lòng cấu hình URL proxy để lấy dữ liệu KiotViet.',
     );
   }
 

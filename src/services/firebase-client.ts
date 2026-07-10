@@ -119,14 +119,23 @@ export const firebaseClient: HttpClient = {
       const queryString = url.slice(queryIndex + 1);
       const params = new URLSearchParams(queryString);
       params.forEach((value, key) => {
+        let typedValue: any = value;
+        if (value === 'null') {
+          typedValue = null;
+        } else if (value === 'true') {
+          typedValue = true;
+        } else if (value === 'false') {
+          typedValue = false;
+        }
+
         if (key.endsWith('_gte')) {
           const field = key.slice(0, -4);
-          q = query(q, where(field, '>=', value));
+          q = query(q, where(field, '>=', typedValue));
         } else if (key.endsWith('_lte')) {
           const field = key.slice(0, -4);
-          q = query(q, where(field, '<=', value));
+          q = query(q, where(field, '<=', typedValue));
         } else {
-          q = query(q, where(key, '==', value));
+          q = query(q, where(key, '==', typedValue));
         }
       });
     }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui';
-import { HeartHandshake, Plus, History, RefreshCw, Search, User, Coins, Award, Trash2, Edit2, Eye, AlertTriangle, Check, X, Users } from 'lucide-react';
-import { ModuleHeader, CustomTable } from '@shared/components';
+import { Plus, History, RefreshCw, Search, User, Coins, Award, Trash2, Edit2, Eye, AlertTriangle, Check, X, Users } from 'lucide-react';
+import { CustomTable } from '@shared/components';
 import { NumberRangePicker } from '../../../share/components/custom/number-range-picker';
 import { MobileCard } from '@/src/components/custom/mobile-card';
 import { cn } from '@shared/lib/utils';
@@ -12,6 +12,9 @@ import type { Customer, CustomerSyncLog } from '../../types/customer.types';
 import { useCustomerData } from './hooks/use-customer-data';
 import CustomerDialog from './components/customer-dialog';
 import CustomerSyncHistoryDrawer from './components/customer-sync-history-drawer';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -20,6 +23,10 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
 });
 
 export default function CustomersRoute() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KHACH_HANG, currentUser, isOwner);
+
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view'>('create');
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -258,80 +265,88 @@ export default function CustomersRoute() {
         cell: ({ row }) => {
           const customer = row.original;
           const isManual = customer.source === 'manual';
+          const actions = [
+            {
+              key: 'view',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/55 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCustomer(customer);
+                    setFormMode('view');
+                    setShowForm(true);
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5 text-slate-500" />
+                  Xem
+                </Button>
+              ),
+            },
+          ];
+
+          if (permissions.canUpdate) {
+            actions.push({
+              key: 'edit',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/55 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCustomer(customer);
+                    setFormMode('edit');
+                    setShowForm(true);
+                  }}
+                >
+                  <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                  Sửa
+                </Button>
+              ),
+            });
+          }
+
+          if (permissions.canDelete) {
+            actions.push({
+              key: 'delete',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 px-2 rounded-xl font-bold text-xs flex items-center gap-1 ${
+                    isManual
+                      ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
+                      : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
+                  }`}
+                  disabled={!isManual}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isManual && confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customer.name}"?`)) {
+                      void deleteCustomer(customer.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Xóa
+                </Button>
+              ),
+            });
+          }
+
           return (
             <ActionStack
               className="font-sans"
               gap={1}
-              actions={[
-                {
-                  key: 'view',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/50 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCustomer(customer);
-                        setFormMode('view');
-                        setShowForm(true);
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5 text-slate-500" />
-                      Xem
-                    </Button>
-                  ),
-                },
-                {
-                  key: 'edit',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-slate-750 hover:text-indigo-650 hover:bg-indigo-50/50 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCustomer(customer);
-                        setFormMode('edit');
-                        setShowForm(true);
-                      }}
-                    >
-                      <Edit2 className="h-3.5 w-3.5 text-slate-500" />
-                      Sửa
-                    </Button>
-                  ),
-                },
-                {
-                  key: 'delete',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`h-8 px-2 rounded-xl font-bold text-xs flex items-center gap-1 ${
-                        isManual
-                          ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
-                          : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
-                      }`}
-                      disabled={!isManual}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isManual && confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customer.name}"?`)) {
-                          void deleteCustomer(customer.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Xóa
-                    </Button>
-                  ),
-                },
-              ]}
+              actions={actions}
             />
           );
         },
       },
     ];
-  }, [deleteCustomer, groups]);
+  }, [deleteCustomer, groups, permissions.canUpdate, permissions.canDelete]);
 
   const statCardsData = [
     {
@@ -364,49 +379,10 @@ export default function CustomersRoute() {
       valueColor: 'text-amber-650',
     },
   ];
-
   return (
-    <div className="space-y-3 font-sans text-sm">
-      {/* Module Title Section */}
-      <ModuleHeader
-        title="Quản lý khách hàng KiotViet"
-        description="Theo dõi lịch sử giao dịch, dư nợ tích lũy và đồng bộ tự động thông tin khách hàng từ KiotViet."
-        icon={<HeartHandshake className="h-5 w-5 text-slate-800" />}
-      >
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto md:justify-end">
-          <Button
-            variant="outline"
-            className="rounded-xl h-9 text-sm font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center"
-            onClick={() => {
-              setEditingCustomer(null);
-              setFormMode('create');
-              setShowForm(true);
-            }}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-            Tạo khách hàng
-          </Button>
-
-          <Button
-            variant="outline"
-            className="rounded-xl h-9 text-sm font-bold border-slate-200 bg-white text-slate-600 hover:bg-slate-50/80 hover:border-slate-300 hover:text-slate-800 transition duration-200 cursor-pointer flex items-center"
-            onClick={() => setShowHistoryDrawer(true)}
-          >
-            <History className="mr-1.5 h-3.5 w-3.5 text-slate-450" />
-            Lịch sử đồng bộ
-          </Button>
-
-          <Button
-            className="rounded-xl h-9 text-sm font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center border-none"
-            onClick={() => void syncDataPreview()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Đang đọc...' : 'Đồng bộ KiotViet'}
-          </Button>
-        </div>
-      </ModuleHeader>
-
+    <div className="flex flex-col h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] font-sans text-sm overflow-hidden">
+      {/* === PHẦN CỐ ĐỊNH PHÍA TRÊN === */}
+      <div className="shrink-0 space-y-3 pb-3">
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {statCardsData.map((card, idx) => (
@@ -562,12 +538,55 @@ export default function CustomersRoute() {
               Đặt lại
             </Button>
           )}
+
+          {/* Divider */}
+          <div className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
+
+          {/* Action buttons */}
+          {permissions.canCreate && (
+            <Button
+              variant="outline"
+              className="rounded-xl h-9 text-xs font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center gap-1.5"
+              onClick={() => {
+                setEditingCustomer(null);
+                setFormMode('create');
+                setShowForm(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 text-indigo-500" />
+              Tạo khách hàng
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            className="rounded-xl h-9 text-xs font-bold border-slate-200 bg-white text-slate-600 hover:bg-slate-50/80 hover:border-slate-300 hover:text-slate-800 transition duration-200 cursor-pointer flex items-center gap-1.5"
+            onClick={() => setShowHistoryDrawer(true)}
+          >
+            <History className="h-3.5 w-3.5 text-slate-450" />
+            Lịch sử đồng bộ
+          </Button>
+
+          {(permissions.canCreate || permissions.canUpdate) && (
+            <Button
+              className="rounded-xl h-9 text-xs font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center gap-1.5 border-none"
+              onClick={() => void syncDataPreview()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Đang đọc...' : 'Đồng bộ KiotViet'}
+            </Button>
+          )}
         </div>
       </div>
 
+      </div>
+
+      {/* === PHẦN CUỘN: BẢNG === */}
+      <div className="flex-1 min-h-0 overflow-hidden">
       {/* Main Table */}
       {/* On mobile: render MobileCard list view */}
-      <div className="block md:hidden space-y-3 px-1 pb-4">
+      <div className="block md:hidden space-y-3 px-1 pb-4 h-full overflow-y-auto scrollbar-none">
         {filteredCustomers.length === 0 ? (
           <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
             Chưa có khách hàng nào trong hệ thống hoặc không khớp với bộ lọc.
@@ -652,7 +671,7 @@ export default function CustomersRoute() {
       </div>
 
       {/* On desktop: render CustomTable */}
-      <div className="hidden md:block w-full min-w-0">
+      <div className="hidden md:flex flex-col w-full min-w-0 h-full">
         <CustomTable<Customer>
           columns={columns}
           data={filteredCustomers}
@@ -661,9 +680,10 @@ export default function CustomersRoute() {
           pageSizeOptions={[10, 20, 50, 100]}
           emptyMessage="Chưa có khách hàng nào trong hệ thống hoặc không khớp với bộ lọc."
           tableMinWidth={900}
-          className="h-[calc(100vh-340px)]"
+          className="flex-1 min-h-0"
           getRowId={(c) => c.id}
         />
+      </div>
       </div>
 
       {/* Edit/Create/View Dialog Form */}

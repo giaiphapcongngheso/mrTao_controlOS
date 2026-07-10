@@ -187,6 +187,7 @@ export default function TasksContainer({
       onUpdateSubtasks={handleUpdateSubtasks}
       canCreate={permissions.canCreate}
       canUpdate={permissions.canUpdate}
+      canDelete={permissions.canDelete}
       currentUser={currentUser}
     />
   );

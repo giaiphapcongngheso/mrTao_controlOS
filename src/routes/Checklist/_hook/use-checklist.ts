@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DocumentSnapshot, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { getFirestoreDb } from '../../../services/firebase-config';
+import { useChecklistStore } from '../../../stores/checklist-store';
 import type {
   ChecklistCategory,
   ChecklistDocument,
@@ -203,9 +204,11 @@ export function useChecklist({
   const currentRoleCode = normalizeAccessCode(currentUser?.roleCode || currentUser?.role || 'SALES');
   const { permissions } = useModulePermissions(MODULE_CODE.CHECKLIST, currentUser, isOwner);
 
-  const [dataState, setDataState] = useState<ChecklistDataState>(EMPTY_CHECKLIST_DATA_STATE);
-  const [roleOptions, setRoleOptions] = useState<ChecklistRoleOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const dataState = useChecklistStore((state) => state.dataState);
+  const roleOptions = useChecklistStore((state) => state.roleOptions);
+  const isLoading = useChecklistStore((state) => state.isLoading);
+  const initChecklistStore = useChecklistStore((state) => state.initChecklistStore);
+
   const [historySnapshots, setHistorySnapshots] = useState<ChecklistDocument[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pendingTemplateSync, setPendingTemplateSync] = useState<PendingTemplateSyncState | null>(null);
@@ -215,28 +218,12 @@ export function useChecklist({
     dataStateRef.current = dataState;
   }, [dataState]);
 
-  const filterState = useCallback((state: ChecklistDataState): ChecklistDataState => ({
-    templates: state.templates.filter((template) =>
-      template.storeId === activeStoreId &&
-      !template.deletedAt,
-    ),
-    snapshots: state.snapshots.filter((snapshot) =>
-      snapshot.storeId === activeStoreId &&
-      !snapshot.deletedAt,
-    ),
-    processes: state.processes.filter((processDoc) =>
-      processDoc.storeId === activeStoreId &&
-      !processDoc.deletedAt,
-    ),
-  }), [activeStoreId]);
-
   const replaceLocalState = useCallback((nextState: ChecklistDataState) => {
-    dataStateRef.current = nextState;
-    setDataState(nextState);
+    useChecklistStore.setState({ dataState: nextState });
   }, []);
 
   const updateLocalState = useCallback((updater: (state: ChecklistDataState) => ChecklistDataState) => {
-    const previousState = dataStateRef.current;
+    const previousState = useChecklistStore.getState().dataState;
     const nextState = updater(previousState);
     replaceLocalState(nextState);
     return previousState;
@@ -373,7 +360,7 @@ export function useChecklist({
         return;
       }
 
-      const currentState = dataStateRef.current;
+      const currentState = useChecklistStore.getState().dataState;
       const snapshotsById = new Map(
         currentState.snapshots.map((snapshot) => [snapshot.id, snapshot] as const),
       );
@@ -403,136 +390,35 @@ export function useChecklist({
   }, [activeStoreId, currentRoleCode]);
 
   const refreshChecklistData = useCallback(async () => {
-    setIsLoading(true);
-    const todayKey = getTodayKey();
+    useChecklistStore.setState({ isLoading: true });
     try {
       const [allTemplates, allProcesses] = await Promise.all([
-        checklistTemplateService.getAll(),
-        processService.getAll(),
+        checklistTemplateService.getAll({ storeId: activeStoreId }),
+        processService.getAll({ storeId: activeStoreId }),
       ]);
-      const filteredState = filterState({
-        templates: allTemplates || [],
-        snapshots: dataStateRef.current.snapshots,
-        processes: allProcesses || [],
-      });
-
-      setDataState((prev) => ({
-        ...prev,
-        templates: filteredState.templates,
-        processes: filteredState.processes,
-      }));
-      setIsLoading(false);
-
-      ensureMissingSnapshotsInBackground(
-        {
-          ...filteredState,
-          snapshots: dataStateRef.current.snapshots,
+      
+      useChecklistStore.setState((state) => ({
+        dataState: {
+          ...state.dataState,
+          templates: (allTemplates || []).filter((t) => t.storeId === activeStoreId && !t.deletedAt),
+          processes: (allProcesses || []).filter((p) => p.storeId === activeStoreId && !p.deletedAt),
         },
-        todayKey
-      );
+        isLoading: false,
+      }));
+
+      const todayKey = getTodayKey();
+      ensureMissingSnapshotsInBackground(useChecklistStore.getState().dataState, todayKey);
     } catch (error) {
       console.error('Không thể refresh dữ liệu checklist:', error);
-      setIsLoading(false);
+      useChecklistStore.setState({ isLoading: false });
     }
-  }, [ensureMissingSnapshotsInBackground, filterState]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fallbackRole: ChecklistRoleOption = {
-      code: currentRoleCode || 'SALES',
-      name: currentUser.role || currentRoleCode || 'Nhân sự',
-    };
-
-    const loadRoleOptions = async () => {
-      try {
-        const roles = await roleService.getAll();
-        if (cancelled) return;
-
-        const normalizedRoles = (roles || [])
-          .filter((role: StaffRole) => role?.status !== 'inactive')
-          .map((role: StaffRole) => ({
-            code: normalizeAccessCode(role.code),
-            name: role.name,
-          }))
-          .filter((role) => role.code);
-
-        const roleMap = new Map<string, ChecklistRoleOption>();
-        normalizedRoles.forEach((role) => roleMap.set(role.code, role));
-        if (!roleMap.has(fallbackRole.code)) {
-          roleMap.set(fallbackRole.code, fallbackRole);
-        }
-        setRoleOptions(Array.from(roleMap.values()));
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Không thể tải danh sách vai trò checklist:', error);
-          setRoleOptions([fallbackRole]);
-          toastError('Không thể tải vai trò checklist. Vui lòng kiểm tra quyền truy cập.');
-        }
-      }
-    };
-
-    void loadRoleOptions();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentRoleCode, currentUser.role]);
-
-  // Real-time listener for checklists collection
-  useEffect(() => {
-    if (!activeStoreId) return;
-
-    const db = getFirestoreDb();
-    const q = query(
-      collection(db, 'checklists'),
-      where('storeId', '==', activeStoreId),
-      where('deletedAt', '==', null)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const updatedSnapshots: ChecklistDocument[] = [];
-      snapshot.forEach((docSnap) => {
-        updatedSnapshots.push({
-          ...docSnap.data(),
-          id: docSnap.id,
-        } as ChecklistDocument);
-      });
-
-      setDataState((prev) => {
-        const nextState = {
-          ...prev,
-          snapshots: updatedSnapshots,
-        };
-        const todayKey = getTodayKey();
-        ensureMissingSnapshotsInBackground(nextState, todayKey);
-        return nextState;
-      });
-    }, (error) => {
-      console.error('Lỗi lắng nghe dữ liệu checklist thời gian thực:', error);
-    });
-
-    return () => {
-      unsubscribe();
-    };
   }, [activeStoreId, ensureMissingSnapshotsInBackground]);
 
   useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      try {
-        await refreshChecklistData();
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Không thể tải checklist:', error);
-          toastError('Không thể tải checklist. Vui lòng kiểm tra quyền truy cập hoặc kết nối mạng.');
-        }
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshChecklistData]);
+    if (activeStoreId) {
+      void initChecklistStore(activeStoreId, currentRoleCode, currentUser.role);
+    }
+  }, [activeStoreId, currentRoleCode, currentUser.role, initChecklistStore]);
 
 
 

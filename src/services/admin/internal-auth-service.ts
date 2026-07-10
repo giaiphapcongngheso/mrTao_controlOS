@@ -89,6 +89,7 @@ async function findStaffByUsernameOrThrow(username: string): Promise<StaffMember
     }
     return matchedStaff;
   } catch (error) {
+    console.error('Lỗi chi tiết khi tìm tài khoản nhân sự:', error);
     if (error instanceof InternalAuthError) {
       throw error;
     }

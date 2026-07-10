@@ -807,61 +807,93 @@ export default function ChecklistView({
     setIsAddingItem(false);
   }, [setIsAddingItem]);
 
-  // ── Render ──
   return (
-    <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 w-full min-w-0 overflow-x-hidden">
-      <div className="hidden sm:block">
-        <ChecklistHeader
+    <div className="flex flex-col text-left antialiased font-sans h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative">
+      {/* Thanh tab cố định – chỉ render navigation row */}
+      <div className="shrink-0 bg-white">
+        <ChecklistTabBar
           subTab={subTab}
+          setSubTab={setSubTab}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedRoleCode={selectedRoleCode}
+          setSelectedRoleCode={setDialogRoleCode}
+          roleOptions={roleOptions}
+          items={items}
+          selectedPerformer={selectedPerformer}
+          setSelectedPerformer={setSelectedPerformer}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onRefresh={onRefresh}
+          showHistory={isOwner}
+          showRoleSelect={isOwner}
+          isOwner={isOwner}
+          currentUser={currentUser}
+          templateFilterRole={templateFilterRole}
+          setTemplateFilterRole={setTemplateFilterRole}
+          templateFilterFrequency={templateFilterFrequency}
+          setTemplateFilterFrequency={setTemplateFilterFrequency}
+          templateFilterStatus={templateFilterStatus}
+          setTemplateFilterStatus={setTemplateFilterStatus}
+          templateSearchTerm={templateSearchTerm}
+          setTemplateSearchTerm={setTemplateSearchTerm}
           canCreate={permissions.canCreate}
+          onOpenCreateTemplate={() => setEditingTemplateId('new')}
           onOpenCreateDialog={handleOpenCreateDialog}
+          tabsOnly
         />
       </div>
 
-      <ChecklistErrorBanner
-        errorMessage={errorMessage}
-        onDismissError={onDismissError}
-      />
-
-      <ChecklistTabBar
-        subTab={subTab}
-        setSubTab={setSubTab}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedRoleCode={selectedRoleCode}
-        setSelectedRoleCode={setDialogRoleCode}
-        roleOptions={roleOptions}
-        items={items}
-        selectedPerformer={selectedPerformer}
-        setSelectedPerformer={setSelectedPerformer}
-        selectedStatus={selectedStatus}
-        setSelectedStatus={setSelectedStatus}
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        onRefresh={onRefresh}
-        showHistory={isOwner}
-        showRoleSelect={isOwner}
-        isOwner={isOwner}
-        currentUser={currentUser}
-        templateFilterRole={templateFilterRole}
-        setTemplateFilterRole={setTemplateFilterRole}
-        templateFilterFrequency={templateFilterFrequency}
-        setTemplateFilterFrequency={setTemplateFilterFrequency}
-        templateFilterStatus={templateFilterStatus}
-        setTemplateFilterStatus={setTemplateFilterStatus}
-        templateSearchTerm={templateSearchTerm}
-        setTemplateSearchTerm={setTemplateSearchTerm}
-        canCreate={permissions.canCreate}
-        onOpenCreateTemplate={() => setEditingTemplateId('new')}
-      />
-
-      {subTab === 'history' ? null : (
-        <ChecklistConfigBar
+      {/* Phần cuộn: bộ lọc + nội dung */}
+      <div className="flex-1 overflow-y-auto scrollbar-none pb-12 pr-1">
+        <ChecklistTabBar
           subTab={subTab}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
+          setSubTab={setSubTab}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedRoleCode={selectedRoleCode}
+          setSelectedRoleCode={setDialogRoleCode}
+          roleOptions={roleOptions}
+          items={items}
+          selectedPerformer={selectedPerformer}
+          setSelectedPerformer={setSelectedPerformer}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onRefresh={onRefresh}
+          showHistory={isOwner}
+          showRoleSelect={isOwner}
+          isOwner={isOwner}
+          currentUser={currentUser}
+          templateFilterRole={templateFilterRole}
+          setTemplateFilterRole={setTemplateFilterRole}
+          templateFilterFrequency={templateFilterFrequency}
+          setTemplateFilterFrequency={setTemplateFilterFrequency}
+          templateFilterStatus={templateFilterStatus}
+          setTemplateFilterStatus={setTemplateFilterStatus}
+          templateSearchTerm={templateSearchTerm}
+          setTemplateSearchTerm={setTemplateSearchTerm}
+          canCreate={permissions.canCreate}
+          onOpenCreateTemplate={() => setEditingTemplateId('new')}
+          onOpenCreateDialog={handleOpenCreateDialog}
+          filtersOnly
         />
-      )}
+        <div className="mt-3.5 space-y-3.5">
+        <ChecklistErrorBanner
+          errorMessage={errorMessage}
+          onDismissError={onDismissError}
+        />
+
+        {subTab === 'history' ? null : (
+          <ChecklistConfigBar
+            subTab={subTab}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        )}
 
       {/* ── Tab Content Routing ────────────────────────── */}
       {subTab === 'checklist_template' ? (
@@ -1086,6 +1118,8 @@ export default function ChecklistView({
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }
