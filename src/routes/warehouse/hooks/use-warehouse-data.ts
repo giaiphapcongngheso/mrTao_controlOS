@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createWarehouseBranch,
   createWarehouseProduct,
@@ -25,59 +26,52 @@ const DEFAULT_FILTERS: WarehouseFilters = {
 };
 
 export function useWarehouseData() {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [products, setProducts] = useState<WarehouseProduct[]>([]);
+  const queryClient = useQueryClient();
   const [tempSyncedData, setTempSyncedData] = useState<{
     branches: Branch[];
     products: WarehouseProduct[];
   } | null>(null);
-  const [syncLogs, setSyncLogs] = useState<WarehouseSyncLog[]>([]);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [filters, setFilters] = useState<WarehouseFilters>(DEFAULT_FILTERS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [syncTime, setSyncTime] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  const loadFromFirestore = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  // 1. Fetch branches from React Query
+  const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
+    queryKey: ['warehouse-branches'],
+    queryFn: () => warehouseBranchesService.getAll(),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
 
-    try {
-      const [allBranches, allProducts] = await Promise.all([
-        warehouseBranchesService.getAll(),
-        warehouseProductsService.getAll(),
-      ]);
-      setBranches(allBranches);
-      setProducts(allProducts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu kho từ hệ thống.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // 2. Fetch products from React Query
+  const { data: products = [], isLoading: isLoadingProducts, error: productsError } = useQuery({
+    queryKey: ['warehouse-products'],
+    queryFn: () => warehouseProductsService.getAll(),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
 
-  const loadSyncLogs = useCallback(async () => {
-    setIsLoadingLogs(true);
-
-    try {
-      // Sửa lỗi P7: Chỉ lấy 20 log mới nhất thay vì tải toàn bộ và sort client
+  // 3. Fetch sync logs from React Query
+  const { data: syncLogs = [], isLoading: isLoadingLogs } = useQuery({
+    queryKey: ['warehouse-sync-logs'],
+    queryFn: async () => {
       const result = await warehouseSyncLogsService.getPaged({
         pageSize: 20,
         orderByField: 'timestamp',
         orderDirection: 'desc',
       });
-      setSyncLogs(result.items);
-    } catch (err) {
-      console.error('Không thể tải lịch sử đồng bộ:', err);
-    } finally {
-      setIsLoadingLogs(false);
-    }
-  }, []);
+      return result.items;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    void loadFromFirestore();
-    void loadSyncLogs();
-  }, [loadFromFirestore, loadSyncLogs]);
+  const isLoading = isLoadingBranches || isLoadingProducts || isSyncing;
+  const error = syncError || (productsError instanceof Error ? productsError.message : null);
+
+  const loadSyncLogs = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['warehouse-sync-logs'] });
+  }, [queryClient]);
 
   const displayedBranches = useMemo(
     () => tempSyncedData?.branches ?? branches,
@@ -128,11 +122,9 @@ export function useWarehouseData() {
   );
 
   const syncData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
+    setIsSyncing(true);
+    setSyncError(null);
     try {
-      // Chỉ tải Preview (previewOnly = true), không ghi Firestore
       const data = await syncWarehouseData(true);
       setTempSyncedData({
         branches: data.branches,
@@ -140,9 +132,9 @@ export function useWarehouseData() {
       });
       setSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu kho.');
+      setSyncError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu kho.');
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
   }, []);
 
@@ -151,16 +143,14 @@ export function useWarehouseData() {
       return null;
     }
 
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
 
     try {
       let log: WarehouseSyncLog;
       const hasGas = !!(import.meta.env.VITE_GAS_WEBAPP_URL ?? '').trim();
       
       if (hasGas) {
-        // Giao thức tối ưu hóa: Yêu cầu GAS ghi trực tiếp lên Firestore từ máy chủ của Google
-        // previewOnly = false để thực hiện đồng bộ thật
         const result = await syncWarehouseData(false);
         log = {
           id: `log_${Date.now()}`,
@@ -172,40 +162,38 @@ export function useWarehouseData() {
           branchesUpdated: result.branches.length,
         };
       } else {
-        // Luồng cũ dành cho Firebase Functions
         log = await saveWarehouseDataWithStats(tempSyncedData.branches, tempSyncedData.products);
       }
 
-      // Sửa lỗi P3 (Optimistic update): Cập nhật trực tiếp state từ dữ liệu preview đã có
-      setBranches(tempSyncedData.branches);
-      setProducts(tempSyncedData.products);
-      setSyncLogs((prev) => [log, ...prev]);
-
-      // Xóa cache in-memory để các lần gọi sau đọc DB mới
       warehouseBranchesService.invalidateCache();
       warehouseProductsService.invalidateCache();
       warehouseSyncLogsService.invalidateCache();
 
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['warehouse-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['warehouse-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['warehouse-sync-logs'] }),
+      ]);
+
       setTempSyncedData(null);
       return log;
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu dữ liệu vào hệ thống.');
+      setSyncError(saveError instanceof Error ? saveError.message : 'Không thể lưu dữ liệu vào hệ thống.');
       throw saveError;
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [tempSyncedData]);
+  }, [tempSyncedData, queryClient]);
 
   const discardTempData = useCallback(() => {
     setTempSyncedData(null);
-    setError(null);
+    setSyncError(null);
   }, []);
 
   const createProduct = useCallback(
     async (input: WarehouseProductCreateInput) => {
-      setIsLoading(true);
-      setError(null);
-
+      setIsSyncing(true);
+      setSyncError(null);
       try {
         const existingBranch = branches.find((branch) => branch.id === input.branchId);
         let targetBranch = existingBranch;
@@ -217,21 +205,23 @@ export function useWarehouseData() {
 
         const nextProduct = createWarehouseProduct(input, targetBranch);
         await warehouseProductsService.create(nextProduct);
-        await loadFromFirestore();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['warehouse-branches'] }),
+          queryClient.invalidateQueries({ queryKey: ['warehouse-products'] }),
+        ]);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể tạo sản phẩm.');
+        setSyncError(err instanceof Error ? err.message : 'Không thể tạo sản phẩm.');
       } finally {
-        setIsLoading(false);
+        setIsSyncing(false);
       }
     },
-    [branches, loadFromFirestore],
+    [branches, queryClient],
   );
 
   const updateProduct = useCallback(
     async (productId: number, input: WarehouseProductCreateInput) => {
-      setIsLoading(true);
-      setError(null);
-
+      setIsSyncing(true);
+      setSyncError(null);
       try {
         const existingBranch = branches.find((branch) => branch.id === input.branchId);
         let targetBranch = existingBranch;
@@ -263,22 +253,24 @@ export function useWarehouseData() {
         };
 
         await warehouseProductsService.update(String(productId), updatedProduct);
-        await loadFromFirestore();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['warehouse-branches'] }),
+          queryClient.invalidateQueries({ queryKey: ['warehouse-products'] }),
+        ]);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể cập nhật sản phẩm.');
+        setSyncError(err instanceof Error ? err.message : 'Không thể cập nhật sản phẩm.');
         throw err;
       } finally {
-        setIsLoading(false);
+        setIsSyncing(false);
       }
     },
-    [branches, products, loadFromFirestore],
+    [branches, products, queryClient],
   );
 
   const deleteProduct = useCallback(
     async (productId: number) => {
-      setIsLoading(true);
-      setError(null);
-
+      setIsSyncing(true);
+      setSyncError(null);
       try {
         const product = products.find((p) => p.id === productId);
         if (!product) {
@@ -289,15 +281,15 @@ export function useWarehouseData() {
         }
 
         await warehouseProductsService.delete(String(productId));
-        await loadFromFirestore();
+        await queryClient.invalidateQueries({ queryKey: ['warehouse-products'] });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể xóa sản phẩm.');
+        setSyncError(err instanceof Error ? err.message : 'Không thể xóa sản phẩm.');
         throw err;
       } finally {
-        setIsLoading(false);
+        setIsSyncing(false);
       }
     },
-    [products, loadFromFirestore],
+    [products, queryClient],
   );
 
   return {

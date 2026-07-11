@@ -670,12 +670,6 @@ export default function ChecklistView({
     to: new Date(),
   });
 
-  // Redirect non-owners away from history tab
-  useEffect(() => {
-    if (!isOwner && subTab === 'history') {
-      setSubTab('today');
-    }
-  }, [isOwner, subTab]);
 
   // ── Role Code Logic ──
   const defaultSelectedRoleCode = useMemo(() => {

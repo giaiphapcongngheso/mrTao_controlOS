@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { customersService } from '../../../services/customers-service';
 import { customerSyncLogsService } from '../../../services/customer-sync-logs-service';
 import { syncCustomerData } from '../../../services/customer-sync-service';
@@ -15,54 +16,48 @@ function generateLocalCustomerCode() {
 }
 
 export function useCustomerData() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const queryClient = useQueryClient();
   const [tempSyncedData, setTempSyncedData] = useState<Customer[] | null>(null);
-  const [syncLogs, setSyncLogs] = useState<CustomerSyncLog[]>([]);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [filters, setFilters] = useState<CustomerFilters>(DEFAULT_FILTERS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [syncTime, setSyncTime] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  const loadFromFirestore = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
+  // 1. Fetch customers from React Query (staleTime: 10 minutes)
+  const { data: customers = [], isLoading: isLoadingCustomers, error: customersError } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => {
       const allCustomers = await customersService.getAll();
-      // Sort: manual first, then alphabetical by name
-      const sorted = [...allCustomers].sort((a, b) => {
+      return [...allCustomers].sort((a, b) => {
         if (a.source === 'manual' && b.source !== 'manual') return -1;
         if (a.source !== 'manual' && b.source === 'manual') return 1;
         return a.name.localeCompare(b.name, 'vi');
       });
-      setCustomers(sorted);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu khách hàng từ hệ thống.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
 
-  const loadSyncLogs = useCallback(async () => {
-    setIsLoadingLogs(true);
-    try {
+  // 2. Fetch sync logs from React Query
+  const { data: syncLogs = [], isLoading: isLoadingLogs } = useQuery({
+    queryKey: ['customer-sync-logs'],
+    queryFn: async () => {
       const result = await customerSyncLogsService.getPaged({
         pageSize: 15,
         orderByField: 'timestamp',
         orderDirection: 'desc',
       });
-      setSyncLogs(result.items);
-    } catch (err) {
-      console.error('Không thể tải lịch sử đồng bộ khách hàng:', err);
-    } finally {
-      setIsLoadingLogs(false);
-    }
-  }, []);
+      return result.items;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    void loadFromFirestore();
-    void loadSyncLogs();
-  }, [loadFromFirestore, loadSyncLogs]);
+  const isLoading = isLoadingCustomers || isSyncing;
+  const error = syncError || (customersError instanceof Error ? customersError.message : null);
+
+  const loadSyncLogs = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['customer-sync-logs'] });
+  }, [queryClient]);
 
   // Display preview data if available, otherwise display current firestore data
   const displayedCustomers = useMemo(
@@ -124,13 +119,11 @@ export function useCustomerData() {
 
   // Trigger preview fetch from GAS
   const syncDataPreview = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
     try {
-      // preview = true: Only fetch data from KiotViet via GAS proxy
       const result = await syncCustomerData(true);
       if (result.customers) {
-        // Map KiotViet customer structure to local Customer structure temporarily for preview
         const mapped = result.customers.map((c: any) => ({
           id: String(c.id),
           code: c.code || '',
@@ -138,7 +131,7 @@ export function useCustomerData() {
           phone: c.phone || c.contactNumber || '',
           email: c.email || '',
           address: c.address || '',
-          gender: c.gender === 'male' || c.gender === true ? 'male' as const : c.gender === 'female' || c.gender === false ? 'female' as const : 'other' as const,
+          gender: c.gender === 'male' || c.gender === true ? ('male' as const) : c.gender === 'female' || c.gender === false ? ('female' as const) : ('other' as const),
           birthDate: c.birthDate || '',
           debt: Number(c.debt || 0),
           totalSpent: Number(c.totalSpent || c.totalInvoiced || 0),
@@ -154,20 +147,19 @@ export function useCustomerData() {
       }
       setSyncTime(new Date().toLocaleTimeString('vi-VN'));
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu khách hàng.');
+      setSyncError(syncError instanceof Error ? syncError.message : 'Không thể đồng bộ dữ liệu khách hàng.');
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
   }, []);
 
   // Save the temporary sync data to Firestore via GAS real write
   const saveSyncData = useCallback(async (): Promise<CustomerSyncLog | null> => {
     if (!tempSyncedData) return null;
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
     try {
-      // preview = false: Instruct GAS to write directly to Firestore
-      const result = await syncCustomerData(false);
+      await syncCustomerData(false);
       
       const log: CustomerSyncLog = {
         id: `log_${Date.now()}`,
@@ -181,33 +173,32 @@ export function useCustomerData() {
         triggeredBy: 'manual',
       };
 
-      // Update local state directly (Optimistic update)
-      setCustomers(tempSyncedData);
-      setSyncLogs((prev) => [log, ...prev]);
-
-      // Invalidate cache
       customersService.invalidateCache();
       customerSyncLogsService.invalidateCache();
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['customers'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-sync-logs'] }),
+      ]);
 
       setTempSyncedData(null);
       return log;
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu dữ liệu khách hàng vào hệ thống.');
+      setSyncError(saveError instanceof Error ? saveError.message : 'Không thể lưu dữ liệu khách hàng vào hệ thống.');
       throw saveError;
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [tempSyncedData]);
+  }, [tempSyncedData, queryClient]);
 
   const discardTempData = useCallback(() => {
     setTempSyncedData(null);
-    setError(null);
+    setSyncError(null);
   }, []);
 
-  // CRUD operations
   const createCustomer = useCallback(async (input: Partial<Customer>) => {
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
     try {
       const code = input.code?.trim() || generateLocalCustomerCode();
       const newCustomer: Customer = {
@@ -229,18 +220,18 @@ export function useCustomerData() {
       };
 
       await customersService.create(newCustomer);
-      await loadFromFirestore();
+      await queryClient.invalidateQueries({ queryKey: ['customers'] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tạo khách hàng.');
+      setSyncError(err instanceof Error ? err.message : 'Không thể tạo khách hàng.');
       throw err;
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [loadFromFirestore]);
+  }, [queryClient]);
 
   const updateCustomer = useCallback(async (id: string, input: Partial<Customer>) => {
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
     try {
       const existing = customers.find((c) => c.id === id);
       if (!existing) {
@@ -264,18 +255,18 @@ export function useCustomerData() {
       };
 
       await customersService.update(id, updated);
-      await loadFromFirestore();
+      await queryClient.invalidateQueries({ queryKey: ['customers'] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật khách hàng.');
+      setSyncError(err instanceof Error ? err.message : 'Không thể cập nhật khách hàng.');
       throw err;
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [customers, loadFromFirestore]);
+  }, [customers, queryClient]);
 
   const deleteCustomer = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setError(null);
+    setIsSyncing(true);
+    setSyncError(null);
     try {
       const existing = customers.find((c) => c.id === id);
       if (!existing) {
@@ -286,14 +277,14 @@ export function useCustomerData() {
       }
 
       await customersService.delete(id);
-      await loadFromFirestore();
+      await queryClient.invalidateQueries({ queryKey: ['customers'] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể xóa khách hàng.');
+      setSyncError(err instanceof Error ? err.message : 'Không thể xóa khách hàng.');
       throw err;
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [customers, loadFromFirestore]);
+  }, [customers, queryClient]);
 
   return {
     customers: displayedCustomers,
