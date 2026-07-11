@@ -49,6 +49,7 @@ interface IssuesTabBarProps {
   processOptions: SelectOption[];
   assigneeOptions: SelectOption[];
   monthOptions: SelectOption[];
+  allowedTabs?: string[];
 }
 
 // ============================================================================
@@ -97,6 +98,7 @@ const IssuesTabBar = React.memo(function IssuesTabBar({
   processOptions,
   assigneeOptions,
   monthOptions,
+  allowedTabs,
 }: IssuesTabBarProps) {
   const handleTabChange = React.useCallback(
     (value: string) => {
@@ -104,6 +106,11 @@ const IssuesTabBar = React.memo(function IssuesTabBar({
     },
     [onSelectFilter]
   );
+
+  const isTabVisible = React.useCallback((tabKey: string) => {
+    if (!allowedTabs || allowedTabs.length === 0) return true;
+    return allowedTabs.includes(tabKey);
+  }, [allowedTabs]);
 
   const isOverviewTab = selectedFilter === 'overview';
 
@@ -113,35 +120,47 @@ const IssuesTabBar = React.memo(function IssuesTabBar({
       <div className="border-b border-slate-200 pb-0">
         <Tabs value={selectedFilter} onValueChange={handleTabChange} className="w-full">
           <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-6 sm:gap-8 justify-start !h-auto w-full overflow-x-auto scrollbar-none !border-none !shadow-none">
-            <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
-              <BarChart3 className="w-4 h-4 shrink-0" />
-              <span>Tổng quan</span>
-            </TabsTrigger>
+            {isTabVisible('overview') && (
+              <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span>Tổng quan</span>
+              </TabsTrigger>
+            )}
 
-            <TabsTrigger value="all" className={TAB_TRIGGER_CLASS}>
-              <Layers className="w-4 h-4 shrink-0" />
-              <span>Tất cả ({totalCount})</span>
-            </TabsTrigger>
+            {isTabVisible('all') && (
+              <TabsTrigger value="all" className={TAB_TRIGGER_CLASS}>
+                <Layers className="w-4 h-4 shrink-0" />
+                <span>Tất cả ({totalCount})</span>
+              </TabsTrigger>
+            )}
 
-            <TabsTrigger value="sop_error" className={TAB_TRIGGER_CLASS}>
-              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
-              <span>Lỗi SOP ({sopCount})</span>
-            </TabsTrigger>
+            {isTabVisible('sop_error') && (
+              <TabsTrigger value="sop_error" className={TAB_TRIGGER_CLASS}>
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>Lỗi SOP ({sopCount})</span>
+              </TabsTrigger>
+            )}
 
-            <TabsTrigger value="exception" className={TAB_TRIGGER_CLASS}>
-              <HelpCircle className="w-4 h-4 shrink-0 text-amber-500" />
-              <span>Ngoại lệ ({exceptionCount})</span>
-            </TabsTrigger>
+            {isTabVisible('exception') && (
+              <TabsTrigger value="exception" className={TAB_TRIGGER_CLASS}>
+                <HelpCircle className="w-4 h-4 shrink-0 text-amber-500" />
+                <span>Ngoại lệ ({exceptionCount})</span>
+              </TabsTrigger>
+            )}
 
-            <TabsTrigger value="risk" className={TAB_TRIGGER_CLASS}>
-              <AlertOctagon className="w-4 h-4 shrink-0 text-purple-500" />
-              <span>Rủi ro ({riskCount})</span>
-            </TabsTrigger>
+            {isTabVisible('risk') && (
+              <TabsTrigger value="risk" className={TAB_TRIGGER_CLASS}>
+                <AlertOctagon className="w-4 h-4 shrink-0 text-purple-500" />
+                <span>Rủi ro ({riskCount})</span>
+              </TabsTrigger>
+            )}
 
-            <TabsTrigger value="improvement" className={TAB_TRIGGER_CLASS}>
-              <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-              <span>Sáng kiến ({improvementCount})</span>
-            </TabsTrigger>
+            {isTabVisible('improvement') && (
+              <TabsTrigger value="improvement" className={TAB_TRIGGER_CLASS}>
+                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span>Sáng kiến ({improvementCount})</span>
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
       </div>

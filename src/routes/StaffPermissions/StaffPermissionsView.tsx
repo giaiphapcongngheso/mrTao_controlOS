@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Skeleton } from '../../shared/components/skeleton';
 import { toastError, toastSuccess } from '../../shared/lib/toast';
 import { roleService, staffPermissionService, staffService } from '../../services/admin';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
+import { useModulePermissions } from '../../shared/hooks/use-module-permissions';
 import {
   ensureFirebasePasswordUser,
   FirebaseIdentityToolkitError,
@@ -97,6 +99,37 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     currentUser?.role?.toLowerCase().includes('chủ cửa hàng') ||
     currentUser?.role?.toLowerCase().includes('owner')
   );
+
+  const { permissions: nhanSuPermissions } = useModulePermissions(
+    MODULE_CODE.NHAN_SU,
+    currentUser as any,
+    isOwner,
+  );
+
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isOwner) return true;
+    const allowed = nhanSuPermissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      if (tabKey === 'permissions' || tabKey === 'email' || tabKey === 'logs') {
+        return false;
+      }
+      return true;
+    }
+    return allowed.includes(tabKey);
+  }, [isOwner, nhanSuPermissions.allowedTabs]);
+
+  // Adjust activeTab if the current one is not allowed
+  useEffect(() => {
+    if (!isOwner && nhanSuPermissions.allowedTabs && nhanSuPermissions.allowedTabs.length > 0) {
+      const allowed = nhanSuPermissions.allowedTabs;
+      if (!allowed.includes(activeTab)) {
+        const firstAllowed = allowed[0] as ActiveTab;
+        if (firstAllowed) {
+          setActiveTab(firstAllowed);
+        }
+      }
+    }
+  }, [isOwner, nhanSuPermissions.allowedTabs, activeTab]);
 
   const activeStaffCount = useMemo(
     () => staffList.filter((staff: StaffMember) => staff.status === 'active').length,
@@ -323,6 +356,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
             canDelete: perm.canDelete,
             canApprove: perm.canApprove,
             canExport: perm.canExport,
+            allowedTabs: perm.allowedTabs || [],
           };
 
           return staffPermissionService.update(permRow.id, permRow, { bypassAutoLog: true }).then(() => permRow);
@@ -735,6 +769,10 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         onOpenAddStaffDialog={handleOpenAddStaffDialog}
         onOpenRoleDialog={handleOpenRoleDialog}
         onClearLogs={() => void handleClearLogs()}
+        showStaffTab={isTabVisible('staff')}
+        showPermissionsTab={isTabVisible('permissions')}
+        showEmailTab={isTabVisible('email')}
+        showLogsTab={isTabVisible('logs')}
       />
 
       {loading ? (

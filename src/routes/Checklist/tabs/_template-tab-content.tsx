@@ -95,23 +95,6 @@ export default function ChecklistTemplateTabContent({
     queryFn: () => staffService.getAll(),
   });
 
-  const staffOptions = useMemo(() => {
-    return [
-      { label: 'Tất cả nhân sự', value: 'all_staff' },
-      ...staffList.filter(s => s.status === 'active').map(s => ({
-        label: s.fullName,
-        value: s.id,
-      })),
-    ];
-  }, [staffList]);
-
-  const inspectorOptions = useMemo(() => {
-    return staffList.filter(s => s.status === 'active').map(s => ({
-      label: s.fullName,
-      value: s.id,
-    }));
-  }, [staffList]);
-
   // Phân trang bằng CustomTable state
   const [tablePagination, setTablePagination] = useState({
     pageIndex: 0,
@@ -144,6 +127,109 @@ export default function ChecklistTemplateTabContent({
 
   // Watchers
   const watchFrequency = form.watch('frequency');
+  const formRoleCode = form.watch('roleCode');
+
+  // Reset defaultAssignee if the role code changes and the current assignee doesn't belong to the new role
+  useEffect(() => {
+    if (!formRoleCode) return;
+    const currentAssignee = form.getValues('defaultAssignee');
+    if (!currentAssignee || currentAssignee === 'all_staff') return;
+    
+    const normalizedRole = formRoleCode.trim().toUpperCase();
+    const selectedRole = roleOptions.find(r => r.code.toUpperCase() === normalizedRole);
+    const roleNameUpper = selectedRole ? selectedRole.name.trim().toUpperCase() : '';
+    
+    const matchesNewRole = staffList.some(s => {
+      if (s.id !== currentAssignee || s.status !== 'active') return false;
+      const staffRoleCode = (s.role || '').trim().toUpperCase();
+      const staffRoleId = (s.roleId || '').trim().toUpperCase();
+      return staffRoleCode === normalizedRole || 
+             (roleNameUpper && staffRoleCode === roleNameUpper) ||
+             staffRoleId === `ROLE-${normalizedRole}` ||
+             staffRoleId === normalizedRole;
+    });
+    
+    if (!matchesNewRole) {
+      form.setValue('defaultAssignee', 'all_staff');
+    }
+  }, [formRoleCode, staffList, roleOptions, form]);
+
+  const staffOptions = useMemo(() => {
+    const roleCode = formRoleCode || '';
+    if (!roleCode) {
+      return [
+        { label: 'Tất cả nhân sự', value: 'all_staff' },
+      ];
+    }
+    const normalizedRole = roleCode.trim().toUpperCase();
+    const selectedRole = roleOptions.find(r => r.code.toUpperCase() === normalizedRole);
+    const roleNameUpper = selectedRole ? selectedRole.name.trim().toUpperCase() : '';
+
+    const filtered = staffList.filter((s) => {
+      if (s.status !== 'active') return false;
+      const staffRoleCode = (s.role || '').trim().toUpperCase();
+      const staffRoleId = (s.roleId || '').trim().toUpperCase();
+      return staffRoleCode === normalizedRole || 
+             (roleNameUpper && staffRoleCode === roleNameUpper) ||
+             staffRoleId === `ROLE-${normalizedRole}` ||
+             staffRoleId === normalizedRole;
+    });
+
+    return [
+      { label: 'Tất cả nhân sự', value: 'all_staff' },
+      ...filtered.map(s => ({
+        label: s.fullName,
+        value: s.id,
+      })),
+    ];
+  }, [staffList, formRoleCode, roleOptions]);
+
+  const inspectorOptions = useMemo(() => {
+    return staffList.filter(s => s.status === 'active').map(s => ({
+      label: s.fullName,
+      value: s.id,
+    }));
+  }, [staffList]);
+
+  // Synchronize editingTemplateId from parent with local form values
+  useEffect(() => {
+    if (editingTemplateId === 'new') {
+      form.reset({
+        roleCode: roleOptions[0]?.code || '',
+        title: '',
+        frequency: 'daily',
+        frequencyDetail: '',
+        shift: 'all_day',
+        autoCreateDaily: true,
+        status: 'active',
+        defaultAssignee: 'all_staff',
+        inspectorId: '',
+        tasks: [{ title: '', timeLimit: '08:00', isRequired: false, evidenceRequired: false }],
+      });
+    } else if (editingTemplateId && editingTemplateId !== 'new') {
+      const template = templates.find(t => t.id === editingTemplateId);
+      if (template) {
+        form.reset({
+          roleCode: template.roleCode,
+          title: template.title || '',
+          frequency: template.frequency || 'daily',
+          frequencyDetail: template.frequencyDetail || '',
+          shift: template.shift || 'all_day',
+          autoCreateDaily: template.autoCreateDaily !== false,
+          status: template.status || 'active',
+          defaultAssignee: template.defaultAssignee || 'all_staff',
+          inspectorId: template.inspectorId || '',
+          tasks: (template.tasks || []).map(task => ({
+            id: task.id,
+            title: task.title,
+            timeLimit: task.timeLimit || '08:00',
+            isRequired: task.isRequired === true,
+            evidenceRequired: task.evidenceRequired === true,
+          })),
+        });
+      }
+    }
+  }, [editingTemplateId, templates, roleOptions, form]);
 
   // Lọc danh sách templates
   const filteredTemplates = useMemo(() => {
@@ -832,7 +918,7 @@ export default function ChecklistTemplateTabContent({
                                 onChangeValue={field.onChange}
                                 options={roleOptions.map(r => ({ label: r.name, value: r.code }))}
                                 clearable={false}
-                                disabled={editingTemplateId !== 'new'}
+                                disabled={false}
                                 placeholder="Chọn vai trò..."
                                 className="w-full h-9.5 text-xs font-bold rounded-xl border-slate-200"
                               />

@@ -100,6 +100,7 @@ interface ChecklistViewProps {
     canCreate: boolean;
     canUpdate: boolean;
     canDelete: boolean;
+    allowedTabs?: string[];
   };
   isLoading?: boolean;
   errorMessage?: string | null;
@@ -738,6 +739,8 @@ export default function ChecklistView({
     selectedRoleCode,
     completedViewMode: 'day',
     selectedWeekDayKey: getTodayKey(),
+    currentUser,
+    isOwner,
   });
 
   // Apply extra Performer & Status filters dynamically for 'today' tab
@@ -796,6 +799,32 @@ export default function ChecklistView({
     setIsAddingItem(false);
   }, [setIsAddingItem]);
 
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isOwner) return true;
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      if (tabKey === 'checklist_template' || tabKey === 'history') {
+        return false;
+      }
+      return true;
+    }
+    return allowed.includes(tabKey);
+  }, [isOwner, permissions.allowedTabs]);
+
+  // Adjust subTab if the current one is not allowed
+  useEffect(() => {
+    if (!isOwner && permissions.allowedTabs && permissions.allowedTabs.length > 0) {
+      const allowed = permissions.allowedTabs;
+      if (!allowed.includes(subTab)) {
+        // Find first allowed tab
+        const firstAllowed = allowed[0] as 'today' | 'checklist_template' | 'process' | 'history';
+        if (firstAllowed) {
+          setSubTab(firstAllowed);
+        }
+      }
+    }
+  }, [isOwner, permissions.allowedTabs, subTab, setSubTab]);
+
   return (
     <div className="flex flex-col text-left antialiased font-sans h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative">
       {/* Thanh tab cố định – chỉ render navigation row */}
@@ -816,7 +845,10 @@ export default function ChecklistView({
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           onRefresh={onRefresh}
-          showHistory={isOwner}
+          showTodayTab={isTabVisible('today')}
+          showTemplateTab={isTabVisible('checklist_template')}
+          showProcessTab={isTabVisible('process')}
+          showHistoryTab={isTabVisible('history')}
           showRoleSelect={isOwner}
           isOwner={isOwner}
           currentUser={currentUser}

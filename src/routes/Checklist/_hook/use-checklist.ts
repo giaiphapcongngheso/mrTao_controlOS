@@ -232,7 +232,53 @@ export function useChecklist({
     replaceLocalState(previousState);
   }, [replaceLocalState]);
 
-  const derivedState = useMemo(() => deriveChecklistState(dataState), [dataState]);
+  const derivedState = useMemo(() => {
+    const rawDerived = deriveChecklistState(dataState);
+
+    // If the user is NOT owner/admin, we must filter their todayItems (and history items) by assignee!
+    if (isOwner) {
+      return rawDerived;
+    }
+
+    const currentUserId = currentUser?.id;
+    const filterAssignee = (item: ChecklistItem) => {
+      const template = dataState.templates.find((t) => t.id === item.templateId);
+      const defaultAssignee = template?.defaultAssignee || 'all_staff';
+      return defaultAssignee === 'all_staff' || defaultAssignee === currentUserId;
+    };
+
+    const filteredTodayItems = rawDerived.todayItems.filter(filterAssignee);
+    const filteredAllItems = rawDerived.allItems.filter(filterAssignee);
+
+    // Recalculate counts for todayCategories based on filtered tasks
+    const todayItemsByCategoryId = new Map<string, ChecklistItem[]>();
+    for (const item of filteredTodayItems) {
+      const group = todayItemsByCategoryId.get(item.categoryId);
+      if (group) {
+        group.push(item);
+      } else {
+        todayItemsByCategoryId.set(item.categoryId, [item]);
+      }
+    }
+
+    const filteredTodayCategories = rawDerived.todayCategories.map((cat) => {
+      const catItems = todayItemsByCategoryId.get(cat.id) || [];
+      const doneCount = catItems.filter((item) => item.isCompleted).length;
+      return {
+        ...cat,
+        countDone: doneCount,
+        countTotal: catItems.length,
+        isCompleted: catItems.length > 0 && doneCount === catItems.length,
+      };
+    }).filter((cat) => cat.countTotal > 0);
+
+    return {
+      ...rawDerived,
+      todayItems: filteredTodayItems,
+      allItems: filteredAllItems,
+      todayCategories: filteredTodayCategories,
+    };
+  }, [dataState, isOwner, currentUser?.id]);
 
   useEffect(() => {
     const currentRoleTodayItems = derivedState.todayItems.filter(
@@ -378,7 +424,14 @@ export function useChecklist({
     setHistoryLoading(true);
     try {
       const normalizedRoleCode = normalizeAccessCode(roleCode || currentRoleCode);
-      const snapshots = await getChecklistsByDateRange(activeStoreId, normalizedRoleCode, from, to);
+      let snapshots;
+      if (normalizedRoleCode === 'ALL') {
+        snapshots = dataStateRef.current.snapshots.filter((s) => {
+          return !s.deletedAt && s.dateKey >= from && s.dateKey <= to;
+        });
+      } else {
+        snapshots = await getChecklistsByDateRange(activeStoreId, normalizedRoleCode, from, to);
+      }
       setHistorySnapshots(snapshots || []);
     } catch (error) {
       console.error('Không thể tải lịch sử checklist:', error);

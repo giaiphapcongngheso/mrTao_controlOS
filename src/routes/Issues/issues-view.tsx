@@ -20,6 +20,7 @@ interface IssuesViewProps {
     canCreate: boolean;
     canUpdate: boolean;
     canDelete: boolean;
+    allowedTabs?: string[];
   };
   onAddIssue: (issue: Omit<SOPIssue, 'id' | 'storeId'>) => void;
   onUpdateIssue: (issueId: string, updates: Partial<SOPIssue>) => void;
@@ -48,6 +49,19 @@ const IssuesView = React.memo(function IssuesView({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<IssueCategoryFilter>(
     'overview'
   );
+
+  // Redirect to first allowed tab if current selectedCategoryFilter is not allowed
+  useEffect(() => {
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length > 0) {
+      if (!allowed.includes(selectedCategoryFilter)) {
+        const firstAllowed = allowed[0] as IssueCategoryFilter;
+        if (firstAllowed) {
+          setSelectedCategoryFilter(firstAllowed);
+        }
+      }
+    }
+  }, [permissions.allowedTabs, selectedCategoryFilter]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<SOPIssueStatusFilter>('all');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [selectedProcess, setSelectedProcess] = useState<string>('all');
@@ -519,6 +533,7 @@ const IssuesView = React.memo(function IssuesView({
         processOptions={processOptions}
         assigneeOptions={assigneeOptions}
         monthOptions={monthOptions}
+        allowedTabs={permissions.allowedTabs}
       />
 
       {isOverviewTab ? (
