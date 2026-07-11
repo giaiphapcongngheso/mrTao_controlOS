@@ -70,7 +70,7 @@ export function useFilteredCategories({
 
   return useMemo(() => {
     const normalizedSelectedRole = selectedRoleCode.trim().toUpperCase();
-    const hasRoleFilter = normalizedSelectedRole.length > 0;
+    const hasRoleFilter = normalizedSelectedRole.length > 0 && normalizedSelectedRole !== 'ALL';
     const metaCache = metaCacheRef.current;
     const matchesSelectedRole = (roleCode?: string) =>
       !hasRoleFilter || roleCode?.trim().toUpperCase() === normalizedSelectedRole;

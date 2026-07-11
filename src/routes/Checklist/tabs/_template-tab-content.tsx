@@ -191,6 +191,46 @@ export default function ChecklistTemplateTabContent({
     }));
   }, [staffList]);
 
+  // Synchronize editingTemplateId from parent with local form values
+  useEffect(() => {
+    if (editingTemplateId === 'new') {
+      form.reset({
+        roleCode: roleOptions[0]?.code || '',
+        title: '',
+        frequency: 'daily',
+        frequencyDetail: '',
+        shift: 'all_day',
+        autoCreateDaily: true,
+        status: 'active',
+        defaultAssignee: 'all_staff',
+        inspectorId: '',
+        tasks: [{ title: '', timeLimit: '08:00', isRequired: false, evidenceRequired: false }],
+      });
+    } else if (editingTemplateId && editingTemplateId !== 'new') {
+      const template = templates.find(t => t.id === editingTemplateId);
+      if (template) {
+        form.reset({
+          roleCode: template.roleCode,
+          title: template.title || '',
+          frequency: template.frequency || 'daily',
+          frequencyDetail: template.frequencyDetail || '',
+          shift: template.shift || 'all_day',
+          autoCreateDaily: template.autoCreateDaily !== false,
+          status: template.status || 'active',
+          defaultAssignee: template.defaultAssignee || 'all_staff',
+          inspectorId: template.inspectorId || '',
+          tasks: (template.tasks || []).map(task => ({
+            id: task.id,
+            title: task.title,
+            timeLimit: task.timeLimit || '08:00',
+            isRequired: task.isRequired === true,
+            evidenceRequired: task.evidenceRequired === true,
+          })),
+        });
+      }
+    }
+  }, [editingTemplateId, templates, roleOptions, form]);
+
   // Lọc danh sách templates
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {

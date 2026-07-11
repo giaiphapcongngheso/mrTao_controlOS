@@ -118,13 +118,22 @@ export async function getChecklistsByDateRange(
 ): Promise<ChecklistDocument[]> {
   const db = getFirestoreDb();
   const colRef = collection(db, 'checklists');
-  const q = query(
-    colRef,
+  const isAll = (roleCode || '').toLowerCase() === 'all';
+
+  const conditions = [
     where('storeId', '==', storeId),
-    where('roleCode', '==', roleCode),
     where('deletedAt', '==', null),
     where('dateKey', '>=', fromDateKey),
     where('dateKey', '<=', toDateKey),
+  ];
+
+  if (!isAll) {
+    conditions.push(where('roleCode', '==', roleCode));
+  }
+
+  const q = query(
+    colRef,
+    ...conditions,
     orderBy('dateKey', 'desc'),
   );
   const snap = await getDocs(q);

@@ -424,7 +424,14 @@ export function useChecklist({
     setHistoryLoading(true);
     try {
       const normalizedRoleCode = normalizeAccessCode(roleCode || currentRoleCode);
-      const snapshots = await getChecklistsByDateRange(activeStoreId, normalizedRoleCode, from, to);
+      let snapshots;
+      if (normalizedRoleCode === 'ALL') {
+        snapshots = dataStateRef.current.snapshots.filter((s) => {
+          return !s.deletedAt && s.dateKey >= from && s.dateKey <= to;
+        });
+      } else {
+        snapshots = await getChecklistsByDateRange(activeStoreId, normalizedRoleCode, from, to);
+      }
       setHistorySnapshots(snapshots || []);
     } catch (error) {
       console.error('Không thể tải lịch sử checklist:', error);
