@@ -95,7 +95,6 @@ export function useChecklistDocumentsPagedQuery(
 ) {
   const filters: FirestoreFilter[] = [
     { field: 'storeId', op: '==', value: storeId },
-    { field: 'deletedAt', op: '==', value: null },
   ];
 
   if (options?.roleCode) {
@@ -414,11 +413,21 @@ export function useChecklist({
     }
   }, [activeStoreId, ensureMissingSnapshotsInBackground]);
 
+  const isInitialized = useChecklistStore((state) => state.isInitialized);
+
   useEffect(() => {
     if (activeStoreId) {
       void initChecklistStore(activeStoreId, currentRoleCode, currentUser.role);
     }
   }, [activeStoreId, currentRoleCode, currentUser.role, initChecklistStore]);
+
+  // Tự động tạo checklist ngày hôm nay nếu chưa có khi truy cập trang
+  useEffect(() => {
+    if (isInitialized && !isLoading && activeStoreId) {
+      const todayKey = getTodayKey();
+      ensureMissingSnapshotsInBackground(dataState, todayKey);
+    }
+  }, [isInitialized, isLoading, activeStoreId, dataState, ensureMissingSnapshotsInBackground]);
 
 
 

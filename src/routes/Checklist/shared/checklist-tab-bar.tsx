@@ -318,7 +318,7 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
                       onChangeValue={(value) => setSelectedPerformer(String(value))}
                       options={performerOptions}
                       clearable={false}
-                      disabled={!isOwner}
+                      disabled={false}
                       placeholder="Chọn người thực hiện..."
                       className="w-full h-9.5 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 focus:border-slate-800 focus:ring-1 focus:ring-slate-800 bg-white"
                     />

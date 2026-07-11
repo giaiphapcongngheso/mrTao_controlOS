@@ -650,18 +650,7 @@ export default function ChecklistView({
       </div>
     );
   }, [subTab, kpiStats, templateStats, sopSummary, departmentStats, todayRevenue, isFetchingRevenue]);
-  const [selectedPerformer, setSelectedPerformer] = useState(() => {
-    if (!isOwner && currentUser?.fullName) {
-      return currentUser.fullName;
-    }
-    return 'all';
-  });
-
-  useEffect(() => {
-    if (!isOwner && currentUser?.fullName) {
-      setSelectedPerformer(currentUser.fullName);
-    }
-  }, [isOwner, currentUser?.fullName]);
+  const [selectedPerformer, setSelectedPerformer] = useState('all');
 
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -716,7 +705,7 @@ export default function ChecklistView({
     onSaveCategoryBatch,
     onRequestEditCategory,
   });
-  const selectedRoleCode = dialogRoleCode || defaultSelectedRoleCode;
+  const selectedRoleCode = isOwner ? (dialogRoleCode || defaultSelectedRoleCode) : defaultSelectedRoleCode;
 
   const createRoleOptions = useMemo(() => {
     if (dialogEditCategoryId !== null) return roleOptions;
@@ -797,11 +786,11 @@ export default function ChecklistView({
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
     setSearchTerm('');
-    setSelectedPerformer(!isOwner && currentUser?.fullName ? currentUser.fullName : 'all');
+    setSelectedPerformer('all');
     setSelectedStatus('all');
     setSelectedDate(new Date());
     setDateRange({ from: subDays(new Date(), 7), to: new Date() });
-  }, [isOwner, currentUser?.fullName]);
+  }, []);
 
   const handleCloseChecklistDialog = useCallback(() => {
     setIsAddingItem(false);
