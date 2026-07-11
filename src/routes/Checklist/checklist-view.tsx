@@ -739,6 +739,8 @@ export default function ChecklistView({
     selectedRoleCode,
     completedViewMode: 'day',
     selectedWeekDayKey: getTodayKey(),
+    currentUser,
+    isOwner,
   });
 
   // Apply extra Performer & Status filters dynamically for 'today' tab

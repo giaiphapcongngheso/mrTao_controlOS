@@ -15,6 +15,8 @@ interface UseFilteredCategoriesProps {
   selectedRoleCode: string;
   completedViewMode: 'day' | 'week';
   selectedWeekDayKey: string;
+  currentUser: any;
+  isOwner: boolean;
 }
 
 function matchesProcessSearch(process: ProcessDocument, searchLower: string): boolean {
@@ -60,6 +62,8 @@ export function useFilteredCategories({
   selectedRoleCode,
   completedViewMode,
   selectedWeekDayKey,
+  currentUser,
+  isOwner,
 }: UseFilteredCategoriesProps) {
   // Stable meta cache: avoids creating new CategoryMeta objects when title+index haven't changed
   const metaCacheRef = useRef(new Map<string, CategoryMeta>());
@@ -149,7 +153,7 @@ export function useFilteredCategories({
 
     // 2. History items (subTab === 'history')
     if (subTab === 'history') {
-      const templateLookup = new Map(todayCategories.map((t) => [t.id, t] as const));
+      const templateLookup = new Map(templates.map((t) => [t.id, t] as const));
       const todayKey = getTodayKey();
 
       // Filter snapshots by role if active
@@ -206,15 +210,21 @@ export function useFilteredCategories({
             imageUrls: task.imageUrls || [],
           }));
 
-          const filteredTasks = flatTasks.filter((it) =>
-            it.title.toLowerCase().includes(searchLower)
-          );
+          const filteredTasks = flatTasks.filter((it) => {
+            if (!it.title.toLowerCase().includes(searchLower)) return false;
+            if (!isOwner) {
+              const tmpl = templateLookup.get(it.templateId || '');
+              const assignee = tmpl?.defaultAssignee || 'all_staff';
+              if (assignee !== 'all_staff' && assignee !== currentUser?.id) return false;
+            }
+            return true;
+          });
 
-          if (filteredTasks.length === 0 && hasSearch) {
+          if (filteredTasks.length === 0 && (hasSearch || !isOwner)) {
             continue;
           }
 
-          const doneCount = flatTasks.filter((it) => it.isCompleted).length;
+          const doneCount = filteredTasks.filter((it) => it.isCompleted).length;
           const meta = getStableMeta(title, index++, colorKey);
 
           existingCats.push({
@@ -225,8 +235,8 @@ export function useFilteredCategories({
             iconName,
             colorKey,
             countDone: doneCount,
-            countTotal: flatTasks.length,
-            isCompleted: flatTasks.length > 0 && doneCount === flatTasks.length,
+            countTotal: filteredTasks.length,
+            isCompleted: filteredTasks.length > 0 && doneCount === filteredTasks.length,
             meta,
             tasks: filteredTasks,
           });
