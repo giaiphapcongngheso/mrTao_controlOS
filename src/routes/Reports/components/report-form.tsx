@@ -233,6 +233,10 @@ const ReportForm = React.memo(function ReportForm({
               <td style="padding: 4px 0; color: #0f172a;">${checklistRatio}</td>
             </tr>
             <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Lỗi vi phạm SOP:</td>
+              <td style="padding: 4px 0; color: #b45309; font-weight: bold;">${metrics?.sopErrorsCount || 0} lỗi</td>
+            </tr>
+            <tr>
               <td style="padding: 4px 0; font-weight: bold; color: #475569;">Đánh giá ca:</td>
               <td style="padding: 4px 0;">
                 <span style="padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; 
@@ -555,18 +559,18 @@ const ReportForm = React.memo(function ReportForm({
 
               {/* 1. Chỉ số tự đồng bộ */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-                <div className="flex flex-row items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   {/* Cột 1: Tiêu đề */}
                   <div className="text-sm font-black text-slate-800 flex items-center gap-2 shrink-0">
                     <span className="text-[#C21A1A]">1.</span> Chỉ số tự đồng bộ
                   </div>
                   
                   {/* Cột 2, 3, 4: Thời gian, Người lập, Lấy số liệu */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
                     {/* Cột 2: Chọn ngày */}
                     <div
                       onClick={handleDateContainerClick}
-                      className="relative w-44 h-9 group shrink-0 cursor-pointer"
+                      className="relative w-full sm:w-44 h-9 group shrink-0 cursor-pointer"
                     >
                       {/* Hidden native input overlay that receives user clicks/taps */}
                       <input
@@ -588,7 +592,7 @@ const ReportForm = React.memo(function ReportForm({
                     </div>
 
                     {/* Cột 3: Tên nhân viên lập */}
-                    <div className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl h-9 flex items-center gap-1 select-none shrink-0">
+                    <div className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl h-9 flex items-center justify-between sm:justify-start gap-1 select-none w-full sm:w-auto shrink-0">
                       <span className="text-slate-455">Người lập:</span>
                       <span className="text-slate-700 font-extrabold">
                         {formState.reporter || currentUser?.fullName || 'Trần Tấn Phát'}
@@ -601,7 +605,7 @@ const ReportForm = React.memo(function ReportForm({
                       variant="ghost"
                       onClick={onRefreshMetrics}
                       disabled={isMetricsLoading}
-                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl px-3.5 h-9 gap-1 cursor-pointer border border-slate-200 shadow-3xs bg-white active:scale-95 transition-all shrink-0"
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl px-3.5 h-9 gap-1 cursor-pointer border border-slate-200 shadow-3xs bg-white active:scale-95 transition-all w-full sm:w-auto shrink-0 justify-center flex items-center"
                     >
                       <Clock className={`h-3.5 w-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
                       {isMetricsLoading ? 'Đang tải...' : 'Lấy số liệu'}
@@ -609,7 +613,7 @@ const ReportForm = React.memo(function ReportForm({
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {/* Card Doanh thu */}
                   <div className="rounded-xl border border-rose-100 bg-rose-50/20 p-3 flex flex-col justify-between space-y-1 shadow-3xs transition-transform duration-200 hover:-translate-y-0.5">
                     <p className="text-[11px] font-bold text-rose-500 tracking-wide uppercase">Doanh thu</p>
@@ -654,7 +658,7 @@ const ReportForm = React.memo(function ReportForm({
                     </span>
                   </div>
 
-                  {/* Card Khiếu nại */}
+                  {/* Card Khiếu nại (Tạm ẩn)
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50/20 p-3 flex flex-col justify-between space-y-1 shadow-3xs transition-transform duration-200 hover:-translate-y-0.5">
                     <p className="text-[11px] font-bold text-indigo-500 tracking-wide uppercase">Khiếu nại</p>
                     <p className="text-sm font-black text-slate-800 leading-none py-1">
@@ -664,6 +668,7 @@ const ReportForm = React.memo(function ReportForm({
                       Khách hàng phản hồi
                     </span>
                   </div>
+                  */}
                 </div>
                 
                 <p className="text-[11px] text-slate-400 font-semibold italic">
@@ -1109,7 +1114,7 @@ const ReportForm = React.memo(function ReportForm({
                 </Button>
               </div>
 
-              {/* Khối Nguyên tắc điền báo cáo */}
+              {/* Khối Nguyên tắc điền báo cáo - Tạm đóng
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs text-left">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <ShieldCheck className="h-4.5 w-4.5 text-[#C21A1A]" />
@@ -1154,8 +1159,9 @@ const ReportForm = React.memo(function ReportForm({
                   </li>
                 </ol>
               </div>
+              */}
 
-              {/* Khối Nguồn tự động lấy số liệu */}
+              {/* Khối Nguồn tự động lấy số liệu - Tạm đóng
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs text-left">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <HelpCircle className="h-4.5 w-4.5 text-slate-500" />
@@ -1214,6 +1220,7 @@ const ReportForm = React.memo(function ReportForm({
                   </div>
                 </div>
               </div>
+              */}
 
             </div>
 
