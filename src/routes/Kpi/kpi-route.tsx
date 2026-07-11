@@ -1,6 +1,8 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
+import { useModulePermissions } from '../../shared/hooks/use-module-permissions';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 import { TAB_ROUTE_MAP, useAppShellState } from '../app-shell-state';
 import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
 import { useAppStore } from '../../stores/app-store';
@@ -29,18 +31,28 @@ export default function KpiRoute() {
     return currentUser?.roleCode === 'CHU_CUA_HANG' || currentUser?.roleCode === 'QUAN_TRI_VIEN';
   }, [currentUser]);
 
+  const { permissions } = useModulePermissions(MODULE_CODE.KPI, currentUser, isAdminOrOwner);
+
   const now = new Date();
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
     `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
   );
   const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'entry' | 'settings'>('ranks');
 
-  // Sync tab if user privileges change or storage restores asynchronously
+  // Sync tab if user privileges change or allowedTabs specifies different default
   useEffect(() => {
-    if (!isAdminOrOwner && activeSubTab === 'settings') {
+    if (!isAdminOrOwner && permissions.allowedTabs && permissions.allowedTabs.length > 0) {
+      const allowed = permissions.allowedTabs;
+      if (!allowed.includes(activeSubTab)) {
+        const firstAllowed = allowed[0] as 'ranks' | 'entry' | 'settings';
+        if (firstAllowed) {
+          setActiveSubTab(firstAllowed);
+        }
+      }
+    } else if (!isAdminOrOwner && activeSubTab === 'settings') {
       setActiveSubTab('ranks');
     }
-  }, [isAdminOrOwner, activeSubTab]);
+  }, [isAdminOrOwner, permissions.allowedTabs, activeSubTab]);
 
   const { data: staffMembers = [], isLoading: isStaffLoading } = useStaffQuery();
   const { data: allKpiConfigs = [], isLoading: isConfigsLoading } = useKpiConfigsQuery(activeStoreId, selectedMonthYear);
@@ -204,6 +216,7 @@ export default function KpiRoute() {
       isEntryLoading={isEntryLoading}
       isSettingsLoading={isSettingsLoading}
       isAdminOrOwner={isAdminOrOwner}
+      permissions={permissions}
     />
   );
 }

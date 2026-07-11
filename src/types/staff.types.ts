@@ -33,6 +33,7 @@ export interface RolePermissionRow {
   canDelete: boolean;
   canApprove: boolean;
   canExport?: boolean;
+  allowedTabs?: string[];
 }
 
 export interface StaffRole {

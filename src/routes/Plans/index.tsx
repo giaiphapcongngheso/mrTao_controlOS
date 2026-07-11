@@ -43,9 +43,35 @@ export default function PlansRoute() {
   const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
   const { permissions } = useModulePermissions(MODULE_CODE.KE_HOACH, currentUser, isOwner);
 
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isOwner) return true;
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      return true;
+    }
+    return allowed.includes(tabKey);
+  }, [isOwner, permissions.allowedTabs]);
+
   const { activeStoreId } = useAppShellState();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<PlanTab>('dashboard');
+
+  const visibleTabs = useMemo(() => {
+    return TAB_CONFIG.filter((tab) => isTabVisible(tab.key));
+  }, [isTabVisible]);
+
+  // Redirect if current activeTab is not allowed
+  React.useEffect(() => {
+    if (!isOwner && permissions.allowedTabs && permissions.allowedTabs.length > 0) {
+      const allowed = permissions.allowedTabs;
+      if (!allowed.includes(activeTab)) {
+        const firstAllowed = allowed[0] as PlanTab;
+        if (firstAllowed) {
+          setActiveTab(firstAllowed);
+        }
+      }
+    }
+  }, [isOwner, permissions.allowedTabs, activeTab]);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlanDocument | null>(null);
 
@@ -259,7 +285,7 @@ export default function PlansRoute() {
       <div className="shrink-0 bg-white pb-1 pt-1">
         <div className="border-b border-slate-200 pb-0 w-full mb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
-            {TAB_CONFIG.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
               return (

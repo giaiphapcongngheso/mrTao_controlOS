@@ -78,7 +78,8 @@ export function useIssuesPermissions(currentUser: UserSession | null, isOwner: b
     canCreate: permissions.canCreate,
     canUpdate: permissions.canUpdate,
     canDelete: permissions.canDelete,
-  }), [permissions.canCreate, permissions.canUpdate, permissions.canDelete]);
+    allowedTabs: permissions.allowedTabs || [],
+  }), [permissions.canCreate, permissions.canUpdate, permissions.canDelete, permissions.allowedTabs]);
 
   return {
     permissions: issuesPermissions,

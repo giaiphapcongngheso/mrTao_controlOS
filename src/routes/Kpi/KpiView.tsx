@@ -32,6 +32,9 @@ interface KpiViewProps {
   isEntryLoading: boolean;
   isSettingsLoading: boolean;
   isAdminOrOwner: boolean;
+  permissions: {
+    allowedTabs?: string[];
+  };
 }
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
@@ -63,6 +66,7 @@ export default function KpiView({
   isEntryLoading,
   isSettingsLoading,
   isAdminOrOwner,
+  permissions,
 }: KpiViewProps) {
   // Handlers
   const handleSubTabChange = useCallback((tab: SubTab) => onSubTabChange(tab), [onSubTabChange]);
@@ -78,14 +82,19 @@ export default function KpiView({
     }),
   []);
 
-  const visibleTabs = useMemo(() => {
-    return SUB_TABS.filter(tab => {
-      if (tab.key === 'settings') {
-        return isAdminOrOwner;
-      }
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isAdminOrOwner) return true;
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      if (tabKey === 'settings') return false;
       return true;
-    });
-  }, [isAdminOrOwner]);
+    }
+    return allowed.includes(tabKey);
+  }, [isAdminOrOwner, permissions.allowedTabs]);
+
+  const visibleTabs = useMemo(() => {
+    return SUB_TABS.filter((tab) => isTabVisible(tab.key));
+  }, [isTabVisible]);
 
   return (
     <div className="space-y-4 pb-10">

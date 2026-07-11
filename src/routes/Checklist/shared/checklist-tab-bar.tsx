@@ -25,6 +25,10 @@ interface ChecklistTabBarProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   showHistory?: boolean;
+  showTemplateTab?: boolean;
+  showHistoryTab?: boolean;
+  showTodayTab?: boolean;
+  showProcessTab?: boolean;
   showRoleSelect?: boolean;
   isOwner?: boolean;
   currentUser?: any;
@@ -69,6 +73,10 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
   onRefresh,
   isRefreshing = false,
   showHistory = false,
+  showTemplateTab = showHistory,
+  showHistoryTab = showHistory,
+  showTodayTab = true,
+  showProcessTab = true,
   showRoleSelect = false,
   isOwner = false,
   currentUser,
@@ -170,15 +178,17 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
       <div className="border-b border-slate-200 pb-0">
         <Tabs value={subTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="!bg-transparent !p-0 flex !rounded-none gap-6 sm:gap-8 justify-start !h-auto w-full overflow-x-auto scrollbar-none !border-none !shadow-none">
-            <TabsTrigger
-              value="today"
-              className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-            >
-              <Calendar className="w-4 h-4 shrink-0" />
-              <span>Hôm nay</span>
-            </TabsTrigger>
+            {showTodayTab && (
+              <TabsTrigger
+                value="today"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              >
+                <Calendar className="w-4 h-4 shrink-0" />
+                <span>Hôm nay</span>
+              </TabsTrigger>
+            )}
 
-            {showHistory && (
+            {showTemplateTab && (
               <TabsTrigger
                 value="checklist_template"
                 className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
@@ -188,15 +198,17 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
               </TabsTrigger>
             )}
 
-            <TabsTrigger
-              value="process"
-              className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
-            >
-              <Layers className="w-4 h-4 shrink-0" />
-              <span>Quy trình SOP</span>
-            </TabsTrigger>
+            {showProcessTab && (
+              <TabsTrigger
+                value="process"
+                className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"
+              >
+                <Layers className="w-4 h-4 shrink-0" />
+                <span>Quy trình SOP</span>
+              </TabsTrigger>
+            )}
 
-            {showHistory && (
+            {showHistoryTab && (
               <TabsTrigger
                 value="history"
                 className="!flex-none flex items-center gap-1.5 px-0 !pb-2.5 text-xs sm:text-sm font-bold !bg-transparent text-slate-500 !rounded-none border-t-0 border-l-0 border-r-0 border-b-2 border-transparent data-[state=active]:border-b-[#C21A1A] data-[state=active]:text-[#C21A1A] hover:text-slate-800 transition-all cursor-pointer !shadow-none data-[state=active]:!shadow-none active:bg-transparent"

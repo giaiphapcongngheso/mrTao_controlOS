@@ -35,6 +35,7 @@ export interface ModulePermissions {
   canDelete: boolean;
   canApprove: boolean;
   canExport: boolean;
+  allowedTabs: string[];
 }
 
 const DEFAULT_PERMISSIONS: ModulePermissions = {
@@ -44,6 +45,7 @@ const DEFAULT_PERMISSIONS: ModulePermissions = {
   canDelete: false,
   canApprove: false,
   canExport: false,
+  allowedTabs: [],
 };
 
 const FULL_PERMISSIONS: ModulePermissions = {
@@ -53,6 +55,7 @@ const FULL_PERMISSIONS: ModulePermissions = {
   canDelete: true,
   canApprove: true,
   canExport: true,
+  allowedTabs: [],
 };
 
 // ─── Hook: Single Module Permissions ─────────────────────────────────────────
@@ -103,6 +106,7 @@ export function useModulePermissions(
       canDelete: !!permRow?.canDelete,
       canApprove: !!permRow?.canApprove,
       canExport: !!permRow?.canExport,
+      allowedTabs: permRow?.allowedTabs || [],
     };
   }, [currentUser, isOwner, moduleCode, permissionsQuery.data]);
 
