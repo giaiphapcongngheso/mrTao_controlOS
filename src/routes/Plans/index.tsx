@@ -19,6 +19,9 @@ import type { PlanRequestType, PlanDocument, PlanTimeSlot, PlanMITTask, PlanLive
 import type { PlanLiveIndicatorForm } from './components/form';
 import { formatDateVN } from './plan-utils';
 import { toastSuccess, toastError } from '../../shared/lib/toast';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 import PlanDashboard from './components/plan-dashboard';
 import PlanMonthView from './components/plan-month-view';
@@ -36,9 +39,39 @@ const TAB_CONFIG = [
 ];
 
 export default function PlansRoute() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KE_HOACH, currentUser, isOwner);
+
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isOwner) return true;
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      return true;
+    }
+    return allowed.includes(tabKey);
+  }, [isOwner, permissions.allowedTabs]);
+
   const { activeStoreId } = useAppShellState();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<PlanTab>('dashboard');
+
+  const visibleTabs = useMemo(() => {
+    return TAB_CONFIG.filter((tab) => isTabVisible(tab.key));
+  }, [isTabVisible]);
+
+  // Redirect if current activeTab is not allowed
+  React.useEffect(() => {
+    if (!isOwner && permissions.allowedTabs && permissions.allowedTabs.length > 0) {
+      const allowed = permissions.allowedTabs;
+      if (!allowed.includes(activeTab)) {
+        const firstAllowed = allowed[0] as PlanTab;
+        if (firstAllowed) {
+          setActiveTab(firstAllowed);
+        }
+      }
+    }
+  }, [isOwner, permissions.allowedTabs, activeTab]);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlanDocument | null>(null);
 
@@ -237,11 +270,6 @@ export default function PlansRoute() {
   if (isPlansLoading || isStaffLoading) {
     return (
       <div className="space-y-4 text-left">
-        <ModuleHeader
-          title="Quản lý Kế hoạch"
-          description="Lập mục tiêu tuần, tháng và kế hoạch làm việc cho showroom."
-          icon={<CalendarRange className="w-6 h-6 text-[#C21A1A]" />}
-        />
         <div className="flex h-64 items-center justify-center">
           <div className="text-sm font-semibold text-slate-500 animate-pulse">
             Đang tải dữ liệu kế hoạch...
@@ -252,87 +280,86 @@ export default function PlansRoute() {
   }
 
   return (
-    <div className="space-y-4 text-left">
-      {/* Header */}
-      <ModuleHeader
-        title="Kế hoạch & Mục tiêu MV GSM"
-        description="Biến mục tiêu công ty thành hành động đơn giản — rõ ràng — đo lường được"
-        icon={<CalendarRange className="w-6 h-6 text-[#C21A1A]" />}
-      >
-        <Button
-          type="button"
-          onClick={handleOpenCreate}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Tạo kế hoạch
-        </Button>
-      </ModuleHeader>
+    <div className="flex flex-col text-left h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative">
+      {/* Cố định Header Tab chuyển hướng và chức năng */}
+      <div className="shrink-0 bg-white pb-1 pt-1">
+        <div className="border-b border-slate-200 pb-0 w-full mb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => handleTabChange(tab.key)}
+                  className={`flex-none flex items-center gap-1.5 pb-2.5 text-sm font-bold bg-transparent transition-all border-b-2 cursor-pointer ${
+                    isActive
+                      ? 'border-b-[#C21A1A] text-[#C21A1A]'
+                      : 'border-b-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Tab switcher style like checklist */}
-      <div className="border-b border-slate-200 pb-0 w-full mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div className="flex gap-6 sm:gap-8 justify-start items-center overflow-x-auto scrollbar-none">
-          {TAB_CONFIG.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
+          <div className="flex gap-2 mb-2.5 items-center shrink-0">
+            {currentTabPlan && (
+              <Button
                 type="button"
-                onClick={() => handleTabChange(tab.key)}
-                className={`flex-none flex items-center gap-1.5 pb-3 text-sm font-bold bg-transparent transition-all border-b-2 cursor-pointer ${
-                  isActive
-                    ? 'border-b-[#C21A1A] text-[#C21A1A]'
-                    : 'border-b-transparent text-slate-500 hover:text-slate-800'
-                }`}
+                variant="outline"
+                size="sm"
+                onClick={handleViewDetailClick}
+                className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-[#C21A1A] bg-red-50/50 border border-red-200 rounded-xl hover:bg-red-50 transition-colors cursor-pointer shrink-0"
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex gap-2 mb-2.5 items-center shrink-0">
-          {currentTabPlan && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleViewDetailClick}
-              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-[#C21A1A] bg-red-50/50 border border-red-200 rounded-xl hover:bg-red-50 transition-colors cursor-pointer shrink-0"
-            >
-              Xem chi tiết
-            </Button>
-          )}
-          {editButtonConfig.show && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleEditButtonClick}
-              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              {editButtonConfig.label}
-            </Button>
-          )}
+                Xem chi tiết
+              </Button>
+            )}
+            {editButtonConfig.show && permissions.canUpdate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleEditButtonClick}
+                className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                {editButtonConfig.label}
+              </Button>
+            )}
+            {permissions.canCreate && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleOpenCreate}
+                className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold text-white bg-[#C21A1A] rounded-xl hover:bg-[#a51616] transition-colors shadow-2xs cursor-pointer shrink-0 border-none"
+              >
+                <Plus className="w-3.5 h-3.5 text-white" />
+                Tạo kế hoạch
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Active view */}
-      {activeTab === 'dashboard' && (
-        <PlanDashboard
-          plans={plans}
-          indicators={indicators}
-          onNavigateToMonth={handleNavigateToMonth}
-          onNavigateToWeek={handleNavigateToWeek}
-          onEditPlan={handleEditPlan}
-        />
-      )}
-      {activeTab === 'month' && <PlanMonthView plans={plans} onEditPlan={handleEditPlan} />}
-      {activeTab === 'week' && <PlanWeekView plans={plans} onEditPlan={handleEditPlan} />}
-      {activeTab === 'day' && <PlanDayView plans={plans} daySchedules={daySchedules} onEditPlan={handleEditPlan} />}
+      {/* Nội dung Kế hoạch cuộn độc lập bên dưới */}
+      <div className="flex-1 overflow-y-auto scrollbar-none pb-12 pr-1 space-y-4">
+        {activeTab === 'dashboard' && (
+          <PlanDashboard
+            plans={plans}
+            indicators={indicators}
+            onNavigateToMonth={handleNavigateToMonth}
+            onNavigateToWeek={handleNavigateToWeek}
+            onEditPlan={handleEditPlan}
+          />
+        )}
+        {activeTab === 'month' && <PlanMonthView plans={plans} onEditPlan={handleEditPlan} />}
+        {activeTab === 'week' && <PlanWeekView plans={plans} onEditPlan={handleEditPlan} />}
+        {activeTab === 'day' && <PlanDayView plans={plans} daySchedules={daySchedules} onEditPlan={handleEditPlan} />}
+      </div>
 
       {/* Create/Edit Plan Sheet — renders independently, overlays over the current view */}
       <PlanForm

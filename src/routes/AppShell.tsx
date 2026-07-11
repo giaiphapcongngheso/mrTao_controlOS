@@ -295,7 +295,11 @@ export default function AppShell() {
             </>
           }
         >
-          {canViewTab(activeTab) ? (
+          {isLoadingModules ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C21A1A]"></div>
+            </div>
+          ) : canViewTab(activeTab) ? (
             <Outlet />
           ) : (
             <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">

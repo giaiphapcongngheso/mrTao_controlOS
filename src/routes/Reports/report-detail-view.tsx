@@ -43,6 +43,8 @@ import { notificationsService } from '../../services/notifications-service';
 import { useReportDetailQuery, useDailyReportQuery } from './_hook/use-reports';
 import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 import { MobileCard } from '../../components/custom/mobile-card';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 interface ReportDetailViewProps {
   reportId: string;
@@ -82,9 +84,10 @@ const APPROVAL_STATUS_STYLES: Record<string, string> = {
   supplement_requested: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount?: number): string {
+  const value = amount || 0;
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
-    .format(amount)
+    .format(value)
     .replace('₫', 'đ');
 }
 
@@ -568,37 +571,72 @@ const AttachmentsSection = React.memo(function AttachmentsSection({ attachments 
     <div className="space-y-3 text-left">
       <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
         <FileText className="h-4.5 w-4.5 text-[#C21A1A]" />
-        Tệp đính kèm
+        Hình ảnh minh chứng
       </h3>
       {attachments && attachments.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {attachments.map((file) => (
-            <div
-              key={file.id}
-              className="flex items-center justify-between border border-slate-200 rounded-xl p-2.5 bg-white shadow-3xs hover:border-slate-350 transition-colors"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FileText className="h-5.5 w-5.5 text-rose-500 shrink-0" />
-                <div className="truncate text-left">
-                  <p className="text-xs font-bold text-slate-700 truncate leading-tight">
-                    {file.name}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-bold leading-tight mt-0.5">
-                    {Math.round(file.size / 1024)} KB
-                  </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {attachments.map((file) => {
+            const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (file.url && file.url.startsWith('data:image/'));
+            if (isImage) {
+              return (
+                <div
+                  key={file.id}
+                  className="group relative flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-white shadow-3xs hover:border-slate-350 transition-colors"
+                >
+                  <div className="aspect-video w-full bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="object-cover w-full h-full cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() => {
+                        if (file.url) {
+                          const newWindow = window.open();
+                          if (newWindow) {
+                            newWindow.document.write(`<img src="${file.url}" style="max-width:100%; max-height:100vh; display:block; margin:auto;" />`);
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="p-2 text-left min-w-0">
+                    <p className="text-[11px] font-bold text-slate-700 truncate leading-tight">
+                      {file.name}
+                    </p>
+                    <p className="text-[9px] text-slate-400 font-bold leading-tight mt-0.5">
+                      {Math.round(file.size / 1024)} KB
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Button
-                asChild
-                variant="ghost"
-                className="text-xs font-black text-slate-400 hover:text-slate-600 px-2 py-1 h-auto rounded-lg cursor-pointer"
+              );
+            }
+            return (
+              <div
+                key={file.id}
+                className="flex items-center justify-between border border-slate-200 rounded-xl p-2.5 bg-white shadow-3xs hover:border-slate-350 transition-colors"
               >
-                <a href={file.url || '#'} target="_blank" rel="noopener noreferrer" download={file.name}>
-                  Tải
-                </a>
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText className="h-5.5 w-5.5 text-rose-500 shrink-0" />
+                  <div className="truncate text-left">
+                    <p className="text-xs font-bold text-slate-700 truncate leading-tight">
+                      {file.name}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold leading-tight mt-0.5">
+                      {Math.round(file.size / 1024)} KB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="text-xs font-black text-slate-400 hover:text-slate-600 px-2 py-1 h-auto rounded-lg cursor-pointer"
+                >
+                  <a href={file.url || '#'} target="_blank" rel="noopener noreferrer" download={file.name}>
+                    Tải
+                  </a>
+                </Button>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="py-6 text-center text-xs italic text-slate-400 border border-dashed border-slate-200 rounded-xl">
@@ -647,6 +685,7 @@ const ApprovalPanel = React.memo(function ApprovalPanel({
   approvalStatus,
   history,
   currentUser,
+  canApprove,
 }: {
   comment: string;
   onCommentChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -654,17 +693,13 @@ const ApprovalPanel = React.memo(function ApprovalPanel({
   approvalStatus: string;
   history: Array<{ action: string; timestamp: string; actor: string; note?: string }>;
   currentUser?: any;
+  canApprove: boolean;
 }) {
-  const isManager = useMemo(() => {
-    const code = currentUser?.roleCode || '';
-    return code === 'OWNER' || code === 'ADMIN' ||
-           code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN';
-  }, [currentUser]);
 
   return (
     <div className="space-y-6">
       {/* 1. Nhận xét của quản lý */}
-      {isManager && (
+      {canApprove && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs text-left">
           <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
             <MessageSquareIcon className="h-4.5 w-4.5 text-slate-600" />
@@ -824,13 +859,16 @@ export default function ReportDetailView({
   dailyReport,
   currentUser,
 }: ReportDetailViewProps) {
+  const isOwner = useMemo(() => isOwnerUser(currentUser as any), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.BAO_CAO, currentUser as any, isOwner);
+
   const router = useRouter();
   const [toast, setToast] = useState<ToastState>({ show: false, msg: '', type: 'success' });
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch report detail using base query hook
-  const { data: report, isLoading, refetch } = useReportDetailQuery(reportId);
+  const { data: report, isLoading, refetch, error } = useReportDetailQuery(reportId);
   const { data: allReports } = useDailyReportQuery();
 
   const comparisonStats = useMemo<ReportComparison>(() => {
@@ -1021,15 +1059,7 @@ export default function ReportDetailView({
   }, [report]);
 
   // Check role to render admin tools
-  const canApprove = useMemo(() => {
-    if (!currentUser) return false;
-    const code = currentUser.roleCode || '';
-    const role = currentUser.role || '';
-    const isManager = code === 'OWNER' || code === 'ADMIN' ||
-                      code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
-                      role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
-    return isManager;
-  }, [currentUser]);
+  const canApprove = permissions.canApprove;
 
   if (isLoading) {
     return (
@@ -1048,13 +1078,40 @@ export default function ReportDetailView({
     );
   }
 
+  if (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isQuotaExceeded = errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.includes('429');
+
+    return (
+      <div className="space-y-4 text-center py-20">
+        <AlertCircle className="h-12 w-12 text-rose-500 mx-auto animate-bounce" />
+        <h2 className="text-base font-black text-slate-800">
+          {isQuotaExceeded ? 'Hệ thống quá tải giới hạn (Firebase Quota Exceeded)' : 'Lỗi khi tải báo cáo'}
+        </h2>
+        <p className="text-xs text-slate-400 max-w-md mx-auto px-4 leading-normal mt-2">
+          {isQuotaExceeded 
+            ? 'Cơ sở dữ liệu Firebase của hệ thống hiện tại đã vượt quá giới hạn lượt đọc/ghi miễn phí trong ngày (Spark Plan Limit). Vui lòng nâng cấp gói hoặc thử lại vào ngày mai.' 
+            : `Đã xảy ra lỗi khi tải dữ liệu: ${errorMsg}`}
+        </p>
+        <div className="flex justify-center gap-3 mt-4">
+          <Button onClick={() => refetch()} variant="outline" className="rounded-xl h-9 text-xs border-slate-200 cursor-pointer">
+            Tải lại
+          </Button>
+          <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616] cursor-pointer">
+            Quay lại danh sách
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!report) {
     return (
       <div className="space-y-4 text-center py-20">
         <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
         <h2 className="text-base font-black text-slate-800">Không tìm thấy báo cáo</h2>
         <p className="text-xs text-slate-400">Báo cáo có mã {reportId} không tồn tại trên hệ thống.</p>
-        <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616]">
+        <Button onClick={handleBack} className="rounded-xl h-9 text-xs bg-[#C21A1A] hover:bg-[#a61616] cursor-pointer">
           Quay lại danh sách
         </Button>
       </div>
@@ -1138,6 +1195,7 @@ export default function ReportDetailView({
             approvalStatus={report.approvalStatus}
             history={approvalHistory}
             currentUser={currentUser}
+            canApprove={canApprove}
           />
         </div>
 

@@ -12,6 +12,7 @@ export const permissionRowSchema = z.object({
   canDelete: z.boolean(),
   canApprove: z.boolean(),
   canExport: z.boolean(),
+  allowedTabs: z.array(z.string()).optional(),
 });
 
 export type PermissionRowFormValues = z.infer<typeof permissionRowSchema>;

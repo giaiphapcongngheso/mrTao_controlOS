@@ -122,6 +122,7 @@ export const emailService = {
     subject: string;
     body?: string;
     htmlBody?: string;
+    attachments?: { name: string; url?: string; size: number }[];
   }): Promise<{ success: boolean; error?: string }> {
     try {
       const config = await this.getConfig();
@@ -151,6 +152,7 @@ export const emailService = {
             subject: options.subject,
             body: options.body || '',
             htmlBody: options.htmlBody || '',
+            attachments: options.attachments || [],
           }),
         });
 

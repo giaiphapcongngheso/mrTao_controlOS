@@ -21,12 +21,12 @@ const env = {
 const { ensureFirebasePasswordUser } = await import('../services/firebase-auth-service.js');
 const { staffService } = await import('../services/admin/staff-service.js');
 
-const DEFAULT_STORE_ID = 'store-mr-tao-q1';
+const DEFAULT_STORE_ID = 'mrTao';
 
 async function seedAdmin() {
-  const username = 'akadmin';
+  const username = 'admin';
   const password = 'admin123';
-  const email = 'dinhnguyen.306py@gmail.com';
+  const email = 'admin@gmail.com';
 
   console.log(`Starting seed admin with username: ${username}, email: ${email}...`);
 

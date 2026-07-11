@@ -13,5 +13,4 @@ export const env = {
   VITE_API_BASE_URL: (metaEnv.VITE_API_BASE_URL || processEnv.VITE_API_BASE_URL || '') as string,
   VITE_GAS_WEBAPP_URL: (metaEnv.VITE_GAS_WEBAPP_URL || processEnv.VITE_GAS_WEBAPP_URL || '') as string,
   VITE_GAS_SYNC_TOKEN: (metaEnv.VITE_GAS_SYNC_TOKEN || processEnv.VITE_GAS_SYNC_TOKEN || '') as string,
-  VITE_GAS_STAFF_AUTH_TOKEN: (metaEnv.VITE_GAS_STAFF_AUTH_TOKEN || processEnv.VITE_GAS_STAFF_AUTH_TOKEN || '') as string,
 };

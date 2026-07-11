@@ -67,6 +67,7 @@ interface TasksViewProps {
   onUpdateSubtasks?: (taskId: string, subtasks: SubTask[]) => void | Promise<void>;
   canCreate?: boolean;
   canUpdate?: boolean;
+  canDelete?: boolean;
   currentUser?: UserSession | null;
 }
 
@@ -318,6 +319,7 @@ export default function TasksView({
   onUpdateSubtasks,
   canCreate = false,
   canUpdate = false,
+  canDelete = false,
   currentUser,
 }: TasksViewProps) {
   const isMobile = useIsMobile();
@@ -630,40 +632,48 @@ export default function TasksView({
                 </Button>
               ),
             },
-            {
-              key: 'edit',
-              label: 'Sửa',
-              variant: 'ghost' as const,
-              onClick: () => setEditingTask(task),
-              element: (
-                <Button
-                  key="edit"
-                  variant="ghost"
-                  tooltip="Chỉnh sửa công việc"
-                  className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
-                  onClick={() => setEditingTask(task)}
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              ),
-            },
-            {
-              key: 'delete',
-              label: 'Xóa',
-              variant: 'ghost' as const,
-              onClick: () => setTaskToDelete(task),
-              element: (
-                <Button
-                  key="delete"
-                  variant="ghost"
-                  tooltip="Xóa công việc"
-                  className="w-8 h-8 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
-                  onClick={() => setTaskToDelete(task)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              ),
-            },
+            ...(canUpdate
+              ? [
+                  {
+                    key: 'edit',
+                    label: 'Sửa',
+                    variant: 'ghost' as const,
+                    onClick: () => setEditingTask(task),
+                    element: (
+                      <Button
+                        key="edit"
+                        variant="ghost"
+                        tooltip="Chỉnh sửa công việc"
+                        className="w-8 h-8 p-0 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                        onClick={() => setEditingTask(task)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    ),
+                  },
+                ]
+              : []),
+            ...(canDelete
+              ? [
+                  {
+                    key: 'delete',
+                    label: 'Xóa',
+                    variant: 'ghost' as const,
+                    onClick: () => setTaskToDelete(task),
+                    element: (
+                      <Button
+                        key="delete"
+                        variant="ghost"
+                        tooltip="Xóa công việc"
+                        className="w-8 h-8 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/80 active:scale-95 hover:scale-105 transition-all duration-200 flex items-center justify-center border-none shadow-none cursor-pointer"
+                        onClick={() => setTaskToDelete(task)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    ),
+                  },
+                ]
+              : []),
           ];
 
           return (
@@ -681,7 +691,7 @@ export default function TasksView({
         },
       },
     ],
-    [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask]
+    [renderDeadline, setEditingTask, setTaskToDelete, setViewingTask, canUpdate, canDelete]
   );
 
   // Filter tasks based on current user roles & permissions
@@ -853,98 +863,13 @@ export default function TasksView({
   }, []);
 
   return (
-    <div className="h-[calc(100vh-128px)] space-y-3.5 overflow-y-auto pb-24 pr-1 text-left scrollbar-none md:h-[calc(100vh-96px)] md:flex md:flex-col md:overflow-hidden md:pb-0 md:pr-0 font-sans text-sm text-slate-650 min-w-0 w-full overflow-x-hidden">
-
-
-
-      <ModuleHeader
-        title="Điều phối công việc Chi nhánh"
-        description="Quản trị tiến độ, ủy nhiệm siêu tốc và kiểm soát chỉ tiêu nhân sự trong ca trực showroom thời gian thực."
-        icon={<span className="text-lg sm:text-xl">🛫</span>}
-      >
-        {canCreate && (
-          <div className="w-full sm:w-48">
-            <div className="grid grid-cols-2 gap-2 sm:hidden">
-              <Button
-                type="button"
-                onClick={() => setIsAddingTask(true)}
-                className="h-10 rounded-xl bg-[#C21A1A] px-3 text-sm font-black uppercase tracking-wide text-white shadow-sm hover:bg-[#A81515]"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5 stroke-[3]" /> Tạo việc
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setQuickDelegateOpen(true)}
-                className="h-10 rounded-xl bg-white px-3 text-sm font-black uppercase tracking-wide text-[#C21A1A] shadow-sm ring-1 ring-[#C21A1A]/20 hover:bg-rose-50"
-              >
-                <Send className="mr-1.5 h-3.5 w-3.5" /> Giao nhanh
-              </Button>
-            </div>
-            <div className="hidden sm:block">
-              <CustomSelect
-                options={actionOptions}
-                value=""
-                onChangeValue={handleActionChange}
-                placeholder={selectPlaceholder}
-                clearable={false}
-                className="!bg-[#C21A1A] hover:!bg-[#A81515] !text-white font-extrabold text-sm uppercase tracking-wider rounded-xl border-none shadow-sm flex items-center justify-between px-4 py-2.5 h-10 w-full"
-                containerClassName="w-full"
-                iconClassName="!text-white opacity-100 right-4"
-              />
-            </div>
-          </div>
-        )}
-      </ModuleHeader>
-
-      {errorMessage && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-          {onRefresh && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onRefresh}
-              className="h-auto rounded-lg px-3 py-1.5 text-sm font-black text-rose-700 hover:bg-rose-100"
-            >
-              Thử lại
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* 3. CORE ANALYTICAL PILLS STRIP (Mockup Section 3) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className={cn('p-3.5 rounded-xl border flex items-center gap-3 relative', stat.wrapperClass)}>
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', stat.iconBg)}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn('text-[10px] font-black uppercase tracking-wider leading-tight', stat.labelColor)}>{stat.label}</p>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className={cn('text-2xl font-black font-sans leading-none', stat.countColor)}>{stat.count}</span>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-400 mt-0.5 block">
-                  {visibleTasks.length > 0 ? `${Math.round((stat.count / visibleTasks.length) * 100)}% tổng việc` : ''}
-                </span>
-              </div>
-              {/* Dot indicator (mockup: small colored dot top-right) */}
-              <span className={cn('absolute top-3 right-3 w-2 h-2 rounded-full', stat.dotColor)} />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 5. VIEW TABS ROW (Mockup Section 5: Danh sách/Kanban/Lịch + Search + Bộ lọc) */}
-      {!isMobile && (
-        <div className="flex items-center justify-between gap-4">
-          {/* View Tabs with underline */}
-          <div className="flex items-center gap-6 sm:gap-8 border-b border-slate-200 pb-0">
+    <div className="flex flex-col text-left h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative font-sans text-sm text-slate-650">
+      {/* 1. Cố định Header Tab & Bộ lọc */}
+      <div className="shrink-0 bg-white space-y-3 pb-3">
+        {/* Row 1: View Tabs & Actions & Search */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+          {/* Left: View Tabs */}
+          <div className="flex items-center gap-4 sm:gap-6">
             {([
               { key: 'list' as const, label: 'Danh sách', icon: <ListTodo className="w-4 h-4 shrink-0" /> },
               { key: 'kanban' as const, label: 'Kanban', icon: <ClipboardList className="w-4 h-4 shrink-0" /> },
@@ -955,137 +880,185 @@ export default function TasksView({
                 type="button"
                 onClick={() => setActiveView(key)}
                 className={cn(
-                  'flex items-center gap-1.5 px-0 pb-3 text-sm font-bold transition-all cursor-pointer relative border-b-2 border-transparent -mb-[1px]',
+                  'flex items-center gap-1.5 pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative border-b-2 border-transparent -mb-[11px]',
                   activeView === key
                     ? 'text-[#C21A1A] border-b-[#C21A1A]'
                     : 'text-slate-500 hover:text-slate-800',
                 )}
               >
                 {icon}
-                <span>{label}</span>
+                <span className={isMobile ? 'hidden sm:inline' : 'inline'}>{label}</span>
                 {/* Badge count */}
                 <span className={cn(
-                  'text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center transition-colors',
+                  'text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center transition-colors',
                   activeView === key
                     ? 'bg-[#C21A1A] text-white'
                     : 'bg-slate-100 text-slate-400'
                 )}>
-                  {key === 'list' ? filteredTasks.length : key === 'kanban' ? filteredTasks.length : filteredTasks.length}
+                  {filteredTasks.length}
                 </span>
               </button>
             ))}
           </div>
 
-          {/* Right: Search + Filter button */}
-          <div className="flex items-center gap-2">
-            <div className="w-64">
-              <SearchInput
-                placeholder="Tìm kiếm công việc..."
-                value={searchTerm}
-                onChange={setSearchTerm}
-                className="font-semibold"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 whitespace-nowrap"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
-              Bộ lọc
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* FILTER ROW (Mockup: pills + dropdowns) */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 min-w-0">
-        {/* Filter pills row */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {([
-            { key: 'all' as const, label: 'Tất cả', count: visibleTasks.length },
-            { key: 'mine' as const, label: 'Của tôi', count: visibleTasks.filter(t => t.assignee === currentUser?.fullName).length },
-            { key: 'late' as const, label: 'Trễ hạn', count: visibleTasks.filter(t => isTaskOverdue(t)).length, isRed: true },
-            { key: 'completed' as const, label: 'Hạn hoàn thành', count: visibleTasks.filter(t => t.status === 'completed').length },
-          ] as const).map(({ key, label, count, ...rest }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveFilter(key)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border whitespace-nowrap',
-                activeFilter === key
-                  ? ('isRed' in rest && rest.isRed)
-                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                    : 'bg-white text-slate-800 border-slate-300 shadow-sm'
-                  : 'bg-transparent text-slate-400 border-transparent hover:text-slate-600',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter dropdowns (Mockup: Vai trò, Người phụ trách, Trạng thái, Thời gian) */}
-        {!isMobile && (
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
-            <div className="w-36">
-              <CustomSelect
-                options={roles?.map((role) => ({ label: role.name, value: role.id })) ?? []}
-                placeholder="Chọn vai trò"
-                size="sm"
-              />
-            </div>
-            <div className="w-36">
-              <CustomSelect
-                options={staffMembers?.map((s) => ({ label: s.fullName, value: s.fullName })) ?? []}
-                placeholder="Chọn người"
-                size="sm"
-              />
-            </div>
-            <div className="w-36">
-              <CustomSelect
-                options={[
-                  { label: 'Tất cả', value: 'all' },
-                  { label: 'Chưa làm', value: 'not_started' },
-                  { label: 'Đang làm', value: 'in_progress' },
-                  { label: 'Chờ duyệt', value: 'waiting' },
-                  { label: 'Hoàn thành', value: 'completed' },
-                ]}
-                placeholder="Tất cả"
-                size="sm"
-                clearable={false}
-              />
-            </div>
-            <div className="w-44">
-              <CustomSelect
-                options={[
-                  { label: 'Hôm nay', value: 'today' },
-                  { label: 'Tuần này', value: 'week' },
-                  { label: 'Tháng này', value: 'month' },
-                ]}
-                placeholder="Chọn khoảng thời gian"
-                size="sm"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Mobile: search + view toggle */}
-        {isMobile && (
-          <div className="flex items-center gap-2 w-full">
-            <div className="flex-1">
+          {/* Right: Actions + Search */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {canCreate && (
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsAddingTask(true)}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 h-8 text-xs font-black uppercase tracking-wide text-white bg-[#C21A1A] hover:bg-[#a51616] transition-colors rounded-xl cursor-pointer border-none shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Tạo việc</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setQuickDelegateOpen(true)}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 h-8 text-xs font-black uppercase tracking-wide text-[#C21A1A] bg-red-50 border border-red-200 hover:bg-red-100/50 transition-colors rounded-xl cursor-pointer shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5 text-[#C21A1A]" />
+                  <span>Giao nhanh</span>
+                </Button>
+              </div>
+            )}
+            <div className="w-full sm:w-48">
               <SearchInput
                 placeholder="Tìm kiếm..."
                 value={searchTerm}
                 onChange={setSearchTerm}
-                className="font-semibold"
+                className="font-semibold h-8 placeholder:text-xs text-xs"
               />
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Row 2: Filter Pills + Dropdowns */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 justify-between">
+          {/* Left: Filter Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {([
+              { key: 'all' as const, label: 'Tất cả', count: visibleTasks.length },
+              { key: 'mine' as const, label: 'Của tôi', count: visibleTasks.filter(t => t.assignee === currentUser?.fullName).length },
+              { key: 'late' as const, label: 'Trễ hạn', count: visibleTasks.filter(t => isTaskOverdue(t)).length, isRed: true },
+              { key: 'completed' as const, label: 'Đã hoàn thành', count: visibleTasks.filter(t => t.status === 'completed').length },
+            ] as const).map(({ key, label, count, ...rest }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveFilter(key)}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border whitespace-nowrap',
+                  activeFilter === key
+                    ? ('isRed' in rest && rest.isRed)
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-white text-slate-800 border-slate-300 shadow-xs'
+                    : 'bg-transparent text-slate-400 border-transparent hover:text-slate-600',
+                )}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Dropdowns */}
+          {!isMobile && (
+            <div className="flex items-center gap-2 flex-wrap ml-auto">
+              <div className="w-32">
+                <CustomSelect
+                  options={roles?.map((role) => ({ label: role.name, value: role.id })) ?? []}
+                  placeholder="Chọn vai trò"
+                  size="sm"
+                  className="h-8 text-xs font-bold rounded-lg"
+                />
+              </div>
+              <div className="w-32">
+                <CustomSelect
+                  options={staffMembers?.map((s) => ({ label: s.fullName, value: s.fullName })) ?? []}
+                  placeholder="Chọn người"
+                  size="sm"
+                  className="h-8 text-xs font-bold rounded-lg"
+                />
+              </div>
+              <div className="w-32">
+                <CustomSelect
+                  options={[
+                    { label: 'Tất cả trạng thái', value: 'all' },
+                    { label: 'Chưa làm', value: 'not_started' },
+                    { label: 'Đang làm', value: 'in_progress' },
+                    { label: 'Chờ duyệt', value: 'waiting' },
+                    { label: 'Hoàn thành', value: 'completed' },
+                  ]}
+                  placeholder="Trạng thái"
+                  size="sm"
+                  clearable={false}
+                  className="h-8 text-xs font-bold rounded-lg"
+                />
+              </div>
+              <div className="w-36">
+                <CustomSelect
+                  options={[
+                    { label: 'Hôm nay', value: 'today' },
+                    { label: 'Tuần này', value: 'week' },
+                    { label: 'Tháng này', value: 'month' },
+                  ]}
+                  placeholder="Khoảng thời gian"
+                  size="sm"
+                  className="h-8 text-xs font-bold rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 2. Nội dung cuộn độc lập bên dưới */}
+      <div className="flex-1 overflow-y-auto scrollbar-none space-y-3.5 pb-12 pr-1">
+        {errorMessage && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+            {onRefresh && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onRefresh}
+                className="h-auto rounded-lg px-3 py-1.5 text-sm font-black text-rose-700 hover:bg-rose-100"
+              >
+                Thử lại
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* 3. CORE ANALYTICAL PILLS STRIP (Mockup Section 3) */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.label} className={cn('p-3.5 rounded-xl border flex items-center gap-3 relative', stat.wrapperClass)}>
+                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', stat.iconBg)}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn('text-[10px] font-black uppercase tracking-wider leading-tight', stat.labelColor)}>{stat.label}</p>
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className={cn('text-2xl font-black font-sans leading-none', stat.countColor)}>{stat.count}</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400 mt-0.5 block">
+                    {visibleTasks.length > 0 ? `${Math.round((stat.count / visibleTasks.length) * 100)}% tổng việc` : ''}
+                  </span>
+                </div>
+                <span className={cn('absolute top-3 right-3 w-2 h-2 rounded-full', stat.dotColor)} />
+              </div>
+            );
+          })}
+        </div>
 
       {/* VIEW RENDERING */}
 
@@ -1096,7 +1069,7 @@ export default function TasksView({
             tasks={filteredTasks}
             onCardClick={setViewingTask}
             onEdit={canUpdate ? setEditingTask : undefined}
-            onDelete={canUpdate ? setTaskToDelete : undefined}
+            onDelete={canDelete ? setTaskToDelete : undefined}
           />
         </div>
       )}
@@ -1125,21 +1098,23 @@ export default function TasksView({
                   const count = selectedRows.length;
                   return (
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
-                        onClick={async () => {
-                          if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không?`)) {
-                            const selectedIds = selectedRows.map((r) => r.original.id);
-                            await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
-                            table.resetRowSelection();
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa {count} mục</span>
-                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold"
+                          onClick={async () => {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa ${count} công việc đã chọn không?`)) {
+                              const selectedIds = selectedRows.map((r) => r.original.id);
+                              await Promise.all(selectedIds.map((id) => onDeleteTask(id)));
+                              table.resetRowSelection();
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa {count} mục</span>
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -1344,6 +1319,7 @@ export default function TasksView({
         }}
         variant="confirm"
       />
+      </div>
     </div>
   );
 }

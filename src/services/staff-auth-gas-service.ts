@@ -4,10 +4,10 @@ const sanitizeEnvVal = (val: string | undefined): string => {
 };
 
 const STAFF_AUTH_GAS_WEBAPP_URL = sanitizeEnvVal(
-  import.meta.env.VITE_GAS_STAFF_AUTH_URL ?? import.meta.env.VITE_GAS_WEBAPP_URL
+  import.meta.env.VITE_GAS_WEBAPP_URL
 );
 const STAFF_AUTH_GAS_TOKEN = sanitizeEnvVal(
-  import.meta.env.VITE_GAS_STAFF_AUTH_TOKEN ?? import.meta.env.VITE_GAS_SYNC_TOKEN
+  import.meta.env.VITE_GAS_SYNC_TOKEN
 );
 
 const STAFF_AUTH_GAS_TIMEOUT_MS = 60_000;

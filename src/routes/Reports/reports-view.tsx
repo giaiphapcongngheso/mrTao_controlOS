@@ -38,6 +38,20 @@ interface ReportsViewProps {
   currentUser?: { fullName: string; role: string; roleCode?: string; username?: string; avatar?: string } | null;
 }
 
+function formatDateVN(dateStr?: string, period?: 'day' | 'week' | 'month'): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (period === 'month' && parts.length >= 2) {
+    const [year, month] = parts;
+    return `Tháng ${month}/${year}`;
+  }
+  if (parts.length >= 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+  return dateStr;
+}
+
 interface ToastState {
   show: boolean;
   msg: string;
@@ -74,19 +88,19 @@ const DEFAULT_FORM_STATE: ReportFormState = {
   notes: '',
   saveStatus: 'idle',
   reportDate: new Date().toISOString().slice(0, 10),
-  shift: 'Ca sáng (06:00 - 14:00)',
-  department: 'Cửa hàng Bình Thạnh',
   reporter: '',
   highlightIssues: [],
   promises: [],
   attachments: [],
+  recipientEmails: [],
 };
 
 const ITEMS_PER_PAGE = 5;
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount?: number): string {
+  const value = amount || 0;
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
-    .format(amount)
+    .format(value)
     .replace('₫', 'đ');
 }
 
@@ -183,13 +197,15 @@ export default function ReportsView({
   }, []);
 
   useEffect(() => {
-    setReportForm((prev) => ({
-      ...prev,
-      status: defaultStatus,
-      notes: defaultNotes,
-      saveStatus: 'idle',
-    }));
-  }, [defaultNotes, defaultStatus, reportTab]);
+    if (!isReportFormOpen) {
+      setReportForm((prev) => ({
+        ...prev,
+        status: defaultStatus,
+        notes: defaultNotes,
+        saveStatus: 'idle',
+      }));
+    }
+  }, [defaultNotes, defaultStatus, reportTab, isReportFormOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -300,18 +316,20 @@ export default function ReportsView({
   }, []);
 
   const handleOpenReportForm = useCallback(() => {
-    setReportForm((prev) => ({
-      ...prev,
-      reportDate: new Date().toISOString().slice(0, 10),
-      shift: 'Ca sáng (06:00 - 14:00)',
-      department: 'Cửa hàng Bình Thạnh',
+    const todayDateKey = new Date().toISOString().slice(0, 10);
+    setReportForm({
+      status: defaultStatus,
+      notes: defaultNotes,
+      saveStatus: 'idle',
+      reportDate: todayDateKey,
       reporter: currentUser?.fullName || 'Trần Tấn Phát',
       highlightIssues: [],
       promises: [],
       attachments: [],
-    }));
+      recipientEmails: [],
+    });
     setIsReportFormOpen(true);
-  }, [currentUser?.fullName]);
+  }, [currentUser?.fullName, defaultStatus, defaultNotes]);
 
   const handleChangeFormOpen = useCallback((open: boolean) => {
     setIsReportFormOpen(open);
@@ -349,8 +367,10 @@ export default function ReportsView({
     const dayLabel = `${daysVN[now.getDay()]} ${now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`;
     const timeLabel = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
+    const reportId = `rep-${Date.now()}`;
+
     const reportPayload: ReportSubmission = {
-      id: `rep-${Date.now()}`,
+      id: reportId,
       storeId: dailyReport.storeId,
       period: reportTab,
       dateKey,
@@ -371,8 +391,6 @@ export default function ReportsView({
       updatedAt: nowIso,
 
       reportDate: reportForm.reportDate,
-      shift: reportForm.shift,
-      department: reportForm.department,
       reporter: reportForm.reporter,
       highlightIssues: reportForm.highlightIssues,
       promises: reportForm.promises,
@@ -380,31 +398,12 @@ export default function ReportsView({
     };
 
     try {
-      const existingDaily =
-        reportTab === 'day'
-          ? submittedReports.find((item) => item.period === 'day' && item.dateKey === dateKey)
-          : undefined;
-
-      let savedReport: ReportSubmission;
-      if (existingDaily) {
-        if (!permissions.canUpdate) {
-          triggerToast('Bạn không có quyền cập nhật báo cáo ngày.', 'error');
-          return;
-        }
-        const updated = await reportsDailyService.update(existingDaily.id, reportPayload);
-        savedReport = {
-          ...existingDaily,
-          ...updated,
-          timestamp: updated.timestamp || reportPayload.timestamp,
-        };
-      } else {
-        const created = await reportsDailyService.create(reportPayload);
-        savedReport = {
-          ...reportPayload,
-          ...created,
-          timestamp: created.timestamp || reportPayload.timestamp,
-        };
-      }
+      const created = await reportsDailyService.create(reportPayload);
+      const savedReport: ReportSubmission = {
+        ...reportPayload,
+        ...created,
+        timestamp: created.timestamp || reportPayload.timestamp,
+      };
 
       setSubmittedReports((prev) => [savedReport, ...prev.filter((item) => item.id !== savedReport.id)]);
       setCurrentPage(1);
@@ -429,66 +428,166 @@ export default function ReportsView({
         console.error('Không thể gửi thông báo báo cáo:', notifyError);
       }
 
-      // Tự động gửi email thông báo cho Admin nếu được kích hoạt
+      // Tự động gửi email thông báo cho các người nhận được chọn
       try {
-        const emailConfig = await emailService.getConfig();
-        if (emailConfig.notifyOnReportCreated) {
-          const recipientList = emailConfig.defaultRecipients || '';
-          if (recipientList.trim()) {
-            await emailService.sendEmail({
-              to: recipientList,
-              subject: `[Thông báo] Có báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới từ ${actorName}`,
-              htmlBody: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-                  <h2 style="color: #ea580c; margin-bottom: 10px;">Báo Cáo ${PERIOD_LABEL[reportTab]} Mới</h2>
-                  <p>Xin chào quản trị viên,</p>
-                  <p>Nhân sự <strong>${actorName}</strong> (${currentUser?.role || 'Nhân viên'}) vừa nộp báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới.</p>
-                  
-                  <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                    <h3 style="margin-top: 0; color: #334155;">Chi tiết báo cáo:</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr>
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 40%;">Doanh thu:</td>
-                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.revenue.toLocaleString('vi-VN')} đ</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Số đơn hàng:</td>
-                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.billCount} đơn</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Tỷ lệ checklist:</td>
-                        <td style="padding: 6px 0; color: #0f172a;">${savedReport.checklistRatio || (savedReport.checklistPct || 0) + '%'}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 6px 0; font-weight: bold; color: #475569;">Trạng thái:</td>
-                        <td style="padding: 6px 0; color: #0f172a;">
-                          <span style="padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; 
-                            background-color: ${savedReport.status === 'green' ? '#dcfce7' : savedReport.status === 'yellow' ? '#fef9c3' : '#fee2e2'};
-                            color: ${savedReport.status === 'green' ? '#166534' : savedReport.status === 'yellow' ? '#854d0e' : '#991b1b'};">
-                            ${savedReport.status === 'green' ? 'Tốt (Xanh)' : savedReport.status === 'yellow' ? 'Bình thường (Vàng)' : 'Cảnh báo (Đỏ)'}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    ${savedReport.notes ? `
-                    <div style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                      <strong>Ghi chú:</strong><br/>
-                      <span style="color: #334155; font-style: italic;">${savedReport.notes}</span>
-                    </div>
-                    ` : ''}
-                  </div>
-                  
-                  <p style="text-align: center; margin-top: 20px;">
-                    <a href="${window.location.origin}/reports/${savedReport.id}" style="background-color: #ea580c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Xem chi tiết & Phê duyệt</a>
-                  </p>
-                  
-                  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                  <p style="font-size: 11px; color: #94a3b8; text-align: center;">Đây là email tự động gửi từ hệ thống quản lý Mr Táo.</p>
-                </div>
-              `
-            });
+        const selectedEmails = reportForm.recipientEmails || [];
+        let recipientList = selectedEmails.join(',');
+
+        if (!recipientList) {
+          const emailConfig = await emailService.getConfig();
+          if (emailConfig.notifyOnReportCreated) {
+            recipientList = emailConfig.defaultRecipients || '';
           }
+        }
+
+        if (recipientList.trim()) {
+          await emailService.sendEmail({
+            to: recipientList,
+            subject: `[Thông báo] Có báo cáo ${PERIOD_LABEL[reportTab].toLowerCase()} mới từ ${actorName}`,
+            attachments: reportPayload.attachments,
+            htmlBody: `
+              <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <h2 style="color: #ea580c; margin-top: 0; margin-bottom: 4px; font-size: 20px; font-weight: 800;">
+                  BÁO CÁO ĐIỀU HÀNH ${PERIOD_LABEL[reportTab].toUpperCase()}
+                </h2>
+                <p style="color: #64748b; font-size: 12px; margin-top: 0; margin-bottom: 20px;">
+                  Gửi từ hệ thống điều hành Mr Táo lúc ${savedReport.timestamp}
+                </p>
+                
+                <!-- 1. Thông tin chung -->
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                    1. Thông tin chung
+                  </h3>
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569; width: 35%;">Người báo cáo:</td>
+                      <td style="padding: 4px 0; color: #0f172a;">${savedReport.reporter || actorName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569;">Ngày báo cáo:</td>
+                      <td style="padding: 4px 0; color: #0f172a;">${formatDateVN(savedReport.reportDate, reportTab)}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- 2. Chỉ số vận hành -->
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                    2. Chỉ số vận hành
+                  </h3>
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569; width: 35%;">Doanh thu:</td>
+                      <td style="padding: 4px 0; color: #0f172a; font-weight: bold;">${savedReport.revenue.toLocaleString('vi-VN')} đ</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569;">Số đơn hàng:</td>
+                      <td style="padding: 4px 0; color: #0f172a;">${savedReport.billCount} đơn</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569;">Tỷ lệ checklist:</td>
+                      <td style="padding: 4px 0; color: #0f172a;">${savedReport.checklistRatio || (savedReport.checklistPct || 0) + '%'}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569;">Đánh giá ca:</td>
+                      <td style="padding: 4px 0;">
+                        <span style="padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; 
+                          background-color: ${savedReport.status === 'green' ? '#dcfce7' : savedReport.status === 'yellow' ? '#fef9c3' : '#fee2e2'};
+                          color: ${savedReport.status === 'green' ? '#166534' : savedReport.status === 'yellow' ? '#854d0e' : '#991b1b'};">
+                          ${savedReport.status === 'green' ? 'Tốt (Xanh)' : savedReport.status === 'yellow' ? 'Bình thường (Vàng)' : 'Cảnh báo (Đỏ)'}
+                        </span>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+
+                <!-- 3. Diễn biến vận hành -->
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+                  <h3 style="margin-top: 0; margin-bottom: 10px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                    3. Diễn biến vận hành
+                  </h3>
+                  <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; white-space: pre-wrap; font-style: italic;">
+                    ${savedReport.notes || 'Không có ghi chú diễn biến.'}
+                  </p>
+                </div>
+
+                <!-- 4. Vấn đề nổi bật -->
+                ${savedReport.highlightIssues && savedReport.highlightIssues.length > 0 ? `
+                <div style="background-color: #fff5f5; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fed7d7;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; color: #9b2c2c; font-size: 14px; border-bottom: 1px solid #feb2b2; padding-bottom: 6px;">
+                    4. Vấn đề nổi bật
+                  </h3>
+                  <div>
+                    ${(savedReport.highlightIssues || []).map((item, idx) => `
+                      <div style="margin-bottom: 12px; font-size: 13px; border-bottom: ${idx < (savedReport.highlightIssues || []).length - 1 ? '1px dashed #fecaca' : 'none'}; padding-bottom: 8px;">
+                        <p style="margin: 0 0 4px 0; font-weight: bold; color: #7f1d1d;">Vấn đề ${idx + 1}: ${item.issue}</p>
+                        <p style="margin: 0 0 4px 0; color: #4a5568;"><strong>Mức độ:</strong> <span style="font-weight: bold; color: ${item.severity === 'high' ? '#e53e3e' : item.severity === 'medium' ? '#dd6b20' : '#3182ce'}">${item.severity === 'high' ? 'Nghiêm trọng' : item.severity === 'medium' ? 'Trung bình' : 'Thấp'}</span></p>
+                        <p style="margin: 0 0 4px 0; color: #4a5568;"><strong>Nguyên nhân:</strong> ${item.rootCause}</p>
+                        <p style="margin: 0; color: #4a5568;"><strong>Hành động khắc phục:</strong> ${item.action}</p>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+                ` : ''}
+
+                <!-- 5. Hứa hẹn ca sau -->
+                ${savedReport.promises && savedReport.promises.length > 0 ? `
+                <div style="background-color: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; color: #166534; font-size: 14px; border-bottom: 1px solid #86efac; padding-bottom: 6px;">
+                    5. Hứa hẹn & Cam kết
+                  </h3>
+                  <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e293b; line-height: 1.6;">
+                    ${(savedReport.promises || []).map((item) => `
+                      <li style="margin-bottom: 4px;">
+                        ${item.text} ${item.completed ? '<span style="color: #166534; font-weight: bold;">(Đã hoàn thành)</span>' : ''}
+                      </li>
+                    `).join('')}
+                  </ul>
+                </div>
+                ` : ''}
+
+                <!-- 6. Hình ảnh minh chứng -->
+                ${savedReport.attachments && savedReport.attachments.length > 0 ? `
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+                  <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                    6. Hình ảnh minh chứng
+                  </h3>
+                  <div style="font-size: 13px;">
+                    ${(savedReport.attachments || []).map((file) => {
+                      const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (file.url && file.url.startsWith('data:image/'));
+                      if (isImage) {
+                        return `
+                          <div style="margin-bottom: 8px; padding: 8px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <p style="margin: 0; color: #475569;">
+                              📷 <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB) - <span style="color: #64748b; font-style: italic;">[Đã đính kèm ảnh ở cuối email]</span>
+                            </p>
+                          </div>
+                        `;
+                      } else {
+                        return `
+                          <div style="margin-bottom: 8px; padding: 8px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <p style="margin: 0; color: #475569;">
+                              📄 <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB) 
+                              ${file.url ? `<br/><a href="${file.url}" target="_blank" style="color: #ea580c; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 4px;">Xem tài liệu đính kèm</a>` : ''}
+                            </p>
+                          </div>
+                        `;
+                      }
+                    }).join('')}
+                  </div>
+                </div>
+                ` : ''}
+
+                <p style="text-align: center; margin-top: 25px;">
+                  <a href="${window.location.origin}/reports/${savedReport.id}" style="background-color: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(234, 88, 12, 0.2);">Xem chi tiết & Phê duyệt trên Web</a>
+                </p>
+                
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">Đây là email tự động gửi từ hệ thống quản lý điều hành Mr Táo OS.</p>
+              </div>
+            `
+          });
         }
       } catch (emailErr) {
         console.error('Lỗi khi tự động gửi mail báo cáo:', emailErr);
@@ -509,8 +608,7 @@ export default function ReportsView({
     defaultNotes,
     liveReportMetrics,
     permissions.canUpdate,
-    reportForm.notes,
-    reportForm.status,
+    reportForm,
     reportTab,
     submittedReports,
     triggerToast,
@@ -518,18 +616,13 @@ export default function ReportsView({
 
   const handleDeleteReport = useCallback(
     (reportId: string) => {
-      const code = currentUser?.roleCode || '';
-      const role = currentUser?.role || '';
-      const isManager = code === 'OWNER' || code === 'ADMIN' ||
-                        code === 'CHU_CUA_HANG' || code === 'QUAN_TRI_VIEN' ||
-                        role === 'Chủ cửa hàng' || role === 'Quản trị viên hệ thống';
-      if (!isManager) {
+      if (!permissions.canDelete) {
         triggerToast('Bạn không có quyền xóa báo cáo.', 'error');
         return;
       }
       setDeleteTargetId(reportId);
     },
-    [currentUser, triggerToast],
+    [permissions.canDelete, triggerToast],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -591,14 +684,15 @@ export default function ReportsView({
               Đồng bộ dữ liệu và gửi báo cáo định kỳ cho quản lý.
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={handleOpenReportForm}
-            disabled={!canSubmitReport}
-            className="rounded-xl h-9 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
-          >
-            Tạo báo cáo
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              type="button"
+              onClick={handleOpenReportForm}
+              className="rounded-xl h-9 text-sm font-bold bg-[#C21A1A] hover:bg-[#9d1515] cursor-pointer"
+            >
+              Tạo báo cáo
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -745,14 +839,16 @@ export default function ReportsView({
                           <Eye className="w-3.5 h-3.5" />
                           <span>Xem & Duyệt</span>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReport(report.id)}
-                          className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer border-none"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Xóa</span>
-                        </button>
+                        {permissions.canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReport(report.id)}
+                            className="text-[11px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer border-none"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa</span>
+                          </button>
+                        )}
                       </div>
                     </MobileCard.Footer>
                   </MobileCard>
@@ -848,14 +944,16 @@ export default function ReportsView({
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteReport(report.id)}
-                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                            title="Xóa báo cáo"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {permissions.canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReport(report.id)}
+                              className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer border-none"
+                              title="Xóa báo cáo"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

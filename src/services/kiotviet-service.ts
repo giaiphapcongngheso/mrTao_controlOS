@@ -199,11 +199,13 @@ export function clearKiotTokenCache() {
 }
 
 async function fetchKiotApi<TPayload>(path: string, params: KiotQueryParams = {}): Promise<TPayload> {
-  // In development, call KiotViet API directly (CORS bypassed by Vite proxy)
+  const gasUrl = (import.meta.env.VITE_GAS_WEBAPP_URL ?? '').trim();
+  if (gasUrl) {
+    return fetchKiotApiViaProxy<TPayload>(path, params);
+  }
   if (import.meta.env.DEV) {
     return fetchKiotApiDirect<TPayload>(path, params);
   }
-  // In production, route through Firebase Function proxy to avoid CORS and hide credentials
   return fetchKiotApiViaProxy<TPayload>(path, params);
 }
 

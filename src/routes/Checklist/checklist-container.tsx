@@ -48,9 +48,6 @@ export default function ChecklistContainer({
     onMetricsChange,
   });
 
-  const isManagerOrOwner = currentUser?.roleCode === 'CHU_CUA_HANG' ||
-    currentUser?.roleCode === 'QUAN_TRI_VIEN';
-
   return (
     <ChecklistView
       todayCategories={derivedState.todayCategories}
@@ -83,14 +80,9 @@ export default function ChecklistContainer({
       onCreateProcess={handleCreateProcess}
       onUpdateProcess={handleUpdateProcess}
       onDeleteProcess={handleDeleteProcess}
-      permissions={{
-        ...permissions,
-        canCreate: isManagerOrOwner ? permissions.canCreate : false,
-        canUpdate: isManagerOrOwner ? permissions.canUpdate : false,
-        canDelete: isManagerOrOwner ? permissions.canDelete : false,
-      }}
+      permissions={permissions}
       isLoading={isLoading}
-      isOwner={isManagerOrOwner}
+      isOwner={isOwner}
       currentUser={currentUser}
       onRefresh={refreshChecklistData}
     />

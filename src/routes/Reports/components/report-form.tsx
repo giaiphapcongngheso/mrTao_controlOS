@@ -16,6 +16,8 @@ import {
   HelpCircle,
   ArrowLeft,
   Calendar,
+  Mail,
+  Eye,
 } from 'lucide-react';
 import {
   Button,
@@ -37,9 +39,16 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '../../../../share/ui';
 import { HighlightIssue, PromiseItem, AttachmentItem } from '../../../services/reports-service';
+import { staffService } from '../../../services/admin/staff-service';
+import type { StaffMember } from '../../../types/staff.types';
 import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
+import { NoteTemplatePicker } from './note-template-picker';
 
 export type ReportPeriod = 'day' | 'week' | 'month';
 export type ReportStatus = 'green' | 'yellow' | 'red';
@@ -49,12 +58,11 @@ export interface ReportFormState {
   notes: string;
   saveStatus: 'idle' | 'saving' | 'saved';
   reportDate: string;
-  shift: string;
-  department: string;
   reporter: string;
   highlightIssues: HighlightIssue[];
   promises: PromiseItem[];
   attachments: AttachmentItem[];
+  recipientEmails?: string[];
 }
 
 export interface ReportMetrics {
@@ -139,6 +147,187 @@ const ReportForm = React.memo(function ReportForm({
 }: ReportFormProps) {
   const isMobile = useIsMobile();
   const [newPromiseText, setNewPromiseText] = useState('');
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      const fetchStaff = async () => {
+        setIsStaffLoading(true);
+        try {
+          const data = await staffService.getAll();
+          const activeWithEmail = data.filter(
+            (s) => s.status === 'active' && (s.email || s.authEmail)
+          );
+          setStaffList(activeWithEmail);
+        } catch (err) {
+          console.error('Error fetching staff list:', err);
+        } finally {
+          setIsStaffLoading(false);
+        }
+      };
+      void fetchStaff();
+    }
+  }, [open]);
+
+  const generateEmailHtml = useCallback(() => {
+    const actorName = formState.reporter || currentUser?.fullName || 'Nhân sự vận hành';
+    const now = new Date();
+    const daysVN = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const dayLabel = `${daysVN[now.getDay()]} ${now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`;
+    const timeLabel = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const timestamp = `${dayLabel} lúc ${timeLabel}`;
+
+    const formattedRevenue = (metrics?.revenue || 0).toLocaleString('vi-VN');
+    const checklistRatio = metrics?.checklistRatio || `${metrics?.checklistPercentage || 0}%`;
+
+    const periodLabels: Record<string, string> = {
+      day: 'Cuối ngày',
+      week: 'Tuần',
+      month: 'Tháng',
+    };
+
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; text-align: left;">
+        <h2 style="color: #ea580c; margin-top: 0; margin-bottom: 4px; font-size: 20px; font-weight: 800;">
+          BÁO CÁO ĐIỀU HÀNH ${periodLabels[period]?.toUpperCase() || 'BÁO CÁO'}
+        </h2>
+        <p style="color: #64748b; font-size: 12px; margin-top: 0; margin-bottom: 20px;">
+          Gửi từ hệ thống điều hành Mr Táo lúc ${timestamp}
+        </p>
+        
+        <!-- 1. Thông tin chung -->
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+            1. Thông tin chung
+          </h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569; width: 35%;">Người báo cáo:</td>
+              <td style="padding: 4px 0; color: #0f172a;">${actorName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Ngày báo cáo:</td>
+              <td style="padding: 4px 0; color: #0f172a;">${formatDateVN(formState.reportDate, period)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 2. Chỉ số vận hành -->
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+            2. Chỉ số vận hành
+          </h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569; width: 35%;">Doanh thu:</td>
+              <td style="padding: 4px 0; color: #0f172a; font-weight: bold;">${formattedRevenue} đ</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Số đơn hàng:</td>
+              <td style="padding: 4px 0; color: #0f172a;">${metrics?.billCount || 0} đơn</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Tỷ lệ checklist:</td>
+              <td style="padding: 4px 0; color: #0f172a;">${checklistRatio}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Lỗi vi phạm SOP:</td>
+              <td style="padding: 4px 0; color: #b45309; font-weight: bold;">${metrics?.sopErrorsCount || 0} lỗi</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; color: #475569;">Đánh giá ca:</td>
+              <td style="padding: 4px 0;">
+                <span style="padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; 
+                  background-color: ${formState.status === 'green' ? '#dcfce7' : formState.status === 'yellow' ? '#fef9c3' : '#fee2e2'};
+                  color: ${formState.status === 'green' ? '#166534' : formState.status === 'yellow' ? '#854d0e' : '#991b1b'};">
+                  ${formState.status === 'green' ? 'Tốt (Xanh)' : formState.status === 'yellow' ? 'Bình thường (Vàng)' : 'Cảnh báo (Đỏ)'}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 3. Diễn biến vận hành -->
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+          <h3 style="margin-top: 0; margin-bottom: 10px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+            3. Diễn biến vận hành
+          </h3>
+          <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; white-space: pre-wrap; font-style: italic;">
+            ${formState.notes || 'Không có ghi chú diễn biến.'}
+          </p>
+        </div>
+
+        <!-- 4. Vấn đề nổi bật -->
+        ${formState.highlightIssues && formState.highlightIssues.length > 0 ? `
+        <div style="background-color: #fff5f5; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fed7d7;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; color: #9b2c2c; font-size: 14px; border-bottom: 1px solid #feb2b2; padding-bottom: 6px;">
+            4. Vấn đề nổi bật
+          </h3>
+          <div>
+            ${formState.highlightIssues.map((item, idx) => `
+              <div style="margin-bottom: 12px; font-size: 13px; border-bottom: ${idx < formState.highlightIssues.length - 1 ? '1px dashed #fecaca' : 'none'}; padding-bottom: 8px;">
+                <p style="margin: 0 0 4px 0; font-weight: bold; color: #7f1d1d;">Vấn đề ${idx + 1}: ${item.issue}</p>
+                <p style="margin: 0 0 4px 0; color: #4a5568;"><strong>Mức độ:</strong> <span style="font-weight: bold; color: ${item.severity === 'high' ? '#e53e3e' : item.severity === 'medium' ? '#dd6b20' : '#3182ce'}">${item.severity === 'high' ? 'Nghiêm trọng' : item.severity === 'medium' ? 'Trung bình' : 'Thấp'}</span></p>
+                <p style="margin: 0 0 4px 0; color: #4a5568;"><strong>Nguyên nhân:</strong> ${item.rootCause}</p>
+                <p style="margin: 0; color: #4a5568;"><strong>Hành động khắc phục:</strong> ${item.action}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- 5. Hứa hẹn ca sau -->
+        ${formState.promises && formState.promises.length > 0 ? `
+        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; color: #166534; font-size: 14px; border-bottom: 1px solid #86efac; padding-bottom: 6px;">
+            5. Hứa hẹn & Cam kết
+          </h3>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e293b; line-height: 1.6;">
+            ${formState.promises.map((item) => `
+              <li style="margin-bottom: 4px;">
+                ${item.text} ${item.completed ? '<span style="color: #166534; font-weight: bold;">(Đã hoàn thành)</span>' : ''}
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+        ` : ''}
+
+        <!-- 6. Tài liệu & Hình ảnh đính kèm -->
+        ${formState.attachments && formState.attachments.length > 0 ? `
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+            6. Hình ảnh & Tài liệu đính kèm
+          </h3>
+          <div style="font-size: 13px;">
+            ${formState.attachments.map((file) => {
+              const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (file.url && file.url.startsWith('data:image/'));
+              if (isImage) {
+                return `
+                  <div style="margin-bottom: 15px;">
+                    <p style="margin: 0 0 6px 0; color: #475569; font-weight: bold;">📷 ${file.name} (${Math.round(file.size / 1024)} KB)</p>
+                    <img src="${file.url}" style="max-width: 100%; border-radius: 8px; display: block; border: 1px solid #cbd5e1;" alt="${file.name}" />
+                  </div>
+                `;
+              } else {
+                return `
+                  <div style="margin-bottom: 8px; padding: 8px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <p style="margin: 0; color: #475569;">
+                      📄 <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB) 
+                      ${file.url ? `<br/><span style="color: #ea580c; font-weight: bold;">[Đã tải lên tệp]</span>` : ''}
+                    </p>
+                  </div>
+                `;
+              }
+            }).join('')}
+          </div>
+        </div>
+        ` : ''}
+      </div>
+    `;
+  }, [formState, metrics, period, currentUser]);
+
   const dateInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDateContainerClick = useCallback(() => {
@@ -242,15 +431,35 @@ const ReportForm = React.memo(function ReportForm({
   }, [formState.promises, onUpdateForm]);
 
   // Attachments handlers
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
-    const filesArray: AttachmentItem[] = Array.from(e.target.files).map((file) => ({
-      id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: file.name,
-      size: file.size,
-    }));
+
+    const { uploadTaskAttachment } = await import('../../../services/firebase-storage-service');
+    const filesList = Array.from(e.target.files);
+    const newAttachments: AttachmentItem[] = [];
+
+    for (const file of filesList) {
+      if (!file.type.startsWith('image/')) {
+        alert(`Tệp "${file.name}" không phải là ảnh. Chỉ chấp nhận các tệp hình ảnh (.jpg, .jpeg, .png).`);
+        continue;
+      }
+
+      try {
+        const fileUrl = await uploadTaskAttachment(file);
+        newAttachments.push({
+          id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name,
+          size: file.size,
+          url: fileUrl,
+        });
+      } catch (err) {
+        console.error('Lỗi tải file:', err);
+        alert(err instanceof Error ? err.message : 'Không thể tải file này.');
+      }
+    }
+
     onUpdateForm({
-      attachments: [...(formState.attachments || []), ...filesArray],
+      attachments: [...(formState.attachments || []), ...newAttachments],
     });
   }, [formState.attachments, onUpdateForm]);
 
@@ -350,18 +559,18 @@ const ReportForm = React.memo(function ReportForm({
 
               {/* 1. Chỉ số tự đồng bộ */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-                <div className="flex flex-row items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   {/* Cột 1: Tiêu đề */}
                   <div className="text-sm font-black text-slate-800 flex items-center gap-2 shrink-0">
                     <span className="text-[#C21A1A]">1.</span> Chỉ số tự đồng bộ
                   </div>
                   
                   {/* Cột 2, 3, 4: Thời gian, Người lập, Lấy số liệu */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
                     {/* Cột 2: Chọn ngày */}
                     <div
                       onClick={handleDateContainerClick}
-                      className="relative w-44 h-9 group shrink-0 cursor-pointer"
+                      className="relative w-full sm:w-44 h-9 group shrink-0 cursor-pointer"
                     >
                       {/* Hidden native input overlay that receives user clicks/taps */}
                       <input
@@ -383,7 +592,7 @@ const ReportForm = React.memo(function ReportForm({
                     </div>
 
                     {/* Cột 3: Tên nhân viên lập */}
-                    <div className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl h-9 flex items-center gap-1 select-none shrink-0">
+                    <div className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl h-9 flex items-center justify-between sm:justify-start gap-1 select-none w-full sm:w-auto shrink-0">
                       <span className="text-slate-455">Người lập:</span>
                       <span className="text-slate-700 font-extrabold">
                         {formState.reporter || currentUser?.fullName || 'Trần Tấn Phát'}
@@ -396,7 +605,7 @@ const ReportForm = React.memo(function ReportForm({
                       variant="ghost"
                       onClick={onRefreshMetrics}
                       disabled={isMetricsLoading}
-                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl px-3.5 h-9 gap-1 cursor-pointer border border-slate-200 shadow-3xs bg-white active:scale-95 transition-all shrink-0"
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-xl px-3.5 h-9 gap-1 cursor-pointer border border-slate-200 shadow-3xs bg-white active:scale-95 transition-all w-full sm:w-auto shrink-0 justify-center flex items-center"
                     >
                       <Clock className={`h-3.5 w-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
                       {isMetricsLoading ? 'Đang tải...' : 'Lấy số liệu'}
@@ -404,7 +613,7 @@ const ReportForm = React.memo(function ReportForm({
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {/* Card Doanh thu */}
                   <div className="rounded-xl border border-rose-100 bg-rose-50/20 p-3 flex flex-col justify-between space-y-1 shadow-3xs transition-transform duration-200 hover:-translate-y-0.5">
                     <p className="text-[11px] font-bold text-rose-500 tracking-wide uppercase">Doanh thu</p>
@@ -449,7 +658,7 @@ const ReportForm = React.memo(function ReportForm({
                     </span>
                   </div>
 
-                  {/* Card Khiếu nại */}
+                  {/* Card Khiếu nại (Tạm ẩn)
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50/20 p-3 flex flex-col justify-between space-y-1 shadow-3xs transition-transform duration-200 hover:-translate-y-0.5">
                     <p className="text-[11px] font-bold text-indigo-500 tracking-wide uppercase">Khiếu nại</p>
                     <p className="text-sm font-black text-slate-800 leading-none py-1">
@@ -459,6 +668,7 @@ const ReportForm = React.memo(function ReportForm({
                       Khách hàng phản hồi
                     </span>
                   </div>
+                  */}
                 </div>
                 
                 <p className="text-[11px] text-slate-400 font-semibold italic">
@@ -472,11 +682,18 @@ const ReportForm = React.memo(function ReportForm({
                   <div className="text-sm font-black text-slate-800 flex items-center gap-2">
                     <span className="text-[#C21A1A]">3.</span> Diễn biến vận hành
                   </div>
-                  <span className="text-xs font-bold text-slate-450">
-                    {formState.notes.length}/1500 ký tự
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <NoteTemplatePicker
+                      currentContent={formState.notes}
+                      onApply={(newContent) => onUpdateForm({ notes: newContent })}
+                      currentUserName={currentUser?.fullName}
+                    />
+                    <span className="text-xs font-bold text-slate-450">
+                      {formState.notes.length}/1500 ký tự
+                    </span>
+                  </div>
                 </div>
-                
+
                 <Textarea
                   maxLength={1500}
                   value={formState.notes}
@@ -767,7 +984,7 @@ const ReportForm = React.memo(function ReportForm({
               {/* 6. Tệp đính kèm */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <span className="text-[#C21A1A]">6.</span> Tệp đính kèm / hình ảnh minh chứng
+                  <span className="text-[#C21A1A]">6.</span> Hình ảnh minh chứng
                 </div>
                 
                 {/* Drag and drop zone */}
@@ -775,15 +992,16 @@ const ReportForm = React.memo(function ReportForm({
                   <input
                     type="file"
                     multiple
+                    accept="image/*"
                     onChange={handleFileChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <UploadCloud className="h-9 w-9 text-slate-400 mb-2" />
                   <p className="text-xs font-bold text-slate-700">
-                    Kéo thả file vào đây hoặc <span className="text-[#C21A1A] hover:underline">Chọn file</span>
+                    Kéo thả hình ảnh vào đây hoặc <span className="text-[#C21A1A] hover:underline">Chọn ảnh</span>
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1 font-semibold">
-                    Hỗ trợ định dạng: .jpg, .jpeg, .png, .pdf, .docx, .xlsx (tối đa 10MB/file)
+                    Hỗ trợ định dạng: .jpg, .jpeg, .png (tối đa 10MB/ảnh)
                   </p>
                 </div>
 
@@ -825,8 +1043,78 @@ const ReportForm = React.memo(function ReportForm({
 
             {/* Cột phải - 3 phần 10 */}
             <div className="lg:col-span-3 space-y-6">
-              
-              {/* Khối Nguyên tắc điền báo cáo */}
+
+              {/* Khối Chọn người nhận email */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs text-left">
+                <div className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <Users className="h-4.5 w-4.5 text-[#C21A1A]" />
+                  Gửi báo cáo đến (Email)
+                </div>
+
+                {isStaffLoading ? (
+                  <p className="text-xs text-slate-400 font-semibold animate-pulse">Đang tải danh sách nhân sự...</p>
+                ) : staffList.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic font-semibold">Không tìm thấy nhân sự có email</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-none pr-1">
+                    {staffList.map((staff) => {
+                      const emailAddress = staff.email || staff.authEmail;
+                      if (!emailAddress) return null;
+                      const isChecked = (formState.recipientEmails || []).includes(emailAddress);
+
+                      const handleToggle = () => {
+                        const current = formState.recipientEmails || [];
+                        const next = isChecked 
+                          ? current.filter(e => e !== emailAddress)
+                          : [...current, emailAddress];
+                        onUpdateForm({ recipientEmails: next });
+                      };
+
+                      return (
+                        <label 
+                          key={staff.id} 
+                          className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-50 rounded-xl cursor-pointer border border-slate-100 transition shadow-4xs w-full select-none"
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={handleToggle}
+                          />
+                          <div className="min-w-0 text-left flex-1">
+                            <p className="text-xs font-bold text-slate-800 truncate leading-none">{staff.fullName}</p>
+                            <p className="text-[10px] text-slate-400 font-semibold truncate mt-0.5">{emailAddress}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-slate-450 leading-normal font-semibold italic">
+                  * Báo cáo này sẽ được tự động gửi qua email đăng ký của các nhân sự được chọn sau khi bạn nộp.
+                </p>
+              </div>
+
+              {/* Khối Xem trước Email */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-2xs text-left">
+                <div className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <Mail className="h-4.5 w-4.5 text-[#C21A1A]" />
+                  Xem trước Email
+                </div>
+                <p className="text-xs text-slate-400 font-semibold leading-normal">
+                  Xem trước giao diện thư sẽ gửi tới nhân sự được chọn qua email.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="w-full justify-center gap-2 hover:bg-slate-50 cursor-pointer rounded-xl font-bold text-xs py-2 border-slate-200 text-slate-700"
+                >
+                  <Eye className="h-4 w-4" />
+                  Xem trước nội dung
+                </Button>
+              </div>
+
+              {/* Khối Nguyên tắc điền báo cáo - Tạm đóng
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs text-left">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <ShieldCheck className="h-4.5 w-4.5 text-[#C21A1A]" />
@@ -871,8 +1159,9 @@ const ReportForm = React.memo(function ReportForm({
                   </li>
                 </ol>
               </div>
+              */}
 
-              {/* Khối Nguồn tự động lấy số liệu */}
+              {/* Khối Nguồn tự động lấy số liệu - Tạm đóng
               <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs text-left">
                 <div className="text-sm font-black text-slate-800 flex items-center gap-2">
                   <HelpCircle className="h-4.5 w-4.5 text-slate-500" />
@@ -931,11 +1220,26 @@ const ReportForm = React.memo(function ReportForm({
                   </div>
                 </div>
               </div>
+              */}
 
             </div>
 
           </div>
         </div>
+
+        {/* Xem trước email Dialog */}
+        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-6 rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-black text-slate-800 text-left">
+                Xem trước nội dung Email gửi đi
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4 p-4 border border-slate-100 rounded-2xl bg-white shadow-3xs overflow-x-auto min-h-[300px]">
+              <div dangerouslySetInnerHTML={{ __html: generateEmailHtml() }} />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Thông báo quyền nếu không được submit */}
         {!canSubmit && (
@@ -943,6 +1247,7 @@ const ReportForm = React.memo(function ReportForm({
             Bạn không có quyền gửi báo cáo hoặc cập nhật dữ liệu.
           </div>
         )}
+
       </SheetContent>
     </Sheet>
   );

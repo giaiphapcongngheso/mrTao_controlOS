@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetContent } from '@shared/ui';
 import { AlertTriangle, Building, Check, Coins, Copy, Edit2, History, Layers, Plus, RefreshCw, Search, Tag, Trash2, X } from 'lucide-react';
 import WarehouseCreateForm from './components/warehouse-create-form';
@@ -12,6 +12,9 @@ import type { ColumnDef } from '@tanstack/react-table';
 import type { WarehouseProduct, WarehouseSyncLog } from '../../types/warehouse.types';
 import { MobileCard } from '@/src/components/custom/mobile-card';
 import { cn } from '@shared/lib/utils';
+import { useModulePermissions, isOwnerUser } from '../../shared/hooks/use-module-permissions';
+import { useAppStore } from '../../stores/app-store';
+import { MODULE_CODE } from '../../constants/staff-permissions.constants';
 
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -21,10 +24,25 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
 });
 
 export default function WarehouseView() {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
+  const { permissions } = useModulePermissions(MODULE_CODE.KHO_HANG, currentUser, isOwner);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
   const [editingProduct, setEditingProduct] = useState<WarehouseProduct | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<WarehouseProduct | null>(null);
+
+  // Check mobile viewport and handle mobile pagination
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePage, setMobilePage] = useState(1);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const {
     branches,
     categories,
@@ -48,6 +66,11 @@ export default function WarehouseView() {
     isLoadingLogs,
     loadSyncLogs,
   } = useWarehouseData();
+
+  // Reset mobile pagination page when filters change
+  useEffect(() => {
+    setMobilePage(1);
+  }, [filters]);
 
   const activeProduct = useMemo(
     () => filteredProducts.find((p) => p.id === selectedProduct?.id) || null,
@@ -258,52 +281,61 @@ export default function WarehouseView() {
         cell: ({ row }) => {
           const product = row.original;
           const isManual = product.source === 'manual';
+          const actions: any[] = [];
+
+          if (permissions.canUpdate) {
+            actions.push({
+              key: 'edit',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 text-slate-700 hover:text-indigo-650 hover:bg-indigo-50/60 rounded-xl font-bold text-sm transition-all flex items-center gap-1 cursor-pointer"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setEditingProduct(product);
+                  }}
+                >
+                  <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                  Sửa
+                </Button>
+              ),
+            });
+          }
+
+          if (permissions.canDelete) {
+            actions.push({
+              key: 'delete',
+              element: (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 px-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1 ${isManual
+                    ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
+                    : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
+                    }`}
+                  disabled={!isManual}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
+                      void deleteProduct(product.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Xóa
+                </Button>
+              ),
+            });
+          }
+
+          if (actions.length === 0) return null;
+
           return (
             <ActionStack
               className="font-sans"
               gap={1.5}
-              actions={[
-                {
-                  key: 'edit',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2.5 text-slate-700 hover:text-indigo-650 hover:bg-indigo-50/60 rounded-xl font-bold text-sm transition-all flex items-center gap-1 cursor-pointer"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setEditingProduct(product);
-                      }}
-                    >
-                      <Edit2 className="h-3.5 w-3.5 text-slate-500" />
-                      Sửa
-                    </Button>
-                  ),
-                },
-                {
-                  key: 'delete',
-                  element: (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`h-8 px-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1 ${isManual
-                        ? 'text-rose-650 hover:text-rose-700 hover:bg-rose-50 cursor-pointer'
-                        : 'text-slate-350 cursor-not-allowed hover:bg-transparent'
-                        }`}
-                      disabled={!isManual}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
-                          void deleteProduct(product.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Xóa
-                    </Button>
-                  ),
-                },
-              ]}
+              actions={actions}
             />
           );
         },
@@ -311,7 +343,7 @@ export default function WarehouseView() {
     }
 
     return baseCols;
-  }, [activeProduct, branches, deleteProduct, filters.branchId]);
+  }, [activeProduct, branches, deleteProduct, filters.branchId, permissions.canUpdate, permissions.canDelete]);
 
   const statCardsData = [
     {
@@ -362,32 +394,36 @@ export default function WarehouseView() {
         icon={<Layers className="h-5 w-5 text-slate-800" />}
       >
         <div className="flex flex-wrap gap-2 w-full sm:w-auto md:justify-end">
-          <Button
-            variant="outline"
-            className="rounded-xl h-9 text-sm font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center"
-            onClick={() => setShowCreateForm(true)}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-            Tạo sản phẩm
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              variant="outline"
+              className="rounded-xl h-9 text-sm font-bold border-indigo-200/80 bg-indigo-50/30 text-indigo-750 hover:bg-indigo-50/70 hover:border-indigo-300 hover:text-indigo-800 transition duration-200 cursor-pointer shadow-6xs flex items-center"
+              onClick={() => setShowCreateForm(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
+              Tạo sản phẩm
+            </Button>
+          )}
 
           <Button
             variant="outline"
             className="rounded-xl h-9 text-sm font-bold border-slate-200 bg-white text-slate-600 hover:bg-slate-50/80 hover:border-slate-300 hover:text-slate-800 transition duration-200 cursor-pointer flex items-center"
             onClick={() => setShowHistoryDrawer(true)}
           >
-            <History className="mr-1.5 h-3.5 w-3.5 text-slate-450" />
+            <History className="mr-1.5 h-3.5 w-3.5 text-slate-455" />
             Lịch sử đồng bộ
           </Button>
 
-          <Button
-            className="rounded-xl h-9 text-sm font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center border-none"
-            onClick={() => void syncData()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Đang đồng bộ...' : 'Đồng bộ KiotViet'}
-          </Button>
+          {(permissions.canCreate || permissions.canUpdate) && (
+            <Button
+              className="rounded-xl h-9 text-sm font-bold shadow-6xs bg-emerald-600 hover:bg-emerald-700 hover:shadow-2xs text-white transition duration-200 cursor-pointer flex items-center border-none"
+              onClick={() => void syncData()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Đang đồng bộ...' : 'Đồng bộ KiotViet'}
+            </Button>
+          )}
         </div>
       </ModuleHeader>
 
@@ -697,64 +733,82 @@ export default function WarehouseView() {
         {/* Table container */}
         <div className={`w-full min-w-0 transition-all duration-300 ${activeProduct ? 'lg:w-[63%] xl:w-[66%]' : 'w-full'}`}>
           {/* On mobile: render MobileCard list view */}
-          <div className="block md:hidden space-y-3 px-1 pb-4">
-            {filteredProducts.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
-                Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc.
-              </div>
-            ) : (
-              filteredProducts.map((product, idx) => {
-                const isSynced = product.source !== 'manual';
-                const totalStock = (product.inventories ?? []).reduce((sum, inv) => sum + inv.onHand, 0);
-                const isLowStock = totalStock <= 5;
+          {isMobile && (
+            <div className="block md:hidden space-y-3 px-1 pb-4">
+              {filteredProducts.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
+                  Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc.
+                </div>
+              ) : (
+                <>
+                  {filteredProducts.slice(0, mobilePage * 20).map((product, idx) => {
+                    const isSynced = product.source !== 'manual';
+                    const totalStock = (product.inventories ?? []).reduce((sum, inv) => sum + inv.onHand, 0);
+                    const isLowStock = totalStock <= 5;
 
-                return (
-                  <MobileCard
-                    key={product.id}
-                    delayIndex={idx}
-                    variant="bordered"
-                    className={cn(activeProduct?.id === product.id && 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 shadow-sm')}
-                    onClick={() => setSelectedProduct(product)}
-                  >
-                    <MobileCard.Header
-                      title={product.name}
-                      subtitle={product.code}
-                      badge={{
-                        text: isSynced ? 'KiotViet' : 'Tự tạo',
-                        variant: isSynced ? 'info' : 'success'
-                      }}
-                    />
-                    <MobileCard.Body className="p-3 space-y-2">
-                      <MobileCard.Grid
-                        cols={2}
-                        items={[
-                          { label: 'Ngành hàng', value: product.categoryName ?? 'Khác' },
-                          { label: 'Giá bán', value: CURRENCY_FORMATTER.format(product.basePrice), valueClassName: 'text-indigo-650 dark:text-indigo-400 font-bold' },
-                          { label: 'Tổng tồn kho', value: `${totalStock.toLocaleString('vi-VN')} chiếc`, valueClassName: isLowStock ? 'text-rose-600 font-bold' : 'text-slate-750' },
-                        ]}
-                      />
-                    </MobileCard.Body>
-                  </MobileCard>
-                );
-              })
-            )}
-          </div>
+                    return (
+                      <MobileCard
+                        key={product.id}
+                        delayIndex={idx}
+                        variant="bordered"
+                        className={cn(activeProduct?.id === product.id && 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 shadow-sm')}
+                        onClick={() => setSelectedProduct(product)}
+                      >
+                        <MobileCard.Header
+                          title={product.name}
+                          subtitle={product.code}
+                          badge={{
+                            text: isSynced ? 'KiotViet' : 'Tự tạo',
+                            variant: isSynced ? 'info' : 'success'
+                          }}
+                        />
+                        <MobileCard.Body className="p-3 space-y-2">
+                          <MobileCard.Grid
+                            cols={2}
+                            items={[
+                              { label: 'Ngành hàng', value: product.categoryName ?? 'Khác' },
+                              { label: 'Giá bán', value: CURRENCY_FORMATTER.format(product.basePrice), valueClassName: 'text-indigo-650 dark:text-indigo-400 font-bold' },
+                              { label: 'Tổng tồn kho', value: `${totalStock.toLocaleString('vi-VN')} chiếc`, valueClassName: isLowStock ? 'text-rose-600 font-bold' : 'text-slate-750' },
+                            ]}
+                          />
+                        </MobileCard.Body>
+                      </MobileCard>
+                    );
+                  })}
+                  {filteredProducts.length > mobilePage * 20 && (
+                    <div className="flex justify-center pt-2 pb-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMobilePage((prev) => prev + 1)}
+                        className="font-semibold text-xs border-indigo-200 text-indigo-650"
+                      >
+                        Xem thêm ({filteredProducts.length - mobilePage * 20})
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {/* On desktop: render CustomTable */}
-          <div className="hidden md:block">
-            <CustomTable<WarehouseProduct>
-              columns={columns}
-              data={filteredProducts}
-              loading={isLoading}
-              enablePagination={true}
-              pageSizeOptions={[10, 20, 50, 100]}
-              emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
-              tableMinWidth={800}
-              className="h-[calc(100vh-340px)]"
-              activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
-              getRowId={(product) => String(product.id)}
-              onRowClick={(row) => setSelectedProduct(row.original)}
-            />
-          </div>
+          {!isMobile && (
+            <div className="hidden md:block">
+              <CustomTable<WarehouseProduct>
+                columns={columns}
+                data={filteredProducts}
+                loading={isLoading}
+                enablePagination={true}
+                pageSizeOptions={[10, 20, 50, 100]}
+                emptyMessage="Kho của bạn hiện tại chưa có sản phẩm phù hợp với bộ lọc."
+                tableMinWidth={800}
+                className="h-[calc(100vh-340px)]"
+                activeRowId={activeProduct?.id ? String(activeProduct.id) : undefined}
+                getRowId={(product) => String(product.id)}
+                onRowClick={(row) => setSelectedProduct(row.original)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Selected Product Details Panel */}
@@ -770,6 +824,7 @@ export default function WarehouseView() {
                   await deleteProduct(id);
                   setSelectedProduct(null);
                 }}
+                permissions={permissions}
               />
             </div>
 
@@ -785,6 +840,7 @@ export default function WarehouseView() {
                     setSelectedProduct(null);
                   }}
                   isMobile={true}
+                  permissions={permissions}
                 />
               </SheetContent>
             </Sheet>
@@ -809,9 +865,20 @@ interface SelectedProductPanelProps {
   onEdit: (product: WarehouseProduct) => void;
   onDelete: (id: number) => Promise<void>;
   isMobile?: boolean;
+  permissions?: {
+    canUpdate: boolean;
+    canDelete: boolean;
+  };
 }
 
-function SelectedProductPanel({ product, onClose, onEdit, onDelete, isMobile = false }: SelectedProductPanelProps) {
+function SelectedProductPanel({
+  product,
+  onClose,
+  onEdit,
+  onDelete,
+  isMobile = false,
+  permissions = { canUpdate: false, canDelete: false },
+}: SelectedProductPanelProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -945,27 +1012,31 @@ function SelectedProductPanel({ product, onClose, onEdit, onDelete, isMobile = f
 
       {/* Footer Actions */}
       <div className="pt-3 border-t border-slate-100 flex gap-2">
-        <Button
-          variant="outline"
-          className="flex-1 rounded-xl h-9 text-xs font-bold border-indigo-200 hover:bg-indigo-50/60 text-indigo-750 transition cursor-pointer"
-          onClick={() => onEdit(product)}
-        >
-          <Edit2 className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-          Chỉnh sửa
-        </Button>
-        <Button
-          variant="outline"
-          className={`flex-1 rounded-xl h-9 text-xs font-bold border-rose-200 text-rose-650 hover:bg-rose-50 transition cursor-pointer ${!isManual ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
-          disabled={!isManual}
-          onClick={() => {
-            if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
-              void onDelete(product.id);
-            }
-          }}
-        >
-          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-          Xóa
-        </Button>
+        {permissions.canUpdate && (
+          <Button
+            variant="outline"
+            className="flex-1 rounded-xl h-9 text-xs font-bold border-indigo-200 hover:bg-indigo-50/60 text-indigo-750 transition cursor-pointer"
+            onClick={() => onEdit(product)}
+          >
+            <Edit2 className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
+            Chỉnh sửa
+          </Button>
+        )}
+        {permissions.canDelete && (
+          <Button
+            variant="outline"
+            className={`flex-1 rounded-xl h-9 text-xs font-bold border-rose-200 text-rose-655 hover:bg-rose-50 transition cursor-pointer ${!isManual ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
+            disabled={!isManual}
+            onClick={() => {
+              if (isManual && confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}"?`)) {
+                void onDelete(product.id);
+              }
+            }}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Xóa
+          </Button>
+        )}
       </div>
     </Card>
   );

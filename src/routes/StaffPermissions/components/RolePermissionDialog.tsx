@@ -86,6 +86,7 @@ function buildInitialPermissions(
       canDelete: existing?.canDelete ?? false,
       canApprove: existing?.canApprove ?? false,
       canExport: existing?.canExport ?? false,
+      allowedTabs: existing?.allowedTabs ?? [],
     };
   });
 }
@@ -292,6 +293,47 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
     [isEditMode, existingRoleCodes, onSave],
   );
 
+  // ---- Tab Permissions Handlers ----
+  const isTabAllowed = useCallback((moduleCode: string, tabKey: string): boolean => {
+    const moduleIndex = permissions.findIndex((p) => p.module === moduleCode);
+    if (moduleIndex === -1) return false;
+    const allowed = permissions[moduleIndex]?.allowedTabs || [];
+    if (allowed.length === 0) return true;
+    return allowed.includes(tabKey);
+  }, [permissions]);
+
+  const toggleModuleTab = useCallback((moduleCode: string, tabKey: string, checked: boolean) => {
+    const moduleIndex = permissions.findIndex((p) => p.module === moduleCode);
+    if (moduleIndex === -1) return;
+    const current = permissions[moduleIndex];
+    
+    let currentTabs = current.allowedTabs || [];
+    if (currentTabs.length === 0) {
+      if (moduleCode === 'CHECKLIST') {
+        currentTabs = ['today', 'checklist_template', 'process', 'history'];
+      } else if (moduleCode === 'NHAN_SU') {
+        currentTabs = ['staff', 'permissions', 'email', 'logs'];
+      } else if (moduleCode === 'KE_HOACH') {
+        currentTabs = ['dashboard', 'month', 'week', 'day'];
+      } else if (moduleCode === 'KPI') {
+        currentTabs = ['ranks', 'entry', 'settings'];
+      } else if (moduleCode === 'LOI_SOP') {
+        currentTabs = ['overview', 'all', 'sop_error', 'exception', 'risk', 'improvement'];
+      }
+    }
+
+    let nextTabs: string[];
+    if (checked) {
+      nextTabs = currentTabs.includes(tabKey) ? currentTabs : [...currentTabs, tabKey];
+    } else {
+      nextTabs = currentTabs.filter((t) => t !== tabKey);
+    }
+
+    const updated = [...permissions];
+    updated[moduleIndex] = { ...current, allowedTabs: nextTabs };
+    setValue('permissions', updated, { shouldDirty: true });
+  }, [permissions, setValue]);
+
   // ---- Render ----
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,6 +529,227 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* ---- Tab Configuration Section ---- */}
+          <div className="mt-4 border-t border-slate-100 pt-3 shrink-0">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 text-left">
+              Cấu hình hiển thị các Tab chi tiết
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 p-3 rounded-xl border border-slate-150 max-h-[30vh] overflow-y-auto">
+              {/* Checklist tabs */}
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>✅ Quy trình (Checklist)</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('CHECKLIST', 'today')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('CHECKLIST', 'today', !!checked)}
+                    />
+                    <span>Hôm nay</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('CHECKLIST', 'checklist_template')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('CHECKLIST', 'checklist_template', !!checked)}
+                    />
+                    <span>Mẫu</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('CHECKLIST', 'process')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('CHECKLIST', 'process', !!checked)}
+                    />
+                    <span>Quy trình SOP</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('CHECKLIST', 'history')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('CHECKLIST', 'history', !!checked)}
+                    />
+                    <span>Lịch sử</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Plans (Kế hoạch) tabs */}
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>📅 Kế hoạch (Plans)</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KE_HOACH', 'dashboard')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KE_HOACH', 'dashboard', !!checked)}
+                    />
+                    <span>Tổng quan</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KE_HOACH', 'month')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KE_HOACH', 'month', !!checked)}
+                    />
+                    <span>Tháng</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KE_HOACH', 'week')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KE_HOACH', 'week', !!checked)}
+                    />
+                    <span>Tuần</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KE_HOACH', 'day')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KE_HOACH', 'day', !!checked)}
+                    />
+                    <span>Ngày</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* KPI tabs */}
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>📈 Chỉ số (KPI)</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KPI', 'ranks')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KPI', 'ranks', !!checked)}
+                    />
+                    <span>Xếp hạng</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KPI', 'entry')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KPI', 'entry', !!checked)}
+                    />
+                    <span>Nhập Plan</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('KPI', 'settings')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('KPI', 'settings', !!checked)}
+                    />
+                    <span>Thiết lập KPI</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Cải tiến (LOI_SOP / Issues) tabs */}
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>⚠️ Cải tiến (SOP)</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'overview')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'overview', !!checked)}
+                    />
+                    <span>Tổng quan</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'all')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'all', !!checked)}
+                    />
+                    <span>Tất cả</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'sop_error')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'sop_error', !!checked)}
+                    />
+                    <span>Lỗi SOP</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'exception')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'exception', !!checked)}
+                    />
+                    <span>Ngoại lệ</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'risk')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'risk', !!checked)}
+                    />
+                    <span>Rủi ro</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('LOI_SOP', 'improvement')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('LOI_SOP', 'improvement', !!checked)}
+                    />
+                    <span>Cải tiến</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Staff / Personnel tabs */}
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>👥 Nhân sự (Staff)</span>
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('NHAN_SU', 'staff')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('NHAN_SU', 'staff', !!checked)}
+                    />
+                    <span>Nhân sự</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('NHAN_SU', 'permissions')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('NHAN_SU', 'permissions', !!checked)}
+                    />
+                    <span>Phân quyền</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('NHAN_SU', 'email')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('NHAN_SU', 'email', !!checked)}
+                    />
+                    <span>Email</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                    <Checkbox
+                      checked={isTabAllowed('NHAN_SU', 'logs')}
+                      disabled={!isOwner}
+                      onCheckedChange={(checked) => toggleModuleTab('NHAN_SU', 'logs', !!checked)}
+                    />
+                    <span>Log</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 

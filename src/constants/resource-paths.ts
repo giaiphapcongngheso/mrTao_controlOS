@@ -40,6 +40,8 @@ export const RESOURCE_PATH = {
   PLANS: '/plans',
   PLAN_DAY_SCHEDULES: '/plan_day_schedules',
   PLAN_LIVE_INDICATORS: '/plan_live_indicators',
+  REPORT_PRESETS: '/report_presets',
+  REPORT_NOTE_TEMPLATES: '/report_note_templates',
 } as const;
 
 export type ResourcePath = (typeof RESOURCE_PATH)[keyof typeof RESOURCE_PATH];

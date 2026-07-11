@@ -100,6 +100,7 @@ interface ChecklistViewProps {
     canCreate: boolean;
     canUpdate: boolean;
     canDelete: boolean;
+    allowedTabs?: string[];
   };
   isLoading?: boolean;
   errorMessage?: string | null;
@@ -650,18 +651,7 @@ export default function ChecklistView({
       </div>
     );
   }, [subTab, kpiStats, templateStats, sopSummary, departmentStats, todayRevenue, isFetchingRevenue]);
-  const [selectedPerformer, setSelectedPerformer] = useState(() => {
-    if (!isOwner && currentUser?.fullName) {
-      return currentUser.fullName;
-    }
-    return 'all';
-  });
-
-  useEffect(() => {
-    if (!isOwner && currentUser?.fullName) {
-      setSelectedPerformer(currentUser.fullName);
-    }
-  }, [isOwner, currentUser?.fullName]);
+  const [selectedPerformer, setSelectedPerformer] = useState('all');
 
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -680,12 +670,6 @@ export default function ChecklistView({
     to: new Date(),
   });
 
-  // Redirect non-owners away from history tab
-  useEffect(() => {
-    if (!isOwner && subTab === 'history') {
-      setSubTab('today');
-    }
-  }, [isOwner, subTab]);
 
   // ── Role Code Logic ──
   const defaultSelectedRoleCode = useMemo(() => {
@@ -716,7 +700,7 @@ export default function ChecklistView({
     onSaveCategoryBatch,
     onRequestEditCategory,
   });
-  const selectedRoleCode = dialogRoleCode || defaultSelectedRoleCode;
+  const selectedRoleCode = isOwner ? (dialogRoleCode || defaultSelectedRoleCode) : defaultSelectedRoleCode;
 
   const createRoleOptions = useMemo(() => {
     if (dialogEditCategoryId !== null) return roleOptions;
@@ -749,6 +733,8 @@ export default function ChecklistView({
     selectedRoleCode,
     completedViewMode: 'day',
     selectedWeekDayKey: getTodayKey(),
+    currentUser,
+    isOwner,
   });
 
   // Apply extra Performer & Status filters dynamically for 'today' tab
@@ -797,71 +783,132 @@ export default function ChecklistView({
   const handleResetFilters = useCallback(() => {
     setSubTab('today');
     setSearchTerm('');
-    setSelectedPerformer(!isOwner && currentUser?.fullName ? currentUser.fullName : 'all');
+    setSelectedPerformer('all');
     setSelectedStatus('all');
     setSelectedDate(new Date());
     setDateRange({ from: subDays(new Date(), 7), to: new Date() });
-  }, [isOwner, currentUser?.fullName]);
+  }, []);
 
   const handleCloseChecklistDialog = useCallback(() => {
     setIsAddingItem(false);
   }, [setIsAddingItem]);
 
-  // ── Render ──
+  const isTabVisible = useCallback((tabKey: string) => {
+    if (isOwner) return true;
+    const allowed = permissions.allowedTabs || [];
+    if (allowed.length === 0) {
+      if (tabKey === 'checklist_template' || tabKey === 'history') {
+        return false;
+      }
+      return true;
+    }
+    return allowed.includes(tabKey);
+  }, [isOwner, permissions.allowedTabs]);
+
+  // Adjust subTab if the current one is not allowed
+  useEffect(() => {
+    if (!isOwner && permissions.allowedTabs && permissions.allowedTabs.length > 0) {
+      const allowed = permissions.allowedTabs;
+      if (!allowed.includes(subTab)) {
+        // Find first allowed tab
+        const firstAllowed = allowed[0] as 'today' | 'checklist_template' | 'process' | 'history';
+        if (firstAllowed) {
+          setSubTab(firstAllowed);
+        }
+      }
+    }
+  }, [isOwner, permissions.allowedTabs, subTab, setSubTab]);
+
   return (
-    <div className="space-y-3.5 text-left antialiased font-sans h-[calc(100vh-128px)] overflow-y-auto pb-24 pr-1 scrollbar-none md:h-[calc(100vh-96px)] md:pb-10 w-full min-w-0 overflow-x-hidden">
-      <div className="hidden sm:block">
-        <ChecklistHeader
+    <div className="flex flex-col text-left antialiased font-sans h-[calc(100vh-144px)] md:h-[calc(100vh-112px)] w-full min-w-0 overflow-hidden pr-1 relative">
+      {/* Thanh tab cố định – chỉ render navigation row */}
+      <div className="shrink-0 bg-white">
+        <ChecklistTabBar
           subTab={subTab}
+          setSubTab={setSubTab}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedRoleCode={selectedRoleCode}
+          setSelectedRoleCode={setDialogRoleCode}
+          roleOptions={roleOptions}
+          items={items}
+          selectedPerformer={selectedPerformer}
+          setSelectedPerformer={setSelectedPerformer}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onRefresh={onRefresh}
+          showTodayTab={isTabVisible('today')}
+          showTemplateTab={isTabVisible('checklist_template')}
+          showProcessTab={isTabVisible('process')}
+          showHistoryTab={isTabVisible('history')}
+          showRoleSelect={isOwner}
+          isOwner={isOwner}
+          currentUser={currentUser}
+          templateFilterRole={templateFilterRole}
+          setTemplateFilterRole={setTemplateFilterRole}
+          templateFilterFrequency={templateFilterFrequency}
+          setTemplateFilterFrequency={setTemplateFilterFrequency}
+          templateFilterStatus={templateFilterStatus}
+          setTemplateFilterStatus={setTemplateFilterStatus}
+          templateSearchTerm={templateSearchTerm}
+          setTemplateSearchTerm={setTemplateSearchTerm}
           canCreate={permissions.canCreate}
+          onOpenCreateTemplate={() => setEditingTemplateId('new')}
           onOpenCreateDialog={handleOpenCreateDialog}
+          tabsOnly
         />
       </div>
 
-      <ChecklistErrorBanner
-        errorMessage={errorMessage}
-        onDismissError={onDismissError}
-      />
-
-      <ChecklistTabBar
-        subTab={subTab}
-        setSubTab={setSubTab}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedRoleCode={selectedRoleCode}
-        setSelectedRoleCode={setDialogRoleCode}
-        roleOptions={roleOptions}
-        items={items}
-        selectedPerformer={selectedPerformer}
-        setSelectedPerformer={setSelectedPerformer}
-        selectedStatus={selectedStatus}
-        setSelectedStatus={setSelectedStatus}
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        onRefresh={onRefresh}
-        showHistory={isOwner}
-        showRoleSelect={isOwner}
-        isOwner={isOwner}
-        currentUser={currentUser}
-        templateFilterRole={templateFilterRole}
-        setTemplateFilterRole={setTemplateFilterRole}
-        templateFilterFrequency={templateFilterFrequency}
-        setTemplateFilterFrequency={setTemplateFilterFrequency}
-        templateFilterStatus={templateFilterStatus}
-        setTemplateFilterStatus={setTemplateFilterStatus}
-        templateSearchTerm={templateSearchTerm}
-        setTemplateSearchTerm={setTemplateSearchTerm}
-        canCreate={permissions.canCreate}
-        onOpenCreateTemplate={() => setEditingTemplateId('new')}
-      />
-
-      {subTab === 'history' ? null : (
-        <ChecklistConfigBar
+      {/* Phần cuộn: bộ lọc + nội dung */}
+      <div className="flex-1 overflow-y-auto scrollbar-none pb-12 pr-1">
+        <ChecklistTabBar
           subTab={subTab}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
+          setSubTab={setSubTab}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedRoleCode={selectedRoleCode}
+          setSelectedRoleCode={setDialogRoleCode}
+          roleOptions={roleOptions}
+          items={items}
+          selectedPerformer={selectedPerformer}
+          setSelectedPerformer={setSelectedPerformer}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onRefresh={onRefresh}
+          showHistory={isOwner}
+          showRoleSelect={isOwner}
+          isOwner={isOwner}
+          currentUser={currentUser}
+          templateFilterRole={templateFilterRole}
+          setTemplateFilterRole={setTemplateFilterRole}
+          templateFilterFrequency={templateFilterFrequency}
+          setTemplateFilterFrequency={setTemplateFilterFrequency}
+          templateFilterStatus={templateFilterStatus}
+          setTemplateFilterStatus={setTemplateFilterStatus}
+          templateSearchTerm={templateSearchTerm}
+          setTemplateSearchTerm={setTemplateSearchTerm}
+          canCreate={permissions.canCreate}
+          onOpenCreateTemplate={() => setEditingTemplateId('new')}
+          onOpenCreateDialog={handleOpenCreateDialog}
+          filtersOnly
         />
-      )}
+        <div className="mt-3.5 space-y-3.5">
+        <ChecklistErrorBanner
+          errorMessage={errorMessage}
+          onDismissError={onDismissError}
+        />
+
+        {subTab === 'history' ? null : (
+          <ChecklistConfigBar
+            subTab={subTab}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        )}
 
       {/* ── Tab Content Routing ────────────────────────── */}
       {subTab === 'checklist_template' ? (
@@ -1086,6 +1133,8 @@ export default function ChecklistView({
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }
