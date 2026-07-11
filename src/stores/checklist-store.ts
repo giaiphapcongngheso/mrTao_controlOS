@@ -95,8 +95,7 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
       const db = getFirestoreDb();
       const q = query(
         collection(db, 'checklists'),
-        where('storeId', '==', storeId),
-        where('deletedAt', '==', null)
+        where('storeId', '==', storeId)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
