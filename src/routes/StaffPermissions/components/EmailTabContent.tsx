@@ -363,7 +363,7 @@ export function EmailTabContent() {
                 <li>Copy đoạn mã nguồn Apps Script phía dưới.</li>
                 <li>Dán đè vào file mã nguồn chính của bạn.</li>
                 <li>Bấm **Deploy (Triển khai mới)** dưới dạng Web App, cấp quyền gửi Email và copy URL.</li>
-                <li>Mở tệp cấu hình <code className="bg-slate-100 px-1.5 py-0.5 rounded-sm">.env</code> của hệ thống, dán URL vừa copy vào dòng <code className="bg-slate-100 px-1.5 py-0.5 rounded-sm">VITE_GAS_WEBAPP_URL</code> và <code className="bg-slate-100 px-1.5 py-0.5 rounded-sm">VITE_GAS_STAFF_AUTH_URL</code>.</li>
+                <li>Mở tệp cấu hình <code className="bg-slate-100 px-1.5 py-0.5 rounded-sm">.env</code> của hệ thống, dán URL vừa copy vào dòng <code className="bg-slate-100 px-1.5 py-0.5 rounded-sm">VITE_GAS_WEBAPP_URL</code>.</li>
               </ol>
             </div>
 

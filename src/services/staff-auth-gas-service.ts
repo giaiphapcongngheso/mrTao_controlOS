@@ -231,7 +231,7 @@ export async function syncStaffAuthViaGas(
   const gasUrl = STAFF_AUTH_GAS_WEBAPP_URL.trim();
   if (!gasUrl) {
     throw new StaffAuthGasError(
-      'Chưa cấu hình Apps Script cho cập nhật tài khoản nhân sự. Vui lòng kiểm tra VITE_GAS_STAFF_AUTH_URL.',
+      'Chưa cấu hình Apps Script cho cập nhật tài khoản nhân sự. Vui lòng kiểm tra VITE_GAS_WEBAPP_URL.',
       500,
     );
   }
