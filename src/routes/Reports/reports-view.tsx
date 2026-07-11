@@ -490,6 +490,10 @@ export default function ReportsView({
                       <td style="padding: 4px 0; color: #0f172a;">${savedReport.checklistRatio || (savedReport.checklistPct || 0) + '%'}</td>
                     </tr>
                     <tr>
+                      <td style="padding: 4px 0; font-weight: bold; color: #475569;">Lỗi vi phạm SOP:</td>
+                      <td style="padding: 4px 0; color: #b45309; font-weight: bold;">${savedReport.sopErrorsCount || 0} lỗi</td>
+                    </tr>
+                    <tr>
                       <td style="padding: 4px 0; font-weight: bold; color: #475569;">Đánh giá ca:</td>
                       <td style="padding: 4px 0;">
                         <span style="padding: 2px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; 
