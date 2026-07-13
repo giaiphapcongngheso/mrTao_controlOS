@@ -38,7 +38,6 @@ import { ActionStack } from '@shared/components/custom/action-stack';
 import { toastSuccess, toastError } from '../../shared/lib/toast';
 import { Input } from '../../../share/ui/input';
 import { TaskCreateModal } from './components/task-create-modal';
-import { TaskQuickDelegateModal } from './components/task-quick-delegate-modal';
 import { TaskDetailModal } from './components/task-detail-modal';
 import { ActionConfirmDialog } from '../../../share/components/action-confirm-dialog';
 import { TaskCardList } from './components/task-card-list';
@@ -329,7 +328,6 @@ export default function TasksView({
 
   // Modals controller
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [quickDelegateOpen, setQuickDelegateOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskItem | null>(null);
@@ -715,15 +713,7 @@ export default function TasksView({
     }
   }, [onAddTask]);
 
-  const handleQuickDelegate = useCallback(async (taskPayload: TaskRequestType) => {
-    try {
-      await onAddTask(taskPayload);
-      setQuickDelegateOpen(false);
-      toastSuccess(`Đã kích hoạt Giao nhanh cho nhân viên ${taskPayload.assignee}!`);
-    } catch {
-      toastError("Không thể giao nhanh công việc. Vui lòng thử lại.");
-    }
-  }, [onAddTask]);
+
 
 
   // Filter computation
@@ -836,15 +826,6 @@ export default function TasksView({
         </div>
       )
     },
-    {
-      value: 'quick',
-      label: (
-        <div className="flex items-center gap-2.5 text-sm text-slate-800 font-bold w-full">
-          <Send className="w-4 h-4 text-[#C21A1A]" />
-          <span>Giao nhanh</span>
-        </div>
-      )
-    },
   ], []);
 
   const selectPlaceholder = useMemo(() => (
@@ -857,8 +838,6 @@ export default function TasksView({
   const handleActionChange = useCallback((val: string | number) => {
     if (val === 'create') {
       setIsAddingTask(true);
-    } else if (val === 'quick') {
-      setQuickDelegateOpen(true);
     }
   }, []);
 
@@ -913,15 +892,6 @@ export default function TasksView({
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                   <span>Tạo việc</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setQuickDelegateOpen(true)}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 h-8 text-xs font-black uppercase tracking-wide text-[#C21A1A] bg-red-50 border border-red-200 hover:bg-red-100/50 transition-colors rounded-xl cursor-pointer shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5 text-[#C21A1A]" />
-                  <span>Giao nhanh</span>
                 </Button>
               </div>
             )}
@@ -1224,15 +1194,7 @@ export default function TasksView({
         roles={roles}
       />
 
-      {/* Quick Delegate Modal */}
-      <TaskQuickDelegateModal
-        isOpen={quickDelegateOpen}
-        onClose={() => setQuickDelegateOpen(false)}
-        onSubmit={handleQuickDelegate}
-        staffMembers={staffMembers}
-        tasks={visibleTasks}
-        roles={roles}
-      />
+
 
       {/* Detail Task Modal */}
       <TaskDetailModal
