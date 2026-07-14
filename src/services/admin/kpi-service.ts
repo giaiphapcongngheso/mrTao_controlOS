@@ -7,7 +7,18 @@ export const kpiStaffMonthlyConfigService = createBaseService<KPIStaffMonthlyCon
   client: dataClient,
   resource: RESOURCE_PATH.KPI_STAFF_MONTHLY_CONFIGS,
   cacheTtlMs: 5 * 60 * 1000,
-  autoLog: { target: 'Cấu hình KPI tháng nhân sự' },
+  autoLog: {
+    target: 'Cấu hình KPI tháng nhân sự',
+    resolveDetails: (action, id, payload) => {
+      if (action === 'UPDATE' && payload) {
+        return `Đã cập nhật cấu hình KPI tháng ${payload.month || ''} (Ngày công công: ${payload.actualWorkdays || 0}, Hệ số kỷ luật: ${payload.disciplineCoefficient || 1.0}).`;
+      }
+      if (action === 'CREATE' && payload) {
+        return `Đã tạo cấu hình KPI tháng ${payload.month || ''} (Ngày công công: ${payload.actualWorkdays || 0}, Hệ số kỷ luật: ${payload.disciplineCoefficient || 1.0}).`;
+      }
+      return null;
+    }
+  },
 });
 
 export const kpiStaffRankService = createBaseService<StaffRank, Partial<StaffRank>>({
@@ -27,7 +38,18 @@ export const kpiConfigService = createBaseService<KPIConfig, Partial<KPIConfig>>
 export const kpiDailyValueService = createBaseService<KPIDailyValue, Partial<KPIDailyValue>>({
   client: dataClient,
   resource: RESOURCE_PATH.KPI_DAILY_VALUES,
-  autoLog: { target: 'Giá trị KPI hàng ngày' },
+  autoLog: {
+    target: 'Giá trị KPI hàng ngày',
+    resolveDetails: (action, id, payload) => {
+      if (action === 'UPDATE' && payload) {
+        return `Đã cập nhật giá trị KPI ngày ${payload.date || ''} thành ${payload.value?.toLocaleString() || payload.value || 0}.`;
+      }
+      if (action === 'CREATE' && payload) {
+        return `Đã khai báo giá trị KPI ngày ${payload.date || ''} là ${payload.value?.toLocaleString() || payload.value || 0}.`;
+      }
+      return null;
+    }
+  },
 });
 
 export const kpiGoalService = createBaseService<KPIGoal, Partial<KPIGoal>>({

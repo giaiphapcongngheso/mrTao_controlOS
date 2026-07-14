@@ -725,11 +725,30 @@ export function useChecklist({
         snapshots: replaceById(state.snapshots, updatedDoc),
       }));
 
+      const previousTask = snapshotFound.task;
+      const changes: string[] = [];
+      if (updates.title !== undefined && updates.title !== previousTask.title) {
+        changes.push(`đổi tiêu đề thành "${updates.title.trim()}"`);
+      }
+      if (updates.timeLimit !== undefined && updates.timeLimit !== previousTask.timeLimit) {
+        changes.push(`đổi giờ quy định thành "${updates.timeLimit}"`);
+      }
+      if (updates.imageUrls !== undefined && JSON.stringify(updates.imageUrls) !== JSON.stringify(previousTask.imageUrls)) {
+        changes.push(`cập nhật ảnh minh chứng`);
+      }
+      const logMsg = `Đã cập nhật công việc "${previousTask.title}"${changes.length > 0 ? ` (${changes.join(', ')})` : ''}.`;
+
       try {
-        await checklistService.update(snapshotFound.doc.id, {
-          tasks: updatedDoc.tasks,
-          updatedAt: nowIso,
-        });
+        await checklistService.update(
+          snapshotFound.doc.id,
+          {
+            tasks: updatedDoc.tasks,
+            updatedAt: nowIso,
+          },
+          {
+            logDetails: logMsg,
+          }
+        );
       } catch (error) {
         restoreLocalState(previousState);
         console.error('Không thể cập nhật checklist item:', error);
@@ -826,22 +845,28 @@ export function useChecklist({
       }
 
       try {
-        await checklistTemplateService.update(originalTemplate.id, {
-          title: safeTitle,
-          roleCode: normalizedRoleCode,
-          iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
-          colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
-          tasks: templateTasks,
-          updatedAt: nowIso,
-          frequency: params.frequency,
-          frequencyDetail: params.frequencyDetail,
-          shift: params.shift,
-          autoCreateDaily: params.autoCreateDaily,
-          status: params.status,
-          defaultAssignee: params.defaultAssignee,
-          inspectorId: params.inspectorId,
-          inspectorName: params.inspectorName,
-        });
+        await checklistTemplateService.update(
+          originalTemplate.id,
+          {
+            title: safeTitle,
+            roleCode: normalizedRoleCode,
+            iconName: params.iconName || DEFAULT_CHECKLIST_ICON_NAME,
+            colorKey: params.colorKey || DEFAULT_CHECKLIST_COLOR_KEY,
+            tasks: templateTasks,
+            updatedAt: nowIso,
+            frequency: params.frequency,
+            frequencyDetail: params.frequencyDetail,
+            shift: params.shift,
+            autoCreateDaily: params.autoCreateDaily,
+            status: params.status,
+            defaultAssignee: params.defaultAssignee,
+            inspectorId: params.inspectorId,
+            inspectorName: params.inspectorName,
+          },
+          {
+            logDetails: `Đã cập nhật cấu hình của checklist mẫu "${safeTitle}" (Vai trò: ${roleName}).`,
+          }
+        );
         toastSuccess('Đã lưu checklist.');
       } catch (error) {
         restoreLocalState(previousState);
@@ -873,7 +898,9 @@ export function useChecklist({
         inspectorId: params.inspectorId,
         inspectorName: params.inspectorName,
       };
-      const persistedTemplate = await checklistTemplateService.create(newTemplate);
+      const persistedTemplate = await checklistTemplateService.create(newTemplate, {
+        logDetails: `Đã tạo checklist mẫu mới "${safeTitle}" cho vai trò "${roleName}".`,
+      });
       updateLocalState((state) => ({
         ...state,
         templates: [...state.templates, persistedTemplate],
@@ -1020,7 +1047,9 @@ export function useChecklist({
     }));
 
     try {
-      await checklistTemplateService.update(targetTemplate.id, deletedFields);
+      await checklistTemplateService.update(targetTemplate.id, deletedFields, {
+        logDetails: `Đã xóa checklist mẫu "${targetTemplate.title}" (Vai trò: ${targetTemplate.roleCode}).`,
+      });
 
       const activeSnapshotsToUpdate = updatedSnapshots.filter(
         (s) => normalizeAccessCode(s.roleCode) === normalizeAccessCode(targetTemplate.roleCode) && !s.deletedAt,

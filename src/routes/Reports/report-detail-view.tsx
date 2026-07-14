@@ -971,8 +971,8 @@ export default function ReportDetailView({
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const actorName = currentUser?.fullName || 'Chủ cửa hàng';
-    const currentRole = currentUser?.role || 'Chủ cửa hàng';
+    const actorName = currentUser?.fullName || 'Giám đốc điều hành';
+    const currentRole = currentUser?.role || 'Giám đốc điều hành';
 
     const payload: Partial<ReportSubmission> = {
       approvalStatus: nextStatus,
