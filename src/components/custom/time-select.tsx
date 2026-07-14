@@ -20,41 +20,67 @@ function useDragToScroll() {
   const scrollTop = useRef(0);
   const hasDragged = useRef(false);
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return; // Let native touch scroll handles it on mobile
     if (!ref.current) return;
     isDown.current = true;
+    
+    // Capture pointer so scrolling continues even if mouse goes outside container
+    try {
+      ref.current.setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Safe check
+    }
+    
     startY.current = e.pageY - ref.current.offsetTop;
     scrollTop.current = ref.current.scrollTop;
     hasDragged.current = false;
   };
 
-  const onMouseLeave = () => {
-    isDown.current = false;
-  };
-
-  const onMouseUp = () => {
-    isDown.current = false;
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDown.current || !ref.current) return;
-    e.preventDefault();
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch' || !isDown.current || !ref.current) return;
     const y = e.pageY - ref.current.offsetTop;
     const diff = y - startY.current;
-    if (Math.abs(diff) > 5) {
+    
+    if (Math.abs(diff) > 4) {
       hasDragged.current = true;
     }
-    ref.current.scrollTop = scrollTop.current - diff;
+    // Multiply by 1.5 for a lighter, more responsive drag scrolling feel on PC
+    ref.current.scrollTop = scrollTop.current - diff * 1.5;
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return;
+    isDown.current = false;
+    if (ref.current) {
+      try {
+        ref.current.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        // Safe check
+      }
+    }
+  };
+
+  const onPointerCancel = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return;
+    isDown.current = false;
+    if (ref.current) {
+      try {
+        ref.current.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        // Safe check
+      }
+    }
   };
 
   return {
     ref,
     hasDragged,
     props: {
-      onMouseDown,
-      onMouseLeave,
-      onMouseUp,
-      onMouseMove,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
     },
   };
 }
@@ -182,8 +208,8 @@ export function TimeSelect({
 
   // Scroll list Tailwind classes with custom scrollbar styles on hover
   const scrollListClass = cn(
-    "flex-1 overflow-y-auto p-1.5 space-y-0.5 select-none cursor-grab active:cursor-grabbing",
-    "scrollbar-thin [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/65 hover:[&::-webkit-scrollbar-thumb]:bg-slate-350 hover:[&::-webkit-scrollbar-thumb]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full transition-all duration-150"
+    "flex-1 overflow-y-auto p-1.5 space-y-0.5 select-none touch-pan-y md:cursor-grab md:active:cursor-grabbing",
+    "scrollbar-thin [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/80 hover:[&::-webkit-scrollbar-thumb]:bg-slate-350 [&::-webkit-scrollbar-thumb]:rounded-full transition-all duration-150"
   );
 
   return (
@@ -230,6 +256,7 @@ export function TimeSelect({
             ref={hourDrag.ref}
             {...hourDrag.props}
             className={cn(scrollListClass, "border-r border-slate-100")}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div className="text-[9px] font-bold text-center text-slate-400 uppercase tracking-wider py-1 pointer-events-none">Giờ</div>
             {hours.map((h) => {
@@ -258,6 +285,7 @@ export function TimeSelect({
             ref={minuteDrag.ref}
             {...minuteDrag.props}
             className={scrollListClass}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div className="text-[9px] font-bold text-center text-slate-400 uppercase tracking-wider py-1 pointer-events-none">Phút</div>
             {minutes.map((m) => {
