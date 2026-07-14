@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Clock } from 'lucide-react';
 import { cn } from '../../../share/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '../../../share/ui/popover';
+import { useIsMobile } from '../../shared/hooks/use-is-mobile';
 
 interface TimeSelectProps {
   readonly value?: string;
@@ -93,6 +94,7 @@ export function TimeSelect({
   step = 15,
   className,
 }: TimeSelectProps) {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || '');
 
@@ -108,16 +110,18 @@ export function TimeSelect({
     return [h || '', m || ''];
   }, [value]);
 
+  // Generate 24 hours options (00 to 23)
   const hours = useMemo(() => {
     return Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   }, []);
 
+  // Generate minutes options based on step
   const minutes = useMemo(() => {
     const mins: string[] = [];
     for (let m = 0; m < 60; m += step) {
       mins.push(m.toString().padStart(2, '0'));
     }
-    // Make sure current selected minute is always available
+    // Ensure the current minute is in the options even if it doesn't align with step
     if (selectedMinute && !mins.includes(selectedMinute)) {
       mins.push(selectedMinute);
       mins.sort();
@@ -135,6 +139,7 @@ export function TimeSelect({
     onChangeValue?.(`${nextHour}:${m}`);
   };
 
+  // Keyboard input changes for PC
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputVal = e.target.value;
     const digits = inputVal.replace(/\D/g, '').slice(0, 4);
@@ -208,12 +213,14 @@ export function TimeSelect({
 
   // Scroll list Tailwind classes with custom scrollbar styles on hover
   const scrollListClass = cn(
-    "flex-1 overflow-y-auto p-1.5 space-y-0.5 select-none touch-pan-y md:cursor-grab md:active:cursor-grabbing",
+    "flex-1 overflow-y-auto p-1.5 space-y-0.5 select-none cursor-grab active:cursor-grabbing",
     "scrollbar-thin [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200/80 hover:[&::-webkit-scrollbar-thumb]:bg-slate-350 [&::-webkit-scrollbar-thumb]:rounded-full transition-all duration-150"
   );
 
+
+  // 2. DESKTOP/PC RENDER (Visible Keyboard-friendly Input + Popover list)
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
         <div
           className={cn(
@@ -231,6 +238,7 @@ export function TimeSelect({
             onBlur={handleInputBlur}
             placeholder={placeholder}
             disabled={disabled}
+            readOnly={isMobile}
             className="w-full bg-transparent border-none p-0 text-sm font-semibold text-slate-800 outline-none focus:outline-none focus:ring-0 tabular-nums"
           />
         </div>
@@ -256,7 +264,7 @@ export function TimeSelect({
             ref={hourDrag.ref}
             {...hourDrag.props}
             className={cn(scrollListClass, "border-r border-slate-100")}
-            style={{ WebkitOverflowScrolling: 'touch' }}
+            onWheel={(e) => e.stopPropagation()}
           >
             <div className="text-[9px] font-bold text-center text-slate-400 uppercase tracking-wider py-1 pointer-events-none">Giờ</div>
             {hours.map((h) => {
@@ -285,7 +293,7 @@ export function TimeSelect({
             ref={minuteDrag.ref}
             {...minuteDrag.props}
             className={scrollListClass}
-            style={{ WebkitOverflowScrolling: 'touch' }}
+            onWheel={(e) => e.stopPropagation()}
           >
             <div className="text-[9px] font-bold text-center text-slate-400 uppercase tracking-wider py-1 pointer-events-none">Phút</div>
             {minutes.map((m) => {
