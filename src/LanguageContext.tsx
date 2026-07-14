@@ -89,7 +89,7 @@ const translations: TranslationDictionary = {
       kpiTitle: 'BẢNG XẾP HẠNG HIỆU QUẢ NHÂN SỰ',
       kpiSubtitle: 'Đánh giá điểm thi đua và phân loại năng lực vận hành thực tế',
       activeExTitle: 'PHÊ DUYỆT NGOẠI LỆ ĐANG PHÁT SINH',
-      activeExSubtitle: 'Yêu cầu vượt tuyến cần Chủ cửa hàng / Quản lý ký duyệt đột xuất'
+      activeExSubtitle: 'Yêu cầu vượt tuyến cần Giám đốc điều hành / Quản lý ký duyệt đột xuất'
     },
     checklist: {
       title: 'Hồ sơ Checklist Vận hành ca trực',

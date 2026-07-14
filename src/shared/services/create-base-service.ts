@@ -260,7 +260,7 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
               : '';
             const targetName = getFriendlyTargetName(autoLog.target, id, payload);
             const changedFields = getChangedFieldsString(payload);
-            details = `Đã cập nhật ${targetName}${nameField ? ` "${nameField}"` : ''}${changedFields} (ID: ${id})`;
+            details = `Đã cập nhật ${targetName}${nameField ? ` "${nameField}"` : ''}${changedFields}${nameField ? '' : ` (Mã: ${id})`}`;
           }
         }
 
@@ -295,7 +295,8 @@ export function createBaseService<TEntity, TRequest = Partial<TEntity>>({
           }
           if (!details) {
             const targetName = getFriendlyTargetName(autoLog.target, id, undefined);
-            details = `Đã xóa ${targetName} (ID: ${id})`;
+            const friendlyId = id.replace(/^(ROLE-|PQ-|LOG-|NV-)/i, '') || id;
+            details = `Đã xóa ${targetName} (Mã: ${friendlyId})`;
           }
         }
 

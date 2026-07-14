@@ -7,6 +7,7 @@ import {
   signOutFirebaseSession,
 } from '../firebase-auth-service';
 import { staffService } from './staff-service';
+import { roleService } from './role-service';
 
 type InternalAuthErrorCode =
   | 'INVALID_CREDENTIALS'
@@ -30,13 +31,15 @@ interface InternalAuthInput {
 }
 
 const ROLE_LABEL_MAP: Record<string, string> = {
-  CHU_CUA_HANG: 'Chủ cửa hàng',
+  CHU_CUA_HANG: 'Giám đốc điều hành',
   QUAN_LY_CUA_HANG: 'Quản lý cửa hàng',
+  NHAN_VIEN_BAN_HANG: 'Nhân viên bán hàng',
+  KY_THUAT_SUA_CHUA: 'Kỹ thuật sửa chữa',
+  QUAN_TRI_VIEN: 'Quản trị viên',
   QUAN_LY: 'Quản lý showroom',
   SALES: 'Nhân viên bán lẻ',
   KHO: 'Kỹ thuật viên',
   CSKH: 'Chăm sóc khách hàng',
-  QUAN_TRI_VIEN: 'Quản trị viên hệ thống',
 };
 
 const FALLBACK_AUTH_EMAIL_DOMAIN = 'mrtaocoop.com';
@@ -61,14 +64,28 @@ function resolveStaffAuthEmail(staff: StaffMember, normalizedUsername: string): 
   return `${normalizedUsername}@${FALLBACK_AUTH_EMAIL_DOMAIN}`;
 }
 
-function toUserSession(staff: StaffMember): UserSession {
+async function toUserSession(staff: StaffMember): Promise<UserSession> {
   const normalizedUsername = normalizeUsername(staff.username);
   const employeeCode = staff.employeeCode || staff.id.replace(/^NV-/, 'MNS-');
+
+  let roleName = staff.role;
+  try {
+    const roleDocId = `ROLE-${staff.role.toUpperCase().trim()}`;
+    const roleDoc = await roleService.getById(roleDocId);
+    if (roleDoc && roleDoc.name) {
+      roleName = roleDoc.name;
+    } else {
+      roleName = resolveRoleLabel(staff.role);
+    }
+  } catch (err) {
+    console.warn('Không thể lấy tên vai trò động, sử dụng nhãn mặc định:', err);
+    roleName = resolveRoleLabel(staff.role);
+  }
 
   return {
     username: normalizedUsername,
     fullName: staff.fullName,
-    role: resolveRoleLabel(staff.role),
+    role: roleName,
     roleCode: staff.role,
     avatar: staff.avatar || DEFAULT_AVATAR,
     id: staff.id,
@@ -196,7 +213,7 @@ export async function authenticateWithInternalStaff({
     throw new InternalAuthError('ACCOUNT_INACTIVE', 'Staff account is inactive.');
   }
 
-  return toUserSession(matchedStaff);
+  return await toUserSession(matchedStaff);
 }
 
 export async function signOutInternalStaff(): Promise<void> {

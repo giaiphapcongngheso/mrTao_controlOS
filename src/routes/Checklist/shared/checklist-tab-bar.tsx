@@ -139,6 +139,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
              lower !== 'quản trị viên' && 
              lower !== 'quản trị viên hệ thống' &&
              lower !== 'chủ cửa hàng' &&
+             lower !== 'giám đốc điều hành' &&
+             lower !== 'giam doc dieu hanh' &&
              lower !== 'chu_cua_hang';
     });
 
@@ -150,6 +152,8 @@ const ChecklistTabBar = React.memo(function ChecklistTabBar({
         lowerFull !== 'quản trị viên' && 
         lowerFull !== 'quản trị viên hệ thống' &&
         lowerFull !== 'chủ cửa hàng' &&
+        lowerFull !== 'giám đốc điều hành' &&
+        lowerFull !== 'giam doc dieu hanh' &&
         lowerFull !== 'chu_cua_hang' &&
         !names.includes(currentUser.fullName)
       ) {

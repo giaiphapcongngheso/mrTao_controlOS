@@ -10,7 +10,7 @@ import {
 } from '../../services/firebase-auth-service';
 import { systemLogService } from '../../services/system-log-service';
 import type { RolePermissionRow, StaffMember, StaffRole } from '../../types/staff.types';
-import { DEFAULT_AVATAR } from '../../constants';
+import { DEFAULT_AVATAR, getModuleMeta } from '../../constants';
 import { DEFAULT_STORE_ID } from '../../data';
 import {
   LogsTabContent,
@@ -97,6 +97,10 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     currentUser?.role?.toLowerCase().includes('quản lý') ||
     currentUser?.role?.toLowerCase().includes('chu cua hang') ||
     currentUser?.role?.toLowerCase().includes('chủ cửa hàng') ||
+    currentUser?.role?.toLowerCase().includes('giám đốc điều hành') ||
+    currentUser?.role?.toLowerCase().includes('giam doc dieu hanh') ||
+    currentUser?.role?.toLowerCase().includes('quản trị viên') ||
+    currentUser?.role?.toLowerCase().includes('quan tri vien') ||
     currentUser?.role?.toLowerCase().includes('owner')
   );
 
@@ -331,8 +335,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         // 1. Save role (create or update) with custom log details
         await roleService.update(role.id, role, {
           logDetails: isCreating
-            ? `Đã tạo vai trò ${role.name} (${role.code}) với ${permissions.length} module.`
-            : `Đã cập nhật phân quyền vai trò ${role.name} (${role.code}).`,
+            ? `Đã tạo vai trò "${role.name}" với ${permissions.length} danh mục phân quyền.`
+            : `Đã cập nhật phân quyền cho vai trò "${role.name}".`,
         });
 
         // 2. Batch save permissions (bypass auto log to avoid spamming Firestore)
@@ -399,7 +403,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
       // 2. Delete the role itself with custom log details
       await roleService.delete(role.id, {
-        logDetails: `Đã xoá vai trò ${role.name} (${role.code}) cùng ${relatedPermissions.length} phân quyền.`,
+        logDetails: `Đã xoá vai trò "${role.name}" cùng ${relatedPermissions.length} danh mục phân quyền liên quan.`,
       });
 
       // 3. Update local state
@@ -538,10 +542,12 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         internalNotes: staffForm.internalNotes?.trim() || '',
       };
 
+      const roleObj = roles.find((r) => r.code === payload.role || r.id === payload.roleId);
+      const roleName = roleObj ? roleObj.name : payload.role;
       await staffService.update(payload.id, payload, {
         logDetails: isEditMode
-          ? `Đã cập nhật nhân sự ${payload.fullName} (${payload.id}).`
-          : `Đã tạo nhân sự ${payload.fullName} (${payload.id}) với vai trò ${payload.role}.`,
+          ? `Đã cập nhật thông tin nhân sự "${payload.fullName}".`
+          : `Đã tạo nhân sự "${payload.fullName}" với vai trò "${roleName}".`,
       });
 
       if (isEditMode) {
@@ -620,7 +626,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
     try {
       await staffService.update(next.id, next, {
-        logDetails: `Đã đổi trạng thái nhân sự ${staff.fullName} (${staff.id}) sang ${next.status}.`,
+        logDetails: `Đã đổi trạng thái hoạt động của nhân sự "${staff.fullName}" sang "${next.status === 'active' ? 'Đang hoạt động' : 'Ngưng hoạt động'}".`,
       });
       setStaffList((prev: StaffMember[]) => prev.map((item: StaffMember) => (item.id === next.id ? next : item)));
       toastSuccess('Đã cập nhật trạng thái nhân sự.');
@@ -633,7 +639,7 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
   const executeDeleteStaff = async (staff: StaffMember) => {
     try {
       await staffService.delete(staff.id, {
-        logDetails: `Đã xóa nhân sự ${staff.fullName} (${staff.id}).`,
+        logDetails: `Đã xóa nhân sự "${staff.fullName}".`,
       });
       setStaffList((prev: StaffMember[]) => prev.filter((item: StaffMember) => item.id !== staff.id));
       toastSuccess(`Đã xóa nhân sự ${staff.fullName}.`);
@@ -703,8 +709,20 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
     };
 
     try {
+      const fieldLabels: Record<string, string> = {
+        canView: 'Xem',
+        canCreate: 'Tạo',
+        canUpdate: 'Sửa',
+        canDelete: 'Xóa',
+        canApprove: 'Duyệt',
+        canExport: 'Xuất file',
+      };
+      const fieldName = fieldLabels[field] || field;
+      const moduleMeta = getModuleMeta(moduleCode);
+      const moduleName = moduleMeta ? moduleMeta.name : moduleCode;
+      const statusText = next[field] ? 'Cho phép' : 'Chặn';
       await staffPermissionService.update(next.id, next, {
-        logDetails: `${existed ? 'Đã cập nhật' : 'Đã tạo'} quyền ${field} cho vai trò ${role.code} trên module ${moduleCode}.`,
+        logDetails: `${statusText} quyền "${fieldName}" cho vai trò "${role.name}" trên phân hệ "${moduleName}".`,
       });
       setPermissionRows((prev: RolePermissionRow[]) => {
         if (!existed) {

@@ -42,15 +42,20 @@ export function enrichSessionWithDefaultFields(user: Partial<UserSession> | null
   const roleCode = resolveRoleCode(user ?? {}, legacyUser);
 
   const roleMap: Record<string, string> = {
-    CHU_CUA_HANG: 'Chủ cửa hàng',
+    CHU_CUA_HANG: 'Giám đốc điều hành',
     QUAN_LY_CUA_HANG: 'Quản lý cửa hàng',
+    NHAN_VIEN_BAN_HANG: 'Nhân viên bán hàng',
+    KY_THUAT_SUA_CHUA: 'Kỹ thuật sửa chữa',
+    QUAN_TRI_VIEN: 'Quản trị viên',
     QUAN_LY: 'Quản lý showroom',
     SALES: 'Nhân viên bán lẻ',
     KHO: 'Kỹ thuật viên',
     CSKH: 'Chăm sóc khách hàng',
-    QUAN_TRI_VIEN: 'Quản trị viên hệ thống',
   };
-  const role = roleMap[roleCode] || user?.role || roleCode;
+  const legacyLabels = ['Chủ cửa hàng', 'Quản trị viên hệ thống', 'Nhân viên bán lẻ', 'Kỹ thuật viên', 'Quản lý showroom'];
+  const role = (user?.role && !legacyLabels.includes(user.role))
+    ? user.role
+    : (roleMap[roleCode] || roleCode);
 
   let statusLabel = user?.statusLabel || (legacyUser.trangThai as string | undefined) || '';
   if (statusLabel === 'Đang hoạt động') {
