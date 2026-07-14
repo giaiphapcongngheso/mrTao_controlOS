@@ -104,6 +104,25 @@ function formatCurrency(amount?: number): string {
     .replace('₫', 'đ');
 }
 
+function getReportTime(r: ReportSubmission): number {
+  const isoStr = r.createdAt || r.updatedAt;
+  if (isoStr) {
+    const t = Date.parse(isoStr);
+    if (!isNaN(t)) return t;
+  }
+  const dateStr = r.reportDate || r.dateKey;
+  if (dateStr) {
+    const t = Date.parse(dateStr);
+    if (!isNaN(t)) return t;
+  }
+  if (r.id && r.id.startsWith('rep-')) {
+    const parts = r.id.split('-');
+    const ts = parseInt(parts[1], 10);
+    if (!isNaN(ts)) return ts;
+  }
+  return 0;
+}
+
 export default function ReportsView({
   dailyReport,
   currentUser,
@@ -220,9 +239,12 @@ export default function ReportsView({
         const nextReports = (allReports || [])
           .filter((item) => item.storeId === dailyReport.storeId && !item.isDeleted)
           .sort((a, b) => {
-            const timeA = a.updatedAt || a.createdAt || a.timestamp || '';
-            const timeB = b.updatedAt || b.createdAt || b.timestamp || '';
-            return timeA < timeB ? 1 : -1;
+            const dateA = a.reportDate || a.dateKey || '';
+            const dateB = b.reportDate || b.dateKey || '';
+            if (dateA !== dateB) {
+              return dateB.localeCompare(dateA);
+            }
+            return getReportTime(b) - getReportTime(a);
           })
           .map((item) => ({
             ...item,
@@ -252,9 +274,12 @@ export default function ReportsView({
     const nextReports = reportsQuery.data
       .filter((item) => item.storeId === dailyReport.storeId && !item.isDeleted)
       .sort((a, b) => {
-        const timeA = a.updatedAt || a.createdAt || a.timestamp || '';
-        const timeB = b.updatedAt || b.createdAt || b.timestamp || '';
-        return timeA < timeB ? 1 : -1;
+        const dateA = a.reportDate || a.dateKey || '';
+        const dateB = b.reportDate || b.dateKey || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        return getReportTime(b) - getReportTime(a);
       })
       .map((item) => ({
         ...item,

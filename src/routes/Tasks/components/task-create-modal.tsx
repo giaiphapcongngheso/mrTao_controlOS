@@ -14,6 +14,11 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from '@shared/ui';
 import { cn } from '@shared/lib/utils';
 import type { TaskRequestType, TaskItem, SubTask } from '../../../types/tasks.types';
@@ -28,6 +33,9 @@ import {
 } from '../_hook/use-task-form';
 import { TaskTemplatePicker } from './task-template-picker';
 import type { TaskTemplate } from '../../../types/task-template.types';
+import { taskTemplateService } from '../../../services/task-template-service';
+import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
+import { toastSuccess, toastError } from '../../../shared/lib/toast';
 
 function parseDeadlineStringToDate(deadline: string): Date {
   if (!deadline) return new Date();
@@ -139,6 +147,223 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
       });
     }
   };
+
+  // --- Dynamic Templates State & Handlers ---
+  const [templates, setTemplates] = React.useState<TaskTemplate[]>([]);
+  const [activeTemplateId, setActiveTemplateId] = React.useState<string | null>(null);
+
+  // Custom dialogues targets
+  const [renameTemplateTarget, setRenameTemplateTarget] = React.useState<TaskTemplate | null>(null);
+  const [deleteTemplateTarget, setDeleteTemplateTarget] = React.useState<TaskTemplate | null>(null);
+  const [overwriteTemplateTarget, setOverwriteTemplateTarget] = React.useState<TaskTemplate | null>(null);
+  const [isSaveNewPromptOpen, setIsSaveNewPromptOpen] = React.useState(false);
+
+  const loadTemplates = useCallback(async () => {
+    const list = await taskTemplateService.getAll();
+    setTemplates(list);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTemplates();
+      setActiveTemplateId(null);
+    }
+  }, [isOpen, loadTemplates]);
+
+  const handleSelectTemplate = useCallback((tpl: TaskTemplate) => {
+    form.setValue('title', tpl.defaultTitle);
+    form.setValue('department', tpl.defaultDepartment);
+    form.setValue('priority', tpl.defaultPriority);
+    if (tpl.defaultNotes) {
+      form.setValue('notes', tpl.defaultNotes);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = tpl.defaultNotes;
+      }
+    } else {
+      form.setValue('notes', '');
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+      }
+    }
+    if (tpl.defaultAssignee) form.setValue('assignee', tpl.defaultAssignee);
+    const newSubtasks = (tpl.defaultSubtasks || []).map((s) => ({
+      id: crypto.randomUUID(),
+      title: s.title,
+      completed: false,
+    }));
+    form.setValue('subtasks', newSubtasks);
+    setActiveTemplateId(tpl.id);
+  }, [form]);
+
+  const handleRenameTemplate = useCallback((tpl: TaskTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenameTemplateTarget(tpl);
+  }, []);
+
+  const onConfirmRename = useCallback(async (newName: string) => {
+    if (renameTemplateTarget) {
+      try {
+        await taskTemplateService.update(renameTemplateTarget.id, { name: newName });
+        setRenameTemplateTarget(null);
+        await loadTemplates();
+        toastSuccess(`Đã đổi tên mẫu thành "${newName}" thành công!`);
+      } catch {
+        toastError("Không thể đổi tên mẫu công việc.");
+      }
+    }
+  }, [renameTemplateTarget, loadTemplates]);
+
+  const handleDeleteTemplate = useCallback((tpl: TaskTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteTemplateTarget(tpl);
+  }, []);
+
+  const onConfirmDelete = useCallback(async () => {
+    if (deleteTemplateTarget) {
+      try {
+        await taskTemplateService.delete(deleteTemplateTarget.id);
+        if (activeTemplateId === deleteTemplateTarget.id) {
+          setActiveTemplateId(null);
+        }
+        const deletedName = deleteTemplateTarget.name;
+        setDeleteTemplateTarget(null);
+        await loadTemplates();
+        toastSuccess(`Đã xóa mẫu công việc "${deletedName}" thành công!`);
+      } catch {
+        toastError("Không thể xóa mẫu công việc.");
+      }
+    }
+  }, [deleteTemplateTarget, activeTemplateId, loadTemplates]);
+
+  const handleSaveAsNewTemplate = useCallback(() => {
+    setIsSaveNewPromptOpen(true);
+  }, []);
+
+  const onConfirmSaveAsNew = useCallback(async (templateName: string) => {
+    try {
+      const currentValues = form.getValues();
+      const newTpl = await taskTemplateService.create({
+        name: templateName,
+        defaultTitle: currentValues.title || '',
+        defaultDepartment: currentValues.department || 'Showroom',
+        defaultPriority: currentValues.priority || 'medium',
+        defaultSubtasks: (currentValues.subtasks || []).map(s => ({ title: s.title })),
+        defaultNotes: currentValues.notes || '',
+      });
+      await loadTemplates();
+      setActiveTemplateId(newTpl.id);
+      setIsSaveNewPromptOpen(false);
+      toastSuccess(`Đã lưu mẫu "${templateName}" thành công!`);
+    } catch {
+      toastError("Không thể lưu mẫu công việc mới.");
+    }
+  }, [form, loadTemplates]);
+
+  const handleOverwriteTemplate = useCallback(() => {
+    if (!activeTemplateId) return;
+    const tpl = templates.find(t => t.id === activeTemplateId);
+    if (tpl) {
+      setOverwriteTemplateTarget(tpl);
+    }
+  }, [activeTemplateId, templates]);
+
+  const onConfirmOverwrite = useCallback(async () => {
+    if (activeTemplateId && overwriteTemplateTarget) {
+      try {
+        const currentValues = form.getValues();
+        await taskTemplateService.update(activeTemplateId, {
+          defaultTitle: currentValues.title || '',
+          defaultDepartment: currentValues.department || 'Showroom',
+          defaultPriority: currentValues.priority || 'medium',
+          defaultSubtasks: (currentValues.subtasks || []).map(s => ({ title: s.title })),
+          defaultNotes: currentValues.notes || '',
+        });
+        const name = overwriteTemplateTarget.name;
+        setOverwriteTemplateTarget(null);
+        await loadTemplates();
+        toastSuccess(`Đã cập nhật đè mẫu "${name}" thành công!`);
+      } catch {
+        toastError("Không thể cập nhật đè mẫu công việc.");
+      }
+    }
+  }, [activeTemplateId, overwriteTemplateTarget, form, loadTemplates]);
+
+  // --- Rich Text Editor Toolbar Custom States & Handlers ---
+  const [insertImageLinkOpen, setInsertImageLinkOpen] = React.useState(false);
+  const [insertLinkOpen, setInsertLinkOpen] = React.useState(false);
+
+  const [editorStates, setEditorStates] = React.useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    h3: false,
+    h4: false,
+    p: false,
+    bulletList: false,
+    orderedList: false,
+    justifyLeft: false,
+    justifyCenter: false,
+    justifyRight: false,
+  });
+
+  const updateEditorToolbarStates = useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    const anchorNode = selection.anchorNode;
+    if (!anchorNode || !editorRef.current.contains(anchorNode)) return;
+
+    const formatBlock = document.queryCommandValue('formatBlock');
+    setEditorStates({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      h3: formatBlock === 'h3' || formatBlock === 'H3',
+      h4: formatBlock === 'h4' || formatBlock === 'H4',
+      p: formatBlock === 'p' || formatBlock === 'P' || formatBlock === '',
+      bulletList: document.queryCommandState('insertUnorderedList'),
+      orderedList: document.queryCommandState('insertOrderedList'),
+      justifyLeft: document.queryCommandState('justifyLeft'),
+      justifyCenter: document.queryCommandState('justifyCenter'),
+      justifyRight: document.queryCommandState('justifyRight'),
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      updateEditorToolbarStates();
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [updateEditorToolbarStates]);
+
+  const onConfirmInsertImageLink = useCallback((url: string) => {
+    if (editorRef.current) editorRef.current.focus();
+    document.execCommand(
+      'insertHTML',
+      false,
+      `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`
+    );
+    handleEditorInput();
+  }, []);
+
+  const onConfirmInsertLink = useCallback((url: string) => {
+    if (editorRef.current) editorRef.current.focus();
+    document.execCommand('createLink', false, url);
+    handleEditorInput();
+  }, []);
+
+  const getButtonClass = (isActive: boolean) =>
+    cn(
+      "p-1 px-1.5 rounded transition-all cursor-pointer border flex items-center gap-0.5 text-xs font-semibold",
+      isActive
+        ? "border-[#C21A1A] bg-red-50/50 text-[#C21A1A] font-bold shadow-3xs"
+        : "border-transparent hover:bg-slate-200 text-slate-800"
+    );
 
   useEffect(() => {
     if (isOpen) {
@@ -292,19 +517,11 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
               {/* Template Picker (only when creating new) */}
               {!isEditing && (
                 <TaskTemplatePicker
-                  onSelect={(tpl) => {
-                    form.setValue('title', tpl.defaultTitle);
-                    form.setValue('department', tpl.defaultDepartment);
-                    form.setValue('priority', tpl.defaultPriority);
-                    if (tpl.defaultNotes) form.setValue('notes', tpl.defaultNotes);
-                    if (tpl.defaultAssignee) form.setValue('assignee', tpl.defaultAssignee);
-                    const newSubtasks = tpl.defaultSubtasks.map((s, i) => ({
-                      id: crypto.randomUUID(),
-                      title: s.title,
-                      completed: false,
-                    }));
-                    form.setValue('subtasks', newSubtasks);
-                  }}
+                  templates={templates}
+                  activeTemplateId={activeTemplateId}
+                  onSelect={handleSelectTemplate}
+                  onEdit={handleRenameTemplate}
+                  onDelete={handleDeleteTemplate}
                 />
               )}
 
@@ -573,24 +790,33 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                         <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 border-b border-slate-200 select-none">
                           <button
                             type="button"
-                            onClick={() => document.execCommand('bold', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-800 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('bold', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.bold)}
                             title="In đậm"
                           >
                             <Bold className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('italic', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-800 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('italic', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.italic)}
                             title="In nghiêng"
                           >
                             <Italic className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('underline', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-800 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('underline', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.underline)}
                             title="Gạch dưới"
                           >
                             <Underline className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -600,8 +826,11 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
                           <button
                             type="button"
-                            onClick={() => document.execCommand('formatBlock', false, '<h3>')}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded text-[10px] font-black transition-colors cursor-pointer flex items-center gap-0.5"
+                            onClick={() => {
+                              document.execCommand('formatBlock', false, editorStates.h3 ? '<p>' : '<h3>');
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.h3)}
                             title="Tiêu đề H3"
                           >
                             <Heading className="w-3 h-3 stroke-[2.5]" />
@@ -609,8 +838,11 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('formatBlock', false, '<h4>')}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded text-[10px] font-black transition-colors cursor-pointer flex items-center gap-0.5"
+                            onClick={() => {
+                              document.execCommand('formatBlock', false, editorStates.h4 ? '<p>' : '<h4>');
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.h4)}
                             title="Tiêu đề H4"
                           >
                             <Heading className="w-3 h-3 stroke-[2.5]" />
@@ -618,8 +850,11 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('formatBlock', false, '<p>')}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded text-[10px] font-black transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('formatBlock', false, '<p>');
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.p)}
                             title="Văn bản thường"
                           >
                             P
@@ -629,16 +864,22 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
                           <button
                             type="button"
-                            onClick={() => document.execCommand('insertUnorderedList', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('insertUnorderedList', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.bulletList)}
                             title="Danh sách dấu tròn"
                           >
                             <List className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('insertOrderedList', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('insertOrderedList', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.orderedList)}
                             title="Danh sách số"
                           >
                             <ListOrdered className="w-3.5 h-3.5" />
@@ -648,24 +889,33 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
                           <button
                             type="button"
-                            onClick={() => document.execCommand('justifyLeft', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('justifyLeft', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.justifyLeft)}
                             title="Căn lề trái"
                           >
                             <AlignLeft className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('justifyCenter', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('justifyCenter', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.justifyCenter)}
                             title="Căn lề giữa"
                           >
                             <AlignCenter className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => document.execCommand('justifyRight', false)}
-                            className="p-1 px-1.5 hover:bg-slate-200 text-slate-850 rounded transition-colors cursor-pointer"
+                            onClick={() => {
+                              document.execCommand('justifyRight', false);
+                              updateEditorToolbarStates();
+                            }}
+                            className={getButtonClass(editorStates.justifyRight)}
                             title="Căn lề phải"
                           >
                             <AlignRight className="w-3.5 h-3.5" />
@@ -728,14 +978,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              const url = prompt("Nhập URL của ảnh:");
-                              if (url) {
-                                if (editorRef.current) editorRef.current.focus();
-                                document.execCommand('insertHTML', false, `<img src="${url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh" />`);
-                                handleEditorInput();
-                              }
-                            }}
+                            onClick={() => setInsertImageLinkOpen(true)}
                             className="p-1 px-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer"
                             title="Dán link ảnh"
                           >
@@ -743,25 +986,12 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              const url = prompt("Nhập URL liên kết:", "https://");
-                              if (url) {
-                                document.execCommand('createLink', false, url);
-                              }
-                            }}
+                            onClick={() => setInsertLinkOpen(true)}
                             className="p-1 px-1.5 bg-white border border-slate-200 hover:bg-purple-50 text-purple-750 hover:border-purple-200 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer"
                             title="Chèn liên kết"
                           >
                             <LinkIcon className="w-3 h-3" />
                             <span>Link</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => document.execCommand('removeFormat', false)}
-                            className="p-1 px-1.5 bg-white border border-slate-200 hover:bg-amber-50 text-amber-700 hover:border-amber-200 rounded-lg text-[10px] font-black transition-all cursor-pointer"
-                            title="Xóa định dạng"
-                          >
-                            Xóa Format
                           </button>
                         </div>
 
@@ -793,26 +1023,182 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
             </div>
 
-            <div className="flex gap-2 justify-end pt-3 border-t border-slate-100 shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg cursor-pointer animate-none h-auto"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 text-xs font-black text-white bg-[#C21A1A] hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer h-auto disabled:cursor-wait disabled:opacity-70"
-              >
-                {isSubmitting ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Giao việc')}
-              </Button>
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100 shrink-0">
+              <div className="flex gap-2">
+                {!isEditing && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSaveAsNewTemplate}
+                      className="px-3.5 py-2 text-xs font-bold text-slate-750 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer h-auto"
+                    >
+                      Lưu thành mẫu mới
+                    </Button>
+                    {activeTemplateId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleOverwriteTemplate}
+                        className="px-3.5 py-2 text-xs font-bold text-[#C21A1A] bg-red-50/50 border border-red-200 hover:bg-red-50 hover:text-rose-700 rounded-lg cursor-pointer h-auto"
+                      >
+                        Lưu đè mẫu hiện tại
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={onClose}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg cursor-pointer animate-none h-auto"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 text-xs font-black text-white bg-[#C21A1A] hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer h-auto disabled:cursor-wait disabled:opacity-70"
+                >
+                  {isSubmitting ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Giao việc')}
+                </Button>
+              </div>
             </div>
           </form>
         </Form>
       </div>
+
+      {/* Dynamic Templates Confirmation / Prompt Dialogs */}
+      <ActionPromptDialog
+        open={renameTemplateTarget !== null}
+        onOpenChange={(open) => { if (!open) setRenameTemplateTarget(null); }}
+        title="Đổi tên mẫu công việc"
+        placeholder="Nhập tên mới cho mẫu..."
+        defaultValue={renameTemplateTarget?.name || ''}
+        onSubmit={onConfirmRename}
+      />
+
+      <ActionPromptDialog
+        open={isSaveNewPromptOpen}
+        onOpenChange={setIsSaveNewPromptOpen}
+        title="Lưu mẫu công việc mới"
+        placeholder="Nhập tên cho mẫu công việc..."
+        defaultValue=""
+        onSubmit={onConfirmSaveAsNew}
+      />
+
+      <ActionConfirmDialog
+        open={deleteTemplateTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTemplateTarget(null); }}
+        title="Xác nhận xóa mẫu"
+        description={deleteTemplateTarget ? `Bạn có chắc chắn muốn xóa mẫu công việc "${deleteTemplateTarget.name}" không?` : ''}
+        variant="danger"
+        onConfirm={onConfirmDelete}
+      />
+
+      <ActionConfirmDialog
+        open={overwriteTemplateTarget !== null}
+        onOpenChange={(open) => { if (!open) setOverwriteTemplateTarget(null); }}
+        title="Xác nhận cập nhật mẫu"
+        description={overwriteTemplateTarget ? `Bạn có chắc chắn muốn lưu đè thông tin hiện tại vào mẫu "${overwriteTemplateTarget.name}" không?` : ''}
+        variant="confirm"
+        onConfirm={onConfirmOverwrite}
+      />
+
+      <ActionPromptDialog
+        open={insertImageLinkOpen}
+        onOpenChange={setInsertImageLinkOpen}
+        title="Chèn ảnh từ liên kết (URL)"
+        placeholder="https://example.com/image.jpg"
+        defaultValue=""
+        onSubmit={onConfirmInsertImageLink}
+      />
+
+      <ActionPromptDialog
+        open={insertLinkOpen}
+        onOpenChange={setInsertLinkOpen}
+        title="Chèn liên kết web"
+        placeholder="https://example.com"
+        defaultValue="https://"
+        onSubmit={onConfirmInsertLink}
+      />
     </div>
+  );
+});
+
+interface ActionPromptDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  placeholder?: string;
+  defaultValue: string;
+  onSubmit: (value: string) => void;
+}
+
+const ActionPromptDialog = React.memo(function ActionPromptDialog({
+  open,
+  onOpenChange,
+  title,
+  placeholder = "Nhập giá trị...",
+  defaultValue,
+  onSubmit,
+}: ActionPromptDialogProps) {
+  const [value, setValue] = React.useState(defaultValue);
+
+  React.useEffect(() => {
+    if (open) {
+      setValue(defaultValue);
+    }
+  }, [open, defaultValue]);
+
+  const handleConfirm = () => {
+    if (value.trim()) {
+      onSubmit(value.trim());
+      onOpenChange(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="w-full text-xs font-semibold"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleConfirm();
+              }
+            }}
+          />
+        </div>
+        <DialogFooter className="flex gap-2 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg cursor-pointer h-auto border-none shadow-none"
+          >
+            Hủy
+          </Button>
+          <Button
+            type="button"
+            disabled={!value.trim()}
+            onClick={handleConfirm}
+            className="px-5 py-2.5 text-xs font-black text-white bg-[#C21A1A] hover:bg-rose-700 rounded-lg cursor-pointer h-auto border-none"
+          >
+            Xác nhận
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 });
