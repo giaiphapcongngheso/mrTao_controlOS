@@ -270,13 +270,13 @@ export default function AppShell() {
                   onClick={() => handleSelectTab('Handbook')}
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Trợ giúp &amp; HD SOP</span>
+                  <span className="hidden lg:inline">Trợ giúp &amp; HD SOP</span>
                 </button>
               )}
               {canViewTab('Notifications') && (
                 <NotificationsBellPopover activeTab={activeTab} onSelectTab={handleSelectTab} />
               )}
-              <ZoomControl className="hidden md:flex" />
+              <ZoomControl className="hidden lg:flex" />
               <ModeToggle />
               <HeaderProfilePopover
                 currentUser={currentUser}

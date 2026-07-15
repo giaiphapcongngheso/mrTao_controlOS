@@ -260,7 +260,7 @@ export function PermissionsTabContent({
       </div>
 
       {/* On mobile: render MobileCard list view */}
-      <div className="block md:hidden space-y-3 px-1 pb-4">
+      <div className="block lg:hidden space-y-3 px-1 pb-4">
         {roleOptions.length === 0 ? (
           <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
             Chưa có vai trò nào. Bấm nút Vai trò phía trên để tạo vai trò mới.
@@ -326,7 +326,7 @@ export function PermissionsTabContent({
       </div>
 
       {/* On desktop: render CustomTable */}
-      <div className="hidden md:block w-full max-w-full overflow-hidden min-w-0">
+      <div className="hidden lg:block w-full max-w-full overflow-hidden min-w-0">
         <CustomTable<StaffRole>
           columns={columns}
           data={roleOptions}

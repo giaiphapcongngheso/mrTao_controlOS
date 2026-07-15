@@ -437,13 +437,13 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
           </div>
 
           {/* ---- Permissions Table (Desktop) & Accordion (Mobile) ---- */}
-          <div className="flex-1 min-h-0 flex flex-col max-h-[45vh] md:max-h-[50vh]">
+          <div className="flex-1 min-h-0 flex flex-col max-h-[45vh] lg:max-h-[50vh]">
             <p className="mb-2 shrink-0 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
               Ma trận phân quyền
             </p>
             
             {/* Desktop Table View */}
-            <div className="hidden md:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-slate-200">
+            <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-slate-200">
               <CustomTable<PermissionRowFormValues>
                 columns={columns}
                 data={permissions}
@@ -461,7 +461,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
             </div>
 
             {/* Mobile Accordion View */}
-            <div className="block md:hidden flex-1 overflow-y-auto space-y-2 pr-1 select-none">
+            <div className="block lg:hidden flex-1 overflow-y-auto space-y-2 pr-1 select-none">
               {permissions.map((row, moduleIndex) => {
                 const meta = getModuleMeta(row.module);
                 return (
@@ -537,7 +537,7 @@ export const RolePermissionDialog = React.memo(function RolePermissionDialog({
             <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 text-left">
               Cấu hình hiển thị các Tab chi tiết
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 p-3 rounded-xl border border-slate-150 max-h-[30vh] overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 bg-slate-50/50 p-3 rounded-xl border border-slate-150 max-h-[30vh] overflow-y-auto">
               {/* Checklist tabs */}
               <div className="space-y-2 text-left">
                 <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
