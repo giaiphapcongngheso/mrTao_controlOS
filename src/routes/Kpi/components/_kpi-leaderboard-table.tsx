@@ -78,7 +78,6 @@ const KpiLeaderboardRow = React.memo(function KpiLeaderboardRow({
           />
           <div className="min-w-0">
             <div className="font-bold text-slate-800 truncate leading-snug">{rank.name}</div>
-            <div className="text-[10px] text-slate-450 font-semibold mt-0.5">Mã NV: {rank.staffId}</div>
           </div>
         </div>
       </TableCell>
@@ -156,7 +155,7 @@ const KpiLeaderboardMobileCard = React.memo(function KpiLeaderboardMobileCard({
     >
       <MobileCard.Header
         title={rank.name}
-        subtitle={`Mã NV: ${rank.staffId} • ${roleName}`}
+        subtitle={roleName}
         avatar={rank.avatar}
         badge={{ text: classificationLabel, variant: classificationVariant }}
       />

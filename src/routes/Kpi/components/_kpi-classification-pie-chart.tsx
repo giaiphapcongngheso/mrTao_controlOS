@@ -153,9 +153,9 @@ export const KpiClassificationPieChart = React.memo(function KpiClassificationPi
       </div>
 
       {/* Main Chart Body */}
-      <div className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-6 py-2 min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 py-2 min-h-0">
         {/* SVG Donut Circle */}
-        <div className="w-[140px] h-[140px] relative shrink-0">
+        <div className="w-[130px] h-[130px] relative shrink-0">
           <svg className="w-full h-full" viewBox="0 0 100 100">
             {/* Background base circle */}
             <circle
@@ -200,14 +200,14 @@ export const KpiClassificationPieChart = React.memo(function KpiClassificationPi
             <span className="text-xl font-black text-slate-800 leading-none">
               {activeItem ? activeItem.count : total}
             </span>
-            <span className="text-[9.5px] font-bold text-slate-400 mt-1 uppercase tracking-wider leading-none">
+            <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider leading-none">
               {activeItem ? `${activeItem.name} (${activeItem.pct}%)` : 'Nhân sự'}
             </span>
           </div>
         </div>
 
-        {/* Legend listing on the right */}
-        <div className="flex-1 space-y-2 w-full sm:w-auto text-left font-sans">
+        {/* Legend listing below */}
+        <div className="w-full space-y-1 font-sans">
           {data.map((item, idx) => {
             const isActive = activeIndex === idx;
             return (
@@ -223,7 +223,7 @@ export const KpiClassificationPieChart = React.memo(function KpiClassificationPi
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: item.color }}
                   />
                   <span className="text-xs font-bold text-slate-700 truncate leading-none">
@@ -232,7 +232,7 @@ export const KpiClassificationPieChart = React.memo(function KpiClassificationPi
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 font-bold text-xs text-slate-500">
                   <span className="text-slate-800">{item.count} người</span>
-                  <span className="text-[10px] text-slate-400 font-semibold">• {item.pct}%</span>
+                  <span className="text-[10px] text-slate-450 font-semibold">• {item.pct}%</span>
                 </div>
               </div>
             );

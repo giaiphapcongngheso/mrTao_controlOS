@@ -37,10 +37,37 @@ interface KpiViewProps {
   };
 }
 
-const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
-  { key: 'ranks', label: 'Xếp hạng & Chi tiết', icon: <Award className="w-3.5 h-3.5 shrink-0" /> },
-  { key: 'entry', label: 'Nhập Action Plan', icon: <Calendar className="w-3.5 h-3.5 shrink-0" /> },
-  { key: 'settings', label: 'Thiết lập KPI', icon: <Target className="w-3.5 h-3.5 shrink-0" /> },
+const SUB_TABS: { key: SubTab; label: React.ReactNode; icon: React.ReactNode }[] = [
+  {
+    key: 'ranks',
+    label: (
+      <>
+        <span className="hidden sm:inline">Xếp hạng & Chi tiết</span>
+        <span className="sm:hidden">Xếp hạng</span>
+      </>
+    ),
+    icon: <Award className="w-3.5 h-3.5 shrink-0" />
+  },
+  {
+    key: 'entry',
+    label: (
+      <>
+        <span className="hidden sm:inline">Nhập Action Plan</span>
+        <span className="sm:hidden">Nhập liệu</span>
+      </>
+    ),
+    icon: <Calendar className="w-3.5 h-3.5 shrink-0" />
+  },
+  {
+    key: 'settings',
+    label: (
+      <>
+        <span className="hidden sm:inline">Thiết lập KPI</span>
+        <span className="sm:hidden">Thiết lập</span>
+      </>
+    ),
+    icon: <Target className="w-3.5 h-3.5 shrink-0" />
+  },
 ];
 
 export default function KpiView({
@@ -107,7 +134,7 @@ export default function KpiView({
       {/* Month selector + Sub tabs */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-0 min-w-0">
         {/* Underline tabs */}
-        <div className="flex items-center gap-6 md:gap-8 -mb-px overflow-x-auto whitespace-nowrap scrollbar-none w-full md:w-auto">
+        <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start sm:gap-6 md:gap-8 -mb-px overflow-x-auto whitespace-nowrap scrollbar-none">
           {visibleTabs.map(tab => (
             <SubTabButton
               key={tab.key}
@@ -211,7 +238,7 @@ const SubTabButton = React.memo(function SubTabButton({
   onClick,
 }: {
   tabKey: SubTab;
-  label: string;
+  label: React.ReactNode;
   icon: React.ReactNode;
   isActive: boolean;
   onClick: (tab: SubTab) => void;
