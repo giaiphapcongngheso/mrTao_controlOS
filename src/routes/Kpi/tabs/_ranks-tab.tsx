@@ -320,9 +320,9 @@ export const RanksTab = React.memo(function RanksTab({
             {/* Card 4: Ngôi sao sáng */}
             <Card className="p-1 rounded-2xl border border-slate-200/85 bg-white shadow-3xs relative overflow-hidden group">
               <CardContent className="p-2.5 xs:p-3 md:p-3.5 flex items-center justify-between gap-2.5 w-full min-w-0">
-                <div className="min-w-0 text-left">
+                <div className="min-w-0 text-left flex-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block leading-none">Top 1 nhân sự</span>
-                  <div className="text-xs xs:text-sm font-bold text-slate-800 leading-none mt-2.5 truncate max-w-[80px] sm:max-w-[120px] lg:max-w-[145px]">
+                  <div className="text-xs xs:text-sm font-bold text-slate-800 leading-none mt-2.5 truncate" title={topStaff ? topStaff.name : ''}>
                     {topStaff ? topStaff.name : 'Chưa có'}
                   </div>
                   <span className="inline-flex items-center gap-0.5 mt-2.5 text-[9.5px] font-black text-[#C21A1A] leading-none">

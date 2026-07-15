@@ -1,13 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ReferenceLine, LabelList } from 'recharts';
 import type { StaffRank } from '../../../types/kpi.types';
 import type { StaffRole } from '../../../types/staff.types';
 import { Card, CardContent } from '../../../../share/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '../../../../share/ui/tabs';
 import { translateClassification, formatValue } from '../kpi-utils';
 import { cn } from '@shared/lib/utils';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@shared/ui/chart';
-import type { ChartConfig } from '@shared/ui/chart';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -39,7 +36,10 @@ const INDICATOR_COLORS = [
   { stroke: '#14b8a6', legendBg: 'bg-teal-500', text: 'text-teal-500' },    // Teal
 ];
 
-const formatYLabel = (val: number, activeChart: 'score' | 'payout') => {
+const formatYLabel = (val: number, activeChart: 'score' | 'payout' | 'revenue') => {
+  if (activeChart === 'revenue') {
+    return `${val}%`;
+  }
   if (activeChart === 'score') {
     return `${val}`;
   }
@@ -125,6 +125,7 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
   // Compute scale maximum dynamically for SVG Column Chart
   const maxVal = useMemo(() => {
+    if (activeChart === 'revenue') return 120;
     if (activeChart === 'score') return 100;
     const maxPayout = Math.max(...ranks.map(r => r.calculatedPayout ?? 0), 500000);
     return Math.ceil(maxPayout / 500000) * 500000;
@@ -132,21 +133,12 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
   // Calculate bar positions for SVG Column Chart
   const count = ranks.length;
-  const barWidth = 36;
-  const gap = 28;
-
-  const contentWidth = count * barWidth + (count - 1) * gap;
-  const useCenteredLayout = contentWidth < chartWidth;
+  const step = chartWidth / count;
+  const barWidth = 32;
 
   const getBarX = useCallback((idx: number) => {
-    if (useCenteredLayout) {
-      const startX = paddingLeft + (chartWidth - contentWidth) / 2;
-      return startX + idx * (barWidth + gap);
-    } else {
-      const step = chartWidth / count;
-      return paddingLeft + idx * step + (step - barWidth) / 2;
-    }
-  }, [count, useCenteredLayout, contentWidth, chartWidth, paddingLeft]);
+    return paddingLeft + idx * step + (step - barWidth) / 2;
+  }, [count, step, paddingLeft]);
 
   const dynamicMinWidth = useMemo(() => {
     if (count <= 6) return '100%';
@@ -156,13 +148,18 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
 
   const yTicks = useMemo(() => {
+    if (activeChart === 'revenue') {
+      return [120, 90, 60, 30, 0];
+    }
     return [maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0];
-  }, [maxVal]);
+  }, [maxVal, activeChart]);
 
   const benchmarkY = useMemo(() => {
-    const targetVal = activeChart === 'score'
-      ? avgScore
-      : totalPayoutSum / count;
+    const targetVal = activeChart === 'revenue'
+      ? 100
+      : activeChart === 'score'
+        ? avgScore
+        : totalPayoutSum / count;
     return paddingTop + chartHeight - (targetVal / maxVal) * chartHeight;
   }, [activeChart, avgScore, totalPayoutSum, count, maxVal]);
 
@@ -184,18 +181,7 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
     return 'barGradRose';
   };
 
-  // Recharts configurations for tab % Hoàn thành
-  const chartConfig = useMemo(() => {
-    const config: ChartConfig = {};
-    storeDailyIndicators.forEach((ind, idx) => {
-      const colorScheme = INDICATOR_COLORS[idx % INDICATOR_COLORS.length];
-      config[ind.id] = {
-        label: ind.name,
-        color: colorScheme.stroke,
-      };
-    });
-    return config;
-  }, [storeDailyIndicators]);
+
 
   return (
     <Card className="border border-slate-200 bg-white shadow-xs rounded-2xl text-left relative overflow-hidden font-sans flex flex-col p-0">
@@ -272,88 +258,314 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
 
       {/* Chart Canvas Area */}
       <CardContent className="p-4 md:p-5">
-        {activeChart === 'revenue' ? (
-          /* Render Grouped Bar Chart for store KPI Performance */
-          <div className="space-y-4 w-full">
-            <div className="h-[310px] w-full relative">
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <BarChart
-                  data={storeDailyChartData}
-                  margin={{ top: 18, right: 10, left: -20, bottom: 0 }}
-                  barGap={4}
-                  barCategoryGap="24%"
-                >
-                  <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" opacity={0.5} />
-                  
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    className="text-[10px] font-bold text-slate-500"
-                  />
+        <div className="relative overflow-x-auto min-w-0 w-full scrollbar-thin">
+          <div 
+            className="w-full h-[280px] relative"
+            style={{ minWidth: dynamicMinWidth }}
+          >
+            {/* Interactive Tooltip for SVG Column Chart */}
+            {(() => {
+              if (hoveredIndex === null) return null;
+              const hRank = ranks[hoveredIndex];
+              if (!hRank) return null;
 
-                  <YAxis
-                    domain={[0, 120]}
-                    ticks={[0, 30, 60, 90, 120]}
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => `${value}%`}
-                    className="text-[9.5px] font-bold text-slate-400"
-                  />
+              if (activeChart === 'revenue') {
+                const empRow = (storeDailyChartData || [])[hoveredIndex];
+                const activeKpis = (storeDailyIndicators || [])
+                  .filter(ind => visibleIndicatorIds.has(ind.id) && empRow && empRow[ind.id] !== undefined)
+                  .map(ind => {
+                    const val = empRow[`${ind.id}_val`];
+                    const target = empRow[`${ind.id}_target`];
+                    const unit = empRow[`${ind.id}_unit`];
+                    const pct = empRow[ind.id];
+                    return {
+                      name: ind.name,
+                      val,
+                      target,
+                      unit,
+                      pct,
+                    };
+                  });
 
-                  <ReferenceLine
-                    y={100}
-                    stroke="#ef4444"
-                    strokeWidth={1.2}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.75}
-                    label={{ 
-                      value: '100%', 
-                      position: 'right', 
-                      fill: '#ef4444', 
-                      fontSize: 9, 
-                      fontWeight: 'bold' 
+                return (
+                  <div 
+                    className="absolute bg-slate-900/95 text-white text-[11px] font-bold py-2.5 px-3.5 rounded-xl shadow-lg border border-slate-700 pointer-events-none z-30 transition-all duration-150 text-left w-[240px]"
+                    style={{ 
+                      left: `${(getBarX(hoveredIndex) + barWidth / 2) / 600 * 100}%`,
+                      top: '15%',
+                      transform: 'translate(-50%, 0%)'
                     }}
-                  />
-
-                  <ChartTooltip
-                    cursor={{ fill: 'rgba(226, 232, 240, 0.2)' }}
-                    content={
-                      <ChartTooltipContent
-                        indicator="dot"
-                        className="w-[240px]"
-                        formatter={(value, name, item) => {
-                          const indicatorId = String(item.dataKey);
-                          const val = item.payload[`${indicatorId}_val`];
-                          const target = item.payload[`${indicatorId}_target`];
-                          const unit = item.payload[`${indicatorId}_unit`];
-                          return `${formatValue(val, unit)} / ${formatValue(target, unit)} (${Math.round(Number(value))}%)`;
-                        }}
+                  >
+                    <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2 mb-2">
+                      <img 
+                        src={hRank.avatar} 
+                        alt={hRank.name} 
+                        className="w-6 h-6 rounded-full border border-slate-700 shrink-0"
                       />
-                    }
-                  />
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] text-slate-100">{hRank.name}</p>
+                        <p className="text-[9px] text-slate-400 truncate leading-none mt-0.5">
+                          {roles.find(r => r.code === hRank.role)?.name || hRank.role}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 font-semibold text-[10px]">
+                      {activeKpis.length > 0 ? (
+                        activeKpis.map((kpi, kIdx) => (
+                          <div key={kIdx} className="space-y-1">
+                            <div className="flex items-center justify-between text-slate-100 font-bold">
+                              <span className="truncate max-w-[140px]">{kpi.name}:</span>
+                              <span className="text-blue-400 font-extrabold">{kpi.pct}%</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[9px] text-slate-400 leading-none">
+                              <span>Thực tế / Chỉ tiêu:</span>
+                              <span>{formatValue(kpi.val, kpi.unit)} / {formatValue(kpi.target, kpi.unit)}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-slate-450 text-center py-1">Không có chỉ số KPI</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
 
-                  {storeDailyIndicators
-                    .filter(ind => visibleIndicatorIds.has(ind.id))
-                    .map((ind, index) => {
-                      const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
+              // Standard score / payout tooltip
+              const val = activeChart === 'score' ? hRank.score : (hRank.calculatedPayout ?? 0);
+
+              return (
+                <div 
+                  className="absolute bg-slate-900/95 text-white text-[11px] font-bold py-2 px-3 rounded-xl shadow-lg border border-slate-700 pointer-events-none z-30 transition-all duration-150 text-left w-[180px]"
+                  style={{ 
+                    left: `${(getBarX(hoveredIndex) + barWidth / 2) / 600 * 100}%`,
+                    top: `${(paddingTop + chartHeight - (val / maxVal) * chartHeight) / 180 * 100}%`,
+                    transform: 'translate(-50%, -115%)'
+                  }}
+                >
+                  <div className="flex items-center gap-2 border-b border-slate-800/80 pb-1.5 mb-1.5">
+                    <img 
+                      src={hRank.avatar} 
+                      alt={hRank.name} 
+                      className="w-6 h-6 rounded-full border border-slate-700 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-[11px] text-slate-100">{hRank.name}</p>
+                      <p className="text-[9px] text-slate-400 truncate leading-none mt-0.5">
+                        {roles.find(r => r.code === hRank.role)?.name || hRank.role}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 font-semibold text-[10px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Điểm số:</span>
+                      <span className="text-blue-400 font-extrabold">{hRank.score} điểm</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Xếp loại:</span>
+                      <span className="text-slate-200">{translateClassification(hRank.classification)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-850/60 mt-1">
+                      <span className="text-slate-450">Thưởng KPI:</span>
+                      <span className="text-emerald-400 font-extrabold">{CURRENCY_FORMATTER.format(hRank.calculatedPayout ?? 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <svg className="w-full h-full" viewBox="0 0 600 240" preserveAspectRatio="none">
+              <defs>
+                {/* Gradients */}
+                <linearGradient id="barGradEmerald" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#059669" />
+                </linearGradient>
+                <linearGradient id="barGradCyan" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#0891b2" />
+                </linearGradient>
+                <linearGradient id="barGradBlue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#2563eb" />
+                </linearGradient>
+                <linearGradient id="barGradAmber" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#d97706" />
+                </linearGradient>
+                <linearGradient id="barGradRose" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f43f5e" />
+                  <stop offset="100%" stopColor="#e11d48" />
+                </linearGradient>
+              </defs>
+
+              {/* Grid lines & Y-axis labels */}
+              {yTicks.map((tickVal, idx) => {
+                const y = paddingTop + (idx / 4) * chartHeight;
+                return (
+                  <g key={idx}>
+                    <line
+                      x1={paddingLeft}
+                      y1={y}
+                      x2={600 - paddingRight}
+                      y2={y}
+                      stroke="#f1f5f9"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={paddingLeft - 8}
+                      y={y + 3}
+                      fill="#94a3b8"
+                      fontSize="9"
+                      fontWeight="bold"
+                      textAnchor="end"
+                    >
+                      {formatYLabel(tickVal, activeChart)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Average benchmark line (Dashed red/emerald line) */}
+              {ranks.length > 1 && (
+                <line
+                  x1={paddingLeft}
+                  y1={benchmarkY}
+                  x2={600 - paddingRight}
+                  y2={benchmarkY}
+                  stroke={activeChart === 'payout' ? '#10b981' : '#c21a1a'}
+                  strokeWidth="1.2"
+                  strokeDasharray="4,4"
+                  strokeOpacity="0.75"
+                />
+              )}
+
+              {/* Columns (Bars) */}
+              {ranks.map((rank, idx) => {
+                const x = getBarX(idx);
+                const isHovered = hoveredIndex === idx;
+
+                // Format name: Nguyen Van A -> Van A
+                const nameParts = rank.name.trim().split(' ');
+                const shortName = nameParts.length > 1
+                  ? `${nameParts[nameParts.length - 2][0]}. ${nameParts[nameParts.length - 1]}`
+                  : rank.name;
+
+                if (activeChart === 'revenue') {
+                  const empRow = (storeDailyChartData || [])[idx];
+                  const employeeIndicators = (storeDailyIndicators || [])
+                    .filter(ind => visibleIndicatorIds.has(ind.id) && empRow && empRow[ind.id] !== undefined);
+                  
+                  const empIndCount = employeeIndicators.length;
+                  const empBarWidth = 14;
+                  const empBarGap = 3;
+                  const totalEmpBarsWidth = empIndCount * empBarWidth + (empIndCount - 1) * empBarGap;
+                  const categoryCenterX = x + barWidth / 2;
+                  const startX = categoryCenterX - totalEmpBarsWidth / 2;
+
+                  return (
+                    <g key={rank.staffId}>
+                      {employeeIndicators.map((ind, iIdx) => {
+                        const indicatorIdx = (storeDailyIndicators || []).findIndex(o => o.id === ind.id);
+                        const colorScheme = INDICATOR_COLORS[indicatorIdx % INDICATOR_COLORS.length];
+                        
+                        const pctVal = empRow[ind.id] || 0;
+                        const barHeight = (pctVal / maxVal) * chartHeight;
+                        const y = paddingTop + chartHeight - barHeight;
+                        const barX = startX + iIdx * (empBarWidth + empBarGap);
+                        
+                        return (
+                          <rect
+                            key={ind.id}
+                            x={barX}
+                            y={y}
+                            width={empBarWidth}
+                            height={Math.max(2, barHeight)}
+                            rx={2}
+                            ry={2}
+                            fill={colorScheme.stroke}
+                            opacity={isHovered ? 0.95 : 0.8}
+                            className="transition-all duration-150 cursor-pointer"
+                            onClick={() => handleBarClick(rank.staffId)}
+                            onMouseEnter={() => setHoveredIndex(idx)}
+                            onMouseLeave={() => setHoveredIndex(null)}
+                          />
+                        );
+                      })}
                       
-                      return (
-                        <Bar 
-                          key={ind.id}
-                          dataKey={ind.id} 
-                          fill={colorScheme.stroke} 
-                          radius={[3, 3, 0, 0]}
-                          barSize={20}
-                        />
-                      );
-                    })}
-                </BarChart>
-              </ChartContainer>
-            </div>
+                      {/* Shortened Name text below */}
+                      <text
+                        x={categoryCenterX}
+                        y={paddingTop + chartHeight + 16}
+                        fill={isHovered ? '#334155' : '#94a3b8'}
+                        fontSize="9.5"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {shortName}
+                      </text>
+                    </g>
+                  );
+                }
 
+                // Standard score / payout bar
+                const val = activeChart === 'score' ? rank.score : (rank.calculatedPayout ?? 0);
+                const barHeight = (val / maxVal) * chartHeight;
+                const y = paddingTop + chartHeight - barHeight;
+
+                return (
+                  <g key={rank.staffId}>
+                    {/* Visual Bar with rounded top */}
+                    <rect
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={Math.max(2, barHeight)}
+                      rx={3}
+                      ry={3}
+                      fill={`url(#${getBarGradientId(rank)})`}
+                      opacity={isHovered ? 0.95 : 0.8}
+                      className="transition-all duration-150 cursor-pointer"
+                      onClick={() => handleBarClick(rank.staffId)}
+                      onMouseEnter={() => setHoveredIndex(idx)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    />
+
+                    {/* Value text on top of the bar */}
+                    {val > 0 && (
+                      <text
+                        x={x + barWidth / 2}
+                        y={y - 5}
+                        fill={isHovered ? (activeChart === 'score' ? getBarColor(rank.score) : '#10b981') : '#64748b'}
+                        fontSize="9.2"
+                        fontWeight="black"
+                        textAnchor="middle"
+                      >
+                        {activeChart === 'score' ? val : formatYLabel(val, 'payout')}
+                      </text>
+                    )}
+
+                    {/* Shortened Name text below */}
+                    <text
+                      x={x + barWidth / 2}
+                      y={paddingTop + chartHeight + 16}
+                      fill={isHovered ? '#334155' : '#94a3b8'}
+                      fontSize="9.5"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      {shortName}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+
+        {/* Toggle Legend Button & Legend List */}
+        {activeChart === 'revenue' && (
+          <div className="space-y-4 mt-4 w-full">
             {/* Toggle Legend Button */}
             <div className="flex justify-center pb-1">
               <button
@@ -369,7 +581,7 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
             {/* Interactive Legend for Indicators below */}
             {showLegend && (
               <div className="flex flex-wrap items-center justify-center gap-4 pt-3 border-t border-slate-100 select-none font-sans text-xs animate-fade-in">
-                {storeDailyIndicators.map((ind, index) => {
+                {(storeDailyIndicators || []).map((ind, index) => {
                   const colorScheme = INDICATOR_COLORS[index % INDICATOR_COLORS.length];
                   const isVisible = visibleIndicatorIds.has(ind.id);
                   
@@ -397,190 +609,6 @@ export const KpiOverviewChart = React.memo(function KpiOverviewChart({
                 })}
               </div>
             )}
-          </div>
-        ) : (
-          /* Render SVG Column Chart for Staff performance (score or payout) */
-          <div className="relative overflow-x-auto min-w-0 w-full scrollbar-thin">
-            <div 
-              className="w-full h-[280px] relative"
-              style={{ minWidth: dynamicMinWidth }}
-            >
-              {/* Interactive Tooltip for Staff Column Chart */}
-              {(() => {
-                if (hoveredIndex === null) return null;
-                const hRank = ranks[hoveredIndex];
-                if (!hRank) return null;
-
-                const val = activeChart === 'score' ? hRank.score : (hRank.calculatedPayout ?? 0);
-
-                return (
-                  <div 
-                    className="absolute bg-slate-900/95 text-white text-[11px] font-bold py-2 px-3 rounded-xl shadow-lg border border-slate-700 pointer-events-none z-30 transition-all duration-150 text-left w-[180px]"
-                    style={{ 
-                      left: `${(getBarX(hoveredIndex) + barWidth / 2) / 600 * 100}%`,
-                      top: `${(paddingTop + chartHeight - (val / maxVal) * chartHeight) / 180 * 100}%`,
-                      transform: 'translate(-50%, -115%)'
-                    }}
-                  >
-                    <div className="flex items-center gap-2 border-b border-slate-800/80 pb-1.5 mb-1.5">
-                      <img 
-                        src={hRank.avatar} 
-                        alt={hRank.name} 
-                        className="w-6 h-6 rounded-full border border-slate-700 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-[11px] text-slate-100">{hRank.name}</p>
-                        <p className="text-[9px] text-slate-400 truncate leading-none mt-0.5">
-                          {roles.find(r => r.code === hRank.role)?.name || hRank.role}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-1 font-semibold text-[10px]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Điểm số:</span>
-                        <span className="text-blue-400 font-extrabold">{hRank.score} điểm</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Xếp loại:</span>
-                        <span className="text-slate-200">{translateClassification(hRank.classification)}</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-850/60 mt-1">
-                        <span className="text-slate-450">Thưởng KPI:</span>
-                        <span className="text-emerald-400 font-extrabold">{CURRENCY_FORMATTER.format(hRank.calculatedPayout ?? 0)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <svg className="w-full h-full" viewBox="0 0 600 240" preserveAspectRatio="none">
-                <defs>
-                  {/* Gradients */}
-                  <linearGradient id="barGradEmerald" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" />
-                    <stop offset="100%" stopColor="#059669" />
-                  </linearGradient>
-                  <linearGradient id="barGradCyan" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" />
-                    <stop offset="100%" stopColor="#0891b2" />
-                  </linearGradient>
-                  <linearGradient id="barGradBlue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#2563eb" />
-                  </linearGradient>
-                  <linearGradient id="barGradAmber" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#d97706" />
-                  </linearGradient>
-                  <linearGradient id="barGradRose" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f43f5e" />
-                    <stop offset="100%" stopColor="#e11d48" />
-                  </linearGradient>
-                </defs>
-
-                {/* Grid lines & Y-axis labels */}
-                {yTicks.map((tickVal, idx) => {
-                  const y = paddingTop + (idx / 4) * chartHeight;
-                  return (
-                    <g key={idx}>
-                      <line
-                        x1={paddingLeft}
-                        y1={y}
-                        x2={600 - paddingRight}
-                        y2={y}
-                        stroke="#f1f5f9"
-                        strokeWidth="1"
-                      />
-                      <text
-                        x={paddingLeft - 8}
-                        y={y + 3}
-                        fill="#94a3b8"
-                        fontSize="9"
-                        fontWeight="bold"
-                        textAnchor="end"
-                      >
-                        {formatYLabel(tickVal, activeChart)}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Average benchmark line (Dashed red/emerald line) */}
-                {ranks.length > 1 && (
-                  <line
-                    x1={paddingLeft}
-                    y1={benchmarkY}
-                    x2={600 - paddingRight}
-                    y2={benchmarkY}
-                    stroke={activeChart === 'payout' ? '#10b981' : '#c21a1a'}
-                    strokeWidth="1.2"
-                    strokeDasharray="4,4"
-                    strokeOpacity="0.75"
-                  />
-                )}
-
-                {/* Columns (Bars) */}
-                {ranks.map((rank, idx) => {
-                  const x = getBarX(idx);
-                  const val = activeChart === 'score' ? rank.score : (rank.calculatedPayout ?? 0);
-                  const barHeight = (val / maxVal) * chartHeight;
-                  const y = paddingTop + chartHeight - barHeight;
-                  const isHovered = hoveredIndex === idx;
-
-                  // Format name: Nguyen Van A -> Van A
-                  const nameParts = rank.name.trim().split(' ');
-                  const shortName = nameParts.length > 1
-                    ? `${nameParts[nameParts.length - 2][0]}. ${nameParts[nameParts.length - 1]}`
-                    : rank.name;
-
-                  return (
-                    <g key={rank.staffId}>
-                      {/* Visual Bar with rounded top */}
-                      <rect
-                        x={x}
-                        y={y}
-                        width={barWidth}
-                        height={Math.max(2, barHeight)}
-                        rx={3}
-                        ry={3}
-                        fill={`url(#${getBarGradientId(rank)})`}
-                        opacity={isHovered ? 0.95 : 0.8}
-                        className="transition-all duration-150 cursor-pointer"
-                        onClick={() => handleBarClick(rank.staffId)}
-                        onMouseEnter={() => setHoveredIndex(idx)}
-                        onMouseLeave={() => setHoveredIndex(null)}
-                      />
-
-                      {/* Value text on top of the bar */}
-                      {val > 0 && (
-                        <text
-                          x={x + barWidth / 2}
-                          y={y - 5}
-                          fill={isHovered ? (activeChart === 'score' ? getBarColor(rank.score) : '#10b981') : '#64748b'}
-                          fontSize="9.2"
-                          fontWeight="black"
-                          textAnchor="middle"
-                        >
-                          {activeChart === 'score' ? val : formatYLabel(val, 'payout')}
-                        </text>
-                      )}
-
-                      {/* Shortened Name text below */}
-                      <text
-                        x={x + barWidth / 2}
-                        y={paddingTop + chartHeight + 16}
-                        fill={isHovered ? '#334155' : '#94a3b8'}
-                        fontSize="9.5"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {shortName}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
           </div>
         )}
       </CardContent>
