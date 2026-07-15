@@ -11,6 +11,7 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { useChecklistProcessCategoriesQuery } from '../../Checklist/_hook/use-checklist';
 import { useStaffQuery } from '../../StaffPermissions/_hook/use-staff';
 import { getRoleFriendlyName } from '../../../constants';
+import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
 
 // --- Types ---
 interface IssueModalProps {
@@ -185,40 +186,26 @@ const FileDropZone = React.memo(function FileDropZone({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
 
-  const processFile = React.useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_WIDTH = 800;
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
+  const processFiles = React.useCallback(async (files: File[]) => {
+    try {
+      const uploadPromises = files.map((file) => compressAndConvertToBase64(file));
+      const results = await Promise.all(uploadPromises);
+      results.forEach((base64) => {
+        if (base64) {
+          onAddAttachment(base64);
         }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-          onAddAttachment(compressedBase64);
-        }
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      });
+    } catch (error) {
+      console.error("Lỗi khi xử lý file đính kèm:", error);
+    }
   }, [onAddAttachment]);
 
   const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) processFile(files[0]);
-  }, [processFile]);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) void processFiles(files);
+  }, [processFiles]);
 
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -230,12 +217,12 @@ const FileDropZone = React.memo(function FileDropZone({
   }, []);
 
   const handleFileChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processFile(files[0]);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      void processFiles(files);
       e.target.value = '';
     }
-  }, [processFile]);
+  }, [processFiles]);
 
   const handleClick = React.useCallback(() => {
     fileInputRef.current?.click();
@@ -247,6 +234,7 @@ const FileDropZone = React.memo(function FileDropZone({
         ref={fileInputRef}
         type="file"
         className="hidden"
+        multiple
         accept="image/*"
         onChange={handleFileChange}
       />
