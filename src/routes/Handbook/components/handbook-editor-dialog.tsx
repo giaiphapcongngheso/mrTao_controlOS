@@ -657,7 +657,7 @@ export default function HandbookEditorDialog({
                     suppressContentEditableWarning
                     onInput={handleEditorInput}
                     onBlur={handleEditorInput}
-                    className="min-h-[300px] max-h-[450px] p-4 bg-white text-slate-800 text-xs font-semibold focus:outline-none overflow-y-auto leading-relaxed text-left select-text rounded-b-xl
+                    className="rich-text-content min-h-[300px] max-h-[450px] p-4 bg-white text-slate-800 text-xs font-semibold focus:outline-none overflow-y-auto leading-relaxed text-left select-text rounded-b-xl
                               [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:uppercase [&_h2]:tracking-wider
                               [&_h3]:text-[13px] [&_h3]:font-extrabold [&_h3]:text-slate-800 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:border-b [&_h3]:border-slate-100 [&_h3]:pb-1 [&_h3]:uppercase [&_h3]:tracking-wide
                               [&_h4]:text-xs [&_h4]:font-black [&_h4]:text-[#C21A1A] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:uppercase
@@ -665,6 +665,10 @@ export default function HandbookEditorDialog({
                               [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-2
                               [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:my-2
                               [&_li]:text-xs [&_li]:text-slate-700
+                              [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_table]:border [&_table]:border-slate-200
+                              [&_thead]:bg-slate-50
+                              [&_th]:border [&_th]:border-slate-200 [&_th]:p-2 [&_th]:text-xs [&_th]:font-extrabold [&_th]:text-slate-700 [&_th]:text-left [&_th]:bg-slate-50
+                              [&_td]:border [&_td]:border-slate-200 [&_td]:p-2 [&_td]:text-xs [&_td]:text-slate-600 [&_td]:leading-relaxed [&_td]:align-top
                               [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3 [&_img]:rounded-xl [&_img]:shadow-md [&_img]:block [&_img]:mx-auto [&_img]:border [&_img]:border-slate-150
                               [&_blockquote]:border-l-4 [&_blockquote]:border-[#C21A1A] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_blockquote]:my-3
                               [&_a]:text-[#C21A1A] [&_a]:underline [&_a]:font-bold [&_a:hover]:text-red-800"

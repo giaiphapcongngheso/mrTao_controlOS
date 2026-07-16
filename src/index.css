@@ -472,3 +472,79 @@ html {
 }
 
 
+/* ================================================================
+   Rich Text Content - Chuẩn hóa hiển thị tài liệu Sổ tay
+   Reset inline styles từ nội dung paste từ Google Docs / Word
+   ================================================================ */
+.rich-text-content * {
+  font-family: 'Be Vietnam Pro', sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  box-sizing: border-box;
+}
+
+.rich-text-content h2 {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.rich-text-content h3 {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.rich-text-content h4 {
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.rich-text-content table {
+  width: 100% !important;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.rich-text-content table * {
+  font-size: 12px !important;
+}
+
+.rich-text-content th,
+.rich-text-content td {
+  padding: 8px !important;
+  font-size: 12px !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal !important;
+}
+
+/* Stripe rows */
+.rich-text-content tr:nth-child(even) td {
+  background-color: rgba(248, 250, 252, 0.6);
+}
+
+/* Responsive table on mobile - scroll within table only */
+@media (max-width: 767px) {
+  .rich-text-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.rich-text-content img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.rich-text-content span {
+  font-size: inherit !important;
+}
+
+.rich-text-content p {
+  font-size: 12px !important;
+  margin-bottom: 8px;
+}
+
+.rich-text-content li {
+  font-size: 12px !important;
+}
