@@ -272,20 +272,20 @@ export function StaffTabContent({
     <div className="space-y-4">
       {/* ---- Filter & stats header ---- */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs p-4 md:p-5 flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           <div className="flex-1 min-w-0">
             <Input
               type="text"
               value={staffSearch}
               onChange={(event) => onStaffSearchChange(event.target.value)}
               placeholder="Tìm theo tên, username, mã NV hoặc số điện thoại"
-              icon={<Search className="h-4 w-4 text-slate-400" />}
+              icon={<Search className="h-4 w-4 text-slate-405" />}
               position="left"
               className="h-11 rounded-2xl border-slate-200 bg-white text-sm font-medium text-slate-700 outline-none transition focus-visible:border-emerald-400 focus-visible:ring-emerald-100"
             />
           </div>
 
-          <div className="w-full md:w-[240px]">
+          <div className="w-full lg:w-[240px]">
             <CustomSelect
               options={roleFilterOptions}
               value={staffRoleFilter}
@@ -343,7 +343,7 @@ export function StaffTabContent({
 
             {/* Form Content */}
             <form onSubmit={onSubmitCreateStaff} className="flex flex-col">
-              <div className="p-6 grid gap-6 md:grid-cols-2 bg-white max-h-[calc(100vh-220px)] overflow-y-auto">
+              <div className="p-6 grid gap-6 lg:grid-cols-2 bg-white max-h-[calc(100vh-220px)] overflow-y-auto">
                 
                 {/* Cột 1: Thông tin cá nhân */}
                 <div className="space-y-4">
@@ -472,7 +472,7 @@ export function StaffTabContent({
                 </div>
 
                 {/* Trường Ghi chú nội bộ */}
-                <div className="space-y-1.5 text-left md:col-span-2 border-t border-slate-100 pt-4">
+                <div className="space-y-1.5 text-left lg:col-span-2 border-t border-slate-100 pt-4">
                   <Label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ghi chú nội bộ (Chỉ quản trị hiển thị)</Label>
                   <textarea
                     value={staffForm.internalNotes || ''}
@@ -520,7 +520,7 @@ export function StaffTabContent({
 
       {/* ---- Staff list table ---- */}
       {/* On mobile: render MobileCard list view */}
-      <div className="block md:hidden space-y-3 px-1 pb-4">
+      <div className="block lg:hidden space-y-3 px-1 pb-4">
         {filteredStaff.length === 0 ? (
           <div className="py-8 text-center text-slate-500 dark:text-slate-400 font-bold text-sm border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50">
             Không có dữ liệu phù hợp. Thử đổi bộ lọc vai trò hoặc từ khóa tìm kiếm.
@@ -595,7 +595,7 @@ export function StaffTabContent({
       </div>
 
       {/* On desktop: render CustomTable */}
-      <div className="hidden md:block w-full max-w-full overflow-hidden min-w-0">
+      <div className="hidden lg:block w-full max-w-full overflow-hidden min-w-0">
         <CustomTable<StaffMember>
           columns={columns}
           data={filteredStaff}

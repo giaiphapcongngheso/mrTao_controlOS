@@ -100,7 +100,7 @@ export default function HeaderProfilePopover({
         className="flex items-center gap-3 pl-4 border-l border-slate-200 cursor-pointer group select-none"
         title="Cập nhật thông tin vận hành"
       >
-        <div className="text-right leading-tight">
+        <div className="hidden lg:block text-right leading-tight">
           <span className="text-[11.5px] font-black text-slate-800 group-hover:text-[#C21A1A] transition-colors block">{currentUser?.fullName}</span>
           <span className="text-[9.5px] font-bold text-slate-500 opacity-95 block leading-none mt-0.5">{currentUser?.role}</span>
         </div>

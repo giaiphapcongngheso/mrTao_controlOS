@@ -499,7 +499,7 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
       {/* Table & Cards Section */}
       <div className="w-full max-w-full overflow-hidden min-w-0">
         {/* Desktop View: Table */}
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <CustomTable<SystemLog>
             columns={columns}
             data={filteredLogs}
@@ -517,7 +517,7 @@ export const LogsTabContent = React.memo(function LogsTabContent({ logs, isOwner
         </div>
 
         {/* Mobile View: Cards */}
-        <div className="block md:hidden">
+        <div className="block lg:hidden">
           <LogsTabMobileCards logs={filteredLogs} />
         </div>
       </div>

@@ -36,6 +36,7 @@ import type { TaskTemplate } from '../../../types/task-template.types';
 import { taskTemplateService } from '../../../services/task-template-service';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { toastSuccess, toastError } from '../../../shared/lib/toast';
+import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
 
 function parseDeadlineStringToDate(deadline: string): Date {
   if (!deadline) return new Date();
@@ -402,52 +403,36 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
   }, [isOpen, editorInitialized, notesValue]);
 
   // Image compressor & insertion
-  const compressAndInsertImage = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+  const compressAndInsertImages = async (files: File[]) => {
+    try {
+      const uploadPromises = files.map(async (file) => {
+        const compressedBase64 = await compressAndConvertToBase64(file);
+        return { name: file.name, base64: compressedBase64 };
+      });
+      const results = await Promise.all(uploadPromises);
 
-        // Limit max width to 800px to maintain performant Firestore & LocalStorage storage
-        const MAX_WIDTH = 800;
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
+      if (editorRef.current) {
+        editorRef.current.focus();
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          // Compress JPEG to 0.75 quality for super high resolution with tiny footprint
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+        const imgTags = results
+          .map((res) => 
+            `<img src="${res.base64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="${res.name}" />`
+          )
+          .join('');
 
-          if (editorRef.current) {
-            editorRef.current.focus();
-
-            // Insert base64 image with proper premium design style
-            document.execCommand(
-              'insertHTML',
-              false,
-              `<img src="${compressedBase64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="Hình ảnh tài liệu" />`
-            );
-            handleEditorInput();
-          }
-        }
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+        // Insert all base64 images with proper premium design style
+        document.execCommand('insertHTML', false, imgTags);
+        handleEditorInput();
+      }
+    } catch (error) {
+      console.error("Lỗi nén và chèn ảnh:", error);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      compressAndInsertImage(files[0]);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      void compressAndInsertImages(files);
     }
   };
 
@@ -964,6 +949,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
                             type="file"
                             ref={fileInputRef}
                             className="hidden"
+                            multiple
                             accept="image/*"
                             onChange={handleFileChange}
                           />

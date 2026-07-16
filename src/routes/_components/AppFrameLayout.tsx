@@ -57,8 +57,8 @@ function AppFrameLayout({
 
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-surface-bg flex justify-center w-full antialiased p-0 transition-colors duration-200">
-      <div className="w-full h-full flex flex-col md:flex-row p-0 gap-0 min-w-0">
-        <aside className="hidden md:flex flex-col w-[240px] bg-sidebar border-r border-sidebar-border shrink-0 sticky top-0 h-screen shadow-xs text-sidebar-foreground py-5 px-4 transition-colors duration-200">
+      <div className="w-full h-full flex flex-col lg:flex-row p-0 gap-0 min-w-0">
+        <aside className="hidden lg:flex flex-col w-[240px] bg-sidebar border-r border-sidebar-border shrink-0 sticky top-0 h-screen shadow-xs text-sidebar-foreground py-5 px-4 transition-colors duration-200">
           <div className="px-2 pb-4 mb-4 border-b border-sidebar-border/60 flex items-center justify-start">
             <Logo size="sm" variant="dark" />
           </div>
@@ -95,7 +95,7 @@ function AppFrameLayout({
           </div>
         </aside>
 
-        <header className="md:hidden sticky top-0 bg-[#C21A1A] border-b border-rose-800 h-16 w-full px-4 flex items-center justify-between z-40 shadow-md">
+        <header className="lg:hidden sticky top-0 bg-[#C21A1A] border-b border-rose-800 h-16 w-full px-4 flex items-center justify-between z-40 shadow-md">
           <Logo size="xs" variant="light" />
 
           <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ function AppFrameLayout({
         </header>
 
         {mobileMenuOpen && (
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <div
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-45"
               onClick={onCloseMobileMenu}
@@ -188,7 +188,7 @@ function AppFrameLayout({
         )}
 
         <main className="flex-1 flex flex-col gap-0 min-h-0 min-w-0">
-          <header className="hidden md:flex items-center justify-between h-14 px-6 bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)] transition-colors duration-200">
+          <header className="hidden lg:flex items-center justify-between h-14 px-6 bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.01)] transition-colors duration-200">
             <div className="flex items-center gap-2.5 select-none">
               <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">MR.TÁO OS</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-350 stroke-[2.5]" />
@@ -197,12 +197,12 @@ function AppFrameLayout({
             <div className="flex items-center gap-5">{headerRight}</div>
           </header>
 
-          <div className="p-5 md:p-5 pb-20 md:pb-8 w-full space-y-3.5 font-sans text-sm text-foreground/90 min-w-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-colors duration-200">
+          <div className="p-5 lg:p-5 pb-20 lg:pb-8 w-full space-y-3.5 font-sans text-sm text-foreground/90 min-w-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-colors duration-200">
             {children}
           </div>
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border h-16 px-2 flex justify-around items-center z-45 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] rounded-t-2xl pb-safe transition-colors duration-200">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border h-16 px-2 flex justify-around items-center z-45 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] rounded-t-2xl pb-safe transition-colors duration-200">
           {visibleSidebarLinks
             .filter((link) => link.key === 'Today' || link.key === 'Checklist' || link.key === 'Tasks' || link.key === 'KPI')
             .map((link) => {

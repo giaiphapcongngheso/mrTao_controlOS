@@ -100,14 +100,15 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
 
   const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!item) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setIsUploading(true);
     try {
-      const url = await uploadChecklistItemImage(file, item.id);
+      const uploadPromises = files.map((file) => uploadChecklistItemImage(file, item.id));
+      const urls = await Promise.all(uploadPromises);
       const imageUrls = item.imageUrls || [];
-      const nextUrls = [...imageUrls, url];
+      const nextUrls = [...imageUrls, ...urls];
       await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
     } catch (error) {
       console.error('Lỗi khi tải ảnh lên:', error);
@@ -290,6 +291,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   accept="image/*"
+                  multiple
                   className="hidden"
                 />
               </div>

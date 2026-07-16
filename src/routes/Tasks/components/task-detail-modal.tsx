@@ -35,6 +35,7 @@ import { getRoleFriendlyName } from '../../../constants';
 import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 import { sanitizeHtml } from '../../../shared/lib/sanitize-html';
 import { generateTaskCode } from '../constants/task-meta';
+import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -209,45 +210,45 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
   }, [task, currentUser, onUpdateTaskFields, commentInput]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !task || !currentUser || !onUpdateTaskFields) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !task || !currentUser || !onUpdateTaskFields) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = reader.result as string;
+    try {
       const timestampStr = new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
-      const newAttachment: TaskAttachment = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        url: base64Data,
-        type: file.type,
-        size: file.size,
-        uploadedBy: currentUser.fullName,
-        uploadedAt: new Date().toISOString()
-      };
+      const newAttachments: TaskAttachment[] = await Promise.all(
+        files.map(async (file) => {
+          const base64Data = await compressAndConvertToBase64(file);
+          return {
+            id: crypto.randomUUID(),
+            name: file.name,
+            url: base64Data,
+            type: file.type || 'application/octet-stream',
+            size: file.size,
+            uploadedBy: currentUser.fullName,
+            uploadedAt: new Date().toISOString()
+          };
+        })
+      );
 
-      const newActivity: ActivityEntry = {
+      const newActivities: ActivityEntry[] = files.map((file) => ({
         id: crypto.randomUUID(),
         action: 'attachment_added',
         actor: currentUser.fullName,
         detail: file.name,
         timestamp: timestampStr
-      };
+      }));
 
-      const updatedAttachments = [...(task.attachments || []), newAttachment];
-      const updatedActivityLog = [...(task.activityLog || []), newActivity];
+      const updatedAttachments = [...(task.attachments || []), ...newAttachments];
+      const updatedActivityLog = [...(task.activityLog || []), ...newActivities];
 
-      try {
-        await onUpdateTaskFields(task.id, {
-          attachments: updatedAttachments,
-          activityLog: updatedActivityLog
-        });
-      } catch (e) {
-        console.error("Error uploading file: ", e);
-      }
-    };
-    reader.readAsDataURL(file);
+      await onUpdateTaskFields(task.id, {
+        attachments: updatedAttachments,
+        activityLog: updatedActivityLog
+      });
+    } catch (e) {
+      console.error("Error uploading files: ", e);
+    }
   }, [task, currentUser, onUpdateTaskFields]);
 
   const triggerFileInput = useCallback(() => {
@@ -318,6 +319,7 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
           type="file"
           ref={fileInputRef}
           className="hidden"
+          multiple
           onChange={handleFileChange}
         />
 
