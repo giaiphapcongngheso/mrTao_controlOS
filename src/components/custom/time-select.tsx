@@ -26,13 +26,6 @@ function useDragToScroll() {
     if (!ref.current) return;
     isDown.current = true;
     
-    // Capture pointer so scrolling continues even if mouse goes outside container
-    try {
-      ref.current.setPointerCapture(e.pointerId);
-    } catch (err) {
-      // Safe check
-    }
-    
     startY.current = e.pageY - ref.current.offsetTop;
     scrollTop.current = ref.current.scrollTop;
     hasDragged.current = false;
@@ -43,7 +36,7 @@ function useDragToScroll() {
     const y = e.pageY - ref.current.offsetTop;
     const diff = y - startY.current;
     
-    if (Math.abs(diff) > 4) {
+    if (Math.abs(diff) > 8) {
       hasDragged.current = true;
     }
     // Multiply by 1.5 for a lighter, more responsive drag scrolling feel on PC
@@ -53,25 +46,11 @@ function useDragToScroll() {
   const onPointerUp = (e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return;
     isDown.current = false;
-    if (ref.current) {
-      try {
-        ref.current.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // Safe check
-      }
-    }
   };
 
   const onPointerCancel = (e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return;
     isDown.current = false;
-    if (ref.current) {
-      try {
-        ref.current.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // Safe check
-      }
-    }
   };
 
   return {
