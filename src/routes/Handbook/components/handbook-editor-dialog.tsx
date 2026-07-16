@@ -101,13 +101,6 @@ export default function HandbookEditorDialog({
     });
   }, [errors, setError, clearErrors]);
 
-  const handleTitleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onFormPatch({ title: event.target.value });
-    },
-    [onFormPatch],
-  );
-
   const handleCategoryChange = useCallback(
     (value: string) => {
       onFormPatch({ category: value });
@@ -125,20 +118,6 @@ export default function HandbookEditorDialog({
   const handleRolesChange = useCallback(
     (value: string[]) => {
       onFormPatch({ roles: value });
-    },
-    [onFormPatch],
-  );
-
-  const handleDriveLinkChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onFormPatch({ driveLink: event.target.value });
-    },
-    [onFormPatch],
-  );
-
-  const handleSummaryChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onFormPatch({ summary: event.target.value });
     },
     [onFormPatch],
   );
@@ -242,9 +221,15 @@ export default function HandbookEditorDialog({
   const handleSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
-      onSave();
+      // Sync all current values to the parent's formState first
+      onFormPatch(form.getValues());
+      
+      // Allow parent state to batch/update before triggering save
+      setTimeout(() => {
+        onSave();
+      }, 0);
     },
-    [onSave],
+    [form, onFormPatch, onSave],
   );
 
   if (!isOpen) {
@@ -300,7 +285,10 @@ export default function HandbookEditorDialog({
                         errors.title ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200'
                       }`}
                       {...field}
-                      onChange={handleTitleChange}
+                      onBlur={(e) => {
+                        field.onBlur();
+                        onFormPatch({ title: e.target.value });
+                      }}
                     />
                   </FormControl>
                   <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />
@@ -365,7 +353,10 @@ export default function HandbookEditorDialog({
                         errors.driveLink ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200'
                       }`}
                       {...field}
-                      onChange={handleDriveLinkChange}
+                      onBlur={(e) => {
+                        field.onBlur();
+                        onFormPatch({ driveLink: e.target.value });
+                      }}
                     />
                   </FormControl>
                   <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />
@@ -421,7 +412,10 @@ export default function HandbookEditorDialog({
                       errors.summary ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200'
                     }`}
                     {...field}
-                    onChange={handleSummaryChange}
+                    onBlur={(e) => {
+                      field.onBlur();
+                      onFormPatch({ summary: e.target.value });
+                    }}
                   />
                 </FormControl>
                 <FormMessage className="mt-1 text-[10px] font-semibold text-rose-600" />

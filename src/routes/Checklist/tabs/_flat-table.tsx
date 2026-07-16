@@ -303,15 +303,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                         <span>Xem chi tiết</span>
                       </DropdownMenuItem>
 
-                      {!item.isCompleted && (
-                        <DropdownMenuItem
-                          onClick={(e) => triggerInlineEdit(item, e)}
-                          className="text-slate-600 cursor-pointer gap-2 text-xs font-semibold"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Chỉnh sửa</span>
-                        </DropdownMenuItem>
-                      )}
+
 
                       {permissions.canDelete && (
                         <DropdownMenuItem
@@ -594,15 +586,7 @@ export const ChecklistFlatTable = React.memo(function ChecklistFlatTable({
                           <span>Bằng chứng & Chi tiết</span>
                         </DropdownMenuItem>
 
-                        {!item.isCompleted && (
-                          <DropdownMenuItem
-                            onClick={(e) => triggerInlineEdit(item, e)}
-                            className="text-slate-600 cursor-pointer gap-2"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Chỉnh sửa</span>
-                          </DropdownMenuItem>
-                        )}
+
 
                         {permissions.canDelete && (
                           <DropdownMenuItem

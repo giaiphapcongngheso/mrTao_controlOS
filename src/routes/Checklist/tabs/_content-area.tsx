@@ -159,17 +159,12 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
               CHI TIẾT CHECKLIST
             </span>
             <span className="text-[10px] font-black uppercase tracking-wider text-white/80 block mb-2.5">
-              TÊN ĐẦU VIỆC (QUẢN LÝ SỬA)
+              NỘI DUNG CÔNG VIỆC
             </span>
             
-            <Input
-              type="text"
-              value={titleValue}
-              onChange={(e) => setTitleValue(e.target.value)}
-              onBlur={handleBlurSave}
-              placeholder="Nhập tên đầu việc..."
-              className="w-full bg-white/10 text-white placeholder-white/60 border border-white/10 outline-none focus:border-white/30 focus:bg-white/15 focus:ring-2 focus:ring-white/10 rounded-xl px-4 py-2.5 text-sm font-bold leading-normal transition-all duration-200"
-            />
+            <div className="w-full bg-white/10 text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold leading-normal select-text">
+              {titleValue}
+            </div>
 
             <Button
               type="button"
@@ -206,15 +201,10 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
                   <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
                     <Clock className="w-4 h-4 text-indigo-500" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <DatePicker
-                      value={parseTimeToDate(item.timeLimit || '')}
-                      onChange={handleTimeLimitChange}
-                      timeOnly={true}
-                      clearable={false}
-                      size="sm"
-                      className="border-none bg-transparent p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-700 font-extrabold text-sm"
-                    />
+                  <div className="flex-1 min-w-0 flex items-center">
+                    <span className="text-slate-700 font-extrabold text-sm select-text">
+                      {item.timeLimit || '08:00'}
+                    </span>
                   </div>
                 </div>
               </div>
