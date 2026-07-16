@@ -102,7 +102,7 @@ export function toSnapshotTasks(
   todayKey = getTodayKey(),
 ): ChecklistTask[] {
   return normalizeTaskInputs(tasks).map((task) => ({
-    ...initBaseEntity('t', task.id),
+    ...initBaseEntity('t'), // Always generate a unique ID for daily checklist tasks
     title: task.title,
     timeLimit: task.timeLimit,
     isCompleted: false,
@@ -129,7 +129,7 @@ export function buildDailySnapshot(
   const nowIso = new Date().toISOString();
   const allTasks: ChecklistTask[] = templates.flatMap((template) =>
     template.tasks.map((task) => ({
-      ...initBaseEntity('t', task.id),
+      ...initBaseEntity('t'), // Always generate a unique ID for daily checklist tasks
       title: task.title,
       timeLimit: task.timeLimit,
       isCompleted: false,
