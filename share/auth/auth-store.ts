@@ -6,8 +6,8 @@ import type {
   IAuthEmployee,
   IAuthSidebarResource,
   IAuthSidebarResourceParent,
-} from '../types/auth.types';
-import type { IFlatItem } from '../types/base.types';
+  IFlatItem,
+} from '../types';
 
 const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 const AUTH_ORGANIZATION_KEY = 'auth_organization';

@@ -1,7 +1,7 @@
 import { Checkbox } from '@shared/ui';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shared/ui';
-import { usePermissions } from '../../../../../../frontend/shared/components/account-setting/_hooks/use-permissions';
-import { IPermission } from '../../../../types/base.types';
+import { usePermissions } from '../../_hooks/use-permissions';
+import { IPermission } from '../../../../types';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -23,12 +23,12 @@ export function PermissionSettingContent() {
   const { getMyPermissionsQuery } = usePermissions();
 
   const modulePermissions = useMemo(() => {
-    const myPermissions = getMyPermissionsQuery.data?.data || [];
+    const myPermissions = (getMyPermissionsQuery.data?.data ?? []) as IPermission[];
 
     // Group permissions by module
     const groupedByModule = new Map<string, IPermission[]>();
     myPermissions.forEach((perm) => {
-      const moduleKey = perm.moduleKey || perm.module;
+      const moduleKey = perm.moduleKey || perm.module || 'unknown';
       if (!groupedByModule.has(moduleKey)) {
         groupedByModule.set(moduleKey, []);
       }
@@ -181,7 +181,7 @@ export function PermissionSettingContent() {
                           <Checkbox checked disabled className="h-3 w-3" />
                           <span className="text-xs font-medium text-foreground whitespace-nowrap">
                             {getOtherPermissionLabel(
-                              other.permission.displayName,
+                              other.permission.displayName ?? other.permission.displayNameKey,
                               other.permission.displayNameKey,
                             )}
                           </span>
