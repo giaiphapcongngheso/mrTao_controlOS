@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { permissionService } from '../deps';
 import { useEffect, useState } from 'react';
+import type { IPermission } from '../../../types';
 
 const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const queryKeyMyPermissions = 'my-permissions';
@@ -36,7 +37,7 @@ export function usePermissions() {
     };
   }, []);
 
-  const getMyPermissionsQuery = useQuery({
+  const getMyPermissionsQuery = useQuery<{ data: IPermission[] }>({
     queryKey: [queryKeyMyPermissions, language],
     queryFn: async () => {
       return await permissionService.getMyPermissions();

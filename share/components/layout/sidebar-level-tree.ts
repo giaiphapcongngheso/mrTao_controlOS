@@ -12,7 +12,7 @@
 
 import { icons, FileText, type LucideIcon } from 'lucide-react';
 import { createElement, forwardRef } from 'react';
-import type { IAuthSidebarResource } from '../../types/auth.types';
+import type { IAuthSidebarResource } from '../../types';
 import type { SidebarLevelNode, SidebarTwoColumnModel } from './sidebar-level-tree.types';
 import { isCGIcon, resolveCGIcon } from '../cg-icons';
 

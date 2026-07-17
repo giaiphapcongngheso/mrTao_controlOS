@@ -1,4 +1,4 @@
-import type { IAuthStoreDeps } from '../types/auth.types';
+import type { IAuthStoreDeps } from '../types';
 
 let authStoreDeps: IAuthStoreDeps | null = null;
 

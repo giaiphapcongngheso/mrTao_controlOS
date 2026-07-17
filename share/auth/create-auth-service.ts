@@ -1,7 +1,6 @@
 import axios, { isCancel } from 'axios';
 import { useAuthStore } from './auth-store';
-import type { IAuthUser, IAuthEmployee } from '../types/auth.types';
-import type { IFlatItem } from '../types/base.types';
+import type { IAuthUser, IAuthEmployee, IFlatItem } from '../types';
 
 /** Organization từ /info (có thể có thêm field) */
 interface UserInfoOrganization {

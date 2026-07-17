@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { cn } from '../lib/utils';
-import type { IAuthEmployee } from '../types/auth.types';
+import type { IAuthEmployee } from '../types';
 
 export interface EmployeePickerDialogProps {
   open: boolean;

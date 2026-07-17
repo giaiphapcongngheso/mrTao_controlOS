@@ -536,9 +536,7 @@ export default function ReportsView({
                   <h3 style="margin-top: 0; margin-bottom: 10px; color: #1e293b; font-size: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
                     3. Diễn biến vận hành
                   </h3>
-                  <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; white-space: pre-wrap; font-style: italic;">
-                    ${savedReport.notes || 'Không có ghi chú diễn biến.'}
-                  </p>
+                  <p style="color: #334155; font-size: 13px; line-height: 1.6; margin: 0; white-space: pre-wrap; font-style: italic;">${(savedReport.notes || 'Không có ghi chú diễn biến.').trim()}</p>
                 </div>
 
                 <!-- 4. Vấn đề nổi bật -->
