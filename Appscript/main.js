@@ -17,6 +17,25 @@ function doGet(e) {
     var preview = params.preview === 'true';
     var action = params.action || 'all';
 
+    // Quick path: invoices proxy (single-purpose for reports)
+    if (action === 'invoices') {
+      try {
+        var from = params.fromPurchaseDate || params.from || '';
+        var to = params.toPurchaseDate || params.to || '';
+        var pageSize = params.pageSize ? Number(params.pageSize) : undefined;
+        var currentItem = params.currentItem ? Number(params.currentItem) : undefined;
+        var kiotToken = getCachedKiotVietToken();
+        var invoices = getKiotVietInvoicesPayload(kiotToken, from, to, pageSize, currentItem);
+        return ContentService
+          .createTextOutput(JSON.stringify({ success: true, data: invoices }))
+          .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ success: false, error: err && err.message ? err.message : String(err) }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
     // Chuẩn hóa action
     var target = 'all';
 

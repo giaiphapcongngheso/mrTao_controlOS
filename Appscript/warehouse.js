@@ -493,6 +493,46 @@ function getKiotVietDataPayload(kiotToken) {
 }
 
 /**
+ * Lấy danh sách invoices từ KiotViet - trả về mảng invoices (không ghi vào Firestore)
+ */
+function getKiotVietInvoicesPayload(kiotToken, fromPurchaseDate, toPurchaseDate, pageSize, currentItem) {
+  var retailerName = getSecret('KIOT_RETAILER');
+  var getOptions = {
+    method: 'get',
+    headers: {
+      Authorization: 'Bearer ' + kiotToken,
+      Retailer: retailerName,
+      'Content-Type': 'application/json'
+    },
+    muteHttpExceptions: true
+  };
+
+  var size = pageSize || 100;
+  var allInvoices = [];
+  var current = currentItem || 0;
+
+  while (true) {
+    var url =
+      'https://public.kiotapi.com/invoices?fromPurchaseDate=' + encodeURIComponent(fromPurchaseDate) +
+      '&toPurchaseDate=' + encodeURIComponent(toPurchaseDate) +
+      '&pageSize=' + size +
+      '&currentItem=' + current;
+
+    var response = safeFetch(url, getOptions);
+    var parsed = JSON.parse(response.getContentText());
+    var data = parsed.data || [];
+    allInvoices = allInvoices.concat(data);
+
+    if (data.length < size) {
+      break;
+    }
+    current += data.length;
+  }
+
+  return allInvoices;
+}
+
+/**
  * Lấy dữ liệu danh sách khách hàng từ KiotViet
  */
 function getKiotVietCustomersPayload(kiotToken) {
