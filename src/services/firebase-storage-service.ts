@@ -1,5 +1,5 @@
 import { getFirebaseStorage } from './firebase-config';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 function sanitizeFileName(name: string): string {
   const baseName = name.trim().toLowerCase();
@@ -169,13 +169,154 @@ export async function uploadHandbookImage(file: File, editingDocId?: string | nu
   return getDownloadURL(snapshot.ref);
 }
 
+export async function compressImageToBlob(
+  file: File,
+  maxWidth = 800,
+  maxHeight = 800,
+  quality = 0.6,
+): Promise<Blob> {
+  const processedFile = await convertHeicToJpeg(file);
+
+  let type = processedFile.type;
+  if (!type && processedFile.name) {
+    const ext = processedFile.name.split('.').pop()?.toLowerCase();
+    if (ext === 'jpg' || ext === 'jpeg') type = 'image/jpeg';
+    else if (ext === 'png') type = 'image/png';
+    else if (ext === 'webp') type = 'image/webp';
+    else if (ext === 'gif') type = 'image/gif';
+  }
+
+  if (!type || !type.startsWith('image/')) {
+    return processedFile;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(processedFile);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(processedFile);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              resolve(blob || processedFile);
+            },
+            'image/jpeg',
+            quality,
+          );
+        } catch (err) {
+          console.warn('Canvas compression failed, falling back to original file:', err);
+          resolve(processedFile);
+        }
+      };
+      img.onerror = (err) => {
+        console.warn('Image load failed in canvas, falling back to original file:', err);
+        resolve(processedFile);
+      };
+    };
+    reader.onerror = () => {
+      resolve(processedFile);
+    };
+  });
+}
+
+export async function uploadBlobToStorage(
+  blob: Blob,
+  fileName: string,
+  folder: string,
+): Promise<string> {
+  const storage = getFirebaseStorage();
+  const sanitized = sanitizeFileName(fileName);
+  const uniqueId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const objectPath = `${folder}/${uniqueId}-${sanitized}`;
+
+  const imageRef = ref(storage, objectPath);
+  const snapshot = await uploadBytes(imageRef, blob, {
+    contentType: blob.type || 'application/octet-stream',
+  });
+
+  return getDownloadURL(snapshot.ref);
+}
+
+export async function uploadImageToStorage(file: File, folder: string): Promise<string> {
+  try {
+    const compressedBlob = await compressImageToBlob(file, 800, 800, 0.6);
+    const fileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+    
+    // 1. Loại bỏ tiền tố 'handbook-images/' nếu có để xử lý đồng nhất
+    let cleanFolder = folder;
+    if (cleanFolder.startsWith('handbook-images/')) {
+      cleanFolder = cleanFolder.substring('handbook-images/'.length);
+    }
+    
+    // 2. Thay thế tất cả dấu gạch chéo '/' bằng dấu gạch ngang '-' để nén đường dẫn thành 1 segment duy nhất.
+    // Việc này đảm bảo đường dẫn lưu trữ luôn có dạng đúng 3 segments: handbook-images/{folderName}/{fileName}
+    // và không bị chặn bởi Firebase Storage Rules (vốn giới hạn chỉ cho phép 3 segments).
+    cleanFolder = cleanFolder.replace(/\//g, '-');
+    
+    // 3. Ghép tiền tố 'handbook-images/' vào trước
+    const targetFolder = `handbook-images/${cleanFolder}`;
+    
+    return await uploadBlobToStorage(compressedBlob, fileName, targetFolder);
+  } catch (err) {
+    console.error(`Lỗi upload ảnh lên thư mục ${folder}:`, err);
+    throw err;
+  }
+}
+
 export async function uploadChecklistItemImage(file: File, itemId: string): Promise<string> {
-  return compressAndConvertToBase64(file, 800, 800, 0.6);
+  return uploadImageToStorage(file, `checklist-images/${itemId}`);
 }
 
 /**
- * Upload a task attachment file (Report Image) as a compressed Base64 string.
+ * Upload a task attachment file (Report Image) as a compressed file to Firebase Storage.
  */
 export async function uploadTaskAttachment(file: File): Promise<string> {
-  return compressAndConvertToBase64(file, 800, 800, 0.6);
+  return uploadImageToStorage(file, 'task-attachments');
 }
+
+/**
+ * Delete an image from Firebase Storage using its download URL.
+ */
+export async function deleteImageFromStorage(url: string): Promise<void> {
+  if (!url || !url.startsWith('http')) return;
+  try {
+    const storage = getFirebaseStorage();
+    const fileRef = ref(storage, url);
+    await deleteObject(fileRef);
+  } catch (err) {
+    console.warn('Lỗi khi xóa ảnh khỏi Firebase Storage:', err);
+  }
+}
+
+

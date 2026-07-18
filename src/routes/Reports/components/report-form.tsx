@@ -461,7 +461,16 @@ const ReportForm = React.memo(function ReportForm({
     });
   }, [formState.attachments, onUpdateForm]);
 
-  const handleRemoveFile = useCallback((id: string) => {
+  const handleRemoveFile = useCallback(async (id: string) => {
+    const fileToRemove = (formState.attachments || []).find((item) => item.id === id);
+    if (fileToRemove && fileToRemove.url) {
+      try {
+        const { deleteImageFromStorage } = await import('../../../services/firebase-storage-service');
+        await deleteImageFromStorage(fileToRemove.url);
+      } catch (err) {
+        console.error("Lỗi khi xóa file đính kèm báo cáo:", err);
+      }
+    }
     onUpdateForm({
       attachments: (formState.attachments || []).filter((item) => item.id !== id),
     });

@@ -35,7 +35,7 @@ import { getRoleFriendlyName } from '../../../constants';
 import { useIsMobile } from '../../../shared/hooks/use-is-mobile';
 import { sanitizeHtml } from '../../../shared/lib/sanitize-html';
 import { generateTaskCode } from '../constants/task-meta';
-import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
+import { uploadImageToStorage } from '../../../services/firebase-storage-service';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -218,11 +218,11 @@ export const TaskDetailModal = React.memo(function TaskDetailModal({
 
       const newAttachments: TaskAttachment[] = await Promise.all(
         files.map(async (file) => {
-          const base64Data = await compressAndConvertToBase64(file);
+          const fileUrl = await uploadImageToStorage(file, 'task-attachments');
           return {
             id: crypto.randomUUID(),
             name: file.name,
-            url: base64Data,
+            url: fileUrl,
             type: file.type || 'application/octet-stream',
             size: file.size,
             uploadedBy: currentUser.fullName,

@@ -36,7 +36,7 @@ import type { TaskTemplate } from '../../../types/task-template.types';
 import { taskTemplateService } from '../../../services/task-template-service';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { toastSuccess, toastError } from '../../../shared/lib/toast';
-import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
+import { uploadImageToStorage } from '../../../services/firebase-storage-service';
 
 function parseDeadlineStringToDate(deadline: string): Date {
   if (!deadline) return new Date();
@@ -402,12 +402,11 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
     }
   }, [isOpen, editorInitialized, notesValue]);
 
-  // Image compressor & insertion
   const compressAndInsertImages = async (files: File[]) => {
     try {
       const uploadPromises = files.map(async (file) => {
-        const compressedBase64 = await compressAndConvertToBase64(file);
-        return { name: file.name, base64: compressedBase64 };
+        const fileUrl = await uploadImageToStorage(file, 'task-notes-images');
+        return { name: file.name, url: fileUrl };
       });
       const results = await Promise.all(uploadPromises);
 
@@ -416,7 +415,7 @@ export const TaskCreateModal = React.memo(function TaskCreateModal({
 
         const imgTags = results
           .map((res) => 
-            `<img src="${res.base64}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="${res.name}" />`
+            `<img src="${res.url}" referrerPolicy="no-referrer" class="max-w-full max-h-[300px] h-auto object-contain rounded-xl my-4 border border-slate-200 shadow-md block mx-auto hover:scale-[1.02] transition-transform duration-200" alt="${res.name}" />`
           )
           .join('');
 

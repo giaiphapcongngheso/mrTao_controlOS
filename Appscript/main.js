@@ -95,20 +95,35 @@ function doPost(e) {
       var htmlBody = request.htmlBody;
       var rawAttachments = request.attachments || [];
       
-      // Xử lý chuyển đổi ảnh Base64 thành file đính kèm thật trong Gmail
+      // Xử lý chuyển đổi ảnh Base64 hoặc URL HTTP/HTTPS thành file đính kèm thật trong Gmail
       var mailAttachments = [];
       for (var i = 0; i < rawAttachments.length; i++) {
         var file = rawAttachments[i];
-        if (file.url && file.url.indexOf(";base64,") !== -1) {
-          try {
-            var parts = file.url.split(";base64,");
-            var mimeType = parts[0].split(":")[1] || "image/jpeg";
-            var base64Data = parts[1];
-            var decoded = Utilities.base64Decode(base64Data);
-            var blob = Utilities.newBlob(decoded, mimeType, file.name || ("attachment_" + i + ".jpg"));
-            mailAttachments.push(blob);
-          } catch(err) {
-            // Bỏ qua file lỗi
+        if (file.url) {
+          if (file.url.indexOf(";base64,") !== -1) {
+            try {
+              var parts = file.url.split(";base64,");
+              var mimeType = parts[0].split(":")[1] || "image/jpeg";
+              var base64Data = parts[1];
+              var decoded = Utilities.base64Decode(base64Data);
+              var blob = Utilities.newBlob(decoded, mimeType, file.name || ("attachment_" + i + ".jpg"));
+              mailAttachments.push(blob);
+            } catch(err) {
+              // Bỏ qua file lỗi
+            }
+          } else if (file.url.indexOf("http") === 0) {
+            try {
+              var resp = UrlFetchApp.fetch(file.url);
+              var blob = resp.getBlob();
+              if (file.name) {
+                blob.setName(file.name);
+              } else {
+                blob.setName("attachment_" + i + ".jpg");
+              }
+              mailAttachments.push(blob);
+            } catch(err) {
+              // Bỏ qua file lỗi
+            }
           }
         }
       }
