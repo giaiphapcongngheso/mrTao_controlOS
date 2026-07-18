@@ -7,7 +7,7 @@ import { DatePicker } from '../../../../share/components/custom/date-picker';
 import { toastError } from '../../../shared/lib/toast';
 import { ActionConfirmDialog } from '../../../../share/components/action-confirm-dialog';
 import { Dialog, DialogContent, DialogTitle } from '../../../../share/ui/dialog';
-import { uploadChecklistItemImage } from '../../../services/firebase-storage-service';
+import { uploadChecklistItemImage, deleteImageFromStorage } from '../../../services/firebase-storage-service';
 import type {
   ChecklistPermissions,
   ChecklistSubTab,
@@ -128,6 +128,7 @@ const ChecklistItemDetailDialog = React.memo(function ChecklistItemDetailDialog(
     const nextUrls = imageUrls.filter((url) => url !== urlToDelete);
     try {
       await onUpdateItem(item.id, { imageUrls: nextUrls }, item.dateKey);
+      await deleteImageFromStorage(urlToDelete);
     } catch (err) {
       console.error(err);
     }

@@ -11,7 +11,7 @@ import { CustomSelect } from '../../../../share/components/custom/custom-select'
 import { useChecklistProcessCategoriesQuery } from '../../Checklist/_hook/use-checklist';
 import { useStaffQuery } from '../../StaffPermissions/_hook/use-staff';
 import { getRoleFriendlyName } from '../../../constants';
-import { compressAndConvertToBase64 } from '../../../services/firebase-storage-service';
+import { uploadImageToStorage, deleteImageFromStorage } from '../../../services/firebase-storage-service';
 
 // --- Types ---
 interface IssueModalProps {
@@ -188,11 +188,11 @@ const FileDropZone = React.memo(function FileDropZone({
 
   const processFiles = React.useCallback(async (files: File[]) => {
     try {
-      const uploadPromises = files.map((file) => compressAndConvertToBase64(file));
+      const uploadPromises = files.map((file) => uploadImageToStorage(file, 'issue-attachments'));
       const results = await Promise.all(uploadPromises);
-      results.forEach((base64) => {
-        if (base64) {
-          onAddAttachment(base64);
+      results.forEach((url) => {
+        if (url) {
+          onAddAttachment(url);
         }
       });
     } catch (error) {
@@ -342,8 +342,12 @@ const IssueModal = React.memo(function IssueModal({
   }, []);
 
   const handleRemoveAttachment = React.useCallback((index: number) => {
+    const urlToRemove = attachments[index];
+    if (urlToRemove) {
+      void deleteImageFromStorage(urlToRemove);
+    }
     setAttachments((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  }, [attachments]);
 
   const category = form.watch('category');
   const actor = form.watch('actor');
