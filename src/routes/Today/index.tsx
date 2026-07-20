@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertOctagon,
   AlertTriangle,
@@ -16,6 +17,10 @@ import { TAB_ROUTE_MAP, useAppShellState } from '../app-shell-state';
 import { useTodayDashboard } from './_hook/use-today-dashboard';
 import { usePlanTargets } from './_hook/use-plan-targets';
 import { useTodayTimelineQuery } from './_hook/use-today';
+import { CustomSelect } from '../../../share/components/custom/custom-select';
+import { staffService } from '../../services/admin/staff-service';
+import { useAppStore } from '../../stores/app-store';
+import { isOwnerUser } from '../../shared/hooks/use-module-permissions';
 
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from '../../../share/ui/card';
 import { cn } from '../../../share/lib/utils';
@@ -184,6 +189,8 @@ function MetricCard({
 export default function TodayRoute() {
   const navigate = useNavigate();
   const { activeStoreId, tasks: appShellTasks } = useAppShellState();
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = useMemo(() => isOwnerUser(currentUser), [currentUser]);
 
   // Load real data from Firestore / Reports
   const dashboard = useTodayDashboard(activeStoreId);
@@ -197,8 +204,38 @@ export default function TodayRoute() {
     appShellTasks.length,
   );
 
+  // Performer filter for Timeline
+  const [selectedPerformer, setSelectedPerformer] = useState<string>('all');
+
+  const { data: staffList = [] } = useQuery({
+    queryKey: ['admin', 'staff'],
+    queryFn: () => staffService.getAll(),
+  });
+
+  const performerOptions = useMemo(() => {
+    const activeStaff = staffList.filter((s) => s.status === 'active');
+    return [
+      { label: 'Tất cả nhân sự', value: 'all' },
+      ...activeStaff.map((s) => ({ label: s.fullName, value: s.id })),
+    ];
+  }, [staffList]);
+
+  // Non-owner staff can ONLY see their own timeline!
+  const effectivePerformer = useMemo(() => {
+    if (isOwner) {
+      return selectedPerformer;
+    }
+    const currentStaff = staffList.find(
+      (s) =>
+        s.id === currentUser?.id ||
+        s.username === currentUser?.username ||
+        (currentUser?.fullName && s.fullName === currentUser.fullName),
+    );
+    return currentStaff?.id || currentUser?.id || currentUser?.fullName || currentUser?.username || 'all';
+  }, [isOwner, selectedPerformer, staffList, currentUser]);
+
   // Timeline with direct checklist subscription
-  const timelineQuery = useTodayTimelineQuery(activeStoreId);
+  const timelineQuery = useTodayTimelineQuery(activeStoreId, effectivePerformer);
 
   // local states & formatting helpers
   const [currentDateString] = useState(() =>
@@ -473,18 +510,36 @@ export default function TodayRoute() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* TIMELINE SECTION */}
         <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-left">
-          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
-            <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4 gap-2 flex-wrap sm:flex-nowrap">
+            <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 shrink-0">
               <span className="w-1.5 h-3.5 bg-[#C21A1A] rounded-sm inline-block" />
               TIMELINE HÔM NAY
             </h3>
-            <button
-              type="button"
-              onClick={() => handleSetTab('Checklist')}
-              className="text-xs font-black text-slate-400 hover:text-[#C21A1A] transition-colors"
-            >
-              Xem tất cả &gt;
-            </button>
+            <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+              {isOwner ? (
+                <div className="w-40">
+                  <CustomSelect
+                    value={selectedPerformer}
+                    onChangeValue={(val) => setSelectedPerformer(String(val))}
+                    options={performerOptions}
+                    clearable={false}
+                    placeholder="Chọn nhân sự..."
+                    className="h-8 text-xs font-bold rounded-xl border border-slate-200 hover:border-slate-300 bg-white"
+                  />
+                </div>
+              ) : (
+                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                  {currentUser?.fullName || 'Cá nhân'}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => handleSetTab('Checklist')}
+                className="text-xs font-black text-slate-400 hover:text-[#C21A1A] transition-colors whitespace-nowrap"
+              >
+                Xem tất cả &gt;
+              </button>
+            </div>
           </div>
 
           {timelineQuery.error && (

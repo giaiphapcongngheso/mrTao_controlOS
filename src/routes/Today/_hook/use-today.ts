@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { KPIStats, TimelineEvent } from '../../../types/today.types';
-import { checklistService } from '../../../services/checklist-service';
+import { checklistService, checklistTemplateService } from '../../../services/checklist-service';
+import { staffService } from '../../../services/admin/staff-service';
 import { todayStatsService } from '../../../services/today-service';
 
 export const todayQueryKeys = {
   stats: (storeId: string) => ['today', 'stats', storeId] as const,
-  timeline: (storeId: string, dateKey: string) => ['today', 'timeline', storeId, dateKey] as const,
+  timeline: (storeId: string, dateKey: string, performerId: string) =>
+    ['today', 'timeline', storeId, dateKey, performerId] as const,
 };
 
 function getTimelineSortValue(event: TimelineEvent): number {
@@ -44,16 +46,28 @@ export function useTodayStatsQuery(storeId: string) {
 
 /**
  * Fetches today's timeline directly from checklist completion data.
- * Each completed checklist task becomes a "done" event with timestamp.
- * Pending (uncompleted) tasks become "pending" events.
+ * Can be filtered by performer (selected staff member).
  */
-export function useTodayTimelineQuery(storeId: string) {
+export function useTodayTimelineQuery(storeId: string, selectedPerformer: string = 'all') {
   const todayDateKey = useMemo(getTodayDateKey, []);
 
   return useQuery<TimelineEvent[]>({
-    queryKey: todayQueryKeys.timeline(storeId, todayDateKey),
+    queryKey: todayQueryKeys.timeline(storeId, todayDateKey, selectedPerformer),
     queryFn: async () => {
-      const checklists = await checklistService.getAll({ storeId, dateKey: todayDateKey, deletedAt: 'null' });
+      const [checklists, templates, staffList] = await Promise.all([
+        checklistService.getAll({ storeId, dateKey: todayDateKey, deletedAt: 'null' }),
+        checklistTemplateService.getAll({ storeId, deletedAt: 'null' }),
+        staffService.getAll(),
+      ]);
+
+      const templateMap = new Map((templates || []).map((t) => [t.id, t]));
+      const targetStaff = selectedPerformer !== 'all'
+        ? (staffList || []).find((s) => s.id === selectedPerformer || s.fullName === selectedPerformer || s.username === selectedPerformer)
+        : null;
+
+      const filterName = targetStaff ? targetStaff.fullName : selectedPerformer;
+      const filterUsername = targetStaff ? targetStaff.username : selectedPerformer;
+      const filterId = targetStaff ? targetStaff.id : selectedPerformer;
 
       // Filter today's checklists for this store
       const todayChecklists = (checklists || []).filter(
@@ -64,6 +78,26 @@ export function useTodayTimelineQuery(storeId: string) {
       const events: TimelineEvent[] = [];
 
       for (const task of allTasks) {
+        const template = task.templateId ? templateMap.get(task.templateId) : null;
+        const defaultAssignee = template?.defaultAssignee || 'all_staff';
+
+        if (selectedPerformer !== 'all') {
+          if (task.isCompleted) {
+            const isCheckedByPerformer =
+              task.checkedByName === filterName ||
+              task.checkedByUsername === filterUsername ||
+              task.checkedByName === filterId;
+            if (!isCheckedByPerformer) continue;
+          } else {
+            const isAssignedToPerformer =
+              defaultAssignee === 'all_staff' ||
+              defaultAssignee === filterId ||
+              defaultAssignee === filterName ||
+              defaultAssignee === filterUsername;
+            if (!isAssignedToPerformer) continue;
+          }
+        }
+
         if (task.isCompleted && task.checkedAt) {
           // Completed → "done" event
           const checkedDate = new Date(task.checkedAt);
@@ -88,11 +122,12 @@ export function useTodayTimelineQuery(storeId: string) {
         }
       }
 
-      return events.sort((a, b) => getTimelineSortValue(b) - getTimelineSortValue(a));
+      return events.sort((a, b) => getTimelineSortValue(a) - getTimelineSortValue(b));
     },
     enabled: Boolean(storeId),
     staleTime: 2 * 60 * 1000,
   });
 }
+
 
 
