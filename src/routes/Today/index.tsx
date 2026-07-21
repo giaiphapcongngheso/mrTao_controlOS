@@ -5,7 +5,6 @@ import {
   AlertOctagon,
   AlertTriangle,
   Check,
-  ChevronRight,
   TrendingUp,
   Users,
   Zap,
@@ -46,28 +45,6 @@ interface MetricCardProps {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function inferTimelineRoute(event: TimelineEvent): TabType | null {
-  const text = `${event.title} ${event.description}`.toLowerCase();
-
-  if (text.includes('task') || text.includes('viec') || text.includes('việc') || text.includes('trễ') || text.includes('tre')) {
-    return 'Tasks';
-  }
-
-  if (text.includes('sop')) {
-    return 'SOP';
-  }
-
-  if (text.includes('checklist')) {
-    return 'Checklist';
-  }
-
-  if (text.includes('kho') || text.includes('warehouse')) {
-    return 'Warehouse';
-  }
-
-  return null;
-}
 
 function getTimelineVisual(status: TimelineEvent['status']): TimelineVisual {
   if (status === 'done') {
@@ -264,7 +241,6 @@ export default function TodayRoute() {
   const timelineRows = useMemo(
     () => (timelineQuery.data ?? []).map((event) => ({
       event,
-      route: inferTimelineRoute(event),
       visual: getTimelineVisual(event.status),
     })),
     [timelineQuery.data],
@@ -564,51 +540,31 @@ export default function TodayRoute() {
                 </div>
               ))
             ) : timelineRows.length > 0 ? (
-              timelineRows.map(({ event, route, visual }) => {
-                const content = (
-                  <>
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <span className="font-sans text-xs font-black text-slate-500 shrink-0 w-10">
-                        {event.time}
-                      </span>
-                      <span className={`p-1.5 rounded-lg border shrink-0 ${visual.iconClassName}`}>
-                        {visual.icon === 'check' ? (
-                          <Check className="w-4 h-4 stroke-[3]" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4" />
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-extrabold text-slate-800 text-xs truncate">{event.title}</h4>
-                        <p className={`text-[10px] font-semibold mt-0.5 ${visual.descriptionClassName}`}>
-                          {event.description}
-                        </p>
-                      </div>
+              timelineRows.map(({ event, visual }) => (
+                <div
+                  key={`${event.storeId}-${event.time}-${event.title}`}
+                  className="w-full p-3.5 bg-slate-50 rounded-xl border border-slate-150 flex items-center justify-between gap-4 text-left"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <span className="font-sans text-xs font-black text-slate-500 shrink-0 w-10">
+                      {event.time}
+                    </span>
+                    <span className={`p-1.5 rounded-lg border shrink-0 ${visual.iconClassName}`}>
+                      {visual.icon === 'check' ? (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-extrabold text-slate-800 text-xs truncate">{event.title}</h4>
+                      <p className={`text-[10px] font-semibold mt-0.5 ${visual.descriptionClassName}`}>
+                        {event.description}
+                      </p>
                     </div>
-                    {route && <ChevronRight className="w-4 h-4 text-slate-350" />}
-                  </>
-                );
-
-                const className = [
-                  'w-full p-3.5 bg-slate-50 hover:bg-slate-100/55 rounded-xl border border-slate-150 flex items-center justify-between gap-4 transition-all text-left',
-                  route ? 'cursor-pointer' : '',
-                ].join(' ');
-
-                return route ? (
-                  <button
-                    key={`${event.storeId}-${event.time}-${event.title}`}
-                    type="button"
-                    onClick={() => handleSetTab(route)}
-                    className={className}
-                  >
-                    {content}
-                  </button>
-                ) : (
-                  <div key={`${event.storeId}-${event.time}-${event.title}`} className={className}>
-                    {content}
                   </div>
-                );
-              })
+                </div>
+              ))
             ) : (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
                 <p className="text-xs font-bold text-slate-500">Chưa có sự kiện timeline hôm nay.</p>
