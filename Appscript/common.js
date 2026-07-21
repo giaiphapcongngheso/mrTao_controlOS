@@ -20,27 +20,25 @@ function json_(obj) {
 }
 
 function parseRequestPayload_(e) {
-  if (e && e.parameter) {
-    var parameterKeys = Object.keys(e.parameter);
-    if (parameterKeys.length > 0) {
-      return e.parameter;
-    }
-  }
+  var data = {};
 
   if (e && e.postData && e.postData.contents) {
-    var contentType = (e.postData.type || '').toLowerCase();
-    if (contentType.indexOf('application/json') === -1) {
-      return {};
-    }
-
     try {
-      return JSON.parse(e.postData.contents);
+      data = JSON.parse(e.postData.contents);
     } catch (error) {
-      throw new Error('Invalid JSON body');
+      // Return empty if postData cannot be parsed as JSON
     }
   }
 
-  return {};
+  if (e && e.parameter) {
+    for (var key in e.parameter) {
+      if (data[key] === undefined) {
+        data[key] = e.parameter[key];
+      }
+    }
+  }
+
+  return data;
 }
 
 function jsonResponse_(obj) {
