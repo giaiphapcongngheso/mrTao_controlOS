@@ -544,18 +544,19 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
 
       const roleObj = roles.find((r) => r.code === payload.role || r.id === payload.roleId);
       const roleName = roleObj ? roleObj.name : payload.role;
-      await staffService.update(payload.id, payload, {
-        logDetails: isEditMode
-          ? `Đã cập nhật thông tin nhân sự "${payload.fullName}".`
-          : `Đã tạo nhân sự "${payload.fullName}" với vai trò "${roleName}".`,
-      });
 
       if (isEditMode) {
+        await staffService.update(payload.id, payload, {
+          logDetails: `Đã cập nhật thông tin nhân sự "${payload.fullName}".`,
+        });
         setStaffList((prev: StaffMember[]) =>
           prev.map((item) => (item.id === payload.id ? payload : item)),
         );
         toastSuccess('Đã cập nhật thông tin nhân sự.');
       } else {
+        await staffService.create(payload, {
+          logDetails: `Đã tạo nhân sự "${payload.fullName}" với vai trò "${roleName}".`,
+        });
         setStaffList((prev: StaffMember[]) => toSortedStaff([...prev, payload]));
         toastSuccess('Đã thêm nhân sự mới.');
       }
@@ -584,7 +585,8 @@ export default function StaffPermissionsView({ currentUser }: StaffPermissionsVi
         return;
       }
 
-      toastError('Không thể cập nhật nhân sự. Vui lòng kiểm tra quyền ghi Firestore.');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      toastError(`Không thể ${isEditMode ? 'cập nhật' : 'tạo'} nhân sự: ${errMsg}`);
     } finally {
       setIsSavingStaff(false);
     }

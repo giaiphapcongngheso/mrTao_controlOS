@@ -921,33 +921,6 @@ function runSyncProcess(previewOnly, target) {
   return responsePayload;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WEB API ENTRYPOINT (doGet)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function doGet(e) {
-  var token = e.parameter.token;
-  var action = e.parameter.action || 'all'; // 'warehouse' | 'customers' | 'all'
-  var preview = e.parameter.preview === 'true';
-
-  if (token !== getSecret('GAS_SYNC_TOKEN')) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: 'Unauthorized: Invalid security token'
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  try {
-    var result = runSyncProcess(preview, action);
-    return ContentService.createTextOutput(JSON.stringify(result))
-                         .setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CRON TRIGGERS (Tự động hàng ngày)
