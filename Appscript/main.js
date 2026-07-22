@@ -134,6 +134,10 @@ function doPost(e) {
         body: body || "",
         htmlBody: htmlBody || undefined
       };
+
+      if (request.senderName) {
+        mailOptions.name = request.senderName;
+      }
       
       if (mailAttachments.length > 0) {
         mailOptions.attachments = mailAttachments;

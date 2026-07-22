@@ -37,8 +37,8 @@ export const emailService = {
     const cleanConfig = (cfg: EmailConfig): EmailConfig => {
       if (cfg.smtpHost === 'smtp.gmail.comsmtp.gmail.com') cfg.smtpHost = 'smtp.gmail.com';
       if (cfg.smtpPort === 587587) cfg.smtpPort = 587;
-      if (cfg.smtpUser === 'phungdai.hoc@gmail.comtest@gmail.com') cfg.smtpUser = 'phungdai.hoc@gmail.com';
-      if (cfg.defaultRecipients === 'phungdai.hoc@gmail.comreceiver@gmail.com') cfg.defaultRecipients = 'phungdai.hoc@gmail.com';
+      if (cfg.smtpUser && cfg.smtpUser.includes('test@gmail.com')) cfg.smtpUser = cfg.smtpUser.replace('test@gmail.com', '');
+      if (cfg.defaultRecipients && cfg.defaultRecipients.includes('receiver@gmail.com')) cfg.defaultRecipients = cfg.defaultRecipients.replace('receiver@gmail.com', '');
       return cfg;
     };
 
@@ -129,10 +129,10 @@ export const emailService = {
       const sendMethod = 'apps_script'; // Tạm thời chỉ dùng Google Apps Script
 
       if (sendMethod === 'apps_script') {
-        let gasUrl = config.gasUrl?.trim() || env.VITE_GAS_WEBAPP_URL?.trim() || '';
+        let gasUrl = env.VITE_GAS_WEBAPP_URL?.trim() || config.gasUrl?.trim() || '';
         gasUrl = gasUrl.replace(/\\r/g, '').replace(/\\n/g, '').trim();
 
-        let gasToken = config.gasToken?.trim() || env.VITE_GAS_SYNC_TOKEN?.trim() || 'mrTaoOs';
+        let gasToken = env.VITE_GAS_SYNC_TOKEN?.trim() || config.gasToken?.trim() || 'mrTaoOs';
         gasToken = gasToken.replace(/\\r/g, '').replace(/\\n/g, '').trim();
 
         if (!gasUrl) {
@@ -148,6 +148,7 @@ export const emailService = {
           body: JSON.stringify({
             action: 'sendEmail',
             token: gasToken,
+            senderName: config.senderName || 'Hệ thống Mr Táo',
             to: options.to,
             subject: options.subject,
             body: options.body || '',
