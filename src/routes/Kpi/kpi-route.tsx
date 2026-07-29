@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { useModulePermissions } from '../../shared/hooks/use-module-permissions';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
