@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Award, Calendar, Target } from 'lucide-react';
 import type { StaffRole, StaffMember } from '../../types/staff.types';
 import type { KPIConfig, KPIDailyValue, KPIGoal, KPIStaffMonthlyConfig } from '../../types/kpi.types';
-import { ModuleHeader } from '../../../share/components/module-header';
 import { RanksTab } from './tabs/_ranks-tab';
 import { EntryTab } from './tabs/_entry-tab';
 import { SettingsTab } from './tabs/_settings-tab';
@@ -32,6 +31,7 @@ interface KpiViewProps {
   isEntryLoading: boolean;
   isSettingsLoading: boolean;
   isAdminOrOwner: boolean;
+  canManageKpi?: boolean;
   permissions: {
     allowedTabs?: string[];
   };
@@ -93,6 +93,7 @@ export default function KpiView({
   isEntryLoading,
   isSettingsLoading,
   isAdminOrOwner,
+  canManageKpi = isAdminOrOwner,
   permissions,
 }: KpiViewProps) {
   // Handlers
@@ -180,6 +181,7 @@ export default function KpiView({
             selectedMonthYear={selectedMonthYear}
             onSaveMonthlyConfig={onSaveMonthlyConfig}
             isAdminOrOwner={isAdminOrOwner}
+            canManageKpi={canManageKpi}
           />
         )
       )}
@@ -202,7 +204,7 @@ export default function KpiView({
         )
       )}
 
-      {activeSubTab === 'settings' && isAdminOrOwner && (
+      {activeSubTab === 'settings' && isTabVisible('settings') && (
         isSettingsLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-sm font-semibold text-slate-500 animate-pulse">

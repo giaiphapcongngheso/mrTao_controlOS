@@ -1,9 +1,8 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import KpiView from './KpiView';
 import { useModulePermissions } from '../../shared/hooks/use-module-permissions';
 import { MODULE_CODE } from '../../constants/staff-permissions.constants';
-import { TAB_ROUTE_MAP, useAppShellState } from '../app-shell-state';
+import { useAppShellState } from '../app-shell-state';
 import { useStaffQuery } from '../StaffPermissions/_hook/use-staff';
 import { useAppStore } from '../../stores/app-store';
 import {
@@ -28,10 +27,33 @@ export default function KpiRoute() {
   
   const { currentUser } = useAppStore();
   const isAdminOrOwner = useMemo(() => {
-    return currentUser?.roleCode === 'CHU_CUA_HANG' || currentUser?.roleCode === 'QUAN_TRI_VIEN';
+    if (!currentUser) return false;
+    if (currentUser.username?.toLowerCase() === 'admin') return true;
+    const roleCode = (currentUser.roleCode || '').toUpperCase().replace(/_/g, '').trim();
+    const roleName = (currentUser.role || '').toLowerCase().trim();
+    return (
+      ['CHU_CUA_HANG', 'CHUCUAHANG', 'QUAN_TRI_VIEN', 'QUANTRIVIEN', 'ADMIN'].includes(roleCode) ||
+      roleName.includes('chủ cửa hàng') ||
+      roleName.includes('quản trị viên') ||
+      roleName.includes('giám đốc')
+    );
   }, [currentUser]);
 
   const { permissions } = useModulePermissions(MODULE_CODE.KPI, currentUser, isAdminOrOwner);
+
+  const canManageKpi = useMemo(() => {
+    if (isAdminOrOwner) return true;
+    if (!currentUser) return false;
+    const roleCode = (currentUser.roleCode || '').toUpperCase().replace(/_/g, '').trim();
+    const roleName = (currentUser.role || '').toLowerCase().trim();
+    const isManagerRole =
+      ['QUAN_LY', 'QUANLY', 'QUAN_LY_CUA_HANG', 'QUANLYCUAHANG', 'MANAGER', 'QUAN_LY_SHOWROOM'].includes(roleCode) ||
+      roleName.includes('quản lý') ||
+      roleName.includes('manager');
+
+    if (isManagerRole) return true;
+    return Boolean(permissions.canApprove || permissions.canUpdate);
+  }, [isAdminOrOwner, currentUser, permissions]);
 
   const now = new Date();
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(
@@ -49,7 +71,7 @@ export default function KpiRoute() {
           setActiveSubTab(firstAllowed);
         }
       }
-    } else if (!isAdminOrOwner && activeSubTab === 'settings') {
+    } else if (!isAdminOrOwner && (!permissions.allowedTabs || !permissions.allowedTabs.includes('settings')) && activeSubTab === 'settings') {
       setActiveSubTab('ranks');
     }
   }, [isAdminOrOwner, permissions.allowedTabs, activeSubTab]);
@@ -172,13 +194,13 @@ export default function KpiRoute() {
       const isNotOwner = roleCode !== 'CHU_CUA_HANG' && roleCode !== 'CHUCUAHANG';
       const isCurrentStore = staff.storeId === activeStoreId;
       
-      if (!isAdminOrOwner) {
+      if (!canManageKpi) {
         return staff.id === currentUser?.id;
       }
       
       return isNotOwner && isCurrentStore;
     });
-  }, [staffMembers, activeStoreId, isAdminOrOwner, currentUser]);
+  }, [staffMembers, activeStoreId, canManageKpi, currentUser]);
 
   // Filter out 'CHU_CUA_HANG' from available KPI roles
   const filteredRoles = useMemo(() => {
@@ -216,6 +238,7 @@ export default function KpiRoute() {
       isEntryLoading={isEntryLoading}
       isSettingsLoading={isSettingsLoading}
       isAdminOrOwner={isAdminOrOwner}
+      canManageKpi={canManageKpi}
       permissions={permissions}
     />
   );
