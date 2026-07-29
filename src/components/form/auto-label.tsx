@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { FormLabel } from '@shared/ui';
-import { useFormSchema } from '@/components/form/form-schema-provider';
-import { unwrapObjectSchema } from '@/components/form/utils/unwrap-schema';
-import { cn } from '@/lib/utils';
+import { useFormSchema } from './form-schema-provider';
+import { unwrapObjectSchema } from './utils/unwrap-schema';
+import { cn } from '@shared/lib/utils';
 
 type Props = {
   name: string;

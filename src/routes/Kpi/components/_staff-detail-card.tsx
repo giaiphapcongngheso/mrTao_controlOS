@@ -33,6 +33,7 @@ interface StaffDetailCardProps {
   monthlyConfigs: KPIStaffMonthlyConfig[];
   onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
   isAdminOrOwner?: boolean;
+  canManageKpi?: boolean;
 }
 
 const getClassificationLabel = (score: number) => {
@@ -64,7 +65,9 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
   monthlyConfigs,
   onSaveMonthlyConfig,
   isAdminOrOwner = true,
+  canManageKpi = isAdminOrOwner,
 }: StaffDetailCardProps) {
+  const isManagerOrAdmin = canManageKpi || isAdminOrOwner;
   const avatarUrl = getAvatarUrl(staff.avatar, staff.username);
 
   const revenueLabel =
@@ -274,7 +277,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                   type="number"
                   min={0}
                   step={100000}
-                  disabled={!isAdminOrOwner}
+                  disabled={!isManagerOrAdmin}
                   value={overrideFund ?? ''}
                   onChange={(e) => setOverrideFund(e.target.value ? parseInt(e.target.value) : undefined)}
                   className="w-full text-xs font-bold text-[#C21A1A] placeholder:font-normal"
@@ -293,7 +296,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                   type="number"
                   min={0}
                   max={31}
-                  disabled={!isAdminOrOwner}
+                  disabled={!isManagerOrAdmin}
                   value={actualWorkdays || ''}
                   onChange={(e) => setActualWorkdays(parseInt(e.target.value) || 0)}
                   className="w-full text-xs font-bold text-slate-700"
@@ -309,7 +312,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
                 </Label>
                 <CustomSelect
                   options={DISCIPLINE_OPTIONS}
-                  disabled={!isAdminOrOwner}
+                  disabled={!isManagerOrAdmin}
                   value={String(disciplineCoeff)}
                   onChangeValue={(val) => setDisciplineCoeff(parseFloat(String(val)) || 0)}
                   size="sm"
@@ -330,7 +333,7 @@ export const StaffDetailCard = React.memo(function StaffDetailCard({
             </div>
 
             {/* Save Button */}
-            {isAdminOrOwner && (
+            {isManagerOrAdmin && (
               <Button
                 disabled={isSaving}
                 onClick={handleSaveMonthlyConfig}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Award, Coins, Percent, User } from 'lucide-react';
 import type { StaffMember, StaffRole } from '../../../types/staff.types';
-import type { KPIConfig, KPIDailyValue, StaffRank, KPIStaffMonthlyConfig } from '../../../types/kpi.types';
+import type { KPIConfig, KPIDailyValue, KPIStaffMonthlyConfig } from '../../../types/kpi.types';
 import { Card, CardContent } from '../../../../share/ui/card';
 import { StaffDetailCard } from '../components/_staff-detail-card';
 import { LeaderboardTable } from '../components/_leaderboard-table';
@@ -17,11 +17,8 @@ import {
   calculatePeriodMonths,
   getDaysInMonthCount,
   getPreviousMonthYear,
-  translateClassification,
-  getClassificationBadgeClass,
   calculateStaffKpiGroupData,
   type RanksTimeframe,
-  type StaffKpiGroupData,
 } from '../kpi-utils';
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('vi-VN', {
@@ -39,6 +36,7 @@ interface RanksTabProps {
   selectedMonthYear: string;
   onSaveMonthlyConfig: (config: KPIStaffMonthlyConfig) => Promise<any>;
   isAdminOrOwner?: boolean;
+  canManageKpi?: boolean;
 }
 
 export const RanksTab = React.memo(function RanksTab({
@@ -50,20 +48,23 @@ export const RanksTab = React.memo(function RanksTab({
   selectedMonthYear,
   onSaveMonthlyConfig,
   isAdminOrOwner = true,
+  canManageKpi = isAdminOrOwner,
 }: RanksTabProps) {
+  const isManagerOrAdmin = canManageKpi || isAdminOrOwner;
+
   // Selection states
   const [selectedStaffId, setSelectedStaffId] = useState<string>(
     staffMembers.find(s => s.status === 'active')?.id || ''
   );
   const [viewMode, setViewMode] = useState<'overview' | 'detail'>(
-    isAdminOrOwner ? 'overview' : 'detail'
+    isManagerOrAdmin ? 'overview' : 'detail'
   );
 
   React.useEffect(() => {
-    if (!isAdminOrOwner && viewMode !== 'detail') {
+    if (!isManagerOrAdmin && viewMode !== 'detail') {
       setViewMode('detail');
     }
-  }, [isAdminOrOwner, viewMode]);
+  }, [isManagerOrAdmin, viewMode]);
 
   // Timeframe states
   const [ranksTimeframe, setRanksTimeframe] = useState<RanksTimeframe>('month');
@@ -224,7 +225,7 @@ export const RanksTab = React.memo(function RanksTab({
   return (
     <div className="space-y-4">
       {/* 📊 Segmented View Mode Switcher */}
-      {isAdminOrOwner && (
+      {isManagerOrAdmin && (
         <div className="flex items-center gap-1 bg-slate-100/85 p-1 rounded-xl w-max border border-slate-200/50 font-sans">
           <button
             type="button"
@@ -381,7 +382,7 @@ export const RanksTab = React.memo(function RanksTab({
         /* Detail Mode: Split screen layout */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade-in">
           {/* Left: Leaderboard */}
-          {isAdminOrOwner && (
+          {isManagerOrAdmin && (
             <div className="lg:col-span-5">
               <LeaderboardTable
                 roles={roles}
@@ -402,7 +403,7 @@ export const RanksTab = React.memo(function RanksTab({
           )}
 
           {/* Right: Staff detail */}
-          <div className={isAdminOrOwner ? 'lg:col-span-7' : 'lg:col-span-12'}>
+          <div className={isManagerOrAdmin ? 'lg:col-span-7' : 'lg:col-span-12'}>
             {selectedStaff && (
               <Card className="p-5 md:p-6 space-y-2">
                 <StaffDetailCard
@@ -419,6 +420,7 @@ export const RanksTab = React.memo(function RanksTab({
                   monthlyConfigs={monthlyConfigs}
                   onSaveMonthlyConfig={onSaveMonthlyConfig}
                   isAdminOrOwner={isAdminOrOwner}
+                  canManageKpi={isManagerOrAdmin}
                 />
 
                 {/* Sparkline chart (month view only) */}
